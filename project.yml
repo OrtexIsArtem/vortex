@@ -1,0 +1,53 @@
+name: Vortex
+
+options:
+  bundleIdPrefix: io.github.ortexisartem
+  deploymentTarget:
+    macOS: "14.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ARCHS: arm64
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  VortexKit:
+    path: Packages
+
+targets:
+  Vortex:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+    dependencies:
+      - package: VortexKit
+        product: VortexCore
+      - package: VortexKit
+        product: FeatureRegistry
+    preBuildScripts:
+      - name: "Rule: no network outside Secrets"
+        script: '"$SRCROOT/scripts/check-no-network.sh"'
+        basedOnDependencyAnalysis: false
+    settings:
+      base:
+        PRODUCT_NAME: Vortex
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ortexisartem.vortex
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Vortex
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Artem Pronenko"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    scheme:
+      testTargets:
+        - package: VortexKit/FeatureTemplateTests
