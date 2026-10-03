@@ -10,6 +10,7 @@ let composableArchitecture: Target.Dependency = .product(
   name: "ComposableArchitecture",
   package: "swift-composable-architecture"
 )
+let keyboardShortcuts: Target.Dependency = .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")
 
 /// Every feature depends on this base and nothing else — never on another feature.
 let featureBase: [Target.Dependency] = ["VortexCore", "VortexPlatform", composableArchitecture]
@@ -31,23 +32,46 @@ let featureTargets: [Target] = features.flatMap { name -> [Target] in
 
 let package = Package(
   name: "VortexKit",
+  defaultLocalization: "en",
   platforms: [.macOS(.v14)],
   products: [
-    .library(name: "VortexCore", targets: ["VortexCore"]),
-    .library(name: "FeatureRegistry", targets: ["FeatureRegistry"]),
+    .library(name: "VortexShell", targets: ["VortexShell"]),
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.26.2"),
+    .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
   ],
   targets: [
     .target(
       name: "VortexCore",
+      dependencies: [composableArchitecture],
       path: "Core/Sources"
+    ),
+    .testTarget(
+      name: "VortexCoreTests",
+      dependencies: ["VortexCore"],
+      path: "Core/Tests"
     ),
     .target(
       name: "VortexPlatform",
-      dependencies: ["VortexCore", composableArchitecture],
+      dependencies: ["VortexCore", composableArchitecture, keyboardShortcuts],
       path: "Platform/Sources"
+    ),
+    .testTarget(
+      name: "VortexPlatformTests",
+      dependencies: ["VortexPlatform"],
+      path: "Platform/Tests"
+    ),
+    .target(
+      name: "VortexShell",
+      dependencies: ["VortexCore", "VortexPlatform", "FeatureRegistry", composableArchitecture],
+      path: "Shell/Sources",
+      resources: [.process("Resources")]
+    ),
+    .testTarget(
+      name: "VortexShellTests",
+      dependencies: ["VortexShell", composableArchitecture],
+      path: "Shell/Tests"
     ),
     .target(
       name: "FeatureRegistry",

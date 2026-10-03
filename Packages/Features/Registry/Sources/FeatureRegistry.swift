@@ -7,4 +7,8 @@ import VortexCore
 @MainActor
 public enum FeatureRegistry {
   public static let all: [any FeatureModule.Type] = []
+
+  public static func module(for id: FeatureID) -> (any FeatureModule.Type)? {
+    all.first { $0.id == id }
+  }
 }

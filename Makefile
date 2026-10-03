@@ -9,7 +9,7 @@ open: project ## Regenerate and open in Xcode
 	open Vortex.xcodeproj
 
 build: ## Compile the app without signing (for checks)
-	xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Debug -destination "$(DESTINATION)" CODE_SIGNING_ALLOWED=NO -quiet build
+	xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Debug -destination "$(DESTINATION)" CODE_SIGNING_ALLOWED=NO -skipMacroValidation -quiet build
 
 test: ## Run package tests
 	swift test --package-path Packages

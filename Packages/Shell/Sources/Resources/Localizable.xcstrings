@@ -1,0 +1,177 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ s" : {
+      "comment" : "Delay in seconds, e.g. 0.3 s",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "%@ с" } }
+      }
+    },
+    "Activation" : {
+      "comment" : "Settings section: how the window opens and closes",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Виклик" } }
+      }
+    },
+    "Always shown on displays without a notch." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "На екранах без вирізу показується завжди." } }
+      }
+    },
+    "Click the notch to open Vortex." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Клацніть по вирізу, щоб відкрити Vortex." } }
+      }
+    },
+    "Close on click outside" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Закривати кліком поза вікном" } }
+      }
+    },
+    "Close when the pointer leaves" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Закривати, коли курсор залишає вікно" } }
+      }
+    },
+    "Dark" : {
+      "comment" : "Theme",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Темна" } }
+      }
+    },
+    "Delay" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Затримка" } }
+      }
+    },
+    "Features" : {
+      "comment" : "Settings section",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Фічі" } }
+      }
+    },
+    "Features appear here as they are added to Vortex." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Фічі з’являться тут, щойно їх додадуть до Vortex." } }
+      }
+    },
+    "Features you turn off disappear from the sidebar. Drag to reorder." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Вимкнені фічі зникають з бічної панелі. Перетягуйте, щоб змінити порядок." } }
+      }
+    },
+    "General" : {
+      "comment" : "Settings section",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Загальні" } }
+      }
+    },
+    "Hover the notch to open Vortex." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Наведіть курсор на виріз, щоб відкрити Vortex." } }
+      }
+    },
+    "Keyboard shortcut" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Сполучення клавіш" } }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Мова" } }
+      }
+    },
+    "Launch at login" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Запускати під час входу" } }
+      }
+    },
+    "Light" : {
+      "comment" : "Theme",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Світла" } }
+      }
+    },
+    "Menu bar icon" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Значок у рядку меню" } }
+      }
+    },
+    "No features yet" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Поки що жодної фічі" } }
+      }
+    },
+    "Only when Vortex was opened by hover." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Лише якщо Vortex відкрито наведенням." } }
+      }
+    },
+    "Open on click" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкривати кліком" } }
+      }
+    },
+    "Open on hover" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкривати при наведенні" } }
+      }
+    },
+    "Open Vortex" : {
+      "comment" : "Menu bar icon menu",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкрити Vortex" } }
+      }
+    },
+    "Opens and closes Vortex from anywhere." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкриває і закриває Vortex будь-де." } }
+      }
+    },
+    "Quit Vortex" : {
+      "comment" : "Menu bar icon menu",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Вийти з Vortex" } }
+      }
+    },
+    "Restart" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Перезапустити" } }
+      }
+    },
+    "Restart Vortex to apply the language." : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Перезапустіть Vortex, щоб змінити мову." } }
+      }
+    },
+    "Sections" : {
+      "comment" : "Accessibility label of the sidebar",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Розділи" } }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Налаштування" } }
+      }
+    },
+    "Settings…" : {
+      "comment" : "Menu bar icon menu",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Налаштування…" } }
+      }
+    },
+    "System" : {
+      "comment" : "Follow the system language or theme",
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Як у системі" } }
+      }
+    },
+    "Theme" : {
+      "localizations" : {
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Тема" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

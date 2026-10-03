@@ -26,9 +26,7 @@ targets:
       - path: App/Sources
     dependencies:
       - package: VortexKit
-        product: VortexCore
-      - package: VortexKit
-        product: FeatureRegistry
+        product: VortexShell
     preBuildScripts:
       - name: "Rule: no network outside Secrets"
         script: '"$SRCROOT/scripts/check-no-network.sh"'
@@ -50,4 +48,7 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: NO
     scheme:
       testTargets:
+        - package: VortexKit/VortexCoreTests
+        - package: VortexKit/VortexPlatformTests
+        - package: VortexKit/VortexShellTests
         - package: VortexKit/FeatureTemplateTests

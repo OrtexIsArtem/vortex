@@ -7,15 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4929D6AFCC3E7007116438A8 /* VortexApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 469D3E0948742F38C2843351 /* VortexApp.swift */; };
-		BC86A5AA66815444F3176D53 /* FeatureRegistry in Frameworks */ = {isa = PBXBuildFile; productRef = E1C7168B23E24A605CD3B714 /* FeatureRegistry */; };
-		D811EC96E993713014C4D64E /* VortexCore in Frameworks */ = {isa = PBXBuildFile; productRef = 009876B9A035D7948FA29028 /* VortexCore */; };
+		BAA1CBE9865ABC964A732499 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D333C57DF64394ECC7341A50 /* AppDelegate.swift */; };
+		C994DC9C50F79818EF9FF7E7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C80B0DB8C2376DE1C7C01F /* main.swift */; };
+		D811EC96E993713014C4D64E /* VortexShell in Frameworks */ = {isa = PBXBuildFile; productRef = 619B1D86983F65929201911C /* VortexShell */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		22BC3AEFE278CAB1429A2B0E /* Vortex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vortex.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		469D3E0948742F38C2843351 /* VortexApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VortexApp.swift; sourceTree = "<group>"; };
 		66BC97C8411DEA204D599C3D /* Packages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Packages; path = Packages; sourceTree = SOURCE_ROOT; };
+		D333C57DF64394ECC7341A50 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		E5C80B0DB8C2376DE1C7C01F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -23,8 +24,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D811EC96E993713014C4D64E /* VortexCore in Frameworks */,
-				BC86A5AA66815444F3176D53 /* FeatureRegistry in Frameworks */,
+				D811EC96E993713014C4D64E /* VortexShell in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,7 +67,8 @@
 		E6CF27645AA0C850C4C42B27 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				469D3E0948742F38C2843351 /* VortexApp.swift */,
+				D333C57DF64394ECC7341A50 /* AppDelegate.swift */,
+				E5C80B0DB8C2376DE1C7C01F /* main.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -89,8 +90,7 @@
 			);
 			name = Vortex;
 			packageProductDependencies = (
-				009876B9A035D7948FA29028 /* VortexCore */,
-				E1C7168B23E24A605CD3B714 /* FeatureRegistry */,
+				619B1D86983F65929201911C /* VortexShell */,
 			);
 			productName = Vortex;
 			productReference = 22BC3AEFE278CAB1429A2B0E /* Vortex.app */;
@@ -160,7 +160,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4929D6AFCC3E7007116438A8 /* VortexApp.swift in Sources */,
+				BAA1CBE9865ABC964A732499 /* AppDelegate.swift in Sources */,
+				C994DC9C50F79818EF9FF7E7 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -373,13 +374,9 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		009876B9A035D7948FA29028 /* VortexCore */ = {
+		619B1D86983F65929201911C /* VortexShell */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = VortexCore;
-		};
-		E1C7168B23E24A605CD3B714 /* FeatureRegistry */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = FeatureRegistry;
+			productName = VortexShell;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

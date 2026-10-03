@@ -15,6 +15,8 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 - `make test` — run package tests
 - `make check` — no-network rule (also runs as a build phase)
 - `make open` — regenerate and open in Xcode
+- `make build` skips macro validation; in the Xcode UI the first build asks to "Trust & Enable" the TCA macro packages once.
+- To check the running app without the pointer, use the debug notifications described in App/docs/README.md.
 
 ## Architecture
 1. A feature never imports another feature. Features talk only through contracts in VortexCore or through the app shell.
@@ -29,7 +31,10 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 - After every change: build and run the tests of the module you touched.
 - Nothing heavy on the main thread: OCR, database and previews run in the background. Track the cursor near the notch with system events, never by polling.
 - Library versions are pinned in Package.resolved. Update them only when explicitly asked.
-- UI strings in Ukrainian and English (String Catalog). Code, comments and docs in English.
+- UI strings in Ukrainian and English: `Text("…", bundle: .module)` / `String(localized: "…", bundle: .module)` with a uk translation in the module's Resources/Localizable.xcstrings. Code, comments and docs in English.
+- `swift test` does not compile String Catalogs (Xcode does), so tests never assert translated text.
+- A public reducer must be declared `Sendable` explicitly (Swift 6 does not infer it for public types).
+- `.onChange` must wrap `BindingReducer` too (put both in `CombineReducers`), otherwise binding changes are missed.
 - Design reference: the canvas linked in docs/README.md. Monochrome by default, minimal, large click targets.
 
 ## Signing

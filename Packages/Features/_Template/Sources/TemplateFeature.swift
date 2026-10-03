@@ -3,10 +3,20 @@ import SwiftUI
 import VortexCore
 
 /// Entry point the app shell reads. Register it in Features/Registry.
+@MainActor
 public enum TemplateModule: FeatureModule {
-  public static let id = "template"
+  public static let id: FeatureID = "template"
   public static let title: LocalizedStringResource = "Template"
   public static let symbol = "square.dashed"
+
+  /// One store for the life of the app, so the tab keeps its state between openings.
+  private static let store = Store(initialState: TemplateFeature.State()) {
+    TemplateFeature()
+  }
+
+  public static func makeTab() -> AnyView {
+    AnyView(TemplateView(store: store))
+  }
 }
 
 @Reducer
