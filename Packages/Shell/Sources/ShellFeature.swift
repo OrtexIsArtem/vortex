@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import SwiftUI
 import VortexCore
 import VortexPlatform
 
@@ -353,17 +354,5 @@ public struct ShellFeature: Sendable {
       await send(.pointerLeaveDelayElapsed)
     }
     .cancellable(id: CancelID.pointerLeaveClose, cancelInFlight: true)
-  }
-}
-
-extension Array {
-  /// Same semantics as SwiftUI's `move(fromOffsets:toOffset:)`, without importing SwiftUI into the reducer.
-  mutating func move(fromOffsets source: IndexSet, toOffset destination: Int) {
-    let moving = source.map { self[$0] }
-    let insertAt = destination - source.count { $0 < destination }
-    for index in source.sorted(by: >) {
-      remove(at: index)
-    }
-    insert(contentsOf: moving, at: insertAt)
   }
 }

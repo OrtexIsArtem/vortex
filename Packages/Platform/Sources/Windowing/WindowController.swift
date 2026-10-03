@@ -51,12 +51,14 @@ public final class WindowController: NSObject {
   private var ears: [CGDirectDisplayID: Ears] = [:]
   private var menuBarItem: NSStatusItem?
   private var menuBarMenu: NSMenu?
-  private var isMenuBarIconWanted = true
+  /// Off until the shell applies the user's setting, so a hidden icon never flashes at launch.
+  private var isMenuBarIconWanted = false
   private var outsideClickMonitor: Any?
   private var screenObserver: NSObjectProtocol?
   /// Incremented on every present and dismiss, so a finished animation never acts on a newer one.
   private var generation = 0
   private var emit: (WindowEvent) -> Void = { _ in }
+  private var finishEvents: () -> Void = {}
 
   override private init() {
     super.init()
@@ -81,10 +83,12 @@ public final class WindowController: NSObject {
     }
   }
 
-  /// Events for the shell. Only the latest stream receives them.
+  /// Events for the shell. A new stream ends the previous one.
   public func events() -> AsyncStream<WindowEvent> {
     let (stream, continuation) = AsyncStream.makeStream(of: WindowEvent.self)
+    finishEvents()
     emit = { continuation.yield($0) }
+    finishEvents = { continuation.finish() }
     return stream
   }
 

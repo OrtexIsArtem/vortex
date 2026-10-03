@@ -25,7 +25,9 @@ public struct VortexToggleStyle: ToggleStyle {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .accessibilityValue(Text(configuration.isOn ? "1" : "0"))
+    .accessibilityRepresentation {
+      Toggle(isOn: configuration.$isOn) { configuration.label }
+    }
   }
 }
 
