@@ -4,35 +4,42 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
+extension Hotkey {
+  static let openVortex = Hotkey("openVortex")
+}
+
 /// The app shell: when the window opens and closes, which tab it shows, and the shell's settings.
 @Reducer
-public struct ShellFeature: Sendable {
+struct ShellFeature {
   @ObservableState
-  public struct State: Equatable {
-    public var settings: ShellSettings
+  struct State: Equatable {
+    var settings: ShellSettings
     /// Every registered feature, in registry order.
-    public var features: [FeatureDescriptor]
-    public var selectedTab: Tab = .settings
-    public var settingsSection: SettingsSection = .general
-    public var isOpen = false
-    public var openReason: OpenReason?
-    public var isPointerInsideWindow = false
-    /// Something is being dragged out of the window; it must stay open until the drop.
-    public var isDraggingOut = false
-    public var hasNotchedScreen = true
-    public var launchAtLogin = false
+    var features: [FeatureDescriptor]
+    var selectedTab: Tab = .settings
+    var settingsSection: SettingsSection = .general
+    /// Why the window is open; nil while it is closed.
+    var openReason: OpenReason?
+    var isPointerInsideWindow = false
+    /// False while a display without a notch is connected; the menu bar icon is the way in there.
+    var everyScreenHasNotch = true
+    var launchAtLogin: LaunchAtLoginStatus = .disabled
+    var language: AppLanguage
     /// Language the app was started with; another choice needs a relaunch.
-    public let launchLanguage: AppLanguage
+    let launchLanguage: AppLanguage
 
-    public init(settings: ShellSettings = ShellSettings(), features: [FeatureDescriptor] = []) {
+    init(settings: ShellSettings = ShellSettings(), features: [FeatureDescriptor] = [], language: AppLanguage = .system) {
       self.settings = settings
       self.features = features
-      self.launchLanguage = settings.language
+      self.language = language
+      self.launchLanguage = language
       self.selectedTab = restoredTab
     }
 
+    var isOpen: Bool { openReason != nil }
+
     /// All features in the user's order, enabled or not.
-    public var orderedFeatures: [FeatureDescriptor] {
+    var orderedFeatures: [FeatureDescriptor] {
       let order = settings.featureOrder
       return features.enumerated()
         .sorted { lhs, rhs in
@@ -43,17 +50,21 @@ public struct ShellFeature: Sendable {
     }
 
     /// Enabled features in sidebar order.
-    public var sidebarFeatures: [FeatureDescriptor] {
+    var sidebarFeatures: [FeatureDescriptor] {
       orderedFeatures.filter { !settings.disabledFeatures.contains($0.id) }
     }
 
-    /// On displays without a notch the icon is the only way in, so it cannot be hidden there.
-    public var isMenuBarIconVisible: Bool {
-      settings.showMenuBarIcon || !hasNotchedScreen
+    /// The icon is the only way in while some display has no notch, or while the notch can't open Vortex.
+    var isMenuBarIconRequired: Bool {
+      !everyScreenHasNotch || !(settings.openOnHover || settings.openOnClick)
     }
 
-    public var needsRestartForLanguage: Bool {
-      settings.language != launchLanguage
+    var isMenuBarIconVisible: Bool {
+      settings.showMenuBarIcon || isMenuBarIconRequired
+    }
+
+    var needsRestartForLanguage: Bool {
+      language != launchLanguage
     }
 
     /// The last tab the user chose if it still exists; otherwise the first feature, then settings.
@@ -72,7 +83,7 @@ public struct ShellFeature: Sendable {
     }
   }
 
-  public enum Tab: Hashable, Sendable {
+  enum Tab: Hashable, Sendable {
     case feature(FeatureID)
     case settings
 
@@ -88,25 +99,26 @@ public struct ShellFeature: Sendable {
     }
   }
 
-  public enum SettingsSection: String, CaseIterable, Sendable {
+  enum SettingsSection: CaseIterable, Sendable {
     case general
     case activation
     case features
   }
 
-  public enum Action: BindableAction, Equatable {
+  enum Action: BindableAction, Equatable {
     case binding(BindingAction<State>)
     case task
     case window(WindowEvent)
-    case hotkey(Hotkey)
+    case openHotkeyPressed
     case hoverDelayElapsed
     case pointerLeaveDelayElapsed
     case tabSelected(Tab)
     case featureDropped(FeatureID, onto: FeatureID)
-    case featuresMoved(fromOffsets: IndexSet, toOffset: Int)
     case featureEnabledChanged(FeatureID, isEnabled: Bool)
+    case settingsShown
     case launchAtLoginChanged(Bool)
-    case dragOutChanged(isDragging: Bool)
+    case launchAtLoginStatusLoaded(LaunchAtLoginStatus)
+    case openLoginItemsTapped
     case menuOpenTapped
     case menuSettingsTapped
     case restartButtonTapped
@@ -114,6 +126,7 @@ public struct ShellFeature: Sendable {
   }
 
   @Dependency(\.continuousClock) var clock
+  @Dependency(\.featuresClient) var features
   @Dependency(\.hotkeyClient) var hotkeys
   @Dependency(\.launchAtLoginClient) var launchAtLogin
   @Dependency(\.settingsClient) var settingsClient
@@ -126,9 +139,7 @@ public struct ShellFeature: Sendable {
     case saveSettings
   }
 
-  public init() {}
-
-  public var body: some ReducerOf<Self> {
+  var body: some ReducerOf<Self> {
     CombineReducers {
       BindingReducer()
       Reduce { state, action in
@@ -137,33 +148,33 @@ public struct ShellFeature: Sendable {
           return .none
 
         case .task:
-          state.launchAtLogin = launchAtLogin.isEnabled()
-          if !state.settings.launchAtLoginConfigured {
-            state.settings.launchAtLoginConfigured = true
-            launchAtLogin.enableByDefault()
-            state.launchAtLogin = launchAtLogin.isEnabled()
-          }
+          let featureSwitches = state.orderedFeatures.map { ($0.id, !state.settings.disabledFeatures.contains($0.id)) }
           return .merge(
-            .run { send in
+            .run { [isVisible = state.isMenuBarIconVisible] send in
+              await window.setMenuBarIconVisible(isVisible)
               for await event in await window.events() {
                 await send(.window(event))
               }
             },
             .run { send in
-              for await hotkey in await hotkeys.presses() {
-                await send(.hotkey(hotkey))
+              for await _ in hotkeys.presses(.openVortex) {
+                await send(.openHotkeyPressed)
               }
             },
             .run { [theme = state.settings.theme] send in
               await system.applyTheme(theme)
-              await send(.window(.screensChanged(hasNotch: await window.hasNotchedScreen())))
+              for (id, isEnabled) in featureSwitches {
+                await features.setEnabled(id, isEnabled)
+              }
+              await launchAtLogin.enableOnFirstLaunch()
+              await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
             }
           )
 
         case let .window(event):
           return handle(event, state: &state)
 
-        case .hotkey(.openVortex):
+        case .openHotkeyPressed:
           return state.isOpen ? close(&state) : open(.hotkey, &state)
 
         case .hoverDelayElapsed:
@@ -171,7 +182,7 @@ public struct ShellFeature: Sendable {
           return open(.hover, &state)
 
         case .pointerLeaveDelayElapsed:
-          guard state.isOpen, !state.isPointerInsideWindow, !state.isDraggingOut else { return .none }
+          guard state.isOpen, !state.isPointerInsideWindow else { return .none }
           return close(&state)
 
         case let .tabSelected(tab):
@@ -182,17 +193,8 @@ public struct ShellFeature: Sendable {
 
         case let .featureDropped(dragged, onto: target):
           var ids = state.orderedFeatures.map(\.id)
-          guard dragged != target, let from = ids.firstIndex(of: dragged), ids.contains(target) else { return .none }
-          let movesDown = from < ids.firstIndex(of: target)!
-          ids.remove(at: from)
-          let targetIndex = ids.firstIndex(of: target)!
-          ids.insert(dragged, at: movesDown ? targetIndex + 1 : targetIndex)
-          state.settings.featureOrder = ids
-          return .none
-
-        case let .featuresMoved(fromOffsets: source, toOffset: destination):
-          var ids = state.orderedFeatures.map(\.id)
-          ids.move(fromOffsets: source, toOffset: destination)
+          guard let from = ids.firstIndex(of: dragged), let to = ids.firstIndex(of: target), from != to else { return .none }
+          ids.move(fromOffsets: [from], toOffset: to > from ? to + 1 : to)
           state.settings.featureOrder = ids
           return .none
 
@@ -205,16 +207,21 @@ public struct ShellFeature: Sendable {
           if !state.isAvailable(state.selectedTab) {
             state.selectedTab = state.restoredTab
           }
-          return .none
+          return .run { _ in await features.setEnabled(id, isEnabled) }
+
+        case .settingsShown:
+          // The user may have changed the login item in System Settings meanwhile.
+          return .run { send in await send(.launchAtLoginStatusLoaded(launchAtLogin.status())) }
 
         case let .launchAtLoginChanged(isEnabled):
-          try? launchAtLogin.setEnabled(isEnabled)
-          state.launchAtLogin = launchAtLogin.isEnabled()
+          return .run { send in await send(.launchAtLoginStatusLoaded(launchAtLogin.setEnabled(isEnabled))) }
+
+        case let .launchAtLoginStatusLoaded(status):
+          state.launchAtLogin = status
           return .none
 
-        case let .dragOutChanged(isDragging):
-          state.isDraggingOut = isDragging
-          return isDragging ? .cancel(id: CancelID.pointerLeaveClose) : schedulePointerLeaveClose(state)
+        case .openLoginItemsTapped:
+          return .run { _ in await launchAtLogin.openSystemSettings() }
 
         case .menuOpenTapped:
           return state.isOpen ? .none : open(.menuBarIcon, &state)
@@ -225,16 +232,11 @@ public struct ShellFeature: Sendable {
           return effect
 
         case .restartButtonTapped:
-          return .run { [settings = state.settings] _ in
-            try? await settingsClient.save(settings)
-            await system.relaunch()
-          }
+          // Settings are written when the app terminates (ShellController.saveSettings).
+          return .run { _ in await system.relaunch() }
 
         case .quitButtonTapped:
-          return .run { [settings = state.settings] _ in
-            try? await settingsClient.save(settings)
-            await system.quit()
-          }
+          return .run { _ in await system.quit() }
         }
       }
     }
@@ -242,7 +244,7 @@ public struct ShellFeature: Sendable {
       Reduce { _, _ in
         .run { _ in
           try await clock.sleep(for: .milliseconds(400))
-          try await settingsClient.save(settings)
+          try settingsClient.save(settings)
         }
         .cancellable(id: CancelID.saveSettings, cancelInFlight: true)
       }
@@ -252,14 +254,14 @@ public struct ShellFeature: Sendable {
         .run { _ in await system.applyTheme(theme) }
       }
     }
-    .onChange(of: \.settings.language) { _, language in
+    .onChange(of: \.language) { _, language in
       Reduce { _, _ in
-        .run { _ in system.applyLanguage(language) }
+        .run { _ in system.setLanguage(language) }
       }
     }
-    .onChange(of: \.settings.showMenuBarIcon) { _, _ in
-      Reduce { state, _ in
-        .run { [isVisible = state.isMenuBarIconVisible] _ in await window.setMenuBarIconVisible(isVisible) }
+    .onChange(of: \.isMenuBarIconVisible) { _, isVisible in
+      Reduce { _, _ in
+        .run { _ in await window.setMenuBarIconVisible(isVisible) }
       }
     }
   }
@@ -276,11 +278,20 @@ public struct ShellFeature: Sendable {
       .cancellable(id: CancelID.hoverOpen, cancelInFlight: true)
 
     case .notchClicked:
-      if state.isOpen { return close(&state) }
-      guard state.settings.openOnClick else { return .none }
-      return open(.click, &state)
+      switch state.openReason {
+      case nil:
+        return state.settings.openOnClick ? open(.click, &state) : .none
+      case let reason? where reason.isPassing:
+        // Clicking a window that opened on the way past keeps it open, as if the click had opened it.
+        state.openReason = .click
+        return .cancel(id: CancelID.pointerLeaveClose)
+      case .some:
+        return close(&state)
+      }
 
     case .fileDragEnteredNotch:
+      // Dragging past the notch does nothing while no feature takes files (CLAUDE.md, architecture rule 4).
+      guard state.sidebarFeatures.contains(where: \.acceptsFileDrops) else { return .none }
       if state.isOpen {
         selectDropTab(&state)
         return .none
@@ -290,34 +301,26 @@ public struct ShellFeature: Sendable {
     case .menuBarIconClicked:
       return state.isOpen ? close(&state) : open(.menuBarIcon, &state)
 
-    case .filesDroppedOnMenuBarIcon:
-      // Files go to the feature that accepts them once one exists (the shelf, stage 2).
-      return .none
-
     case let .pointerInsideWindowChanged(isInside):
       state.isPointerInsideWindow = isInside
       return isInside ? .cancel(id: CancelID.pointerLeaveClose) : schedulePointerLeaveClose(state)
 
     case .clickedOutside:
-      guard state.isOpen, state.settings.closeOnClickOutside, !state.isDraggingOut else { return .none }
+      guard state.isOpen, state.settings.closeOnClickOutside else { return .none }
       return close(&state)
 
     case .escapePressed:
       guard state.isOpen else { return .none }
       return close(&state)
 
-    case let .screensChanged(hasNotch):
-      state.hasNotchedScreen = hasNotch
-      let menuBarIcon = Effect<Action>.run { [isVisible = state.isMenuBarIconVisible] _ in
-        await window.setMenuBarIconVisible(isVisible)
-      }
-      // The window was placed for the old screen layout.
-      return state.isOpen ? .merge(close(&state), menuBarIcon) : menuBarIcon
+    case let .screensChanged(everyScreenHasNotch):
+      state.everyScreenHasNotch = everyScreenHasNotch
+      // An open window was placed for the old screen layout.
+      return state.isOpen ? close(&state) : .none
     }
   }
 
   private func open(_ reason: OpenReason, _ state: inout State) -> Effect<Action> {
-    state.isOpen = true
     state.openReason = reason
     state.selectedTab = state.restoredTab
     if reason == .fileDrag { selectDropTab(&state) }
@@ -328,7 +331,6 @@ public struct ShellFeature: Sendable {
   }
 
   private func close(_ state: inout State) -> Effect<Action> {
-    state.isOpen = false
     state.openReason = nil
     state.isPointerInsideWindow = false
     return .merge(
@@ -344,10 +346,9 @@ public struct ShellFeature: Sendable {
     state.selectedTab = .feature(feature.id)
   }
 
-  /// Closing when the pointer leaves applies only to a window opened by hovering the notch.
+  /// A window opened on the way past closes once the pointer leaves it.
   private func schedulePointerLeaveClose(_ state: State) -> Effect<Action> {
-    guard state.isOpen, state.openReason == .hover, state.settings.closeOnPointerLeave,
-          !state.isPointerInsideWindow, !state.isDraggingOut
+    guard state.openReason?.isPassing == true, state.settings.closeOnPointerLeave, !state.isPointerInsideWindow
     else { return .none }
     return .run { [delay = state.settings.pointerLeaveDelay] send in
       try await clock.sleep(for: .seconds(delay))

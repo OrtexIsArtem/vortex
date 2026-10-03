@@ -6,8 +6,10 @@ import VortexCore
 @DependencyClient
 public struct SystemClient: Sendable {
   public var applyTheme: @Sendable (_ theme: AppTheme) async -> Void
+  /// The language chosen for Vortex; `.system` when it follows macOS.
+  public var language: @Sendable () -> AppLanguage = { .system }
   /// Takes effect after a relaunch: macOS reads the language when the app starts.
-  public var applyLanguage: @Sendable (_ language: AppLanguage) -> Void
+  public var setLanguage: @Sendable (_ language: AppLanguage) -> Void
   public var relaunch: @Sendable () async -> Void
   public var quit: @Sendable () async -> Void
 }
@@ -23,7 +25,13 @@ extension SystemClient: DependencyKey {
         }
       }
     },
-    applyLanguage: { language in
+    language: {
+      // Only the app's own domain: the global AppleLanguages list is the system preference, not a choice for Vortex.
+      let domain = Bundle.main.bundleIdentifier.flatMap(UserDefaults.standard.persistentDomain(forName:)) ?? [:]
+      guard let code = (domain["AppleLanguages"] as? [String])?.first else { return .system }
+      return AppLanguage.allCases.first { $0 != .system && code.hasPrefix($0.rawValue) } ?? .system
+    },
+    setLanguage: { language in
       if language == .system {
         UserDefaults.standard.removeObject(forKey: "AppleLanguages")
       } else {

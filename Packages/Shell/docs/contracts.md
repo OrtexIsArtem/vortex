@@ -1,13 +1,18 @@
 # Contracts
 
 ## Provides
-- `ShellController` — starts the shell; created by App at launch.
+- `ShellController` — created by App at launch: `start()`, and `saveSettings()` when the app quits.
+- To feature tabs: `notchCutout` and `isWindowOpen` in the SwiftUI environment.
+
+## Owns
+- The notch window, the ears around the notch and the menu bar icon (Window/). Nothing outside the shell opens or closes the window.
 
 ## Uses
-- FeatureRegistry: every `FeatureModule` — its descriptor, `makeTab()`, `makeSettings()` and `acceptsFileDrops`.
-- VortexCore: `FeatureModule`, `NotchIndicatorCenter`, design system, `AppTheme`, `AppLanguage`.
-- VortexPlatform: `WindowClient` (events, present, dismiss, menu bar icon), `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`, `WindowController.install`.
+- FeatureRegistry: every `FeatureModule` — descriptor, `makeTab()`, `makeSettings()`, `acceptsFileDrops`, `setEnabled(_:)`.
+- VortexCore: `FeatureModule`, `@Shared(.notchIndicators)`, design system, `AppTheme`, `AppLanguage`.
+- VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`.
 
 ## Not yet wired
-- Files dropped on the menu bar icon are ignored until a feature accepts files (Shelf, stage 2).
-- Dragging out of a tab must send `dragOutChanged`; features that start drags call it from stage 2.
+- Files dropped on the menu bar icon — stage 2, with the Shelf and a contract that hands files to a feature.
+- Keeping the window open while something is dragged out of it — stage 2, with a drag source in Platform.
+- Clicking an ear to reach its feature — stage 3, with the timer.

@@ -10,7 +10,6 @@ public enum VortexColor {
   public static let secondaryText = dynamic(dark: 0x8E8E93, light: 0x5E5E63)
   public static let tertiaryText = dynamic(dark: 0x7C7C82, light: 0x6B6B70)
   public static let track = dynamic(dark: 0x2A2A2E, light: 0xDEDEE2)
-  public static let thumbnail = dynamic(dark: 0x18181B, light: 0xE6E6EA)
   /// Fill of the one primary action on a screen.
   public static let accent = dynamic(dark: 0xF5F5F7, light: 0x1D1D1F)
   /// Text and icons on top of `accent`.
@@ -50,6 +49,8 @@ public enum VortexMetrics {
   /// Concave fillet where the window meets the top edge of the screen.
   public static let shoulder: CGFloat = 10
   public static let windowCornerRadius: CGFloat = 30
+  /// Bottom corners of the hardware notch.
+  public static let notchCornerRadius: CGFloat = 10
   /// Corner radius when the window opens under the menu bar icon.
   public static let menuBarWindowCornerRadius: CGFloat = 18
   /// Minimum size of anything clickable.
@@ -59,4 +60,7 @@ public enum VortexMetrics {
 extension EnvironmentValues {
   /// Where the hardware notch cuts into the current view, in the view's own coordinates; nil without a notch.
   @Entry public var notchCutout: CGRect? = nil
+  /// Whether the window is open. Tabs stay mounted while it is closed; use `.task(id: isWindowOpen)`
+  /// for work that should run only while they are visible.
+  @Entry public var isWindowOpen = false
 }

@@ -4,15 +4,11 @@ import SwiftUI
 import VortexCore
 
 /// Everything inside the window: the sidebar and the selected tab.
-public struct ShellWindowView: View {
+struct ShellWindowView: View {
   let store: StoreOf<ShellFeature>
   @Environment(\.notchCutout) private var notchCutout
 
-  public init(store: StoreOf<ShellFeature>) {
-    self.store = store
-  }
-
-  public var body: some View {
+  var body: some View {
     HStack(spacing: 0) {
       SidebarView(store: store)
       TabContent(store: store)
@@ -42,8 +38,8 @@ private struct TabContent: View {
   }
 }
 
-/// Feature icons in the user's order, settings at the bottom. Icons are reordered by dragging.
-struct SidebarView: View {
+/// Feature icons in the user's order, settings at the bottom. Icons are reordered by dragging one onto another.
+private struct SidebarView: View {
   let store: StoreOf<ShellFeature>
 
   var body: some View {
@@ -56,12 +52,7 @@ struct SidebarView: View {
         ) {
           store.send(.tabSelected(.feature(feature.id)))
         }
-        .draggable(feature.id)
-        .dropDestination(for: String.self) { items, _ in
-          guard let dragged = items.first else { return false }
-          store.send(.featureDropped(dragged, onto: feature.id))
-          return true
-        }
+        .reorderable(feature.id, in: store)
       }
       Spacer(minLength: 0)
       SidebarButton(
@@ -109,5 +100,18 @@ private struct SidebarButton: View {
   private var foreground: Color {
     if isSelected { return VortexColor.primaryText }
     return isHovered ? VortexColor.secondaryText : VortexColor.tertiaryText
+  }
+}
+
+extension View {
+  /// Lets a feature's row or icon be dragged onto another one to reorder features.
+  /// Only feature ids of this app count as a drop; anything else is refused.
+  func reorderable(_ id: FeatureID, in store: StoreOf<ShellFeature>) -> some View {
+    draggable(id)
+      .dropDestination(for: String.self) { items, _ in
+        guard let dragged = items.first, store.features.contains(where: { $0.id == dragged }) else { return false }
+        store.send(.featureDropped(dragged, onto: id))
+        return true
+      }
   }
 }

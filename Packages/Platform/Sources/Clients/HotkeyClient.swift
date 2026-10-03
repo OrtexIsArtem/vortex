@@ -2,40 +2,39 @@ import ComposableArchitecture
 import KeyboardShortcuts
 import SwiftUI
 
-/// Global keyboard shortcuts of the app. The user picks the keys in settings; none is set by default.
-public enum Hotkey: String, CaseIterable, Sendable {
-  case openVortex
-}
+/// A global keyboard shortcut. The user records the keys in settings; none is set by default.
+/// Each module declares its own: `extension Hotkey { static let openClipboard = Hotkey("openClipboard") }`.
+public struct Hotkey: Hashable, Sendable {
+  /// Stable name; KeyboardShortcuts stores the keys under it. Must not contain a dot.
+  public let name: String
 
-extension Hotkey {
-  var name: KeyboardShortcuts.Name {
-    switch self {
-    case .openVortex: .openVortex
-    }
+  public init(_ name: String) {
+    self.name = name
+  }
+
+  var shortcutName: KeyboardShortcuts.Name {
+    KeyboardShortcuts.Name(name)
   }
 }
 
-extension KeyboardShortcuts.Name {
-  static let openVortex = Self("openVortex")
-}
-
-/// Presses of the global shortcuts.
+/// Presses of global shortcuts.
 @DependencyClient
 public struct HotkeyClient: Sendable {
-  public var presses: @Sendable () async -> AsyncStream<Hotkey> = { .finished }
+  /// Every press of the shortcut. Ending the stream stops listening.
+  public var presses: @Sendable (_ hotkey: Hotkey) -> AsyncStream<Void> = { _ in .finished }
 }
 
 extension HotkeyClient: DependencyKey {
   public static let liveValue = HotkeyClient(
-    presses: {
-      await MainActor.run {
-        let (stream, continuation) = AsyncStream.makeStream(of: Hotkey.self)
-        for hotkey in Hotkey.allCases {
-          KeyboardShortcuts.onKeyUp(for: hotkey.name) {
-            continuation.yield(hotkey)
+    presses: { hotkey in
+      AsyncStream { continuation in
+        let listener = Task { @MainActor in
+          for await _ in KeyboardShortcuts.events(.keyUp, for: hotkey.shortcutName) {
+            continuation.yield()
           }
+          continuation.finish()
         }
-        return stream
+        continuation.onTermination = { _ in listener.cancel() }
       }
     }
   )
@@ -50,15 +49,19 @@ extension DependencyValues {
   }
 }
 
-/// Field where the user records the keys for a shortcut. Stored by KeyboardShortcuts in UserDefaults.
+/// Field where the user records the keys for a shortcut.
 public struct HotkeyRecorder: View {
   private let hotkey: Hotkey
+  private let label: Text
 
-  public init(_ hotkey: Hotkey) {
+  /// `label` names the shortcut for VoiceOver; the row around the field shows it on screen.
+  public init(_ hotkey: Hotkey, label: Text) {
     self.hotkey = hotkey
+    self.label = label
   }
 
   public var body: some View {
-    KeyboardShortcuts.Recorder(for: hotkey.name)
+    KeyboardShortcuts.Recorder(for: hotkey.shortcutName)
+      .accessibilityLabel(label)
   }
 }

@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-import VortexPlatform
+@testable import VortexShell
 
 struct ScreenGeometryTests {
   /// 14" MacBook Pro in its default scaling: 1512 × 982 points, 185-point notch, 32-point menu bar.

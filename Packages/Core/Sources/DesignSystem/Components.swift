@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Switch drawn in the monochrome style: accent track when on, quiet track when off.
+/// A bare switch in the monochrome style: accent track when on, quiet track when off.
+/// The label is not drawn — the row around the switch shows the title — but VoiceOver reads it.
 public struct VortexToggleStyle: ToggleStyle {
   public init() {}
 
@@ -8,21 +9,18 @@ public struct VortexToggleStyle: ToggleStyle {
     Button {
       configuration.isOn.toggle()
     } label: {
-      HStack(spacing: 10) {
-        configuration.label
-        Capsule()
-          .fill(configuration.isOn ? VortexColor.accent : VortexColor.track)
-          .frame(width: 34, height: 20)
-          .overlay(alignment: configuration.isOn ? .trailing : .leading) {
-            Circle()
-              .fill(configuration.isOn ? VortexColor.onAccent : VortexColor.primaryText.opacity(0.85))
-              .frame(width: 16, height: 16)
-              .padding(2)
-          }
-          .animation(.snappy(duration: 0.18), value: configuration.isOn)
-      }
-      .frame(minHeight: VortexMetrics.hitTarget)
-      .contentShape(Rectangle())
+      Capsule()
+        .fill(configuration.isOn ? VortexColor.accent : VortexColor.track)
+        .frame(width: 34, height: 20)
+        .overlay(alignment: configuration.isOn ? .trailing : .leading) {
+          Circle()
+            .fill(configuration.isOn ? VortexColor.onAccent : VortexColor.primaryText.opacity(0.85))
+            .frame(width: 16, height: 16)
+            .padding(2)
+        }
+        .animation(.snappy(duration: 0.18), value: configuration.isOn)
+        .frame(minWidth: VortexMetrics.hitTarget, minHeight: VortexMetrics.hitTarget)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityRepresentation {
@@ -53,6 +51,26 @@ public struct PrimaryCapsuleButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == PrimaryCapsuleButtonStyle {
   public static var primaryCapsule: PrimaryCapsuleButtonStyle { PrimaryCapsuleButtonStyle() }
+}
+
+/// Any other action: a quiet capsule that does not compete with the primary one.
+public struct QuietCapsuleButtonStyle: ButtonStyle {
+  public init() {}
+
+  public func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .font(.system(size: 12.5, weight: .medium))
+      .padding(.horizontal, 14)
+      .frame(height: 30)
+      .background(Capsule().fill(VortexColor.raised))
+      .foregroundStyle(VortexColor.primaryText)
+      .opacity(configuration.isPressed ? 0.7 : 1)
+      .contentShape(Capsule())
+  }
+}
+
+extension ButtonStyle where Self == QuietCapsuleButtonStyle {
+  public static var quietCapsule: QuietCapsuleButtonStyle { QuietCapsuleButtonStyle() }
 }
 
 /// Segmented control in the monochrome style.

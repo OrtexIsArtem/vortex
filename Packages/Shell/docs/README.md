@@ -1,12 +1,13 @@
 # Shell
 
-The app shell: opens and closes the window, shows the sidebar and the selected tab, owns the shell settings.
+The app shell: the notch window and the menu bar icon, opening and closing, the sidebar, the shell settings.
 
 | File | What it covers |
 | --- | --- |
 | behavior.md | when the window opens and closes, which tab it shows |
 | settings.md | shell settings and their defaults |
 | data.md | where the settings live |
-| contracts.md | what the shell takes from features, Core and Platform |
+| contracts.md | what the shell gives the app and takes from features, Core and Platform |
 
-Code: ShellFeature.swift (logic, tested), ShellController.swift (start-up, menu bar menu), Views/, Settings/.
+Code: ShellFeature.swift (logic, tested), ShellController.swift (start-up, menu), FeaturesClient.swift,
+Window/ (panels, chrome, ears, menu bar icon — AppKit, reports events to ShellFeature), Views/, Settings/.

@@ -6,7 +6,7 @@ import VortexCore
 @MainActor
 public enum TemplateModule: FeatureModule {
   public static let id: FeatureID = "template"
-  public static let title: LocalizedStringResource = "Template"
+  public static let title = LocalizedStringResource("Template", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "square.dashed"
 
   /// One store for the life of the app, so the tab keeps its state between openings.
@@ -20,7 +20,7 @@ public enum TemplateModule: FeatureModule {
 }
 
 @Reducer
-public struct TemplateFeature {
+public struct TemplateFeature: Sendable {
   @ObservableState
   public struct State: Equatable {
     public var count = 0
@@ -56,8 +56,10 @@ public struct TemplateView: View {
     VStack(spacing: 12) {
       Text(store.count, format: .number)
         .font(.largeTitle.monospacedDigit())
-      Button("Increment") {
+      Button {
         store.send(.incrementButtonTapped)
+      } label: {
+        Text("Increment", bundle: .module)
       }
     }
     .padding()

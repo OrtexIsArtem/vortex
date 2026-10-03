@@ -7,6 +7,7 @@ import VortexPlatform
 /// The settings tab: General, Activation and Features.
 struct SettingsView: View {
   @Bindable var store: StoreOf<ShellFeature>
+  @Environment(\.isWindowOpen) private var isWindowOpen
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -34,6 +35,10 @@ struct SettingsView: View {
         .padding(.vertical, 6)
       }
     }
+    .toggleStyle(.vortex)
+    .task(id: isWindowOpen) {
+      if isWindowOpen { store.send(.settingsShown) }
+    }
   }
 }
 
@@ -41,11 +46,25 @@ private struct GeneralSettings: View {
   @Bindable var store: StoreOf<ShellFeature>
 
   var body: some View {
-    SettingsRow(title: Text("Launch at login", bundle: .module)) {
-      SwitchToggle(
-        isOn: Binding(get: { store.launchAtLogin }, set: { store.send(.launchAtLoginChanged($0)) }),
-        label: Text("Launch at login", bundle: .module)
-      )
+    SettingsRow(
+      title: Text("Launch at login", bundle: .module),
+      caption: store.launchAtLogin == .requiresApproval
+        ? Text("Allow Vortex in System Settings › General › Login Items.", bundle: .module)
+        : nil
+    ) {
+      HStack(spacing: 10) {
+        if store.launchAtLogin == .requiresApproval {
+          Button {
+            store.send(.openLoginItemsTapped)
+          } label: {
+            Text("Open Login Items", bundle: .module)
+          }
+          .buttonStyle(.quietCapsule)
+        }
+        Toggle(isOn: Binding(get: { store.launchAtLogin == .enabled }, set: { store.send(.launchAtLoginChanged($0)) })) {
+          Text("Launch at login", bundle: .module)
+        }
+      }
     }
 
     SettingsRow(
@@ -61,7 +80,7 @@ private struct GeneralSettings: View {
           }
           .buttonStyle(.primaryCapsule)
         }
-        Picker(selection: $store.settings.language) {
+        Picker(selection: $store.language) {
           Text("System", bundle: .module).tag(AppLanguage.system)
           Text(verbatim: "Українська").tag(AppLanguage.ukrainian)
           Text(verbatim: "English").tag(AppLanguage.english)
@@ -80,6 +99,15 @@ private struct GeneralSettings: View {
       }
       .frame(width: 240)
     }
+
+    SettingsRow(title: Text("Quit Vortex", bundle: .module)) {
+      Button {
+        store.send(.quitButtonTapped)
+      } label: {
+        Text("Quit", bundle: .module)
+      }
+      .buttonStyle(.quietCapsule)
+    }
   }
 }
 
@@ -89,10 +117,9 @@ private struct ActivationSettings: View {
   var body: some View {
     SettingsRow(
       title: Text("Open on hover", bundle: .module),
-      caption: Text("Hover the notch to open Vortex.", bundle: .module)
-    ) {
-      SwitchToggle(isOn: $store.settings.openOnHover, label: Text("Open on hover", bundle: .module))
-    }
+      caption: Text("Hover the notch to open Vortex.", bundle: .module),
+      isOn: $store.settings.openOnHover
+    )
     if store.settings.openOnHover {
       SettingsRow(title: Text("Delay", bundle: .module)) {
         DelaySlider(value: $store.settings.hoverDelay)
@@ -101,28 +128,24 @@ private struct ActivationSettings: View {
 
     SettingsRow(
       title: Text("Open on click", bundle: .module),
-      caption: Text("Click the notch to open Vortex.", bundle: .module)
-    ) {
-      SwitchToggle(isOn: $store.settings.openOnClick, label: Text("Open on click", bundle: .module))
-    }
+      caption: Text("Click the notch to open Vortex.", bundle: .module),
+      isOn: $store.settings.openOnClick
+    )
 
     SettingsRow(
       title: Text("Keyboard shortcut", bundle: .module),
       caption: Text("Opens and closes Vortex from anywhere.", bundle: .module)
     ) {
-      HotkeyRecorder(.openVortex)
+      HotkeyRecorder(.openVortex, label: Text("Keyboard shortcut", bundle: .module))
     }
 
-    SettingsRow(title: Text("Close on click outside", bundle: .module)) {
-      SwitchToggle(isOn: $store.settings.closeOnClickOutside, label: Text("Close on click outside", bundle: .module))
-    }
+    SettingsRow(title: Text("Close on click outside", bundle: .module), isOn: $store.settings.closeOnClickOutside)
 
     SettingsRow(
       title: Text("Close when the pointer leaves", bundle: .module),
-      caption: Text("Only when Vortex was opened by hover.", bundle: .module)
-    ) {
-      SwitchToggle(isOn: $store.settings.closeOnPointerLeave, label: Text("Close when the pointer leaves", bundle: .module))
-    }
+      caption: Text("Only when Vortex opened as the pointer passed the notch.", bundle: .module),
+      isOn: $store.settings.closeOnPointerLeave
+    )
     if store.settings.closeOnPointerLeave {
       SettingsRow(title: Text("Delay", bundle: .module)) {
         DelaySlider(value: $store.settings.pointerLeaveDelay)
@@ -131,17 +154,15 @@ private struct ActivationSettings: View {
 
     SettingsRow(
       title: Text("Menu bar icon", bundle: .module),
-      caption: store.hasNotchedScreen ? nil : Text("Always shown on displays without a notch.", bundle: .module)
-    ) {
-      SwitchToggle(
-        isOn: Binding(
-          get: { store.isMenuBarIconVisible },
-          set: { store.send(.binding(.set(\.settings.showMenuBarIcon, $0))) }
-        ),
-        label: Text("Menu bar icon", bundle: .module)
+      caption: store.isMenuBarIconRequired
+        ? Text("Stays on while a display has no notch or the notch can’t open Vortex.", bundle: .module)
+        : nil,
+      isOn: Binding(
+        get: { store.isMenuBarIconVisible },
+        set: { store.send(.binding(.set(\.settings.showMenuBarIcon, $0))) }
       )
-      .disabled(!store.hasNotchedScreen)
-    }
+    )
+    .disabled(store.isMenuBarIconRequired)
   }
 }
 
@@ -159,39 +180,22 @@ private struct FeaturesSettings: View {
       }
       .padding(.vertical, 14)
     } else {
-      Text("Features you turn off disappear from the sidebar. Drag to reorder.", bundle: .module)
+      Text("Features you turn off disappear from the sidebar. Drag a row onto another to reorder.", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.vertical, 10)
 
-      List {
-        ForEach(store.orderedFeatures) { feature in
-          HStack(spacing: 12) {
-            Image(systemName: "line.3.horizontal")
-              .foregroundStyle(VortexColor.tertiaryText)
-            Image(systemName: feature.symbol)
-              .frame(width: 20)
-            Text(feature.title)
-            Spacer()
-            SwitchToggle(
-              isOn: Binding(
-                get: { !store.settings.disabledFeatures.contains(feature.id) },
-                set: { store.send(.featureEnabledChanged(feature.id, isEnabled: $0)) }
-              ),
-              label: Text(feature.title)
-            )
-          }
-          .listRowSeparator(.hidden)
-          .listRowBackground(Color.clear)
-        }
-        .onMove { source, destination in
-          store.send(.featuresMoved(fromOffsets: source, toOffset: destination))
-        }
+      ForEach(store.orderedFeatures) { feature in
+        SettingsRow(
+          title: Text(feature.title),
+          symbol: feature.symbol,
+          isOn: Binding(
+            get: { !store.settings.disabledFeatures.contains(feature.id) },
+            set: { store.send(.featureEnabledChanged(feature.id, isEnabled: $0)) }
+          )
+        )
+        .reorderable(feature.id, in: store)
       }
-      .listStyle(.plain)
-      .scrollContentBackground(.hidden)
-      .scrollDisabled(true)
-      .frame(height: CGFloat(store.features.count) * VortexMetrics.hitTarget + 8)
 
       ForEach(store.sidebarFeatures) { feature in
         if let settings = FeatureRegistry.module(for: feature.id)?.makeSettings() {
@@ -207,15 +211,21 @@ private struct FeaturesSettings: View {
   }
 }
 
-/// A setting: title and optional caption on the left, the control on the right, a hairline below.
+/// A setting: optional symbol, title and caption on the left, the control on the right, a hairline below.
 private struct SettingsRow<Control: View>: View {
   let title: Text
   var caption: Text?
+  var symbol: String?
   @ViewBuilder let control: Control
 
   var body: some View {
     VStack(spacing: 0) {
-      HStack(spacing: 16) {
+      HStack(spacing: 12) {
+        if let symbol {
+          Image(systemName: symbol)
+            .frame(width: 20)
+            .foregroundStyle(VortexColor.secondaryText)
+        }
         VStack(alignment: .leading, spacing: 2) {
           title
           if let caption {
@@ -234,14 +244,12 @@ private struct SettingsRow<Control: View>: View {
   }
 }
 
-private struct SwitchToggle: View {
-  @Binding var isOn: Bool
-  let label: Text
-
-  var body: some View {
-    Toggle(isOn: $isOn) { label }
-      .toggleStyle(.vortex)
-      .labelsHidden()
+extension SettingsRow where Control == Toggle<Text> {
+  /// A row whose control is an on/off switch named by the row's title.
+  init(title: Text, caption: Text? = nil, symbol: String? = nil, isOn: Binding<Bool>) {
+    self.init(title: title, caption: caption, symbol: symbol) {
+      Toggle(isOn: isOn) { title }
+    }
   }
 }
 

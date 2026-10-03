@@ -1,5 +1,4 @@
-import Dependencies
-import Observation
+import ComposableArchitecture
 
 /// What a feature shows in the closed notch: small "ears" on both sides of the cutout.
 public struct NotchIndicator: Equatable, Sendable {
@@ -62,30 +61,10 @@ public struct NotchEars: Equatable, Sendable {
   }
 }
 
-/// Indicators that features publish for the closed notch. The shell reads them; features write their own.
-@MainActor
-@Observable
-public final class NotchIndicatorCenter {
-  public private(set) var indicators: [FeatureID: NotchIndicator] = [:]
-
-  public nonisolated init() {}
-
-  public var ears: NotchEars { NotchEars(indicators: indicators) }
-
-  /// Shows, updates or (with `nil`) removes the indicator of a feature.
-  public func set(_ indicator: NotchIndicator?, for feature: FeatureID) {
-    indicators[feature] = indicator
-  }
-}
-
-extension NotchIndicatorCenter: DependencyKey {
-  public nonisolated static let liveValue = NotchIndicatorCenter()
-  public nonisolated static var testValue: NotchIndicatorCenter { NotchIndicatorCenter() }
-}
-
-extension DependencyValues {
-  public var notchIndicators: NotchIndicatorCenter {
-    get { self[NotchIndicatorCenter.self] }
-    set { self[NotchIndicatorCenter.self] = newValue }
+extension SharedReaderKey where Self == InMemoryKey<[FeatureID: NotchIndicator]>.Default {
+  /// What features show in the closed notch, keyed by feature id. A feature writes only its own entry,
+  /// from its reducer: `state.$indicators.withLock { $0[Self.id] = indicator }`; `nil` removes it.
+  public static var notchIndicators: Self {
+    Self[.inMemory("notchIndicators"), default: [:]]
   }
 }

@@ -2,9 +2,9 @@ import AppKit
 
 /// Pure geometry of the notch and the window around it.
 /// All rects are in global screen coordinates with the origin at the bottom left, as in AppKit.
-public enum ScreenGeometry {
+enum ScreenGeometry {
   /// The notch of a screen, derived from its unobscured top corners; nil when the screen has no notch.
-  public static func notchRect(
+  static func notchRect(
     screenFrame: CGRect,
     topInset: CGFloat,
     leftAreaWidth: CGFloat?,
@@ -18,13 +18,13 @@ public enum ScreenGeometry {
 
   /// The window hanging from the notch: centered on it, its top edge at the top of the screen,
   /// wide enough for the concave shoulders on both sides.
-  public static func notchWindowFrame(notch: CGRect, screenFrame: CGRect, size: CGSize, shoulder: CGFloat) -> CGRect {
+  static func notchWindowFrame(notch: CGRect, screenFrame: CGRect, size: CGSize, shoulder: CGFloat) -> CGRect {
     let width = size.width + shoulder * 2
     return CGRect(x: notch.midX - width / 2, y: screenFrame.maxY - size.height, width: width, height: size.height)
   }
 
   /// The window under the menu bar icon on screens without a notch, kept inside the visible area.
-  public static func menuBarWindowFrame(
+  static func menuBarWindowFrame(
     anchor: CGRect,
     visibleFrame: CGRect,
     size: CGSize,
@@ -37,7 +37,7 @@ public enum ScreenGeometry {
   }
 
   /// The closed notch with ears of the given width on both sides; just the notch when there are no ears.
-  public static func earsFrame(notch: CGRect, earWidth: CGFloat, shoulder: CGFloat) -> CGRect {
+  static func earsFrame(notch: CGRect, earWidth: CGFloat, shoulder: CGFloat) -> CGRect {
     guard earWidth > 0 else { return notch }
     return notch.insetBy(dx: -(earWidth + shoulder), dy: 0)
   }

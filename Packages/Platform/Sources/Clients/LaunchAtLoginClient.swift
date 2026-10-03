@@ -1,32 +1,59 @@
 import ComposableArchitecture
+import Foundation
 import ServiceManagement
 
-/// Starting Vortex at login, through the system login items.
+public enum LaunchAtLoginStatus: Equatable, Sendable {
+  case enabled
+  case disabled
+  /// Registered, but the user has to allow it in System Settings › General › Login Items.
+  case requiresApproval
+}
+
+/// Starting Vortex at login, through the system login items. Calls go to a system service, so they are async.
 @DependencyClient
 public struct LaunchAtLoginClient: Sendable {
-  public var isEnabled: @Sendable () -> Bool = { false }
-  public var setEnabled: @Sendable (_ isEnabled: Bool) throws -> Void
-  /// Turns launch at login on for the first launch of a release build. Debug builds are left alone,
-  /// so a build from Xcode never registers itself as a login item.
-  public var enableByDefault: @Sendable () -> Void
+  public var status: @Sendable () async -> LaunchAtLoginStatus = { .disabled }
+  /// Turns launch at login on or off and returns the status that resulted.
+  public var setEnabled: @Sendable (_ isEnabled: Bool) async -> LaunchAtLoginStatus = { _ in .disabled }
+  /// Turns launch at login on once, on the first launch of a release build. Debug builds never register
+  /// themselves and do not use up that first launch.
+  public var enableOnFirstLaunch: @Sendable () async -> Void
+  public var openSystemSettings: @Sendable () async -> Void
 }
 
 extension LaunchAtLoginClient: DependencyKey {
-  public static let liveValue = LaunchAtLoginClient(
-    isEnabled: { SMAppService.mainApp.status == .enabled },
-    setEnabled: { isEnabled in
-      if isEnabled {
-        try SMAppService.mainApp.register()
-      } else {
-        try SMAppService.mainApp.unregister()
+  public static let liveValue: LaunchAtLoginClient = {
+    @Sendable func currentStatus() -> LaunchAtLoginStatus {
+      switch SMAppService.mainApp.status {
+      case .enabled: .enabled
+      case .requiresApproval: .requiresApproval
+      default: .disabled
       }
-    },
-    enableByDefault: {
-      #if !DEBUG
-        try? SMAppService.mainApp.register()
-      #endif
     }
-  )
+    return LaunchAtLoginClient(
+      status: { currentStatus() },
+      setEnabled: { isEnabled in
+        // A failure leaves the status as it was, which is what the switch then shows.
+        if isEnabled {
+          try? SMAppService.mainApp.register()
+        } else {
+          try? SMAppService.mainApp.unregister()
+        }
+        return currentStatus()
+      },
+      enableOnFirstLaunch: {
+        #if !DEBUG
+          let key = "launchAtLoginSetUp"
+          guard !UserDefaults.standard.bool(forKey: key) else { return }
+          UserDefaults.standard.set(true, forKey: key)
+          try? SMAppService.mainApp.register()
+        #endif
+      },
+      openSystemSettings: {
+        SMAppService.openSystemSettingsLoginItems()
+      }
+    )
+  }()
 
   public static let testValue = LaunchAtLoginClient()
 }

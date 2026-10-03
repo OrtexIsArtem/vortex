@@ -14,8 +14,8 @@ struct ShellSettingsTests {
   }
 
   @Test
-  func brokenAndUnknownValuesFallBackToDefaults() throws {
-    let settings = try decode(#"{"hoverDelay": "fast", "theme": "sepia", "openOnClick": false, "fromTheFuture": 1}"#)
+  func brokenOldAndUnknownValuesFallBackToDefaults() throws {
+    let settings = try decode(#"{"hoverDelay": "fast", "theme": "sepia", "openOnClick": false, "language": "uk", "fromTheFuture": 1}"#)
     #expect(settings.hoverDelay == 0.3)
     #expect(settings.theme == .system)
     #expect(settings.openOnClick == false)
@@ -34,7 +34,7 @@ struct ShellSettingsTests {
     settings.featureOrder = ["tasks", "timer"]
     settings.disabledFeatures = ["timer"]
     settings.lastTab = "feature:tasks"
-    settings.language = .ukrainian
+    settings.theme = .dark
     let data = try JSONEncoder().encode(settings)
     #expect(try JSONDecoder().decode(ShellSettings.self, from: data) == settings)
   }

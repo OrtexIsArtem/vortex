@@ -10,8 +10,8 @@
 | Open on click | on | |
 | "Open Vortex" shortcut | none | Set by the user; stored by KeyboardShortcuts |
 | Close on click outside | on | |
-| Close when the pointer leaves | on | Only for a window opened by hover |
+| Close when the pointer leaves | on | Only for a window opened by hover or by dragging files |
 | Leave delay | 0.5 s | 0–2 s in 0.1 s steps |
-| Menu bar icon | shown | Cannot be hidden on displays without a notch |
+| Menu bar icon | shown | Forced on while a display has no notch or the notch can't open Vortex |
 | Feature order | registry order | Features missing from the saved order follow in registry order |
 | Turned-off features | none | |

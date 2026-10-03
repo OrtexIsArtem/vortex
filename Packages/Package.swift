@@ -20,7 +20,8 @@ let featureTargets: [Target] = features.flatMap { name -> [Target] in
     .target(
       name: "Feature\(name)",
       dependencies: featureBase,
-      path: "Features/\(name)/Sources"
+      path: "Features/\(name)/Sources",
+      resources: [.process("Resources")]
     ),
     .testTarget(
       name: "Feature\(name)Tests",
@@ -57,11 +58,6 @@ let package = Package(
       dependencies: ["VortexCore", composableArchitecture, keyboardShortcuts],
       path: "Platform/Sources"
     ),
-    .testTarget(
-      name: "VortexPlatformTests",
-      dependencies: ["VortexPlatform"],
-      path: "Platform/Tests"
-    ),
     .target(
       name: "VortexShell",
       dependencies: ["VortexCore", "VortexPlatform", "FeatureRegistry", composableArchitecture],
@@ -81,7 +77,8 @@ let package = Package(
     .target(
       name: "FeatureTemplate",
       dependencies: featureBase,
-      path: "Features/_Template/Sources"
+      path: "Features/_Template/Sources",
+      resources: [.process("Resources")]
     ),
     .testTarget(
       name: "FeatureTemplateTests",

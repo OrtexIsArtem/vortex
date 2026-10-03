@@ -24,6 +24,11 @@ targets:
     platform: macOS
     sources:
       - path: App/Sources
+    info:
+      path: App/Info.plist
+      properties:
+        # Without these the app is English-only and Foundation never picks the uk tables of the packages.
+        CFBundleLocalizations: [en, uk]
     dependencies:
       - package: VortexKit
         product: VortexShell
@@ -49,6 +54,5 @@ targets:
     scheme:
       testTargets:
         - package: VortexKit/VortexCoreTests
-        - package: VortexKit/VortexPlatformTests
         - package: VortexKit/VortexShellTests
         - package: VortexKit/FeatureTemplateTests

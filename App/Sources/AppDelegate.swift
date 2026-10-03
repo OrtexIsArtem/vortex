@@ -10,4 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     shell.start()
     self.shell = shell
   }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    shell?.saveSettings()
+  }
 }

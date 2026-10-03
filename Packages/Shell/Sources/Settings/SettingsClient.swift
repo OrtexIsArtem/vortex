@@ -3,13 +3,13 @@ import Foundation
 
 /// Reads and writes ~/Library/Application Support/Vortex/settings.json.
 @DependencyClient
-public struct SettingsClient: Sendable {
-  public var load: @Sendable () -> ShellSettings = { ShellSettings() }
-  public var save: @Sendable (_ settings: ShellSettings) async throws -> Void
+struct SettingsClient: Sendable {
+  var load: @Sendable () -> ShellSettings = { ShellSettings() }
+  var save: @Sendable (_ settings: ShellSettings) throws -> Void
 }
 
 extension SettingsClient: DependencyKey {
-  public static let liveValue: SettingsClient = {
+  static let liveValue: SettingsClient = {
     let url = URL.applicationSupportDirectory.appending(path: "Vortex/settings.json")
     return SettingsClient(
       load: {
@@ -25,11 +25,11 @@ extension SettingsClient: DependencyKey {
     )
   }()
 
-  public static let testValue = SettingsClient()
+  static let testValue = SettingsClient()
 }
 
 extension DependencyValues {
-  public var settingsClient: SettingsClient {
+  var settingsClient: SettingsClient {
     get { self[SettingsClient.self] }
     set { self[SettingsClient.self] = newValue }
   }

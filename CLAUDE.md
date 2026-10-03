@@ -23,7 +23,10 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 2. A feature brings everything of its own: sidebar tab, settings, Home widget, database tables prefixed with its id, their migrations, its docs.
 3. New feature: copy Features/_Template to Features/<Name>, rename the module and types, add "<Name>" to `features` in Packages/Package.swift and one line to Features/Registry. Removing a feature = deleting its folder and those two lines; everything else must still build.
 4. If nobody fulfils a contract, the caller hides the control (e.g. "Make key" disappears without Secrets).
-5. System APIs (pasteboard, screenshots, files, Keychain, notch, hotkeys) only through clients in VortexPlatform, so every feature can be tested with substituted clients.
+5. System APIs (pasteboard, screenshots, files, Keychain, hotkeys) only through clients in VortexPlatform, so every feature can be tested with substituted clients.
+6. The notch window and the menu bar icon belong to the shell; features never open or close the window. A feature shows status in the notch by writing its own entry to `@Shared(.notchIndicators)` from its reducer.
+7. A feature starts and stops its background work in `FeatureModule.setEnabled`. Its tab stays mounted while the window is closed, so work that should run only while visible goes into `.task(id: isWindowOpen)`.
+8. Each module declares its own shortcuts (`extension Hotkey { static let x = Hotkey("x") }`), listens with `HotkeyClient.presses` and puts `HotkeyRecorder` in its own settings.
 
 ## Working rules
 - One task = one feature. Don't touch other modules.
@@ -31,7 +34,7 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 - After every change: build and run the tests of the module you touched.
 - Nothing heavy on the main thread: OCR, database and previews run in the background. Track the cursor near the notch with system events, never by polling.
 - Library versions are pinned in Package.resolved. Update them only when explicitly asked.
-- UI strings in Ukrainian and English: `Text("…", bundle: .module)` / `String(localized: "…", bundle: .module)` with a uk translation in the module's Resources/Localizable.xcstrings. Code, comments and docs in English.
+- UI strings in Ukrainian and English: `Text("…", bundle: .module)` / `String(localized: "…", bundle: .module)` with a uk translation in the module's Resources/Localizable.xcstrings; a feature title is `LocalizedStringResource("…", bundle: .atURL(Bundle.module.bundleURL))`. Code, comments and docs in English.
 - `swift test` does not compile String Catalogs (Xcode does), so tests never assert translated text.
 - A public reducer must be declared `Sendable` explicitly (Swift 6 does not infer it for public types).
 - `.onChange` must wrap `BindingReducer` too (put both in `CombineReducers`), otherwise binding changes are missed.

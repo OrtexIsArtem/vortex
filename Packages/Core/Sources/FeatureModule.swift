@@ -5,27 +5,33 @@ public typealias FeatureID = String
 
 /// The contract every feature implements to plug into the app shell.
 ///
-/// The shell (sidebar, settings, notch indicators) knows features only through this protocol and never
-/// imports a feature module directly. A feature keeps its own store; the shell only asks it for views.
+/// The shell (sidebar, settings, notch) knows features only through this protocol and never imports a feature
+/// module directly. A feature keeps one store for the life of the app; the shell only asks it for views.
 @MainActor
 public protocol FeatureModule {
   /// Stable identifier. Also the prefix of the feature's database tables.
   static var id: FeatureID { get }
-  /// Name shown in the sidebar tooltip and in settings.
+  /// Name shown in the sidebar tooltip and in settings. Build it from the feature's own bundle, so it gets
+  /// translated: `LocalizedStringResource("Clipboard", bundle: .atURL(Bundle.module.bundleURL))`.
   static var title: LocalizedStringResource { get }
   /// SF Symbol shown in the sidebar.
   static var symbol: String { get }
-  /// Whether files dragged to the notch or dropped on the menu bar icon belong to this feature.
+  /// Whether files dragged to the notch belong to this feature: the window then opens on its tab,
+  /// and the tab's own drop target receives them.
   static var acceptsFileDrops: Bool { get }
-  /// Content of the feature's sidebar tab.
+  /// Content of the feature's sidebar tab. It stays mounted while the window is closed, so work that should
+  /// run only while it is visible goes into `.task(id: isWindowOpen)`.
   static func makeTab() -> AnyView
   /// The feature's own section in Settings › Features, if it has settings.
   static func makeSettings() -> AnyView?
+  /// Called at launch and whenever the user turns the feature on or off. Start and stop background work here.
+  static func setEnabled(_ isEnabled: Bool)
 }
 
 extension FeatureModule {
   public static var acceptsFileDrops: Bool { false }
   public static func makeSettings() -> AnyView? { nil }
+  public static func setEnabled(_ isEnabled: Bool) {}
 
   /// Plain description of the feature for the shell's state.
   public static var descriptor: FeatureDescriptor {

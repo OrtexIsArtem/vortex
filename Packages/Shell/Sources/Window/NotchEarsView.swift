@@ -20,8 +20,6 @@ struct NotchEarsView: View {
 
   var body: some View {
     let hasEars = model.earWidth > 0
-    let shoulder = hasEars ? VortexMetrics.shoulder : 0
-    let size = CGSize(width: model.notchSize.width + model.earWidth * 2, height: model.notchSize.height)
     HStack(spacing: 0) {
       EarItems(items: model.ears.left)
         .frame(width: model.earWidth)
@@ -31,10 +29,15 @@ struct NotchEarsView: View {
         .frame(width: model.earWidth)
     }
     .frame(height: model.notchSize.height)
-    .padding(.horizontal, shoulder)
+    .padding(.horizontal, hasEars ? VortexMetrics.shoulder : 0)
     .background(
-      NotchWindowShape(progress: 1, notch: size, full: size, shoulder: shoulder, cornerRadius: hasEars ? 14 : 10)
-        .fill(VortexColor.notch)
+      HangingShape(
+        width: model.notchSize.width + model.earWidth * 2,
+        height: model.notchSize.height,
+        cornerRadius: hasEars ? EarsMetrics.cornerRadius : VortexMetrics.notchCornerRadius,
+        shoulder: hasEars ? VortexMetrics.shoulder : 0
+      )
+      .fill(VortexColor.notch)
     )
     .environment(\.colorScheme, .dark)
     .accessibilityHidden(true)
@@ -50,11 +53,11 @@ private struct EarItems: View {
         switch item {
         case let .symbol(name):
           Image(systemName: name)
-            .font(.system(size: 13, weight: .medium))
+            .font(EarsMetrics.font)
             .frame(width: EarsMetrics.iconWidth)
         case let .text(text):
           Text(verbatim: text)
-            .font(.system(size: 13, weight: .medium).monospacedDigit())
+            .font(EarsMetrics.font)
         case let .progress(value):
           ProgressRing(value: value)
             .frame(width: EarsMetrics.iconWidth, height: EarsMetrics.iconWidth)
@@ -82,20 +85,23 @@ private struct ProgressRing: View {
 }
 
 /// Widths of the ears, measured with the same font the view uses, so the panel fits them exactly.
+@MainActor
 enum EarsMetrics {
   static let padding: CGFloat = 14
   static let spacing: CGFloat = 6
   static let iconWidth: CGFloat = 16
+  static let cornerRadius: CGFloat = 14
+  static let font = Font.system(size: 13, weight: .medium).monospacedDigit()
+  private static let measuringFont = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
 
   static func width(of items: [NotchIndicator.Item]) -> CGFloat {
     guard !items.isEmpty else { return 0 }
-    let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
     let widths = items.map { item -> CGFloat in
       switch item {
       case .symbol, .progress:
         iconWidth
       case let .text(text):
-        ceil((text as NSString).size(withAttributes: [.font: font]).width)
+        ceil((text as NSString).size(withAttributes: [.font: measuringFont]).width)
       }
     }
     return widths.reduce(0, +) + spacing * CGFloat(items.count - 1)
