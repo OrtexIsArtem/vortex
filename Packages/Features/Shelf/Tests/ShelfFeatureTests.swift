@@ -261,4 +261,75 @@ struct ShelfFeatureTests {
     #expect(relaunched.state.items[id: uuid(1)]?.isPinned == true)
     await relaunched.send(.stop)
   }
+
+  // MARK: - Watched folder
+
+  @Test
+  func theWatchedFolderAddsFilesOnceTheyAreFullyWritten() async {
+    let changes = AsyncStream.makeStream(of: URL.self)
+    let sizes = LockIsolated<[URL: Int64]>([:])
+    let builds = URL(fileURLWithPath: "/Users/me/Builds")
+    let store = makeStore()
+    store.dependencies.fileClient.changes = { [changes] _ in changes.stream }
+    store.dependencies.fileClient.info = { [sizes] url in sizes.value[url].map { FileInfo(size: $0, isDirectory: false) } }
+    store.dependencies.fileClient.chooseFolder = { builds }
+
+    await store.send(.chooseFolderTapped)
+    await store.receive(\.folderChosen)
+    #expect(store.state.settings.watchedFolder == builds)
+    await start(store)
+
+    sizes.setValue([Self.ipa: 10, Self.notes: 5])
+    changes.continuation.yield(Self.notes)
+    changes.continuation.yield(Self.ipa)
+    await Task.megaYield()
+    await clock.advance(by: ShelfFeature.settleInterval)
+    sizes.setValue([Self.ipa: 20, Self.notes: 5])
+    await clock.advance(by: ShelfFeature.settleInterval)
+    #expect(store.state.items.isEmpty)
+    await clock.advance(by: ShelfFeature.settleInterval)
+    await store.receive(\.watchedFileWritten)
+    #expect(contents(store) == [.file(Self.ipa)])
+    #expect(store.state.fresh == [uuid(0)])
+    #expect(store.state.flashes == 1)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aChangeStartsTheWaitOverAndVanishedFilesAreSkipped() async {
+    let changes = AsyncStream.makeStream(of: URL.self)
+    let sizes = LockIsolated<[URL: Int64]>([Self.apk: 7])
+    let store = makeStore()
+    store.dependencies.fileClient.changes = { [changes] _ in changes.stream }
+    store.dependencies.fileClient.info = { [sizes] url in sizes.value[url].map { FileInfo(size: $0, isDirectory: false) } }
+    await store.send(.folderChosen(URL(fileURLWithPath: "/Users/me/Builds")))
+    await start(store)
+
+    let temporary = URL(fileURLWithPath: "/Users/me/Builds/app.apk.tmp.apk")
+    changes.continuation.yield(temporary)
+    changes.continuation.yield(Self.apk)
+    await Task.megaYield()
+    await clock.advance(by: ShelfFeature.settleInterval)
+    changes.continuation.yield(Self.apk)
+    await Task.megaYield()
+    await clock.advance(by: ShelfFeature.settleInterval)
+    #expect(store.state.items.isEmpty)
+    await clock.advance(by: ShelfFeature.settleInterval)
+    await store.receive(\.watchedFileWritten)
+    #expect(contents(store) == [.file(Self.apk)])
+    await store.send(.stop)
+  }
+
+  @Test
+  func fileTypesAreCleanedUp() async {
+    let store = makeStore()
+    await store.send(.extensionsChanged(" ipa, .APK  dmg,,ipa ")) {
+      $0.$settings.withLock { $0.watchedExtensions = ["ipa", "apk", "dmg"] }
+    }
+    #expect(store.state.settings.passes(URL(fileURLWithPath: "/b/App.IPA")))
+    #expect(!store.state.settings.passes(URL(fileURLWithPath: "/b/notes.txt")))
+    #expect(!store.state.settings.passes(URL(fileURLWithPath: "/b/.App.ipa")))
+    await store.send(.extensionsChanged(""))
+    #expect(store.state.settings.passes(URL(fileURLWithPath: "/b/notes.txt")))
+  }
 }

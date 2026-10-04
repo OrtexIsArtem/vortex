@@ -5,14 +5,17 @@ import os
 import VortexCore
 import VortexPlatform
 
-/// A place for files the user puts aside to take somewhere else: dragged in, dropped on the menu bar icon or sent
-/// from the terminal; dragged out into any app as many times as needed. Clears itself after 24 hours.
+/// A place for files the user puts aside to take somewhere else: dragged in, dropped on the menu bar icon, sent
+/// from the terminal or found in the watched folder; dragged out into any app as many times as needed.
+/// Clears itself after 24 hours.
 @Reducer
 public struct ShelfFeature: Sendable {
   public static let id: FeatureID = "shelf"
   /// Unpinned items leave the shelf this long after they were added.
   static let lifetime: TimeInterval = 24 * 60 * 60
   static let expiryCheckInterval: Duration = .seconds(600)
+  /// A file in the watched folder counts as written once its size stays the same this long.
+  static let settleInterval: Duration = .milliseconds(1500)
 
   @ObservableState
   public struct State: Equatable {
@@ -34,6 +37,7 @@ public struct ShelfFeature: Sendable {
     /// Grows by one for every arrival that should flash the notch.
     var flashes = 0
     @Shared(.notchIndicators) var indicators
+    @Shared(.shelfSettings) var settings
 
     public init() {}
 
@@ -76,6 +80,11 @@ public struct ShelfFeature: Sendable {
     case pinTapped(ShelfItem.ID)
     case removeTapped(ShelfItem.ID)
     case clearTapped
+    case watchedFileWritten(URL)
+    case chooseFolderTapped
+    case folderChosen(URL?)
+    case stopWatchingTapped
+    case extensionsChanged(String)
   }
 
   @Dependency(\.continuousClock) var clock
@@ -89,6 +98,7 @@ public struct ShelfFeature: Sendable {
     case load
     case expiry
     case save
+    case watch
   }
 
   public init() {}
@@ -107,11 +117,11 @@ public struct ShelfFeature: Sendable {
           }
           .cancellable(id: CancelID.load, cancelInFlight: true)
         }
-        return .merge(removeExpired(&state), checkExpiry())
+        return .merge(removeExpired(&state), checkExpiry(), watch(state))
 
       case .stop:
         state.isRunning = false
-        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.expiry))
+        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.expiry), .cancel(id: CancelID.watch))
 
       case let .loaded(items):
         state.items = IdentifiedArray(items, uniquingIDsWith: { first, _ in first })
@@ -122,7 +132,8 @@ public struct ShelfFeature: Sendable {
           loadInfo(for: state.items.elements),
           removeExpired(&state),
           add(pending.map(DroppedItem.file), isFresh: true, &state),
-          checkExpiry()
+          checkExpiry(),
+          watch(state)
         )
 
       case let .dropped(dropped):
@@ -216,6 +227,26 @@ public struct ShelfFeature: Sendable {
       case .clearTapped:
         let removed = remove(Set(state.items.filter { !$0.isPinned }.ids), &state)
         return .merge(deleteCopies(of: removed), save(state))
+
+      case let .watchedFileWritten(url):
+        guard state.isRunning else { return .none }
+        return add([.file(url)], isFresh: true, &state)
+
+      case .chooseFolderTapped:
+        return .run { [files] send in await send(.folderChosen(await files.chooseFolder())) }
+
+      case let .folderChosen(folder):
+        guard let folder else { return .none }
+        state.$settings.withLock { $0.watchedFolder = folder }
+        return watch(state)
+
+      case .stopWatchingTapped:
+        state.$settings.withLock { $0.watchedFolder = nil }
+        return .cancel(id: CancelID.watch)
+
+      case let .extensionsChanged(text):
+        state.$settings.withLock { $0.watchedExtensions = ShelfSettings.extensions(from: text) }
+        return .none
       }
     }
     .onChange(of: \.indicator) { _, indicator in
@@ -317,6 +348,41 @@ public struct ShelfFeature: Sendable {
     let removed = remove(Set(state.items.filter { !$0.isPinned && $0.addedAt < limit }.ids), &state)
     guard !removed.isEmpty else { return .none }
     return .merge(deleteCopies(of: removed), save(state))
+  }
+
+  /// Watches the folder from the settings, if any. A new file lands on the shelf once it is fully written:
+  /// every change starts the wait for that file over.
+  private func watch(_ state: State) -> Effect<Action> {
+    guard state.isRunning, state.isLoaded, let folder = state.settings.watchedFolder else {
+      return .cancel(id: CancelID.watch)
+    }
+    return .run { [files, clock, settings = state.$settings] send in
+      var waits: [URL: Task<Void, Never>] = [:]
+      defer { waits.values.forEach { $0.cancel() } }
+      for await url in files.changes(folder) where settings.wrappedValue.passes(url) {
+        waits[url]?.cancel()
+        waits[url] = Task {
+          guard await Self.waitUntilWritten(url, files: files, clock: clock) else { return }
+          await send(.watchedFileWritten(url))
+        }
+      }
+    }
+    .cancellable(id: CancelID.watch, cancelInFlight: true)
+  }
+
+  /// True once the file keeps the same size for `settleInterval`; false when it goes away or the wait is cancelled.
+  static func waitUntilWritten(_ url: URL, files: FileClient, clock: any Clock<Duration>) async -> Bool {
+    var lastSize: Int64?
+    while true {
+      do {
+        try await clock.sleep(for: settleInterval)
+      } catch {
+        return false
+      }
+      guard let info = await files.info(url), !info.isDirectory, let size = info.size else { return false }
+      if size > 0, size == lastSize { return true }
+      lastSize = size
+    }
   }
 
   private func checkExpiry() -> Effect<Action> {

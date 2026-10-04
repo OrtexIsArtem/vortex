@@ -19,6 +19,10 @@ public enum ShelfModule: FeatureModule {
     AnyView(ShelfView(store: store))
   }
 
+  public static func makeSettings() -> AnyView? {
+    AnyView(ShelfSettingsView(store: store))
+  }
+
   public static func setEnabled(_ isEnabled: Bool) {
     store.send(isEnabled ? .start : .stop)
   }

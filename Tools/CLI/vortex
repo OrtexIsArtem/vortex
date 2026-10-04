@@ -1,0 +1,33 @@
+#!/bin/sh
+# vortex — Vortex from the terminal.
+#
+#   vortex shelf add <file>...   put files on the shelf, e.g. at the end of a build script
+#
+# The files are opened with Vortex, which hands them to the shelf without opening its window;
+# Vortex starts if it is not running. Install with `make install-cli`.
+set -eu
+
+bundle_id="io.github.ortexisartem.vortex"
+
+usage() {
+  echo "usage: vortex shelf add <file>..." >&2
+  exit 64
+}
+
+[ $# -ge 3 ] && [ "$1" = shelf ] && [ "$2" = add ] || usage
+shift 2
+
+# Absolute paths, so `open` never takes a file name for an option.
+for file in "$@"; do
+  if [ ! -e "$file" ]; then
+    echo "vortex: no such file: $file" >&2
+    exit 66
+  fi
+  case "$file" in
+    /*) set -- "$@" "$file" ;;
+    *) set -- "$@" "$PWD/$file" ;;
+  esac
+  shift
+done
+
+exec open -g -b "$bundle_id" "$@"

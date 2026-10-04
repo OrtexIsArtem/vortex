@@ -21,6 +21,7 @@ Then press Run in Xcode. The app is signed with the Personal Team only (see CLAU
 | `make build` | compile the app without signing |
 | `make test` | run package tests |
 | `make check` | make sure no network code lives outside Secrets |
+| `make install-cli` | put the `vortex` command on the PATH: `vortex shelf add <files>` |
 
 Project settings live in project.yml — changes made in the Xcode UI are lost on the next `make project`.
 

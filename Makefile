@@ -1,6 +1,7 @@
-.PHONY: project open build test check
+.PHONY: project open build test check install-cli
 
 DESTINATION := platform=macOS,arch=arm64
+BINDIR ?= /opt/homebrew/bin
 
 project: ## Regenerate Vortex.xcodeproj from project.yml
 	xcodegen generate
@@ -16,3 +17,6 @@ test: ## Run package tests
 
 check: ## No network APIs outside Secrets
 	./scripts/check-no-network.sh
+
+install-cli: ## Link the vortex command into BINDIR (default /opt/homebrew/bin)
+	ln -sf "$(CURDIR)/Tools/CLI/vortex" "$(BINDIR)/vortex"

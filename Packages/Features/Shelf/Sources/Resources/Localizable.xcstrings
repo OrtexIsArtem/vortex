@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Change…" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Змінити…"
+          }
+        }
+      }
+    },
+    "Choose…" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вибрати…"
+          }
+        }
+      }
+    },
     "Clear" : {
       "comment" : "Takes all items off the shelf except pinned ones",
       "localizations" : {
@@ -17,7 +37,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кидай файли сюди"
+            "value" : "Киньте файли сюди"
           }
         }
       }
@@ -28,7 +48,27 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кидай сюди"
+            "value" : "Киньте сюди"
+          }
+        }
+      }
+    },
+    "Extensions separated by commas; leave empty to take every file." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Розширення через кому; залиште порожнім, щоб брати всі файли."
+          }
+        }
+      }
+    },
+    "File types" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Типи файлів"
           }
         }
       }
@@ -39,6 +79,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Папка"
+          }
+        }
+      }
+    },
+    "New files in it land on the shelf once they are fully written, and the notch flashes." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові файли з неї потрапляють на полицю, щойно повністю запишуться, а виріз блимає."
           }
         }
       }
@@ -59,7 +109,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Або на значок у рядку меню. Полиця тримає посилання на файли й очищується сама через 24 години."
+            "value" : "Або на значок у рядку меню. Полиця зберігає посилання на файли й очищується сама через 24 години."
           }
         }
       }
@@ -90,7 +140,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відпусти, щоб покласти на полицю"
+            "value" : "Відпустіть, щоб покласти на полицю"
           }
         }
       }
@@ -126,6 +176,16 @@
         }
       }
     },
+    "Stop watching" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не стежити"
+          }
+        }
+      }
+    },
     "Takes everything off the shelf except pinned items" : {
       "localizations" : {
         "uk" : {
@@ -142,6 +202,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Відкріпити"
+          }
+        }
+      }
+    },
+    "Watched folder" : {
+      "comment" : "New files from this folder land on the shelf",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відстежувана папка"
           }
         }
       }
