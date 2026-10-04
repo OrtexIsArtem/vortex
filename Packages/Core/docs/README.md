@@ -1,12 +1,14 @@
 # VortexCore
 
-Shared ground for the shell and all features. Depends only on The Composable Architecture.
+Shared ground for the shell and all features. Depends on The Composable Architecture and GRDB.
 
 | File | What it covers |
 | --- | --- |
-| FeatureModule.swift | the contract every feature implements: id, title, symbol, tab, settings, accepting files, starting and stopping |
-| NotchIndicator.swift | indicators for the closed notch, how they fill the ears, and the shared key `notchIndicators` features write to |
+| FeatureModule.swift | the contract every feature implements: id, title, symbol, tab, settings, taking files, starting and stopping |
+| NotchIndicator.swift | indicators for the closed notch, how they fill the ears, flashing, and the shared key `notchIndicators` |
+| Database.swift | `DataFolder` (~/Library/Application Support/Vortex), the one SQLite database `@Dependency(\.database)`, `migrate(_:)` |
 | AppPreferences.swift | theme and language values |
-| DesignSystem/ | monochrome palette, window metrics, environment values (`notchCutout`, `isWindowOpen`), switch, capsule buttons, segmented picker, hairline |
+| DesignSystem/ | monochrome palette, window metrics and levels, environment values (`notchCutout`, `isWindowOpen`), switch, capsule buttons, segmented picker, settings row, hairline |
 
-Coming next: the SQLite database (stage 2), the Home widget contract (stage 3).
+- Each feature keeps its tables in the shared database, named after its id, and runs its own `DatabaseMigrator` (migration names start with the id) before its first query.
+- Tests get an empty in-memory database; `VortexDatabase.inMemory()` makes one by hand. Next: the Home widget contract (stage 3).

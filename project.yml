@@ -54,5 +54,7 @@ targets:
     scheme:
       testTargets:
         - package: VortexKit/VortexCoreTests
+        - package: VortexKit/VortexPlatformTests
         - package: VortexKit/VortexShellTests
         - package: VortexKit/FeatureTemplateTests
+        - package: VortexKit/FeatureClipboardTests

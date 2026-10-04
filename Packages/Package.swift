@@ -3,17 +3,18 @@ import PackageDescription
 
 // Features shipped in the app, by folder name in Features/.
 // Adding one: copy Features/_Template to Features/<Name>, add "<Name>" here and register it in
-// Features/Registry. Removing one: delete its folder and those two lines — everything else must still build.
-let features: [String] = []
+// Features/Registry. Removing one: delete its folder and those lines — everything else must still build.
+let features: [String] = ["Clipboard"]
 
 let composableArchitecture: Target.Dependency = .product(
   name: "ComposableArchitecture",
   package: "swift-composable-architecture"
 )
 let keyboardShortcuts: Target.Dependency = .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")
+let grdb: Target.Dependency = .product(name: "GRDB", package: "GRDB.swift")
 
 /// Every feature depends on this base and nothing else — never on another feature.
-let featureBase: [Target.Dependency] = ["VortexCore", "VortexPlatform", composableArchitecture]
+let featureBase: [Target.Dependency] = ["VortexCore", "VortexPlatform", composableArchitecture, grdb]
 
 let featureTargets: [Target] = features.flatMap { name -> [Target] in
   [
@@ -25,7 +26,7 @@ let featureTargets: [Target] = features.flatMap { name -> [Target] in
     ),
     .testTarget(
       name: "Feature\(name)Tests",
-      dependencies: [.target(name: "Feature\(name)"), composableArchitecture],
+      dependencies: [.target(name: "Feature\(name)")] + featureBase,
       path: "Features/\(name)/Tests"
     ),
   ]
@@ -41,22 +42,28 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.26.2"),
     .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
+    .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.1"),
   ],
   targets: [
     .target(
       name: "VortexCore",
-      dependencies: [composableArchitecture],
+      dependencies: [composableArchitecture, grdb],
       path: "Core/Sources"
     ),
     .testTarget(
       name: "VortexCoreTests",
-      dependencies: ["VortexCore"],
+      dependencies: ["VortexCore", grdb],
       path: "Core/Tests"
     ),
     .target(
       name: "VortexPlatform",
       dependencies: ["VortexCore", composableArchitecture, keyboardShortcuts],
       path: "Platform/Sources"
+    ),
+    .testTarget(
+      name: "VortexPlatformTests",
+      dependencies: ["VortexPlatform"],
+      path: "Platform/Tests"
     ),
     .target(
       name: "VortexShell",
@@ -82,7 +89,7 @@ let package = Package(
     ),
     .testTarget(
       name: "FeatureTemplateTests",
-      dependencies: ["FeatureTemplate", composableArchitecture],
+      dependencies: ["FeatureTemplate"] + featureBase,
       path: "Features/_Template/Tests"
     ),
   ] + featureTargets

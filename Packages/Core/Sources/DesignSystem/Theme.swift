@@ -10,6 +10,13 @@ public enum VortexColor {
   public static let secondaryText = dynamic(dark: 0x8E8E93, light: 0x5E5E63)
   public static let tertiaryText = dynamic(dark: 0x7C7C82, light: 0x6B6B70)
   public static let track = dynamic(dark: 0x2A2A2E, light: 0xDEDEE2)
+  /// Cards such as clipboard items; in the light theme they sit on the window with a hairline edge, see `cardEdge`.
+  public static let card = dynamic(dark: 0x111113, light: 0xFFFFFF)
+  public static let cardEdge = dynamic(dark: 0x111113, light: 0xE3E3E8)
+  /// Background of thumbnails and file previews.
+  public static let thumbnail = dynamic(dark: 0x18181B, light: 0xE6E6EA)
+  /// Dashed outline of drop zones.
+  public static let dropOutline = dynamic(dark: 0x3A3A3F, light: 0xC4C4CA)
   /// Fill of the one primary action on a screen.
   public static let accent = dynamic(dark: 0xF5F5F7, light: 0x1D1D1F)
   /// Text and icons on top of `accent`.

@@ -16,8 +16,9 @@ public protocol FeatureModule {
   static var title: LocalizedStringResource { get }
   /// SF Symbol shown in the sidebar.
   static var symbol: String { get }
-  /// Whether files dragged to the notch belong to this feature: the window then opens on its tab,
-  /// and the tab's own drop target receives them.
+  /// Whether files given to Vortex belong to this feature. Files dragged to the notch open the window on its tab,
+  /// where the tab's own drop target receives them; files dropped on the menu bar icon or opened with Vortex
+  /// (`vortex shelf add`) arrive in `receiveFiles(_:)`. The first enabled feature that accepts files gets them.
   static var acceptsFileDrops: Bool { get }
   /// Content of the feature's sidebar tab. It stays mounted while the window is closed, so work that should
   /// run only while it is visible goes into `.task(id: isWindowOpen)`.
@@ -26,12 +27,15 @@ public protocol FeatureModule {
   static func makeSettings() -> AnyView?
   /// Called at launch and whenever the user turns the feature on or off. Start and stop background work here.
   static func setEnabled(_ isEnabled: Bool)
+  /// Files given to Vortex outside the feature's tab, see `acceptsFileDrops`. The window stays as it is.
+  static func receiveFiles(_ urls: [URL])
 }
 
 extension FeatureModule {
   public static var acceptsFileDrops: Bool { false }
   public static func makeSettings() -> AnyView? { nil }
   public static func setEnabled(_ isEnabled: Bool) {}
+  public static func receiveFiles(_ urls: [URL]) {}
 
   /// Plain description of the feature for the shell's state.
   public static var descriptor: FeatureDescriptor {

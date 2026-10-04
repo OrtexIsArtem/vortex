@@ -2,6 +2,7 @@ import AppKit
 import ComposableArchitecture
 import SwiftUI
 import VortexCore
+import VortexPlatform
 
 /// Why the window opens. It decides where the window appears and how it behaves.
 enum OpenReason: Equatable, Sendable {
@@ -25,6 +26,8 @@ enum WindowEvent: Equatable, Sendable {
   case fileDragEnteredNotch
   case menuBarIconClicked
   case pointerInsideWindowChanged(isInside: Bool)
+  /// Something is being dragged out of the window, or the drag has ended.
+  case dragOutChanged(isDragging: Bool)
   case clickedOutside
   case escapePressed
   /// Sent when the events start and whenever displays change.
@@ -57,6 +60,7 @@ final class WindowController: NSObject {
   private var ears: [CGDirectDisplayID: Ears] = [:]
   private var currentEars = NotchEars()
   private var indicatorsObservation: ObserveToken?
+  private var dragObservation: ObserveToken?
   private var menuBarItem: NSStatusItem?
   private var menuBarMenu: NSMenu?
   /// Off until the shell applies the user's setting, so a hidden icon never flashes at launch.
@@ -82,6 +86,9 @@ final class WindowController: NSObject {
     mainPanel = makeMainPanel(content: AnyView(content))
     rebuildEars()
     indicatorsObservation = observe { [weak self] in self?.indicatorsChanged() }
+    dragObservation = observe { [weak self] in
+      self?.dragOutChanged(DragSessions.shared.isDragging)
+    }
     screenObserver = NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification,
       object: nil,
@@ -204,6 +211,14 @@ final class WindowController: NSObject {
 
   private var closeAnimation: Animation {
     reduceMotion ? .easeIn(duration: 0.12) : .spring(response: 0.26, dampingFraction: 1)
+  }
+
+  /// While a drag runs, tracking areas say nothing; once it ends, the pointer may be anywhere.
+  private func dragOutChanged(_ isDragging: Bool) {
+    emit(.dragOutChanged(isDragging: isDragging))
+    if !isDragging, let panel = mainPanel, panel.isVisible {
+      emit(.pointerInsideWindowChanged(isInside: NSMouseInRect(NSEvent.mouseLocation, panel.frame, false)))
+    }
   }
 
   // MARK: - Outside clicks

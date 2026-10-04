@@ -21,12 +21,13 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 ## Architecture
 1. A feature never imports another feature. Features talk only through contracts in VortexCore or through the app shell.
 2. A feature brings everything of its own: sidebar tab, settings, Home widget, database tables prefixed with its id, their migrations, its docs.
-3. New feature: copy Features/_Template to Features/<Name>, rename the module and types, add "<Name>" to `features` in Packages/Package.swift and one line to Features/Registry. Removing a feature = deleting its folder and those two lines; everything else must still build.
+3. New feature: copy Features/_Template to Features/<Name>, rename the module and types, add "<Name>" to `features` in Packages/Package.swift and its import and entry to Features/Registry. Removing a feature = deleting its folder and those lines; everything else must still build.
 4. If nobody fulfils a contract, the caller hides the control (e.g. "Make key" disappears without Secrets).
 5. System APIs (pasteboard, screenshots, files, Keychain, hotkeys) only through clients in VortexPlatform, so every feature can be tested with substituted clients.
 6. The notch window and the menu bar icon belong to the shell; features never open or close the window. A feature shows status in the notch by writing its own entry to `@Shared(.notchIndicators)` from its reducer.
 7. A feature starts and stops its background work in `FeatureModule.setEnabled`. Its tab stays mounted while the window is closed, so work that should run only while visible goes into `.task(id: isWindowOpen)`.
 8. Each module declares its own shortcuts (`extension Hotkey { static let x = Hotkey("x") }`), listens with `HotkeyClient.presses` and puts `HotkeyRecorder` in its own settings.
+9. Data lives in DataFolder (~/Library/Application Support/Vortex). A feature's tables go in the shared database (`@Dependency(\.database)`), named `<id>_…`, created by its own `DatabaseMigrator` (migrations `<id>.v1`, `<id>.v2`…) before its first query; its files go in DataFolder/<Name>/; its settings in DataFolder/<id>.json (`@Shared(.fileStorage)`).
 
 ## Working rules
 - One task = one feature. Don't touch other modules.

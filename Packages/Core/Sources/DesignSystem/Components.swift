@@ -118,3 +118,53 @@ public struct Hairline: View {
       .frame(height: 1)
   }
 }
+
+/// A setting: optional symbol, title and caption on the left, the control on the right, a hairline below.
+/// The shell's settings and every feature's own settings use it, so they read as one list.
+public struct SettingsRow<Control: View>: View {
+  private let title: Text
+  private let caption: Text?
+  private let symbol: String?
+  private let control: Control
+
+  public init(title: Text, caption: Text? = nil, symbol: String? = nil, @ViewBuilder control: () -> Control) {
+    self.title = title
+    self.caption = caption
+    self.symbol = symbol
+    self.control = control()
+  }
+
+  public var body: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 12) {
+        if let symbol {
+          Image(systemName: symbol)
+            .frame(width: 20)
+            .foregroundStyle(VortexColor.secondaryText)
+        }
+        VStack(alignment: .leading, spacing: 2) {
+          title
+          if let caption {
+            caption
+              .font(.system(size: 11.5))
+              .foregroundStyle(VortexColor.tertiaryText)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+        }
+        Spacer(minLength: 12)
+        control
+      }
+      .frame(minHeight: 48)
+      Hairline()
+    }
+  }
+}
+
+extension SettingsRow where Control == Toggle<Text> {
+  /// A row whose control is an on/off switch named by the row's title. Needs `.toggleStyle(.vortex)` around it.
+  public init(title: Text, caption: Text? = nil, symbol: String? = nil, isOn: Binding<Bool>) {
+    self.init(title: title, caption: caption, symbol: symbol) {
+      Toggle(isOn: isOn) { title }
+    }
+  }
+}

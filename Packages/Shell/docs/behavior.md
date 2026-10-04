@@ -19,6 +19,7 @@
 - A click in another app closes the window when "Close on click outside" is on.
 - A window opened by hover or by dragging files closes after the leave delay (0.5 s by default) once the pointer leaves it, if "Close when the pointer leaves" is on; coming back cancels.
 - Connecting or disconnecting a display closes the window.
+- While something is dragged out of the window (a clipboard card, a file), it stays open; after the drop the usual rules apply.
 - After the window closes under the pointer, hovering the notch counts again only once the pointer has left it.
 
 ## Sidebar and features

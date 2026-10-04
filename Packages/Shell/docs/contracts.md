@@ -10,9 +10,8 @@
 ## Uses
 - FeatureRegistry: every `FeatureModule` — descriptor, `makeTab()`, `makeSettings()`, `acceptsFileDrops`, `setEnabled(_:)`.
 - VortexCore: `FeatureModule`, `@Shared(.notchIndicators)`, design system, `AppTheme`, `AppLanguage`.
-- VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`.
+- VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`; `DragSessions` to keep the window open during drags out of it.
 
 ## Not yet wired
-- Files dropped on the menu bar icon — stage 2, with the Shelf and a contract that hands files to a feature.
-- Keeping the window open while something is dragged out of it — stage 2, with a drag source in Platform.
+- Files dropped on the menu bar icon — stage 2, with the Shelf and `FeatureModule.receiveFiles`.
 - Clicking an ear to reach its feature — stage 3, with the timer.

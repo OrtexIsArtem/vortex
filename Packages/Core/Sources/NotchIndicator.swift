@@ -15,11 +15,14 @@ public struct NotchIndicator: Equatable, Sendable {
   public var trailing: [Item]
   /// Higher priority wins the left ear when several features show something.
   public var priority: Int
+  /// Change it (add one) to make the notch flash once, e.g. when a new file lands on the shelf.
+  public var flash: Int
 
-  public init(leading: [Item], trailing: [Item], priority: Int = 0) {
+  public init(leading: [Item], trailing: [Item], priority: Int = 0, flash: Int = 0) {
     self.leading = leading
     self.trailing = trailing
     self.priority = priority
+    self.flash = flash
   }
 }
 
@@ -30,25 +33,29 @@ public struct NotchIndicator: Equatable, Sendable {
 public struct NotchEars: Equatable, Sendable {
   public var left: [NotchIndicator.Item]
   public var right: [NotchIndicator.Item]
+  /// Changes whenever some indicator asks for a flash.
+  public var flash: Int
 
   public var isEmpty: Bool { left.isEmpty && right.isEmpty }
 
-  public init(left: [NotchIndicator.Item] = [], right: [NotchIndicator.Item] = []) {
+  public init(left: [NotchIndicator.Item] = [], right: [NotchIndicator.Item] = [], flash: Int = 0) {
     self.left = left
     self.right = right
+    self.flash = flash
   }
 
   public init(indicators: [FeatureID: NotchIndicator]) {
     let ranked = indicators
       .sorted { $0.value.priority != $1.value.priority ? $0.value.priority > $1.value.priority : $0.key < $1.key }
       .map(\.value)
+    let flash = ranked.reduce(0) { $0 &+ $1.flash }
     switch ranked.count {
     case 0:
       self.init()
     case 1:
-      self.init(left: ranked[0].leading, right: ranked[0].trailing)
+      self.init(left: ranked[0].leading, right: ranked[0].trailing, flash: flash)
     default:
-      self.init(left: ranked[0].leading + ranked[0].trailing, right: ranked[1].leading + ranked[1].trailing)
+      self.init(left: ranked[0].leading + ranked[0].trailing, right: ranked[1].leading + ranked[1].trailing, flash: flash)
     }
   }
 

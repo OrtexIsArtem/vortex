@@ -55,6 +55,17 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "VortexPlatformTests"
+               BuildableName = "VortexPlatformTests"
+               BlueprintName = "VortexPlatformTests"
+               ReferencedContainer = "container:Packages">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "VortexShellTests"
                BuildableName = "VortexShellTests"
                BlueprintName = "VortexShellTests"
@@ -69,6 +80,17 @@
                BlueprintIdentifier = "FeatureTemplateTests"
                BuildableName = "FeatureTemplateTests"
                BlueprintName = "FeatureTemplateTests"
+               ReferencedContainer = "container:Packages">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "FeatureClipboardTests"
+               BuildableName = "FeatureClipboardTests"
+               BlueprintName = "FeatureClipboardTests"
                ReferencedContainer = "container:Packages">
             </BuildableReference>
          </TestableReference>

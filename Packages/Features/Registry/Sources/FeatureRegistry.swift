@@ -1,12 +1,15 @@
+import FeatureClipboard
 import VortexCore
 
 /// Every feature the app ships with, in default sidebar order.
 ///
-/// One line per feature. Removing a feature: delete its folder, its line here
+/// One import and one line per feature. Removing a feature: delete its folder, its import and line here
 /// and its name in `features` in Packages/Package.swift.
 @MainActor
 public enum FeatureRegistry {
-  public static let all: [any FeatureModule.Type] = []
+  public static let all: [any FeatureModule.Type] = [
+    ClipboardModule.self,
+  ]
 
   public static func module(for id: FeatureID) -> (any FeatureModule.Type)? {
     all.first { $0.id == id }

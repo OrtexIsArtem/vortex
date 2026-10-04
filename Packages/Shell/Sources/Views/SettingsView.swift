@@ -211,48 +211,6 @@ private struct FeaturesSettings: View {
   }
 }
 
-/// A setting: optional symbol, title and caption on the left, the control on the right, a hairline below.
-private struct SettingsRow<Control: View>: View {
-  let title: Text
-  var caption: Text?
-  var symbol: String?
-  @ViewBuilder let control: Control
-
-  var body: some View {
-    VStack(spacing: 0) {
-      HStack(spacing: 12) {
-        if let symbol {
-          Image(systemName: symbol)
-            .frame(width: 20)
-            .foregroundStyle(VortexColor.secondaryText)
-        }
-        VStack(alignment: .leading, spacing: 2) {
-          title
-          if let caption {
-            caption
-              .font(.system(size: 11.5))
-              .foregroundStyle(VortexColor.tertiaryText)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-        }
-        Spacer(minLength: 12)
-        control
-      }
-      .frame(minHeight: 48)
-      Hairline()
-    }
-  }
-}
-
-extension SettingsRow where Control == Toggle<Text> {
-  /// A row whose control is an on/off switch named by the row's title.
-  init(title: Text, caption: Text? = nil, symbol: String? = nil, isOn: Binding<Bool>) {
-    self.init(title: title, caption: caption, symbol: symbol) {
-      Toggle(isOn: isOn) { title }
-    }
-  }
-}
-
 /// Delay from 0 to 2 seconds in 0.1-second steps.
 private struct DelaySlider: View {
   @Binding var value: Double

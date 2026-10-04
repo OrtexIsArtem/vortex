@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VortexCore
 
 /// Borderless panel that floats above the menu bar on every Space without activating the app.
 final class VortexPanel: NSPanel {
@@ -12,7 +13,7 @@ final class VortexPanel: NSPanel {
     super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
     isFloatingPanel = true
     hidesOnDeactivate = false
-    level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
+    level = .vortex
     collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
     isOpaque = false
     backgroundColor = .clear

@@ -188,6 +188,24 @@ struct ShellFeatureTests {
     #expect(dismissals.value == 1)
   }
 
+  @Test
+  func draggingSomethingOutKeepsTheWindowOpenUntilTheDragEnds() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.window(.pointerInsideWindowChanged(isInside: true))) { $0.isPointerInsideWindow = true }
+    await store.send(.window(.dragOutChanged(isDragging: true))) { $0.isDraggingOut = true }
+    await store.send(.window(.pointerInsideWindowChanged(isInside: false))) { $0.isPointerInsideWindow = false }
+    await store.send(.window(.clickedOutside))
+    await clock.advance(by: .seconds(3))
+    #expect(dismissals.value == 0)
+
+    // Dropped in another app: the usual leave delay starts.
+    await store.send(.window(.dragOutChanged(isDragging: false))) { $0.isDraggingOut = false }
+    await store.send(.window(.pointerInsideWindowChanged(isInside: false)))
+    await clock.advance(by: .milliseconds(500))
+    await store.receive(\.pointerLeaveDelayElapsed) { $0.openReason = nil }
+  }
+
   // MARK: - Files dragged to the notch
 
   @Test

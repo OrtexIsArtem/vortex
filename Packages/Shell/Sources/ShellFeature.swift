@@ -21,6 +21,8 @@ struct ShellFeature {
     /// Why the window is open; nil while it is closed.
     var openReason: OpenReason?
     var isPointerInsideWindow = false
+    /// Something is being dragged out of the window; it stays open until the drag ends.
+    var isDraggingOut = false
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
     var launchAtLogin: LaunchAtLoginStatus = .disabled
@@ -182,7 +184,7 @@ struct ShellFeature {
           return open(.hover, &state)
 
         case .pointerLeaveDelayElapsed:
-          guard state.isOpen, !state.isPointerInsideWindow else { return .none }
+          guard state.isOpen, !state.isPointerInsideWindow, !state.isDraggingOut else { return .none }
           return close(&state)
 
         case let .tabSelected(tab):
@@ -305,8 +307,12 @@ struct ShellFeature {
       state.isPointerInsideWindow = isInside
       return isInside ? .cancel(id: CancelID.pointerLeaveClose) : schedulePointerLeaveClose(state)
 
+    case let .dragOutChanged(isDragging):
+      state.isDraggingOut = isDragging
+      return isDragging ? .cancel(id: CancelID.pointerLeaveClose) : .none
+
     case .clickedOutside:
-      guard state.isOpen, state.settings.closeOnClickOutside else { return .none }
+      guard state.isOpen, state.settings.closeOnClickOutside, !state.isDraggingOut else { return .none }
       return close(&state)
 
     case .escapePressed:
@@ -348,7 +354,8 @@ struct ShellFeature {
 
   /// A window opened on the way past closes once the pointer leaves it.
   private func schedulePointerLeaveClose(_ state: State) -> Effect<Action> {
-    guard state.openReason?.isPassing == true, state.settings.closeOnPointerLeave, !state.isPointerInsideWindow
+    guard state.openReason?.isPassing == true, state.settings.closeOnPointerLeave, !state.isPointerInsideWindow,
+          !state.isDraggingOut
     else { return .none }
     return .run { [delay = state.settings.pointerLeaveDelay] send in
       try await clock.sleep(for: .seconds(delay))
