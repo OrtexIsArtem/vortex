@@ -25,6 +25,7 @@ enum WindowEvent: Equatable, Sendable {
   case notchClicked
   case fileDragEnteredNotch
   case menuBarIconClicked
+  case filesDroppedOnMenuBarIcon([URL])
   case pointerInsideWindowChanged(isInside: Bool)
   /// Something is being dragged out of the window, or the drag has ended.
   case dragOutChanged(isDragging: Bool)
@@ -65,6 +66,8 @@ final class WindowController: NSObject {
   private var menuBarMenu: NSMenu?
   /// Off until the shell applies the user's setting, so a hidden icon never flashes at launch.
   private var isMenuBarIconWanted = false
+  /// Whether some feature takes files, so files may be dropped on the menu bar icon.
+  private var acceptsFiles = false
   private var outsideClickMonitor: Any?
   private var screenObserver: NSObjectProtocol?
   /// Incremented on every present and dismiss, so a finished animation never acts on a newer one.
@@ -316,8 +319,15 @@ final class WindowController: NSObject {
       button.target = self
       button.action = #selector(menuBarIconPressed)
       button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+      // Files dropped on the icon: the icon's window takes the drag and hands it to its delegate.
+      button.window?.registerForDraggedTypes([.fileURL])
+      button.window?.delegate = self
     }
     return item
+  }
+
+  func setAcceptsFiles(_ acceptsFiles: Bool) {
+    self.acceptsFiles = acceptsFiles
   }
 
   @objc private func menuBarIconPressed() {
@@ -337,5 +347,31 @@ final class WindowController: NSObject {
     guard let button = menuBarItem?.button else { return }
     let text = everyScreenHasNotch ? "" : currentEars.menuBarText
     button.title = text.isEmpty ? "" : " \(text)"
+  }
+}
+
+// MARK: - Files dropped on the menu bar icon
+
+extension WindowController: NSWindowDelegate {
+  func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+    guard acceptsFiles, !Self.fileURLs(in: sender).isEmpty else { return [] }
+    menuBarItem?.button?.highlight(true)
+    return .copy
+  }
+
+  func draggingExited(_ sender: (any NSDraggingInfo)?) {
+    menuBarItem?.button?.highlight(false)
+  }
+
+  func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+    menuBarItem?.button?.highlight(false)
+    let urls = Self.fileURLs(in: sender)
+    guard acceptsFiles, !urls.isEmpty else { return false }
+    emit(.filesDroppedOnMenuBarIcon(urls))
+    return true
+  }
+
+  private static func fileURLs(in info: any NSDraggingInfo) -> [URL] {
+    info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
   }
 }

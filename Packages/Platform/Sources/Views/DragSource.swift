@@ -28,6 +28,11 @@ public final class DragSessions {
 public struct DragSourceClick: Equatable, Sendable {
   public var count: Int
   public var modifiers: EventModifiers
+
+  public init(count: Int, modifiers: EventModifiers) {
+    self.count = count
+    self.modifiers = modifiers
+  }
 }
 
 /// The surface of something the user clicks and drags out of Vortex: a clipboard card, a shelf file.

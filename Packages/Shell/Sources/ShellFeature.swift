@@ -65,6 +65,11 @@ struct ShellFeature {
       settings.showMenuBarIcon || isMenuBarIconRequired
     }
 
+    /// The enabled feature that gets files given to Vortex, see `FeatureModule.acceptsFileDrops`.
+    var fileFeature: FeatureDescriptor? {
+      sidebarFeatures.first(where: \.acceptsFileDrops)
+    }
+
     var needsRestartForLanguage: Bool {
       language != launchLanguage
     }
@@ -112,6 +117,8 @@ struct ShellFeature {
     case task
     case window(WindowEvent)
     case openHotkeyPressed
+    /// Files opened with Vortex, e.g. by `vortex shelf add`.
+    case filesReceived([URL])
     case hoverDelayElapsed
     case pointerLeaveDelayElapsed
     case tabSelected(Tab)
@@ -152,8 +159,9 @@ struct ShellFeature {
         case .task:
           let featureSwitches = state.orderedFeatures.map { ($0.id, !state.settings.disabledFeatures.contains($0.id)) }
           return .merge(
-            .run { [isVisible = state.isMenuBarIconVisible] send in
+            .run { [isVisible = state.isMenuBarIconVisible, acceptsFiles = state.fileFeature != nil] send in
               await window.setMenuBarIconVisible(isVisible)
+              await window.setAcceptsFiles(acceptsFiles)
               for await event in await window.events() {
                 await send(.window(event))
               }
@@ -178,6 +186,9 @@ struct ShellFeature {
 
         case .openHotkeyPressed:
           return state.isOpen ? close(&state) : open(.hotkey, &state)
+
+        case let .filesReceived(urls):
+          return deliver(urls, state)
 
         case .hoverDelayElapsed:
           guard !state.isOpen else { return .none }
@@ -266,6 +277,11 @@ struct ShellFeature {
         .run { _ in await window.setMenuBarIconVisible(isVisible) }
       }
     }
+    .onChange(of: \.fileFeature) { _, feature in
+      Reduce { _, _ in
+        .run { _ in await window.setAcceptsFiles(feature != nil) }
+      }
+    }
   }
 
   private func handle(_ event: WindowEvent, state: inout State) -> Effect<Action> {
@@ -293,7 +309,7 @@ struct ShellFeature {
 
     case .fileDragEnteredNotch:
       // Dragging past the notch does nothing while no feature takes files (CLAUDE.md, architecture rule 4).
-      guard state.sidebarFeatures.contains(where: \.acceptsFileDrops) else { return .none }
+      guard state.fileFeature != nil else { return .none }
       if state.isOpen {
         selectDropTab(&state)
         return .none
@@ -302,6 +318,9 @@ struct ShellFeature {
 
     case .menuBarIconClicked:
       return state.isOpen ? close(&state) : open(.menuBarIcon, &state)
+
+    case let .filesDroppedOnMenuBarIcon(urls):
+      return deliver(urls, state)
 
     case let .pointerInsideWindowChanged(isInside):
       state.isPointerInsideWindow = isInside
@@ -348,8 +367,14 @@ struct ShellFeature {
 
   /// Files dragged to the notch open the feature that takes files, without changing the remembered tab.
   private func selectDropTab(_ state: inout State) {
-    guard let feature = state.sidebarFeatures.first(where: \.acceptsFileDrops) else { return }
+    guard let feature = state.fileFeature else { return }
     state.selectedTab = .feature(feature.id)
+  }
+
+  /// Files given to Vortex outside the window go to the feature that takes them; the window stays as it is.
+  private func deliver(_ urls: [URL], _ state: State) -> Effect<Action> {
+    guard let feature = state.fileFeature, !urls.isEmpty else { return .none }
+    return .run { _ in await features.receiveFiles(feature.id, urls) }
   }
 
   /// A window opened on the way past closes once the pointer leaves it.

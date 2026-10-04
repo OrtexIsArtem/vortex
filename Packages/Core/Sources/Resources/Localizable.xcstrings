@@ -1,0 +1,50 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld d" : {
+      "comment" : "Days ago, short",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld дн"
+          }
+        }
+      }
+    },
+    "%lld h" : {
+      "comment" : "Hours ago, short",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld год"
+          }
+        }
+      }
+    },
+    "%lld min" : {
+      "comment" : "Minutes ago, short",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld хв"
+          }
+        }
+      }
+    },
+    "now" : {
+      "comment" : "Less than a minute ago",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "щойно"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

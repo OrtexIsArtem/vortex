@@ -1,0 +1,386 @@
+import ComposableArchitecture
+import Foundation
+import GRDB
+import os
+import VortexCore
+import VortexPlatform
+
+/// A place for files the user puts aside to take somewhere else: dragged in, dropped on the menu bar icon or sent
+/// from the terminal; dragged out into any app as many times as needed. Clears itself after 24 hours.
+@Reducer
+public struct ShelfFeature: Sendable {
+  public static let id: FeatureID = "shelf"
+  /// Unpinned items leave the shelf this long after they were added.
+  static let lifetime: TimeInterval = 24 * 60 * 60
+  static let expiryCheckInterval: Duration = .seconds(600)
+
+  @ObservableState
+  public struct State: Equatable {
+    /// Newest first.
+    public var items: IdentifiedArrayOf<ShelfItem> = []
+    var isLoaded = false
+    var isRunning = false
+    /// Files that arrived before the shelf was loaded.
+    var pending: [URL] = []
+    var selection: Set<ShelfItem.ID> = []
+    /// Where a shift-click selection starts.
+    var selectionAnchor: ShelfItem.ID?
+    /// Items that arrived by themselves (menu bar icon, terminal, watched folder): marked until the user leaves the tab.
+    var fresh: Set<ShelfItem.ID> = []
+    /// Size and kind of file items.
+    var info: [ShelfItem.ID: FileInfo] = [:]
+    /// Items whose file is gone.
+    var unavailable: Set<ShelfItem.ID> = []
+    /// Grows by one for every arrival that should flash the notch.
+    var flashes = 0
+    @Shared(.notchIndicators) var indicators
+
+    public init() {}
+
+    /// The tray and the number of items in the closed notch.
+    var indicator: NotchIndicator? {
+      guard isRunning, !items.isEmpty else { return nil }
+      return NotchIndicator(leading: [.symbol("tray.full")], trailing: [.text("\(items.count)")], flash: flashes)
+    }
+
+    /// What dragging an item carries: the whole selection if the item is in it, otherwise the item alone.
+    func dragItems(startingAt id: ShelfItem.ID) -> [DragItem] {
+      let ids = selection.contains(id) ? items.ids.filter(selection.contains) : [id]
+      return ids.compactMap { items[id: $0] }.filter { !unavailable.contains($0.id) }.map(\.dragItem)
+    }
+
+    /// Files of the selected items that are still there.
+    var selectedFileURLs: [URL] {
+      items.filter { selection.contains($0.id) && !unavailable.contains($0.id) }.compactMap(\.fileURL)
+    }
+  }
+
+  public enum Action: Equatable, Sendable {
+    case start
+    case stop
+    case loaded([ShelfItem])
+    case dropped([DroppedItem])
+    case filesReceived([URL])
+    case copySaved(ShelfItem, isFresh: Bool)
+    case expiryCheckDue
+    case infoLoaded(found: [ShelfItem.ID: FileInfo], missing: Set<ShelfItem.ID>)
+    case tabShown
+    case tabHidden
+    case itemClicked(ShelfItem.ID, DragSourceClick)
+    case backgroundClicked
+    case selectAllPressed
+    case quickLookPressed
+    case removeSelectedPressed
+    case quickLookTapped(ShelfItem.ID)
+    case showInFinderTapped(ShelfItem.ID)
+    case pinTapped(ShelfItem.ID)
+    case removeTapped(ShelfItem.ID)
+    case clearTapped
+  }
+
+  @Dependency(\.continuousClock) var clock
+  @Dependency(\.database) var database
+  @Dependency(\.date.now) var now
+  @Dependency(\.fileClient) var files
+  @Dependency(\.quickLookClient) var quickLook
+  @Dependency(\.uuid) var uuid
+
+  private enum CancelID {
+    case load
+    case expiry
+    case save
+  }
+
+  public init() {}
+
+  public var body: some ReducerOf<Self> {
+    Reduce { state, action in
+      switch action {
+      case .start:
+        state.isRunning = true
+        guard state.isLoaded else {
+          return .run { send in
+            try await database.migrate(ShelfItem.migrator)
+            await send(.loaded(try await database.read(ShelfItem.fetchAllReadable)))
+          } catch: { error, _ in
+            logger.error("Loading the shelf failed: \(error, privacy: .public)")
+          }
+          .cancellable(id: CancelID.load, cancelInFlight: true)
+        }
+        return .merge(removeExpired(&state), checkExpiry())
+
+      case .stop:
+        state.isRunning = false
+        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.expiry))
+
+      case let .loaded(items):
+        state.items = IdentifiedArray(items, uniquingIDsWith: { first, _ in first })
+        state.isLoaded = true
+        let pending = state.pending
+        state.pending = []
+        return .merge(
+          loadInfo(for: state.items.elements),
+          removeExpired(&state),
+          add(pending.map(DroppedItem.file), isFresh: true, &state),
+          checkExpiry()
+        )
+
+      case let .dropped(dropped):
+        return add(dropped, isFresh: false, &state)
+
+      case let .filesReceived(urls):
+        guard state.isLoaded else {
+          state.pending.append(contentsOf: urls)
+          return .none
+        }
+        return add(urls.map(DroppedItem.file), isFresh: true, &state)
+
+      case let .copySaved(item, isFresh):
+        state.items.insert(item, at: 0)
+        if isFresh { arrived([item.id], &state) }
+        return .merge(loadInfo(for: [item]), save(state))
+
+      case .expiryCheckDue:
+        return removeExpired(&state)
+
+      case let .infoLoaded(found, missing):
+        state.info.merge(found) { _, new in new }
+        state.unavailable.subtract(found.keys)
+        state.unavailable.formUnion(missing)
+        return .none
+
+      case .tabShown:
+        return loadInfo(for: state.items.elements)
+
+      case .tabHidden:
+        state.fresh = []
+        return .run { _ in await quickLook.close() }
+
+      case let .itemClicked(id, click):
+        guard let item = state.items[id: id] else { return .none }
+        if click.count == 2 {
+          guard !state.unavailable.contains(id), let url = item.fileURL ?? item.linkURL else { return .none }
+          return .run { [files] _ in await files.open(url) }
+        }
+        if click.modifiers.contains(.command) {
+          if state.selection.remove(id) == nil { state.selection.insert(id) }
+          state.selectionAnchor = id
+        } else if click.modifiers.contains(.shift), let anchor = state.selectionAnchor,
+                  let from = state.items.index(id: anchor), let to = state.items.index(id: id) {
+          state.selection = Set(state.items[min(from, to)...max(from, to)].map(\.id))
+        } else {
+          state.selection = [id]
+          state.selectionAnchor = id
+        }
+        return .none
+
+      case .backgroundClicked:
+        state.selection = []
+        state.selectionAnchor = nil
+        return .none
+
+      case .selectAllPressed:
+        state.selection = Set(state.items.ids)
+        return .none
+
+      case .quickLookPressed:
+        let urls = state.selectedFileURLs
+        guard !urls.isEmpty else { return .none }
+        return .run { _ in await quickLook.toggle(urls) }
+
+      case let .quickLookTapped(id):
+        if !state.selection.contains(id) {
+          state.selection = [id]
+          state.selectionAnchor = id
+        }
+        return .send(.quickLookPressed)
+
+      case .removeSelectedPressed:
+        let removed = remove(state.selection, &state)
+        return .merge(deleteCopies(of: removed), save(state))
+
+      case let .showInFinderTapped(id):
+        let urls = state.selection.contains(id) ? state.selectedFileURLs : state.items[id: id]?.fileURL.map { [$0] } ?? []
+        guard !urls.isEmpty else { return .none }
+        return .run { [files] _ in await files.revealInFinder(urls) }
+
+      case let .pinTapped(id):
+        state.items[id: id]?.isPinned.toggle()
+        return save(state)
+
+      case let .removeTapped(id):
+        let ids: Set<ShelfItem.ID> = state.selection.contains(id) ? state.selection : [id]
+        let removed = remove(ids, &state)
+        return .merge(deleteCopies(of: removed), save(state))
+
+      case .clearTapped:
+        let removed = remove(Set(state.items.filter { !$0.isPinned }.ids), &state)
+        return .merge(deleteCopies(of: removed), save(state))
+      }
+    }
+    .onChange(of: \.indicator) { _, indicator in
+      Reduce { state, _ in
+        state.$indicators.withLock { $0[Self.id] = indicator }
+        return .none
+      }
+    }
+  }
+
+  /// Puts things on the shelf, newest first. Something already there moves to the front instead of being added again.
+  private func add(_ dropped: [DroppedItem], isFresh: Bool, _ state: inout State) -> Effect<Action> {
+    guard !dropped.isEmpty else { return .none }
+    var added: [ShelfItem] = []
+    var moved: [ShelfItem.ID] = []
+    var copies: [Effect<Action>] = []
+    func isKnown(_ matches: (ShelfItem) -> Bool) -> Bool {
+      if let existing = state.items.first(where: matches) {
+        moved.append(existing.id)
+        return true
+      }
+      return added.contains(where: matches)
+    }
+    for dropped in dropped {
+      let content: ShelfItem.Content
+      switch dropped {
+      case let .file(url):
+        let url = url.standardizedFileURL
+        if isKnown({ $0.fileURL == url }) { continue }
+        guard url.path.hasPrefix(DataFolder.url.standardizedFileURL.path + "/") else {
+          content = .file(url)
+          break
+        }
+        // A file of Vortex's own, such as a clipboard image, goes away with its owner: the shelf keeps a copy.
+        let item = ShelfItem(id: uuid(), content: .copy(fileName: url.lastPathComponent), addedAt: now)
+        copies.append(saveCopy(item, isFresh: isFresh) { [files] destination in try await files.copy(url, destination) })
+        continue
+      case let .image(png):
+        let item = ShelfItem(id: uuid(), content: .copy(fileName: Self.imageFileName(addedAt: now)), addedAt: now)
+        copies.append(saveCopy(item, isFresh: isFresh) { [files] destination in try await files.write(png, destination) })
+        continue
+      case let .text(text):
+        content = .text(text)
+      case let .link(url):
+        content = .link(url)
+      }
+      if isKnown({ $0.content == content }) { continue }
+      added.append(ShelfItem(id: uuid(), content: content, addedAt: now))
+    }
+
+    var front = added
+    for id in moved {
+      guard var item = state.items.remove(id: id) else { continue }
+      item.addedAt = now
+      front.append(item)
+    }
+    state.items = IdentifiedArray(uniqueElements: front + state.items.elements)
+    if isFresh { arrived(added.map(\.id) + moved, &state) }
+    return .merge([loadInfo(for: added), save(state)] + copies)
+  }
+
+  /// Marks things that came by themselves and flashes the notch once.
+  private func arrived(_ ids: [ShelfItem.ID], _ state: inout State) {
+    guard !ids.isEmpty else { return }
+    state.fresh.formUnion(ids)
+    state.flashes += 1
+  }
+
+  /// Writes the file of a copy item, then adds the item: its thumbnail needs the file.
+  private func saveCopy(
+    _ item: ShelfItem,
+    isFresh: Bool,
+    write: @escaping @Sendable (URL) async throws -> Void
+  ) -> Effect<Action> {
+    .run { send in
+      guard let destination = item.fileURL else { return }
+      try await write(destination)
+      await send(.copySaved(item, isFresh: isFresh))
+    } catch: { error, _ in
+      logger.error("Keeping a copy on the shelf failed: \(error, privacy: .public)")
+    }
+  }
+
+  /// Takes items off the shelf and returns them.
+  private func remove(_ ids: Set<ShelfItem.ID>, _ state: inout State) -> [ShelfItem] {
+    let removed = state.items.filter { ids.contains($0.id) }
+    state.items.removeAll { ids.contains($0.id) }
+    state.selection.subtract(ids)
+    state.fresh.subtract(ids)
+    state.unavailable.subtract(ids)
+    for id in ids { state.info[id] = nil }
+    if let anchor = state.selectionAnchor, ids.contains(anchor) { state.selectionAnchor = nil }
+    return Array(removed)
+  }
+
+  /// Unpinned items older than a day leave the shelf.
+  private func removeExpired(_ state: inout State) -> Effect<Action> {
+    let limit = now.addingTimeInterval(-Self.lifetime)
+    let removed = remove(Set(state.items.filter { !$0.isPinned && $0.addedAt < limit }.ids), &state)
+    guard !removed.isEmpty else { return .none }
+    return .merge(deleteCopies(of: removed), save(state))
+  }
+
+  private func checkExpiry() -> Effect<Action> {
+    .run { send in
+      for await _ in clock.timer(interval: Self.expiryCheckInterval) {
+        await send(.expiryCheckDue)
+      }
+    }
+    .cancellable(id: CancelID.expiry, cancelInFlight: true)
+  }
+
+  /// Looks up size and kind of the items' files; missing files mark their items unavailable.
+  private func loadInfo(for items: [ShelfItem]) -> Effect<Action> {
+    let files = items.compactMap { item in item.fileURL.map { (item.id, $0) } }
+    guard !files.isEmpty else { return .none }
+    return .run { [client = self.files] send in
+      var found: [ShelfItem.ID: FileInfo] = [:]
+      var missing = Set<ShelfItem.ID>()
+      for (id, url) in files {
+        if let info = await client.info(url) {
+          found[id] = info
+        } else {
+          missing.insert(id)
+        }
+      }
+      await send(.infoLoaded(found: found, missing: missing))
+    }
+  }
+
+  /// Deletes the shelf's own copies; the user's files are never touched.
+  private func deleteCopies(of items: [ShelfItem]) -> Effect<Action> {
+    let folders = items.filter(\.isCopy).compactMap { $0.fileURL?.deletingLastPathComponent() }
+    guard !folders.isEmpty else { return .none }
+    return .run { [files] _ in
+      for folder in folders {
+        await files.remove(folder)
+      }
+    }
+  }
+
+  /// Writes the whole shelf; a newer save cancels an older one that has not finished.
+  private func save(_ state: State) -> Effect<Action> {
+    let items = state.items.elements
+    return .run { _ in
+      try await database.write { db in try ShelfItem.save(items, in: db) }
+    } catch: { error, _ in
+      logger.error("Saving the shelf failed: \(error, privacy: .public)")
+    }
+    .cancellable(id: CancelID.save, cancelInFlight: true)
+  }
+
+  /// "Image 2026-10-04 at 14.03.12.png": the name an image dropped without a file gets.
+  static func imageFileName(addedAt date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+    return "Image \(formatter.string(from: date)).png"
+  }
+}
+
+extension ShelfItem {
+  var linkURL: URL? {
+    if case let .link(url) = content { url } else { nil }
+  }
+}
+
+private let logger = Logger(subsystem: "io.github.ortexisartem.vortex", category: "shelf")

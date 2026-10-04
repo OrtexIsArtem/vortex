@@ -1,39 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%lld d" : {
-      "comment" : "Copied days ago, short",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld дн"
-          }
-        }
-      }
-    },
-    "%lld h" : {
-      "comment" : "Copied hours ago, short",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld год"
-          }
-        }
-      }
-    },
-    "%lld min" : {
-      "comment" : "Copied minutes ago, short",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld хв"
-          }
-        }
-      }
-    },
     "Add app" : {
       "localizations" : {
         "uk" : {
@@ -258,17 +225,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "і ще %lld"
-          }
-        }
-      }
-    },
-    "now" : {
-      "comment" : "Copied less than a minute ago",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "щойно"
           }
         }
       }

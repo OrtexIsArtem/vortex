@@ -1,0 +1,151 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Clear" : {
+      "comment" : "Takes all items off the shelf except pinned ones",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистити"
+          }
+        }
+      }
+    },
+    "Drop files here" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кидай файли сюди"
+          }
+        }
+      }
+    },
+    "Drop here" : {
+      "comment" : "Last tile of the shelf grid",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кидай сюди"
+          }
+        }
+      }
+    },
+    "Folder" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка"
+          }
+        }
+      }
+    },
+    "Not found" : {
+      "comment" : "The file was deleted or moved",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не знайдено"
+          }
+        }
+      }
+    },
+    "Or on the menu bar icon. The shelf keeps links to your files and clears itself after 24 hours." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Або на значок у рядку меню. Полиця тримає посилання на файли й очищується сама через 24 години."
+          }
+        }
+      }
+    },
+    "Pin" : {
+      "comment" : "Pinned items stay on the shelf past 24 hours",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закріпити"
+          }
+        }
+      }
+    },
+    "Quick Look" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Швидкий перегляд"
+          }
+        }
+      }
+    },
+    "Release to put it on the shelf" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відпусти, щоб покласти на полицю"
+          }
+        }
+      }
+    },
+    "Remove from the shelf" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прибрати з полиці"
+          }
+        }
+      }
+    },
+    "Shelf" : {
+      "comment" : "Feature name in the sidebar, settings and the tab header",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полиця"
+          }
+        }
+      }
+    },
+    "Show in Finder" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати у Finder"
+          }
+        }
+      }
+    },
+    "Takes everything off the shelf except pinned items" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Знімає з полиці все, крім закріпленого"
+          }
+        }
+      }
+    },
+    "Unpin" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкріпити"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

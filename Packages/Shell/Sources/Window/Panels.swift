@@ -1,6 +1,8 @@
 import AppKit
+import Quartz
 import SwiftUI
 import VortexCore
+import VortexPlatform
 
 /// Borderless panel that floats above the menu bar on every Space without activating the app.
 final class VortexPanel: NSPanel {
@@ -38,6 +40,20 @@ final class VortexPanel: NSPanel {
 
   override func cancelOperation(_ sender: Any?) {
     onEscape?()
+  }
+
+  // Quick Look looks for its controller in the responder chain of the window with keyboard focus,
+  // always on the main thread.
+  override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
+    MainActor.assumeIsolated { QuickLook.shared.hasItems }
+  }
+
+  override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+    MainActor.assumeIsolated { QuickLook.shared.beginControl(panel) }
+  }
+
+  override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+    MainActor.assumeIsolated { QuickLook.shared.endControl(panel) }
   }
 
   /// The app has no main menu, so nothing maps the standard editing shortcuts; the panel sends them itself.
@@ -88,7 +104,8 @@ final class NotchHitView: HoverTrackingView {
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
-    registerForDraggedTypes([.fileURL])
+    // Whatever the shelf takes: files, images and links from browsers, text.
+    registerForDraggedTypes([.fileURL, .URL, .png, .tiff, .string])
   }
 
   @available(*, unavailable)
@@ -118,7 +135,7 @@ final class NotchHitView: HoverTrackingView {
 
   override func mouseDown(with event: NSEvent) { onClick?() }
 
-  /// Only a trigger to open the window: the files land in the tab that takes them, not here.
+  /// Only a trigger to open the window: what is dragged lands in the tab that takes files, not here.
   override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
     onFileDragEntered?()
     return []

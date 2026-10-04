@@ -20,6 +20,8 @@ struct ShellFeatureTests {
   let saved = LockIsolated<[ShellSettings]>([])
   let menuBarIcon = LockIsolated<[Bool]>([])
   let featureSwitches = LockIsolated<[String]>([])
+  let receivedFiles = LockIsolated<[String]>([])
+  let acceptsFiles = LockIsolated<[Bool]>([])
 
   func makeStore(
     features: [FeatureDescriptor] = [.timer, .shelf, .tasks],
@@ -38,6 +40,10 @@ struct ShellFeatureTests {
       $0.featuresClient.setEnabled = { [featureSwitches] id, isEnabled in
         featureSwitches.withValue { $0.append("\(id):\(isEnabled)") }
       }
+      $0.featuresClient.receiveFiles = { [receivedFiles] id, urls in
+        receivedFiles.withValue { $0.append("\(id):\(urls.map(\.lastPathComponent).joined(separator: ","))") }
+      }
+      $0.windowClient.setAcceptsFiles = { [acceptsFiles] accepts in acceptsFiles.withValue { $0.append(accepts) } }
     }
   }
 
@@ -226,7 +232,31 @@ struct ShellFeatureTests {
   func filesAreIgnoredWhileNoFeatureTakesThem() async {
     let store = makeStore(features: [.timer, .tasks])
     await store.send(.window(.fileDragEnteredNotch))
+    await store.send(.window(.filesDroppedOnMenuBarIcon([URL(fileURLWithPath: "/tmp/a.ipa")])))
+    await store.send(.filesReceived([URL(fileURLWithPath: "/tmp/a.ipa")]))
+    await store.finish()
     #expect(presented.value.isEmpty)
+    #expect(receivedFiles.value.isEmpty)
+  }
+
+  @Test
+  func filesDroppedOnTheIconOrOpenedGoToTheFeatureWithoutOpeningTheWindow() async {
+    let store = makeStore()
+    await store.send(.window(.filesDroppedOnMenuBarIcon([URL(fileURLWithPath: "/tmp/a.ipa"), URL(fileURLWithPath: "/tmp/b.apk")])))
+    await store.send(.filesReceived([URL(fileURLWithPath: "/tmp/c.dmg")]))
+    await store.finish()
+    #expect(receivedFiles.value == ["shelf:a.ipa,b.apk", "shelf:c.dmg"])
+    #expect(presented.value.isEmpty)
+  }
+
+  @Test
+  func theIconTakesFilesOnlyWhileAFeatureDoes() async {
+    let store = makeStore()
+    await store.send(.featureEnabledChanged("shelf", isEnabled: false)) { $0.settings.disabledFeatures = ["shelf"] }
+    await store.send(.featureEnabledChanged("shelf", isEnabled: true)) { $0.settings.disabledFeatures = [] }
+    await clock.advance(by: .milliseconds(400))
+    await store.finish()
+    #expect(acceptsFiles.value == [false, true])
   }
 
   // MARK: - Tabs and features

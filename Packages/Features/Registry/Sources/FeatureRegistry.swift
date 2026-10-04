@@ -1,4 +1,5 @@
 import FeatureClipboard
+import FeatureShelf
 import VortexCore
 
 /// Every feature the app ships with, in default sidebar order.
@@ -9,6 +10,7 @@ import VortexCore
 public enum FeatureRegistry {
   public static let all: [any FeatureModule.Type] = [
     ClipboardModule.self,
+    ShelfModule.self,
   ]
 
   public static func module(for id: FeatureID) -> (any FeatureModule.Type)? {

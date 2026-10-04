@@ -9,7 +9,7 @@ struct ClipboardCard: View {
   let isRevealed: Bool
   let isJustCopied: Bool
   let now: Date
-  let send: (ClipboardFeature.Action) -> Void
+  let send: @MainActor (ClipboardFeature.Action) -> Void
   @State private var isHovered = false
 
   private var isImage: Bool {
@@ -129,9 +129,9 @@ struct ClipboardCard: View {
         if isUnavailable {
           Text("Not found", bundle: .module)
         } else if let source = item.source {
-          Text(verbatim: source.name) + Text(verbatim: " · ") + Self.age(of: item.copiedAt, now: now)
+          Text(verbatim: source.name) + Text(verbatim: " · ") + Text(age: item.copiedAt, now: now)
         } else {
-          Self.age(of: item.copiedAt, now: now)
+          Text(age: item.copiedAt, now: now)
         }
       }
       .font(.system(size: 11))
@@ -226,17 +226,6 @@ struct ClipboardCard: View {
     var path = url.path()
     if let query = url.query() { path += "?" + query }
     return path.isEmpty || path == "/" ? url.absoluteString : path
-  }
-
-  /// "now", "6 min", "2 h", "3 d".
-  static func age(of date: Date, now: Date) -> Text {
-    let seconds = max(0, now.timeIntervalSince(date))
-    switch seconds {
-    case ..<60: return Text("now", bundle: .module)
-    case ..<3600: return Text("\(Int(seconds / 60)) min", bundle: .module)
-    case ..<86400: return Text("\(Int(seconds / 3600)) h", bundle: .module)
-    default: return Text("\(Int(seconds / 86400)) d", bundle: .module)
-    }
   }
 }
 

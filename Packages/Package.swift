@@ -4,7 +4,7 @@ import PackageDescription
 // Features shipped in the app, by folder name in Features/.
 // Adding one: copy Features/_Template to Features/<Name>, add "<Name>" here and register it in
 // Features/Registry. Removing one: delete its folder and those lines — everything else must still build.
-let features: [String] = ["Clipboard"]
+let features: [String] = ["Clipboard", "Shelf"]
 
 let composableArchitecture: Target.Dependency = .product(
   name: "ComposableArchitecture",
@@ -48,7 +48,8 @@ let package = Package(
     .target(
       name: "VortexCore",
       dependencies: [composableArchitecture, grdb],
-      path: "Core/Sources"
+      path: "Core/Sources",
+      resources: [.process("Resources")]
     ),
     .testTarget(
       name: "VortexCoreTests",

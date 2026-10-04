@@ -17,9 +17,17 @@ final class EarsModel {
 /// The closed notch with the indicators of features on both sides of the cutout.
 struct NotchEarsView: View {
   let model: EarsModel
+  /// Brightness of the flash an indicator asks for, see `NotchIndicator.flash`.
+  @State private var flash = 0.0
 
   var body: some View {
     let hasEars = model.earWidth > 0
+    let shape = HangingShape(
+      width: model.notchSize.width + model.earWidth * 2,
+      height: model.notchSize.height,
+      cornerRadius: hasEars ? EarsMetrics.cornerRadius : VortexMetrics.notchCornerRadius,
+      shoulder: hasEars ? VortexMetrics.shoulder : 0
+    )
     HStack(spacing: 0) {
       EarItems(items: model.ears.left)
         .frame(width: model.earWidth)
@@ -30,17 +38,20 @@ struct NotchEarsView: View {
     }
     .frame(height: model.notchSize.height)
     .padding(.horizontal, hasEars ? VortexMetrics.shoulder : 0)
-    .background(
-      HangingShape(
-        width: model.notchSize.width + model.earWidth * 2,
-        height: model.notchSize.height,
-        cornerRadius: hasEars ? EarsMetrics.cornerRadius : VortexMetrics.notchCornerRadius,
-        shoulder: hasEars ? VortexMetrics.shoulder : 0
-      )
-      .fill(VortexColor.notch)
-    )
+    .background {
+      shape.fill(VortexColor.notch)
+      shape.fill(Color.white.opacity(flash))
+    }
     .environment(\.colorScheme, .dark)
     .accessibilityHidden(true)
+    .onChange(of: model.ears.flash) { old, new in
+      guard new > old else { return }
+      withAnimation(.easeOut(duration: 0.12)) {
+        flash = 0.3
+      } completion: {
+        withAnimation(.easeIn(duration: 0.6)) { flash = 0 }
+      }
+    }
   }
 }
 

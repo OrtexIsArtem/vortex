@@ -9,7 +9,7 @@ System clients and system-backed views; features reach the system only through t
 | Clients/PasteboardClient.swift | copies made in any app (checked twice a second), writing to the pasteboard, `AppInfo` |
 | Clients/FileClient.swift | file info, reading, writing, copying, deleting, Show in Finder, folder picker, watching a folder |
 | Clients/AppsClient.swift, QuickLookClient.swift | running apps and `AppIcon`; the Quick Look panel, which Vortex windows hand over through `QuickLook` |
-| Views/DragSource.swift | `DragSourceArea`: hover, clicks and multi-item drags out of Vortex; `DragSessions` says when one runs |
+| Views/DragSource.swift, DropTarget.swift | drags out (`DragSourceArea`: hover, clicks, several items; `DragSessions` says when one runs) and in (`dropTarget`) |
 | Views/FileThumbnail.swift | Quick Look thumbnails made in the background, `FileIcon` |
 
 Not here: the notch window and the menu bar icon (Shell). Planned: screen capture (stage 4), Keychain (stage 5).

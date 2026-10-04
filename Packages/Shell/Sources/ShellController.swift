@@ -31,6 +31,12 @@ public final class ShellController: NSObject {
     #endif
   }
 
+  /// Files opened with Vortex (`vortex shelf add`, Open With): they go to the feature that takes files.
+  /// Works before `start()`, for files that launch the app.
+  public func receiveFiles(_ urls: [URL]) {
+    store.send(.filesReceived(urls))
+  }
+
   /// Writes the settings at once; called when the app is about to quit, so a pending change is not lost.
   public func saveSettings() {
     @Dependency(\.settingsClient) var settingsClient

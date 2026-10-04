@@ -29,6 +29,8 @@ public struct FileClient: Sendable {
   public var remove: @Sendable (_ url: URL) async -> Void
   /// Opens Finder with the items selected.
   public var revealInFinder: @Sendable (_ urls: [URL]) async -> Void
+  /// Opens a file in its app, or a web address in the browser.
+  public var open: @Sendable (_ url: URL) async -> Void
   /// Asks the user to pick a folder; nil when they cancel.
   public var chooseFolder: @Sendable () async -> URL?
   /// Files created, changed or renamed inside the folder and its subfolders, as the system reports them.
@@ -59,6 +61,9 @@ extension FileClient: DependencyKey {
     },
     revealInFinder: { urls in
       await MainActor.run { NSWorkspace.shared.activateFileViewerSelecting(urls) }
+    },
+    open: { url in
+      await MainActor.run { _ = NSWorkspace.shared.open(url) }
     },
     chooseFolder: {
       await withCheckedContinuation { continuation in
