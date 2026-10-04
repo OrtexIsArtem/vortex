@@ -6,6 +6,11 @@ import VortexPlatform
 
 extension Hotkey {
   static let openVortex = Hotkey("openVortex")
+
+  /// Opens Vortex on a feature's tab. The shell owns these: features never open the window themselves.
+  static func open(_ feature: FeatureID) -> Hotkey {
+    Hotkey("open-\(feature)")
+  }
 }
 
 /// The app shell: when the window opens and closes, which tab it shows, and the shell's settings.
@@ -21,8 +26,8 @@ struct ShellFeature {
     /// Why the window is open; nil while it is closed.
     var openReason: OpenReason?
     var isPointerInsideWindow = false
-    /// Something is being dragged out of the window; it stays open until the drag ends.
-    var isDraggingOut = false
+    /// Something of Vortex's is in use outside the window (a drag, Quick Look, the folder picker); it stays open meanwhile.
+    var isHeldOpen = false
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
     var launchAtLogin: LaunchAtLoginStatus = .disabled
@@ -117,6 +122,7 @@ struct ShellFeature {
     case task
     case window(WindowEvent)
     case openHotkeyPressed
+    case featureHotkeyPressed(FeatureID)
     /// Files opened with Vortex, e.g. by `vortex shelf add`.
     case filesReceived([URL])
     case hoverDelayElapsed
@@ -171,6 +177,13 @@ struct ShellFeature {
                 await send(.openHotkeyPressed)
               }
             },
+            .merge(state.features.map { feature in
+              .run { send in
+                for await _ in hotkeys.presses(.open(feature.id)) {
+                  await send(.featureHotkeyPressed(feature.id))
+                }
+              }
+            }),
             .run { [theme = state.settings.theme] send in
               await system.applyTheme(theme)
               for (id, isEnabled) in featureSwitches {
@@ -187,6 +200,15 @@ struct ShellFeature {
         case .openHotkeyPressed:
           return state.isOpen ? close(&state) : open(.hotkey, &state)
 
+        case let .featureHotkeyPressed(id):
+          let tab = Tab.feature(id)
+          guard state.isAvailable(tab) else { return .none }
+          if state.isOpen, state.selectedTab == tab { return close(&state) }
+          let effect = state.isOpen ? .none : open(.hotkey, &state)
+          state.selectedTab = tab
+          state.settings.lastTab = tab.storageValue
+          return effect
+
         case let .filesReceived(urls):
           return deliver(urls, state)
 
@@ -195,7 +217,7 @@ struct ShellFeature {
           return open(.hover, &state)
 
         case .pointerLeaveDelayElapsed:
-          guard state.isOpen, !state.isPointerInsideWindow, !state.isDraggingOut else { return .none }
+          guard state.isOpen, !state.isPointerInsideWindow, !state.isHeldOpen else { return .none }
           return close(&state)
 
         case let .tabSelected(tab):
@@ -326,12 +348,12 @@ struct ShellFeature {
       state.isPointerInsideWindow = isInside
       return isInside ? .cancel(id: CancelID.pointerLeaveClose) : schedulePointerLeaveClose(state)
 
-    case let .dragOutChanged(isDragging):
-      state.isDraggingOut = isDragging
-      return isDragging ? .cancel(id: CancelID.pointerLeaveClose) : .none
+    case let .outsideActivityChanged(isActive):
+      state.isHeldOpen = isActive
+      return isActive ? .cancel(id: CancelID.pointerLeaveClose) : .none
 
     case .clickedOutside:
-      guard state.isOpen, state.settings.closeOnClickOutside, !state.isDraggingOut else { return .none }
+      guard state.isOpen, state.settings.closeOnClickOutside, !state.isHeldOpen else { return .none }
       return close(&state)
 
     case .escapePressed:
@@ -380,7 +402,7 @@ struct ShellFeature {
   /// A window opened on the way past closes once the pointer leaves it.
   private func schedulePointerLeaveClose(_ state: State) -> Effect<Action> {
     guard state.openReason?.isPassing == true, state.settings.closeOnPointerLeave, !state.isPointerInsideWindow,
-          !state.isDraggingOut
+          !state.isHeldOpen
     else { return .none }
     return .run { [delay = state.settings.pointerLeaveDelay] send in
       try await clock.sleep(for: .seconds(delay))

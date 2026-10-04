@@ -259,6 +259,7 @@
       }
     },
     "Quit" : {
+      "comment" : "Button that quits the app",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
@@ -266,8 +267,7 @@
             "value" : "Вийти"
           }
         }
-      },
-      "comment" : "Button that quits the app"
+      }
     },
     "Quit Vortex" : {
       "comment" : "Menu bar icon menu",
@@ -328,6 +328,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Налаштування…"
+          }
+        }
+      }
+    },
+    "Shortcuts that open Vortex right on a tab:" : {
+      "comment" : "Above one shortcut field per feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сполучення клавіш, що відкривають Vortex одразу на вкладці:"
           }
         }
       }

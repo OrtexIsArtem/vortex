@@ -82,33 +82,48 @@ struct PasteboardFormatTests {
 
   @Test
   func transientCopiesAreSkipped() {
-    pasteboard.clearContents()
-    pasteboard.setString("one-time code", forType: .string)
-    pasteboard.setData(Data(), forType: PasteboardFormat.transientType)
-    #expect(PasteboardFormat.read(pasteboard) == nil)
+    for type in PasteboardFormat.transientTypes {
+      pasteboard.clearContents()
+      pasteboard.setString("snippet", forType: .string)
+      pasteboard.setData(Data(), forType: type)
+      #expect(PasteboardFormat.read(pasteboard) == nil)
+    }
   }
 
   @Test
   func concealedCopiesAreMarked() {
-    pasteboard.clearContents()
-    pasteboard.setString("hunter2", forType: .string)
-    pasteboard.setData(Data(), forType: PasteboardFormat.concealedType)
-    #expect(PasteboardFormat.read(pasteboard)?.isConcealed == true)
+    for type in PasteboardFormat.concealedTypes {
+      pasteboard.clearContents()
+      pasteboard.setString("hunter2", forType: .string)
+      pasteboard.setData(Data(), forType: type)
+      #expect(PasteboardFormat.read(pasteboard)?.isConcealed == true)
+    }
   }
 
   @Test
-  func whatVortexWritesReadsBackButIsNotRecorded() {
+  func whatVortexWritesReadsBackWithItsMarkersAndIsRecognized() {
+    let terminal = AppInfo(bundleID: "com.apple.Terminal", name: "Terminal")
     for written in [
       PasteboardContent.text("hello"),
       .link(URL(string: "https://example.com/a?b=c")!),
       .files([URL(fileURLWithPath: "/tmp/a.zip"), URL(fileURLWithPath: "/tmp/b.dmg")]),
       .image(Self.png),
     ] {
-      PasteboardFormat.write(written, isConcealed: true, to: pasteboard)
+      PasteboardFormat.write(written, isConcealed: true, source: terminal, to: pasteboard)
       #expect(content == written)
-      #expect(pasteboard.types?.contains(PasteboardFormat.concealedType) == true)
-      #expect(PasteboardFormat.read(pasteboard) == nil)
+      #expect(PasteboardFormat.read(pasteboard)?.isConcealed == true)
+      #expect(pasteboard.string(forType: PasteboardFormat.sourceType) == terminal.bundleID)
+      #expect(PasteboardFormat.isOwnWrite(pasteboard, changeCount: pasteboard.changeCount))
     }
+    pasteboard.clearContents()
+    #expect(!PasteboardFormat.isOwnWrite(pasteboard, changeCount: pasteboard.changeCount))
+  }
+
+  @Test
+  func imagesOfferTIFFOnRequest() throws {
+    PasteboardFormat.write(.image(Self.png), isConcealed: false, source: nil, to: pasteboard)
+    let tiff = try #require(pasteboard.data(forType: .tiff))
+    #expect(NSBitmapImageRep(data: tiff)?.pixelsWide == 2)
   }
 
   @Test
@@ -120,6 +135,8 @@ struct PasteboardFormatTests {
     watcher.start()
     defer { watcher.stop() }
     try? await Task.sleep(for: .milliseconds(100))
+    PasteboardFormat.write(.text("written by Vortex"), isConcealed: false, source: nil, to: pasteboard)
+    try? await Task.sleep(for: .milliseconds(700))
     pasteboard.clearContents()
     pasteboard.setString("after", forType: .string)
     var iterator = copies.makeAsyncIterator()

@@ -37,4 +37,17 @@ struct NotchEarsTests {
     let ears = NotchEars(indicators: ["shelf": shelf, "timer": timer])
     #expect(ears.menuBarText == "8:42  2")
   }
+
+  @Test
+  func flashesOnlyWhenTheNumberGrows() {
+    var seen: [FeatureID: Int] = [:]
+    let shelf = { (flash: Int) in NotchIndicator(leading: [], trailing: [.text("1")], flash: flash) }
+    #expect(!NotchEars.shouldFlash(["shelf": shelf(0)], seen: &seen))
+    #expect(NotchEars.shouldFlash(["shelf": shelf(1)], seen: &seen))
+    #expect(!NotchEars.shouldFlash(["shelf": shelf(1), "timer": shelf(0)], seen: &seen))
+    // Hidden, then back with the same number: no flash.
+    #expect(!NotchEars.shouldFlash([:], seen: &seen))
+    #expect(!NotchEars.shouldFlash(["shelf": shelf(1)], seen: &seen))
+    #expect(NotchEars.shouldFlash(["shelf": shelf(2)], seen: &seen))
+  }
 }

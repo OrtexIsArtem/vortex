@@ -12,7 +12,7 @@ struct ClipboardSettingsView: View {
     VStack(alignment: .leading, spacing: 0) {
       SettingsRow(
         title: Text("Ignored apps", bundle: .module),
-        caption: Text("Nothing copied in these apps is kept. Passwords marked secret are kept hidden.", bundle: .module)
+        caption: Text("Nothing copied in these apps is kept. Passwords marked secret are shown hidden and kept only until Vortex quits.", bundle: .module)
       ) {
         Menu {
           let ignored = Set(store.settings.ignoredApps.map(\.bundleID))
@@ -20,6 +20,12 @@ struct ClipboardSettingsView: View {
             Button(app.name) {
               store.send(.ignoreAppTapped(app))
             }
+          }
+          Divider()
+          Button {
+            store.send(.chooseAppTapped)
+          } label: {
+            Text("Other…", bundle: .module)
           }
         } label: {
           Text("Add app", bundle: .module)

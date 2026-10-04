@@ -16,6 +16,9 @@ public struct ClipboardFeature: Sendable {
     /// Pinned items first, then the others; newest first in both groups.
     public var items: IdentifiedArrayOf<ClipboardItem> = []
     var isLoaded = false
+    /// False when the saved history could not be read: this session keeps it in memory only, so nothing on disk is
+    /// overwritten.
+    var savesToDisk = true
     /// Items whose files are gone.
     var unavailable: Set<ClipboardItem.ID> = []
     /// Concealed items the user is looking at; hidden again whenever the window opens.
@@ -33,9 +36,11 @@ public struct ClipboardFeature: Sendable {
     case start
     case stop
     case loaded([ClipboardItem])
+    case loadFailed
     case copied(ClipboardCopy)
     case imageSaved(ClipboardItem)
     case itemTapped(ClipboardItem.ID)
+    case copiedAgain(ClipboardItem.ID)
     case pinTapped(ClipboardItem.ID)
     case deleteTapped(ClipboardItem.ID)
     case clearTapped
@@ -48,6 +53,8 @@ public struct ClipboardFeature: Sendable {
     case settingsShown
     case runningAppsLoaded([AppInfo])
     case ignoreAppTapped(AppInfo)
+    case chooseAppTapped
+    case appChosen(AppInfo?)
     case stopIgnoringAppTapped(bundleID: String)
   }
 
@@ -73,11 +80,20 @@ public struct ClipboardFeature: Sendable {
       switch action {
       case .start:
         guard !state.isLoaded else { return watch() }
-        return .run { send in
+        return .run { [files] send in
           try await database.migrate(ClipboardItem.migrator)
-          await send(.loaded(try await database.read(ClipboardItem.fetchAllReadable)))
-        } catch: { error, _ in
+          let (items, savedIDs) = try await database.read { db in
+            (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))
+          }
+          // Image folders whose rows are gone, after a crash or a failed save. Before watching starts,
+          // so a new image is never taken for one of them.
+          for folder in await files.contents(ClipboardItem.imagesFolder) where !savedIDs.contains(folder.lastPathComponent) {
+            await files.remove(folder)
+          }
+          await send(.loaded(items))
+        } catch: { error, send in
           logger.error("Loading the clipboard history failed: \(error, privacy: .public)")
+          await send(.loadFailed)
         }
         .cancellable(id: CancelID.load, cancelInFlight: true)
 
@@ -90,9 +106,15 @@ public struct ClipboardFeature: Sendable {
         state.isLoaded = true
         return watch()
 
+      case .loadFailed:
+        state.isLoaded = true
+        state.savesToDisk = false
+        return watch()
+
       case let .copied(copied):
         let copy = copied.copy
-        if let source = copy.source, state.settings.ignoredApps.contains(where: { $0.bundleID == source.bundleID }) {
+        let ignored = Set(state.settings.ignoredApps.map(\.bundleID))
+        if !copy.frontApps.isDisjoint(with: ignored) || copy.source.map({ ignored.contains($0.bundleID) }) == true {
           return .none
         }
         if let existing = state.items.first(where: { $0.fingerprint == copied.fingerprint }) {
@@ -114,6 +136,8 @@ public struct ClipboardFeature: Sendable {
         case let .files(urls):
           item.content = .files(urls)
         case let .image(png):
+          // Secrets never reach the disk, and an image needs a file for its card.
+          guard !copy.isConcealed else { return .none }
           // The card shows the image from its file, so the item appears once the file is written.
           item.content = .image(fileName: Self.imageFileName(copiedAt: now))
           return .run { [item, files] send in
@@ -138,20 +162,24 @@ public struct ClipboardFeature: Sendable {
 
       case let .itemTapped(id):
         guard let item = state.items[id: id], !state.unavailable.contains(id) else { return .none }
+        return .run { [files] send in
+          let content: PasteboardContent
+          switch item.content {
+          case let .text(text): content = .text(text)
+          case let .link(url): content = .link(url)
+          case let .files(urls): content = .files(urls)
+          case .image: content = .image(try await files.read(item.imageURL!))
+          }
+          await pasteboard.write(content, item.isConcealed, item.source)
+          await send(.copiedAgain(id))
+        } catch: { error, _ in
+          logger.error("Copying an item again failed: \(error, privacy: .public)")
+        }
+
+      case let .copiedAgain(id):
+        guard let item = state.items[id: id] else { return .none }
         state.justCopied = id
         return .merge(
-          .run { [files] _ in
-            let content: PasteboardContent
-            switch item.content {
-            case let .text(text): content = .text(text)
-            case let .link(url): content = .link(url)
-            case let .files(urls): content = .files(urls)
-            case .image: content = .image(try await files.read(item.imageURL!))
-            }
-            await pasteboard.write(content, item.isConcealed)
-          } catch: { error, _ in
-            logger.error("Copying an item again failed: \(error, privacy: .public)")
-          },
           .run { send in
             try await clock.sleep(for: .seconds(1.2))
             await send(.copiedMarkElapsed)
@@ -224,6 +252,13 @@ public struct ClipboardFeature: Sendable {
         }
         return .none
 
+      case .chooseAppTapped:
+        return .run { send in await send(.appChosen(apps.choose())) }
+
+      case let .appChosen(app):
+        guard let app else { return .none }
+        return .send(.ignoreAppTapped(app))
+
       case let .stopIgnoringAppTapped(bundleID):
         state.$settings.withLock { $0.ignoredApps.removeAll { $0.bundleID == bundleID } }
         return .none
@@ -287,11 +322,12 @@ public struct ClipboardFeature: Sendable {
     }
   }
 
-  /// Writes the whole history; a newer save cancels an older one that has not finished.
+  /// Writes the history, secrets left out; a newer save cancels an older one that has not finished.
   private func save(_ state: State) -> Effect<Action> {
-    let items = state.items.elements
+    guard state.savesToDisk else { return .none }
+    let items = state.items.filter { !$0.isConcealed }
     return .run { _ in
-      try await database.write { db in try ClipboardItem.save(items, in: db) }
+      try await database.write { db in try ClipboardItem.save(Array(items), in: db) }
     } catch: { error, _ in
       logger.error("Saving the clipboard history failed: \(error, privacy: .public)")
     }

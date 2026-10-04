@@ -52,6 +52,18 @@ public struct ShelfView: View {
           .onTapGesture { store.send(.backgroundClicked) }
         }
         .scrollIndicators(.never)
+        .overlay {
+          // With files on the shelf, the whole tab still takes drops: outline it while something hovers.
+          if isTargeted {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+              .strokeBorder(VortexColor.accent, lineWidth: 1.5)
+              .padding(.leading, 4)
+              .padding(.trailing, 12)
+              .padding(.bottom, 10)
+              .allowsHitTesting(false)
+          }
+        }
+        .animation(.easeOut(duration: 0.15), value: isTargeted)
       }
     }
     .dropTarget(isTargeted: $isTargeted) { items in

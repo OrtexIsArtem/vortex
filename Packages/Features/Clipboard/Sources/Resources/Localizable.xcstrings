@@ -11,6 +11,17 @@
         }
       }
     },
+    "and %lld more" : {
+      "comment" : "Under the first file name of a copy with several files",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "і ще %lld"
+          }
+        }
+      }
+    },
     "Clear" : {
       "comment" : "Removes all items except pinned ones",
       "localizations" : {
@@ -137,12 +148,12 @@
         }
       }
     },
-    "Nothing copied in these apps is kept. Passwords marked secret are kept hidden." : {
+    "Nothing copied in these apps is kept. Passwords marked secret are shown hidden and kept only until Vortex quits." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скопійоване в цих програмах не зберігається. Паролі, позначені як секретні, зберігаються прихованими."
+            "value" : "Скопійоване в цих програмах не зберігається. Паролі, позначені як секретні, показуються прихованими й зберігаються лише до виходу з Vortex."
           }
         }
       }
@@ -153,6 +164,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ще нічого не скопійовано"
+          }
+        }
+      }
+    },
+    "Other…" : {
+      "comment" : "Picks an app in /Applications to ignore",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Інша…"
           }
         }
       }
@@ -214,17 +236,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Відкріпити"
-          }
-        }
-      }
-    },
-    "and %lld more" : {
-      "comment" : "Under the first file name of a copy with several files",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "і ще %lld"
           }
         }
       }

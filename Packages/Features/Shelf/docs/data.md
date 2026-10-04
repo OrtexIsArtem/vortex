@@ -7,6 +7,7 @@
 | Watched folder and file types | DataFolder/shelf.json | Until changed |
 
 - DataFolder is ~/Library/Application Support/Vortex.
-- `shelf_item` columns: id, content (JSON: file URL, copy file name, text or link), addedAt, isPinned.
-- The whole table is rewritten after every change, in shelf order; rows a version can't read are skipped.
+- `shelf_item` columns: id, content (JSON: file URL, copy file name, text or link), addedAt, isPinned, position (shelf order, `shelf.v2`).
+- The table is rewritten after every change; rows written by a newer Vortex are left untouched.
+- Copy folders without a row are deleted at start. If the shelf can't be read, the session keeps it in memory only.
 - Selection, dots and file sizes live only in memory.

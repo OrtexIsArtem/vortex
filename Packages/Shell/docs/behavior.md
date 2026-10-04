@@ -5,13 +5,14 @@
 - Clicking the notch opens the window at once; clicking it again closes it.
 - Clicking the notch of a window that opened by hover keeps it open, as if the click had opened it.
 - The menu bar icon and the "Open Vortex" shortcut open and close the window.
+- A feature's shortcut opens the window on its tab, or switches to it; pressed again on that tab, it closes the window.
 - Dragging files, images, links or text to the notch opens the window on the first enabled feature that accepts files; with no such feature nothing happens.
 - The window grows out of the notch of the screen with the pointer; on a screen without a notch it opens under the menu bar icon.
 - The window opens on the last tab the user chose; if that feature is gone or turned off, on the first feature, then on Settings.
 - Opening for dragged files does not change the remembered tab.
 
 ## Files given to Vortex
-- Files dropped on the menu bar icon, or opened with Vortex (`vortex shelf add`, Open With), go to the first enabled feature that accepts files; the window stays as it is.
+- Files dropped on the menu bar icon, or opened with Vortex (`vortex shelf add`, `open -a Vortex`), go to the first enabled feature that accepts files; the window stays as it is.
 - Without such a feature the menu bar icon refuses the drop and opened files are ignored.
 
 ## Keyboard
@@ -23,7 +24,7 @@
 - A click in another app closes the window when "Close on click outside" is on.
 - A window opened by hover or by dragging files closes after the leave delay (0.5 s by default) once the pointer leaves it, if "Close when the pointer leaves" is on; coming back cancels.
 - Connecting or disconnecting a display closes the window.
-- While something is dragged out of the window (a clipboard card, a file), it stays open; after the drop the usual rules apply.
+- While something is dragged out of the window, Quick Look shows its files or the folder picker is open, the window stays open; afterwards the usual rules apply.
 - After the window closes under the pointer, hovering the notch counts again only once the pointer has left it.
 
 ## Sidebar and features

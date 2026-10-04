@@ -10,7 +10,7 @@
 ## Uses
 - FeatureRegistry: every `FeatureModule` — descriptor, `makeTab()`, `makeSettings()`, `acceptsFileDrops`, `receiveFiles(_:)`, `setEnabled(_:)`.
 - VortexCore: `FeatureModule`, `@Shared(.notchIndicators)`, design system, `AppTheme`, `AppLanguage`.
-- VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`; `DragSessions` to keep the window open during drags out of it; `QuickLook`, which the window hands the Quick Look panel to.
+- VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`; `OutsideActivity` to keep the window open during drags out of it, Quick Look and the folder picker; `QuickLook`, which the window hands the Quick Look panel to.
 
 ## Not yet wired
 - Clicking an ear to reach its feature — stage 3, with the timer.

@@ -18,8 +18,10 @@ public struct FileInfo: Equatable, Sendable {
 /// Files and folders on disk.
 @DependencyClient
 public struct FileClient: Sendable {
-  /// Size and kind of what is at the URL; nil when nothing is there.
+  /// Size and kind of what is at the URL right now; nil when nothing is there.
   public var info: @Sendable (_ url: URL) async -> FileInfo?
+  /// What a folder holds, without hidden files; empty when the folder is missing.
+  public var contents: @Sendable (_ folder: URL) async -> [URL] = { _ in [] }
   public var read: @Sendable (_ url: URL) async throws -> Data
   /// Writes the data, creating missing folders.
   public var write: @Sendable (_ data: Data, _ url: URL) async throws -> Void
@@ -41,9 +43,15 @@ public struct FileClient: Sendable {
 extension FileClient: DependencyKey {
   public static let liveValue = FileClient(
     info: { url in
-      guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey]) else { return nil }
-      let isDirectory = values.isDirectory ?? false
-      return FileInfo(size: isDirectory ? nil : values.fileSize.map(Int64.init), isDirectory: isDirectory)
+      // Not `URL.resourceValues`: it caches inside the URL, and a file deleted later would still look present.
+      let path = url.resolvingSymlinksInPath().path
+      var isDirectory: ObjCBool = false
+      guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else { return nil }
+      let size = isDirectory.boolValue ? nil : (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int64
+      return FileInfo(size: size, isDirectory: isDirectory.boolValue)
+    },
+    contents: { folder in
+      (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)) ?? []
     },
     read: { url in
       try Data(contentsOf: url)
@@ -76,7 +84,9 @@ extension FileClient: DependencyKey {
           // Vortex has no Dock icon and its window floats above the menu bar: lift the panel over it.
           panel.level = .aboveVortex
           NSApp.activate()
+          OutsideActivity.shared.begin()
           panel.begin { response in
+            OutsideActivity.shared.end()
             continuation.resume(returning: response == .OK ? panel.url : nil)
           }
         }

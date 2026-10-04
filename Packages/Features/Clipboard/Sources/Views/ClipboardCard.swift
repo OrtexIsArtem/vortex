@@ -68,7 +68,8 @@ struct ClipboardCard: View {
     } else {
       switch item.content {
       case let .text(text):
-        Text(verbatim: text.trimmingCharacters(in: .whitespacesAndNewlines))
+        // Only the start: laying out megabytes of text for four lines would stall the window.
+        Text(verbatim: String(text.prefix(600)).trimmingCharacters(in: .whitespacesAndNewlines))
           .font(.system(size: 11.5, design: .monospaced))
           .lineSpacing(3)
           .lineLimit(4)

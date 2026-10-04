@@ -32,6 +32,7 @@ struct ShelfFeatureTests {
       $0.date = DateGenerator { [now] in now.value }
       $0.uuid = .incrementing
       $0.fileClient.info = { [missing] url in missing.value.contains(url) ? nil : FileInfo(size: 1_000, isDirectory: false) }
+      $0.fileClient.contents = { _ in [] }
       $0.fileClient.write = { [written] _, url in written.withValue { $0.append(url) } }
       $0.fileClient.copy = { [copied] _, url in copied.withValue { $0.append(url) } }
       $0.fileClient.remove = { [removed] url in removed.withValue { $0.append(url) } }
@@ -331,5 +332,52 @@ struct ShelfFeatureTests {
     #expect(!store.state.settings.passes(URL(fileURLWithPath: "/b/.App.ipa")))
     await store.send(.extensionsChanged(""))
     #expect(store.state.settings.passes(URL(fileURLWithPath: "/b/notes.txt")))
+  }
+
+  @Test
+  func rowsOfANewerVersionSurviveAndOrderIsKept() async throws {
+    try ShelfItem.migrator.migrate(database)
+    try await database.write { db in
+      try db.execute(sql: """
+        INSERT INTO shelf_item (id, content, addedAt, isPinned, position)
+        VALUES ('FUTURE', '{"future":{}}', '2026-10-04 10:00:00.000', 1, 0)
+        """)
+    }
+    let store = makeStore()
+    await start(store)
+    await store.send(.dropped([.file(Self.ipa)]))
+    await store.send(.dropped([.file(Self.apk)]))
+    await store.send(.removeTapped(uuid(0)))
+    await store.send(.stop)
+    await store.finish()
+    #expect(try await database.read { try String.fetchSet($0, sql: "SELECT id FROM shelf_item") } == [
+      "FUTURE", uuid(1).uuidString,
+    ])
+  }
+
+  @Test
+  func anUnreadableShelfIsLeftAloneAndDropsStillWork() async throws {
+    try await database.write { db in
+      try db.execute(sql: "CREATE TABLE shelf_item (id TEXT PRIMARY KEY)")
+    }
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loadFailed)
+    await store.receive(\.loaded)
+    await store.send(.dropped([.file(Self.ipa)]))
+    #expect(contents(store) == [.file(Self.ipa)])
+    #expect(!store.state.savesToDisk)
+    await store.send(.stop)
+  }
+
+  @Test
+  func copiesWithoutARowAreRemovedAtStart() async {
+    let orphan = ShelfItem.copiesFolder.appending(path: "ORPHAN")
+    let store = makeStore()
+    store.dependencies.fileClient.contents = { _ in [orphan] }
+    await start(store)
+    await store.send(.stop)
+    await store.finish()
+    #expect(removed.value == [orphan])
   }
 }

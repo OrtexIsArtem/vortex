@@ -27,8 +27,8 @@ enum WindowEvent: Equatable, Sendable {
   case menuBarIconClicked
   case filesDroppedOnMenuBarIcon([URL])
   case pointerInsideWindowChanged(isInside: Bool)
-  /// Something is being dragged out of the window, or the drag has ended.
-  case dragOutChanged(isDragging: Bool)
+  /// Something of Vortex's is in use outside the window (a drag out of it, Quick Look, the folder picker), or no more.
+  case outsideActivityChanged(isActive: Bool)
   case clickedOutside
   case escapePressed
   /// Sent when the events start and whenever displays change.
@@ -60,8 +60,10 @@ final class WindowController: NSObject {
   private var mainPanel: VortexPanel?
   private var ears: [CGDirectDisplayID: Ears] = [:]
   private var currentEars = NotchEars()
+  /// The last flash number seen per feature, see `NotchEars.shouldFlash`.
+  private var seenFlashes: [FeatureID: Int] = [:]
   private var indicatorsObservation: ObserveToken?
-  private var dragObservation: ObserveToken?
+  private var outsideActivityObservation: ObserveToken?
   private var menuBarItem: NSStatusItem?
   private var menuBarMenu: NSMenu?
   /// Off until the shell applies the user's setting, so a hidden icon never flashes at launch.
@@ -89,8 +91,8 @@ final class WindowController: NSObject {
     mainPanel = makeMainPanel(content: AnyView(content))
     rebuildEars()
     indicatorsObservation = observe { [weak self] in self?.indicatorsChanged() }
-    dragObservation = observe { [weak self] in
-      self?.dragOutChanged(DragSessions.shared.isDragging)
+    outsideActivityObservation = observe { [weak self] in
+      self?.outsideActivityChanged(OutsideActivity.shared.isActive)
     }
     screenObserver = NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification,
@@ -216,10 +218,10 @@ final class WindowController: NSObject {
     reduceMotion ? .easeIn(duration: 0.12) : .spring(response: 0.26, dampingFraction: 1)
   }
 
-  /// While a drag runs, tracking areas say nothing; once it ends, the pointer may be anywhere.
-  private func dragOutChanged(_ isDragging: Bool) {
-    emit(.dragOutChanged(isDragging: isDragging))
-    if !isDragging, let panel = mainPanel, panel.isVisible {
+  /// Tracking areas say nothing while a drag runs; once the activity ends, the pointer may be anywhere.
+  private func outsideActivityChanged(_ isActive: Bool) {
+    emit(.outsideActivityChanged(isActive: isActive))
+    if !isActive, let panel = mainPanel, panel.isVisible {
       emit(.pointerInsideWindowChanged(isInside: NSMouseInRect(NSEvent.mouseLocation, panel.frame, false)))
     }
   }
@@ -271,10 +273,14 @@ final class WindowController: NSObject {
 
   private func indicatorsChanged() {
     let newEars = NotchEars(indicators: indicators)
-    guard newEars != currentEars else { return }
-    currentEars = newEars
-    ears.values.forEach(layOut)
-    updateMenuBarTitle()
+    if newEars != currentEars {
+      currentEars = newEars
+      ears.values.forEach(layOut)
+      updateMenuBarTitle()
+    }
+    if NotchEars.shouldFlash(indicators, seen: &seenFlashes) {
+      ears.values.forEach { $0.model.flashes += 1 }
+    }
   }
 
   /// When the window closes under the pointer, the notch would report hover at once and open it again.

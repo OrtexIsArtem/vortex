@@ -34,6 +34,8 @@ extension DependencyValues {
 public final class QuickLook: NSObject {
   public static let shared = QuickLook()
   private var urls: [URL] = []
+  /// Between `beginControl` and `endControl`: the panel is showing Vortex's files.
+  private var isControlling = false
 
   /// Whether there is something to preview, for `acceptsPreviewPanelControl`.
   public var hasItems: Bool { !urls.isEmpty }
@@ -41,10 +43,16 @@ public final class QuickLook: NSObject {
   public func beginControl(_ panel: QLPreviewPanel) {
     panel.dataSource = self
     panel.reloadData()
+    guard !isControlling else { return }
+    isControlling = true
+    OutsideActivity.shared.begin()
   }
 
   public func endControl(_ panel: QLPreviewPanel) {
     panel.dataSource = nil
+    guard isControlling else { return }
+    isControlling = false
+    OutsideActivity.shared.end()
   }
 
   func toggle(_ urls: [URL]) {

@@ -22,6 +22,9 @@ public struct ShelfFeature: Sendable {
     /// Newest first.
     public var items: IdentifiedArrayOf<ShelfItem> = []
     var isLoaded = false
+    /// False when the saved shelf could not be read: this session keeps it in memory only, so nothing on disk is
+    /// overwritten.
+    var savesToDisk = true
     var isRunning = false
     /// Files that arrived before the shelf was loaded.
     var pending: [URL] = []
@@ -63,6 +66,7 @@ public struct ShelfFeature: Sendable {
     case start
     case stop
     case loaded([ShelfItem])
+    case loadFailed
     case dropped([DroppedItem])
     case filesReceived([URL])
     case copySaved(ShelfItem, isFresh: Bool)
@@ -109,11 +113,19 @@ public struct ShelfFeature: Sendable {
       case .start:
         state.isRunning = true
         guard state.isLoaded else {
-          return .run { send in
+          return .run { [files] send in
             try await database.migrate(ShelfItem.migrator)
-            await send(.loaded(try await database.read(ShelfItem.fetchAllReadable)))
-          } catch: { error, _ in
+            let (items, savedIDs) = try await database.read { db in
+              (try ShelfItem.fetchAllReadable(db), try ShelfItem.savedIDs(db))
+            }
+            // Copies whose rows are gone, after a crash or a failed save; before anything new is added.
+            for folder in await files.contents(ShelfItem.copiesFolder) where !savedIDs.contains(folder.lastPathComponent) {
+              await files.remove(folder)
+            }
+            await send(.loaded(items))
+          } catch: { error, send in
             logger.error("Loading the shelf failed: \(error, privacy: .public)")
+            await send(.loadFailed)
           }
           .cancellable(id: CancelID.load, cancelInFlight: true)
         }
@@ -135,6 +147,10 @@ public struct ShelfFeature: Sendable {
           checkExpiry(),
           watch(state)
         )
+
+      case .loadFailed:
+        state.savesToDisk = false
+        return .send(.loaded([]))
 
       case let .dropped(dropped):
         return add(dropped, isFresh: false, &state)
@@ -220,8 +236,7 @@ public struct ShelfFeature: Sendable {
         return save(state)
 
       case let .removeTapped(id):
-        let ids: Set<ShelfItem.ID> = state.selection.contains(id) ? state.selection : [id]
-        let removed = remove(ids, &state)
+        let removed = remove([id], &state)
         return .merge(deleteCopies(of: removed), save(state))
 
       case .clearTapped:
@@ -425,6 +440,7 @@ public struct ShelfFeature: Sendable {
 
   /// Writes the whole shelf; a newer save cancels an older one that has not finished.
   private func save(_ state: State) -> Effect<Action> {
+    guard state.savesToDisk else { return .none }
     let items = state.items.elements
     return .run { _ in
       try await database.write { db in try ShelfItem.save(items, in: db) }

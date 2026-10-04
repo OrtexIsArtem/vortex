@@ -31,7 +31,7 @@ public final class ShellController: NSObject {
     #endif
   }
 
-  /// Files opened with Vortex (`vortex shelf add`, Open With): they go to the feature that takes files.
+  /// Files opened with Vortex (`vortex shelf add`, `open -a Vortex`): they go to the feature that takes files.
   /// Works before `start()`, for files that launch the app.
   public func receiveFiles(_ urls: [URL]) {
     store.send(.filesReceived(urls))

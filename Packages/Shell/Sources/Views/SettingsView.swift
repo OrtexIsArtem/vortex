@@ -138,6 +138,18 @@ private struct ActivationSettings: View {
     ) {
       HotkeyRecorder(.openVortex, label: Text("Keyboard shortcut", bundle: .module))
     }
+    if !store.sidebarFeatures.isEmpty {
+      Text("Shortcuts that open Vortex right on a tab:", bundle: .module)
+        .font(.system(size: 11.5))
+        .foregroundStyle(VortexColor.tertiaryText)
+        .padding(.top, 14)
+        .padding(.bottom, 2)
+      ForEach(store.sidebarFeatures) { feature in
+        SettingsRow(title: Text(feature.title), symbol: feature.symbol) {
+          HotkeyRecorder(.open(feature.id), label: Text(feature.title))
+        }
+      }
+    }
 
     SettingsRow(title: Text("Close on click outside", bundle: .module), isOn: $store.settings.closeOnClickOutside)
 

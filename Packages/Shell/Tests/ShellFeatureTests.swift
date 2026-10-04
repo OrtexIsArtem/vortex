@@ -121,6 +121,26 @@ struct ShellFeatureTests {
     #expect(presented.value == [.hotkey, .menuBarIcon])
   }
 
+  @Test
+  func featureShortcutsOpenTheirTab() async {
+    let store = makeStore()
+    await store.send(.featureHotkeyPressed("tasks")) {
+      $0.openReason = .hotkey
+      $0.selectedTab = .feature("tasks")
+      $0.settings.lastTab = "feature:tasks"
+    }
+    await store.send(.featureHotkeyPressed("shelf")) {
+      $0.selectedTab = .feature("shelf")
+      $0.settings.lastTab = "feature:shelf"
+    }
+    await store.send(.featureHotkeyPressed("shelf")) { $0.openReason = nil }
+    await store.send(.featureEnabledChanged("timer", isEnabled: false)) { $0.settings.disabledFeatures = ["timer"] }
+    await store.send(.featureHotkeyPressed("timer"))
+    await clock.advance(by: .milliseconds(400))
+    await store.finish()
+    #expect(presented.value == [.hotkey])
+  }
+
   // MARK: - Closing
 
   @Test
@@ -195,18 +215,18 @@ struct ShellFeatureTests {
   }
 
   @Test
-  func draggingSomethingOutKeepsTheWindowOpenUntilTheDragEnds() async {
+  func activityOutsideKeepsTheWindowOpenUntilItEnds() async {
     let store = makeStore()
     await openByHover(store)
     await store.send(.window(.pointerInsideWindowChanged(isInside: true))) { $0.isPointerInsideWindow = true }
-    await store.send(.window(.dragOutChanged(isDragging: true))) { $0.isDraggingOut = true }
+    await store.send(.window(.outsideActivityChanged(isActive: true))) { $0.isHeldOpen = true }
     await store.send(.window(.pointerInsideWindowChanged(isInside: false))) { $0.isPointerInsideWindow = false }
     await store.send(.window(.clickedOutside))
     await clock.advance(by: .seconds(3))
     #expect(dismissals.value == 0)
 
-    // Dropped in another app: the usual leave delay starts.
-    await store.send(.window(.dragOutChanged(isDragging: false))) { $0.isDraggingOut = false }
+    // Dropped in another app, or Quick Look closed: the usual leave delay starts.
+    await store.send(.window(.outsideActivityChanged(isActive: false))) { $0.isHeldOpen = false }
     await store.send(.window(.pointerInsideWindowChanged(isInside: false)))
     await clock.advance(by: .milliseconds(500))
     await store.receive(\.pointerLeaveDelayElapsed) { $0.openReason = nil }

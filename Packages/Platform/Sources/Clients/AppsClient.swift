@@ -2,26 +2,52 @@ import AppKit
 import ComposableArchitecture
 import SwiftUI
 import UniformTypeIdentifiers
+import VortexCore
 
 /// Other apps on this Mac.
 @DependencyClient
 public struct AppsClient: Sendable {
-  /// Apps with a Dock icon that are running now, sorted by name.
+  /// Apps running now, with a Dock icon or in the menu bar, sorted by name; Vortex itself is left out.
   public var running: @Sendable () async -> [AppInfo] = { [] }
+  /// Asks the user to pick an app in /Applications; nil when they cancel.
+  public var choose: @Sendable () async -> AppInfo?
 }
 
 extension AppsClient: DependencyKey {
   public static let liveValue = AppsClient(
     running: {
       await MainActor.run {
-        var seen = Set<String>()
+        var seen: Set<String> = [Bundle.main.bundleIdentifier ?? ""]
         return NSWorkspace.shared.runningApplications
-          .filter { $0.activationPolicy == .regular }
+          .filter { $0.activationPolicy != .prohibited }
           .compactMap { app -> AppInfo? in
             guard let id = app.bundleIdentifier, seen.insert(id).inserted else { return nil }
             return AppInfo(bundleID: id, name: app.localizedName ?? id)
           }
           .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+      }
+    },
+    choose: {
+      await withCheckedContinuation { continuation in
+        Task { @MainActor in
+          let panel = NSOpenPanel()
+          panel.allowedContentTypes = [.application]
+          panel.directoryURL = URL(fileURLWithPath: "/Applications")
+          panel.allowsMultipleSelection = false
+          // Vortex has no Dock icon and its window floats above the menu bar: lift the panel over it.
+          panel.level = .aboveVortex
+          NSApp.activate()
+          OutsideActivity.shared.begin()
+          panel.begin { response in
+            OutsideActivity.shared.end()
+            guard response == .OK, let url = panel.url, let id = Bundle(url: url)?.bundleIdentifier else {
+              continuation.resume(returning: nil)
+              return
+            }
+            let name = FileManager.default.displayName(atPath: url.path)
+            continuation.resume(returning: AppInfo(bundleID: id, name: name.hasSuffix(".app") ? String(name.dropLast(4)) : name))
+          }
+        }
       }
     }
   )

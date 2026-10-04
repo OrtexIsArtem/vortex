@@ -6,15 +6,15 @@
 - Files win over the icon and name Finder copies with them; an image copied in a browser stays an image.
 - Copying something already in the history moves that item to the top instead of adding it again.
 - Ten items are kept; the oldest unpinned one goes when an eleventh arrives. Pinned items are not counted.
-- Copies from ignored apps are not recorded; what was recorded before stays.
-- Copies apps mark as transient or auto-generated are not recorded; what Vortex copies itself is not recorded again.
-- Copies marked secret (password managers) are recorded and shown as •••• until the eye is clicked.
+- Copies made while an ignored app was in front (since the previous check) are not recorded; what was recorded before stays.
+- Copies apps mark as transient or auto-generated (nspasteboard.org, text expanders) are not recorded; what Vortex copies itself is not recorded again.
+- Copies marked secret (password managers) are shown as •••• until the eye is clicked, kept in memory only and gone when Vortex quits; secret images are not recorded.
 - Text over 2 MB and images over 30 MB are not recorded.
 
 ## The tab
 - Pinned items come first, then the rest; newest first in both.
 - A card shows a preview, the app it was copied in and how long ago.
-- Clicking a card copies it again and moves it to the top; "Copied" shows for a moment.
+- Clicking a card copies it again, with the marks of the app it came from, and moves it to the top; "Copied" shows once it is on the pasteboard.
 - Dragging a card drops its text, link, image file or files into another app; the item stays in the history.
 - Hovering a card shows Pin and Delete; right click has Copy, Pin, Show in Finder (files) and Delete.
 - Clear removes everything except pinned items.

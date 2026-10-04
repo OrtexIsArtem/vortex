@@ -30,9 +30,11 @@ struct ClipboardFeatureTests {
       $0.date = DateGenerator { [now] in now.value }
       $0.uuid = .incrementing
       $0.pasteboardClient.copies = { [copies] in copies.stream }
-      $0.pasteboardClient.write = { [written] content, _ in written.withValue { $0.append(content) } }
+      $0.pasteboardClient.write = { [written] content, _, _ in written.withValue { $0.append(content) } }
+      $0.appsClient.running = { [] }
       $0.fileClient.write = { [savedFiles] _, url in savedFiles.withValue { $0.append(url) } }
       $0.fileClient.read = { _ in Data([1, 2, 3]) }
+      $0.fileClient.contents = { _ in [] }
       $0.fileClient.remove = { [removedFiles] url in removedFiles.withValue { $0.append(url) } }
       $0.fileClient.info = { [missingFiles] url in
         missingFiles.value.contains(url) ? nil : FileInfo(size: 1, isDirectory: false)
@@ -46,9 +48,14 @@ struct ClipboardFeatureTests {
     await store.receive(\.loaded) { $0.isLoaded = true }
   }
 
-  func copy(_ content: PasteboardContent, from source: AppInfo? = terminal, concealed: Bool = false) {
+  func copy(
+    _ content: PasteboardContent,
+    from source: AppInfo? = terminal,
+    concealed: Bool = false,
+    frontApps: Set<String> = []
+  ) {
     now.withValue { $0 += 60 }
-    copies.continuation.yield(PasteboardCopy(content: content, isConcealed: concealed, source: source))
+    copies.continuation.yield(PasteboardCopy(content: content, isConcealed: concealed, source: source, frontApps: frontApps))
   }
 
   func savedHistory() throws -> [ClipboardItem] {
@@ -128,11 +135,32 @@ struct ClipboardFeatureTests {
     }
     copy(.text("secret"), from: Self.passwords)
     await store.receive(\.copied)
+    // Copied in a password panel that handed the focus back before the pasteboard was checked.
+    copy(.text("secret 2"), from: Self.terminal, frontApps: [Self.passwords.bundleID, Self.terminal.bundleID])
+    await store.receive(\.copied)
     #expect(store.state.items.isEmpty)
     await store.send(.stopIgnoringAppTapped(bundleID: Self.passwords.bundleID)) {
       $0.$settings.withLock { $0.ignoredApps = [] }
     }
     await store.send(.stop)
+  }
+
+  @Test
+  func secretsAreKeptInMemoryOnly() async throws {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.text("hunter2"), concealed: true)
+    await store.receive(\.copied)
+    copy(.text("visible"))
+    await store.receive(\.copied)
+    copy(.image(Data([1])), concealed: true)
+    await store.receive(\.copied)
+    await store.send(.stop)
+    await store.finish()
+    #expect(store.state.items.map(\.content) == [.text("visible"), .text("hunter2")])
+    #expect(try savedHistory().map(\.content) == [.text("visible")])
+    #expect(savedFiles.value.isEmpty)
   }
 
   @Test
@@ -181,7 +209,8 @@ struct ClipboardFeatureTests {
     await store.receive(\.copied)
 
     now.withValue { $0 += 60 }
-    await store.send(.itemTapped(uuid(0))) { $0.justCopied = uuid(0) }
+    await store.send(.itemTapped(uuid(0)))
+    await store.receive(\.copiedAgain) { $0.justCopied = uuid(0) }
     #expect(store.state.items.map(\.content) == [.text("first"), .text("second")])
     await clock.advance(by: .seconds(1.2))
     await store.receive(\.copiedMarkElapsed) { $0.justCopied = nil }
@@ -240,6 +269,53 @@ struct ClipboardFeatureTests {
     #expect(relaunched.state.items.map(\.content) == [.text("kept")])
     #expect(relaunched.state.items.first?.isPinned == true)
     await relaunched.send(.stop)
+  }
+
+  @Test
+  func anUnreadableHistoryIsLeftAloneAndCopiesStillWork() async throws {
+    try await database.write { db in
+      try db.execute(sql: "CREATE TABLE clipboard_item (id TEXT PRIMARY KEY)")
+    }
+    let store = makeStore()
+    store.exhaustivity = .off
+    await store.send(.start)
+    await store.receive(\.loadFailed)
+    copy(.text("kept for this session"))
+    await store.receive(\.copied)
+    #expect(store.state.items.map(\.content) == [.text("kept for this session")])
+    #expect(!store.state.savesToDisk)
+    await store.send(.stop)
+  }
+
+  @Test
+  func imageFoldersWithoutARowAreRemovedAtStart() async throws {
+    let orphan = ClipboardItem.imagesFolder.appending(path: "ORPHAN")
+    let store = makeStore()
+    store.dependencies.fileClient.contents = { _ in [orphan] }
+    await start(store)
+    await store.send(.stop)
+    #expect(removedFiles.value == [orphan])
+  }
+
+  @Test
+  func rowsOfANewerVersionSurviveSaving() async throws {
+    try ClipboardItem.migrator.migrate(database)
+    try await database.write { db in
+      try db.execute(sql: """
+        INSERT INTO clipboard_item (id, content, copiedAt, isPinned, isConcealed, fingerprint)
+        VALUES ('FUTURE', '{"future":{}}', '2026-10-04 10:00:00.000', 1, 0, 'x')
+        """)
+    }
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.text("new"))
+    await store.receive(\.copied)
+    await store.send(.stop)
+    await store.finish()
+    #expect(try await database.read { try String.fetchAll($0, sql: "SELECT id FROM clipboard_item ORDER BY id") } == [
+      "00000000-0000-0000-0000-000000000000", "FUTURE",
+    ])
   }
 
   @Test

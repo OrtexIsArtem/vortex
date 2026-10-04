@@ -110,7 +110,7 @@ struct ShelfTile: View {
         }
       }
     case let .text(text):
-      Text(verbatim: text.trimmingCharacters(in: .whitespacesAndNewlines))
+      Text(verbatim: String(text.prefix(400)).trimmingCharacters(in: .whitespacesAndNewlines))
         .font(.system(size: 10.5, design: .monospaced))
         .foregroundStyle(VortexColor.secondaryText)
         .lineLimit(5)
@@ -134,7 +134,7 @@ struct ShelfTile: View {
     case .file, .copy:
       item.fileURL?.lastPathComponent ?? ""
     case let .text(text):
-      text.split(whereSeparator: \.isNewline).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+      text.prefix(200).split(whereSeparator: \.isNewline).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
     case let .link(url):
       url.host() ?? url.absoluteString
     }
@@ -183,7 +183,8 @@ struct ShelfTile: View {
     }
     Divider()
     Button {
-      send(.removeTapped(item.id))
+      // Like Finder: the menu of a selected item acts on the whole selection.
+      send(isSelected ? .removeSelectedPressed : .removeTapped(item.id))
     } label: {
       Text("Remove from the shelf", bundle: .module)
     }

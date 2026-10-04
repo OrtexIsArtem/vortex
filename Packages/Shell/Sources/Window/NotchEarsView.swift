@@ -10,6 +10,8 @@ final class EarsModel {
   var notchSize: CGSize = .zero
   var earWidth: CGFloat = 0
   var ears = NotchEars()
+  /// Grows by one for every flash, see `NotchIndicator.flash`.
+  var flashes = 0
 
   nonisolated init() {}
 }
@@ -17,7 +19,7 @@ final class EarsModel {
 /// The closed notch with the indicators of features on both sides of the cutout.
 struct NotchEarsView: View {
   let model: EarsModel
-  /// Brightness of the flash an indicator asks for, see `NotchIndicator.flash`.
+  /// Brightness of the flash an indicator asked for.
   @State private var flash = 0.0
 
   var body: some View {
@@ -44,8 +46,7 @@ struct NotchEarsView: View {
     }
     .environment(\.colorScheme, .dark)
     .accessibilityHidden(true)
-    .onChange(of: model.ears.flash) { old, new in
-      guard new > old else { return }
+    .onChange(of: model.flashes) {
       withAnimation(.easeOut(duration: 0.12)) {
         flash = 0.3
       } completion: {

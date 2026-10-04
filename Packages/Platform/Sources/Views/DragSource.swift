@@ -1,5 +1,5 @@
 import AppKit
-import Observation
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -8,20 +8,6 @@ public enum DragItem: Equatable, Sendable {
   case text(String)
   case link(URL)
   case file(URL)
-}
-
-/// Whether something is being dragged out of a Vortex window. The shell keeps the window open meanwhile.
-@MainActor
-@Observable
-public final class DragSessions {
-  public static let shared = DragSessions()
-  public private(set) var isDragging = false
-
-  nonisolated init() {}
-
-  fileprivate func setDragging(_ isDragging: Bool) {
-    self.isDragging = isDragging
-  }
 }
 
 /// A click on a `DragSourceArea`.
@@ -38,7 +24,7 @@ public struct DragSourceClick: Equatable, Sendable {
 /// The surface of something the user clicks and drags out of Vortex: a clipboard card, a shelf file.
 ///
 /// Lay it over the item's content, under its buttons. It reports hover and clicks, and drags `items()` into other
-/// apps, several at once if needed, telling `DragSessions` when a drag starts and ends. Right clicks go through to
+/// apps, several at once if needed, counting the drag as `OutsideActivity` while it lasts. Right clicks go through to
 /// the content, so a SwiftUI `contextMenu` on it still works. AppKit-backed: a SwiftUI drag carries one item and
 /// never says when it ends.
 public struct DragSourceArea: NSViewRepresentable {
@@ -119,7 +105,8 @@ public final class DragSourceView: NSView, NSDraggingSource {
   private func beginDrag(_ items: [DragItem], with event: NSEvent) {
     let location = convert(event.locationInWindow, from: nil)
     let draggingItems = items.enumerated().map { index, item in
-      let image = item.dragImage
+      // The first few show what they are; the rest stack under them, an icon is enough.
+      let image = item.dragImage(withPreview: index < 3)
       let offset = CGFloat(min(index, 4)) * 6
       let frame = CGRect(
         x: location.x - image.size.width / 2 + offset,
@@ -141,11 +128,11 @@ public final class DragSourceView: NSView, NSDraggingSource {
   }
 
   public func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
-    DragSessions.shared.setDragging(true)
+    OutsideActivity.shared.begin()
   }
 
   public func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
-    DragSessions.shared.setDragging(false)
+    OutsideActivity.shared.end()
   }
 }
 
@@ -160,7 +147,7 @@ extension DragItem {
   }
 
   @MainActor
-  fileprivate var dragImage: NSImage {
+  fileprivate func dragImage(withPreview: Bool) -> NSImage {
     let icon: NSImage
     switch self {
     case .text:
@@ -168,7 +155,7 @@ extension DragItem {
     case .link:
       icon = NSWorkspace.shared.icon(for: .internetShortcut)
     case let .file(url):
-      icon = Self.preview(ofImageAt: url) ?? NSWorkspace.shared.icon(forFile: url.path)
+      icon = (withPreview ? Self.preview(ofImageAt: url) : nil) ?? NSWorkspace.shared.icon(forFile: url.path)
     }
     // A copy: the workspace may hand out shared images.
     let image = icon.copy() as? NSImage ?? icon
@@ -178,13 +165,18 @@ extension DragItem {
     return image
   }
 
-  /// The picture itself for image files small enough to read at once.
+  /// A small picture of an image file, decoded at drag size rather than in full.
   @MainActor
   private static func preview(ofImageAt url: URL) -> NSImage? {
-    guard let values = try? url.resourceValues(forKeys: [.contentTypeKey, .fileSizeKey]),
-          values.contentType?.conforms(to: .image) == true, (values.fileSize ?? .max) < 20_000_000
+    guard (try? url.resourceValues(forKeys: [.contentTypeKey]))?.contentType?.conforms(to: .image) == true,
+          let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+          let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 112,
+          ] as CFDictionary)
     else { return nil }
-    return NSImage(contentsOf: url)
+    return NSImage(cgImage: thumbnail, size: .zero)
   }
 }
 

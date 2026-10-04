@@ -79,6 +79,7 @@ public struct ClipboardCopy: Equatable, Sendable {
 // MARK: - Database
 
 /// The history is a single table, `clipboard_item`, saved whole after every change: it holds a few dozen rows.
+/// Rows this version can't read (written by a newer Vortex) are left as they are.
 extension ClipboardItem: Codable, FetchableRecord, PersistableRecord {
   public static let databaseTableName = "clipboard_item"
   public static func databaseUUIDEncodingStrategy(for column: String) -> DatabaseUUIDEncodingStrategy {
@@ -107,11 +108,21 @@ extension ClipboardItem: Codable, FetchableRecord, PersistableRecord {
     try Row.fetchAll(db, sql: "SELECT * FROM \(databaseTableName)").compactMap { try? ClipboardItem(row: $0) }
   }
 
-  /// Replaces the saved history with `items`.
+  /// Ids of every saved row, readable or not.
+  static func savedIDs(_ db: Database) throws -> Set<String> {
+    try String.fetchSet(db, sql: "SELECT id FROM \(databaseTableName)")
+  }
+
+  /// Makes the saved history match `items`: writes them and deletes the other rows this version can read.
   static func save(_ items: [ClipboardItem], in db: Database) throws {
-    try deleteAll(db)
+    let kept = Set(items.map(\.id.uuidString))
+    for id in try savedIDs(db) where !kept.contains(id) {
+      let row = try Row.fetchOne(db, sql: "SELECT * FROM \(databaseTableName) WHERE id = ?", arguments: [id])
+      guard let row, (try? ClipboardItem(row: row)) != nil else { continue }
+      try db.execute(sql: "DELETE FROM \(databaseTableName) WHERE id = ?", arguments: [id])
+    }
     for item in items {
-      try item.insert(db)
+      try item.upsert(db)
     }
   }
 }

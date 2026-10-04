@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     shell?.start()
   }
 
-  /// `vortex shelf add <files>` and Open With: the files go to the shelf.
+  /// `vortex shelf add <files>` and `open -a Vortex <files>`: the files go to the shelf.
   func application(_ application: NSApplication, open urls: [URL]) {
     shell?.receiveFiles(urls.filter(\.isFileURL))
   }
