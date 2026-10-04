@@ -19,6 +19,8 @@ public enum VortexDatabase {
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     var configuration = Configuration()
     configuration.label = "Vortex"
+    // A debug and a release Vortex may run side by side on the same file: wait for the other one's write.
+    configuration.busyMode = .timeout(5)
     return try DatabasePool(path: url.path, configuration: configuration)
   }
 

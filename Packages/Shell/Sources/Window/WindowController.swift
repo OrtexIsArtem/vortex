@@ -358,7 +358,8 @@ final class WindowController: NSObject {
 
 // MARK: - Files dropped on the menu bar icon
 
-extension WindowController: NSWindowDelegate {
+// NSDraggingDestination makes these visible to the icon's window, which forwards drags to its delegate.
+extension WindowController: NSWindowDelegate, NSDraggingDestination {
   func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
     guard acceptsFiles, !Self.fileURLs(in: sender).isEmpty else { return [] }
     menuBarItem?.button?.highlight(true)

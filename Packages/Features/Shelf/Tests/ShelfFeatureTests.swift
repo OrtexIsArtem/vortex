@@ -103,9 +103,31 @@ struct ShelfFeatureTests {
   }
 
   @Test
+  func dropsBeforeLoadingWaitAndKeepTheSavedShelf() async throws {
+    let store = makeStore()
+    await start(store)
+    await store.send(.dropped([.file(Self.ipa), .file(Self.apk)]))
+    await store.send(.stop)
+    await store.finish()
+
+    let relaunched = makeStore()
+    relaunched.dependencies.uuid = UUIDGenerator { UUID() }
+    await relaunched.send(.dropped([.file(Self.notes)]))
+    await relaunched.send(.removeSelectedPressed)
+    await relaunched.send(.start)
+    await relaunched.receive(\.loaded)
+    #expect(contents(relaunched) == [.file(Self.notes), .file(Self.ipa), .file(Self.apk)])
+    await relaunched.send(.stop)
+    await relaunched.finish()
+    #expect(try await database.read(ShelfItem.fetchAllReadable).map(\.content) == contents(relaunched))
+  }
+
+  @Test
   func filesThatArriveBeforeLoadingWait() async {
     let store = makeStore()
-    await store.send(.filesReceived([Self.ipa])) { $0.pending = [Self.ipa] }
+    await store.send(.filesReceived([Self.ipa])) {
+      $0.pending = [ShelfFeature.State.Arrival(items: [.file(Self.ipa)], isFresh: true)]
+    }
     await store.send(.start)
     await store.receive(\.loaded)
     #expect(contents(store) == [.file(Self.ipa)])
@@ -117,10 +139,11 @@ struct ShelfFeatureTests {
   func imagesWithoutFilesAndVortexFilesAreKeptAsCopies() async {
     let store = makeStore()
     await start(store)
-    await store.send(.dropped([.image(Data([1, 2, 3]))]))
+    await store.send(.dropped([.image(Data([1, 2, 3]), fileExtension: "jpeg")]))
     await store.receive(\.copySaved)
     let image = store.state.items.first
     #expect(image?.fileURL?.lastPathComponent.hasPrefix("Image ") == true)
+    #expect(image?.fileURL?.pathExtension == "jpeg")
     #expect(written.value == [image?.fileURL])
 
     let clipboardImage = DataFolder.url.appending(path: "Clipboard/ABC/Image.png")
@@ -143,7 +166,7 @@ struct ShelfFeatureTests {
     let store = makeStore()
     await start(store)
     await store.send(.dropped([.file(Self.ipa)]))
-    await store.send(.dropped([.image(Data([1]))]))
+    await store.send(.dropped([.image(Data([1]), fileExtension: "png")]))
     await store.receive(\.copySaved)
     await store.send(.dropped([.file(Self.notes)]))
     await store.send(.pinTapped(uuid(2)))
@@ -283,9 +306,12 @@ struct ShelfFeatureTests {
     sizes.setValue([Self.ipa: 10, Self.notes: 5])
     changes.continuation.yield(Self.notes)
     changes.continuation.yield(Self.ipa)
-    await Task.megaYield()
+    await store.receive(\.watchedFileChanged)
+    await store.receive(\.watchedFileChanged)
+    #expect(store.state.waitingFiles == [Self.ipa])
     await clock.advance(by: ShelfFeature.settleInterval)
     sizes.setValue([Self.ipa: 20, Self.notes: 5])
+    await clock.advance(by: ShelfFeature.settleInterval)
     await clock.advance(by: ShelfFeature.settleInterval)
     #expect(store.state.items.isEmpty)
     await clock.advance(by: ShelfFeature.settleInterval)
@@ -293,13 +319,15 @@ struct ShelfFeatureTests {
     #expect(contents(store) == [.file(Self.ipa)])
     #expect(store.state.fresh == [uuid(0)])
     #expect(store.state.flashes == 1)
+    #expect(store.state.waitingFiles.isEmpty)
     await store.send(.stop)
   }
 
   @Test
-  func aChangeStartsTheWaitOverAndVanishedFilesAreSkipped() async {
+  func aChangeStartsTheWaitOverAndVanishedOrEmptyFilesAreSkipped() async {
     let changes = AsyncStream.makeStream(of: URL.self)
-    let sizes = LockIsolated<[URL: Int64]>([Self.apk: 7])
+    let empty = URL(fileURLWithPath: "/Users/me/Builds/placeholder.zip")
+    let sizes = LockIsolated<[URL: Int64]>([Self.apk: 7, empty: 0])
     let store = makeStore()
     store.dependencies.fileClient.changes = { [changes] _ in changes.stream }
     store.dependencies.fileClient.info = { [sizes] url in sizes.value[url].map { FileInfo(size: $0, isDirectory: false) } }
@@ -307,18 +335,39 @@ struct ShelfFeatureTests {
     await start(store)
 
     let temporary = URL(fileURLWithPath: "/Users/me/Builds/app.apk.tmp.apk")
-    changes.continuation.yield(temporary)
-    changes.continuation.yield(Self.apk)
-    await Task.megaYield()
+    for url in [temporary, empty, Self.apk] {
+      changes.continuation.yield(url)
+      await store.receive(\.watchedFileChanged)
+    }
     await clock.advance(by: ShelfFeature.settleInterval)
+    await store.receive(\.watchedFileGone)
     changes.continuation.yield(Self.apk)
-    await Task.megaYield()
+    await store.receive(\.watchedFileChanged)
+    await clock.advance(by: ShelfFeature.settleInterval)
+    await store.receive(\.watchedFileGone)
     await clock.advance(by: ShelfFeature.settleInterval)
     #expect(store.state.items.isEmpty)
     await clock.advance(by: ShelfFeature.settleInterval)
     await store.receive(\.watchedFileWritten)
     #expect(contents(store) == [.file(Self.apk)])
+    #expect(store.state.waitingFiles.isEmpty)
     await store.send(.stop)
+  }
+
+  @Test
+  func stoppingCancelsTheWaits() async {
+    let changes = AsyncStream.makeStream(of: URL.self)
+    let store = makeStore()
+    store.dependencies.fileClient.changes = { [changes] _ in changes.stream }
+    store.dependencies.fileClient.info = { _ in FileInfo(size: 7, isDirectory: false) }
+    await store.send(.folderChosen(URL(fileURLWithPath: "/Users/me/Builds")))
+    await start(store)
+    changes.continuation.yield(Self.apk)
+    await store.receive(\.watchedFileChanged)
+    await store.send(.stop) { $0.waitingFiles = [] }
+    await clock.advance(by: .seconds(10))
+    await store.finish()
+    #expect(store.state.items.isEmpty)
   }
 
   @Test

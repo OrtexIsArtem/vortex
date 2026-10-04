@@ -1,3 +1,4 @@
+import AppKit
 import ComposableArchitecture
 import Foundation
 import Testing
@@ -409,5 +410,14 @@ struct ShellFeatureTests {
     store.dependencies.launchAtLoginClient.setEnabled = { _ in .requiresApproval }
     await store.send(.launchAtLoginChanged(true))
     await store.receive(\.launchAtLoginStatusLoaded) { $0.launchAtLogin = .requiresApproval }
+  }
+
+  @Test
+  func theMenuBarIconWindowCanHandDropsToTheController() {
+    // The icon's window forwards drags only to a delegate that answers these selectors.
+    let controller = WindowController.shared
+    #expect(controller.responds(to: #selector(NSDraggingDestination.draggingEntered(_:))))
+    #expect(controller.responds(to: #selector(NSDraggingDestination.draggingExited(_:))))
+    #expect(controller.responds(to: #selector(NSDraggingDestination.performDragOperation(_:))))
   }
 }

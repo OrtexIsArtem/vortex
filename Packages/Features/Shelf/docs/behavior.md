@@ -6,13 +6,14 @@
 - Those files get a dot until the user leaves the tab, and the notch flashes once.
 - Files and folders are kept by reference; images without a file are saved as PNG copies.
 - Files from Vortex's own data folder (a clipboard image) are copied, since they could go away with their owner.
-- Something already on the shelf moves to the front instead of being added again.
-- Files that arrive before the shelf has loaded wait and are added right after.
+- The same file, folder, text or link moves to the front instead of being added again; images without a file are added each time.
+- Whatever arrives before the shelf has loaded waits and is added right after, so the saved shelf is never overwritten.
 
 ## Watched folder
 - New or changed files of the chosen types anywhere in the watched folder land on the shelf, marked with a dot; the notch flashes.
-- A file lands once it is fully written: its size has stayed the same for 1.5 s and it changed no more meanwhile.
-- Files that vanish while being written (temporary files renamed by the build tool) are skipped; hidden files too.
+- A file lands once it is fully written: its size stayed the same over two checks a second apart, with no change meanwhile.
+- Files of a folder moved in land too. Hidden files and folders, and the insides of packages (apps, partial downloads), are skipped.
+- Files that vanish while being written (temporary files renamed by the build tool) and empty files that stay empty are skipped.
 - Files already in the folder are not added; watching runs only while the feature is on.
 
 ## On the shelf

@@ -63,7 +63,7 @@ let package = Package(
     ),
     .testTarget(
       name: "VortexPlatformTests",
-      dependencies: ["VortexPlatform"],
+      dependencies: ["VortexPlatform", composableArchitecture],
       path: "Platform/Tests"
     ),
     .target(

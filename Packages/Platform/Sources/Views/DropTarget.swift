@@ -5,8 +5,8 @@ import UniformTypeIdentifiers
 /// Something dropped on a Vortex window from another app.
 public enum DroppedItem: Equatable, Sendable {
   case file(URL)
-  /// PNG data of an image dragged without a file, such as an image from a web page.
-  case image(Data)
+  /// An image dragged without a file, such as one from a web page, as the other app offered it.
+  case image(Data, fileExtension: String)
   case link(URL)
   case text(String)
 }
@@ -31,7 +31,6 @@ extension View {
 @MainActor
 enum DropReader {
   static let types: [UTType] = [.fileURL, .image, .url, .plainText]
-  private static let imageTypes: [UTType] = [.png, .tiff, .jpeg, .heic, .image]
 
   static func items(from providers: [NSItemProvider]) async -> [DroppedItem] {
     var items: [DroppedItem] = []
@@ -49,11 +48,10 @@ enum DropReader {
        let url = URL(dataRepresentation: data, relativeTo: nil), url.isFileURL {
       return .file(url)
     }
-    for type in imageTypes {
-      if let data = await data(of: type, from: provider) {
-        let png = type == .png ? data : NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:])
-        if let png { return .image(png) }
-      }
+    // The image as the other app offers it: converting it would take the main thread and spoil JPEGs and GIFs.
+    let imageType = provider.registeredTypeIdentifiers.lazy.compactMap { UTType($0) }.first { $0.conforms(to: .image) }
+    if let imageType, let data = await data(of: imageType, from: provider) {
+      return .image(data, fileExtension: imageType.preferredFilenameExtension ?? "png")
     }
     if let data = await data(of: .url, from: provider),
        let url = URL(dataRepresentation: data, relativeTo: nil), !url.isFileURL {

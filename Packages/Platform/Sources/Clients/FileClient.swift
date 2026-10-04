@@ -35,8 +35,9 @@ public struct FileClient: Sendable {
   public var open: @Sendable (_ url: URL) async -> Void
   /// Asks the user to pick a folder; nil when they cancel.
   public var chooseFolder: @Sendable () async -> URL?
-  /// Files created, changed or renamed inside the folder and its subfolders, as the system reports them.
-  /// A file being written is reported several times. Ending the stream stops watching.
+  /// Files created, changed or renamed inside the folder and its subfolders, as the system reports them, and the
+  /// files of a folder moved in. Hidden files and folders, and whatever sits inside packages (apps, partial Safari
+  /// downloads) are left out. A file being written may be reported several times. Ending the stream stops watching.
   public var changes: @Sendable (_ folder: URL) -> AsyncStream<URL> = { _ in .finished }
 }
 
@@ -115,15 +116,20 @@ extension DependencyValues {
 
 /// Reports changed files under a folder through FSEvents, on a background queue.
 private final class FolderWatcher: @unchecked Sendable {
+  /// Files of a folder moved in that are reported at most; more would be someone moving a whole project in.
+  private static let maxFilesPerFolder = 1_000
   private let folder: URL
   private let onChange: @Sendable (URL) -> Void
   private let queue = DispatchQueue(label: "io.github.ortexisartem.vortex.folder-watcher", qos: .utility)
+  /// The watched folder as FSEvents spells paths, with symbolic links resolved.
+  private let root: String
   /// Set once by `start`, then touched only on `queue`.
   private var stream: FSEventStreamRef?
 
   init(folder: URL, onChange: @escaping @Sendable (URL) -> Void) {
     self.folder = folder
     self.onChange = onChange
+    root = folder.resolvingSymlinksInPath().path
   }
 
   /// False when the folder can't be watched, for example when it does not exist.
@@ -139,13 +145,8 @@ private final class FolderWatcher: @unchecked Sendable {
       guard let info else { return }
       let watcher = Unmanaged<FolderWatcher>.fromOpaque(info).takeUnretainedValue()
       let paths = unsafeBitCast(paths, to: NSArray.self) as? [String] ?? []
-      let interesting = FSEventStreamEventFlags(
-        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemModified | kFSEventStreamEventFlagItemRenamed
-      )
       for index in 0..<min(count, paths.count) {
-        let flag = flags[index]
-        guard flag & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsFile) != 0, flag & interesting != 0 else { continue }
-        watcher.onChange(URL(fileURLWithPath: paths[index]))
+        watcher.handle(path: paths[index], flags: flags[index])
       }
     }
     let flags = FSEventStreamCreateFlags(
@@ -165,6 +166,48 @@ private final class FolderWatcher: @unchecked Sendable {
     }
     self.stream = stream
     return true
+  }
+
+  private func handle(path: String, flags: FSEventStreamEventFlags) {
+    let isFile = flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsFile) != 0
+    let isFolder = flags & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsDir) != 0
+    let changed = flags & FSEventStreamEventFlags(
+      kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemModified | kFSEventStreamEventFlagItemRenamed
+    ) != 0
+    guard changed, isFile || isFolder, !isHiddenOrPackaged(path) else { return }
+    let url = URL(fileURLWithPath: path)
+    if isFile {
+      onChange(url)
+      return
+    }
+    // A folder moved in brings files the system reports nothing about.
+    guard let files = FileManager.default.enumerator(
+      at: url,
+      includingPropertiesForKeys: [.isRegularFileKey],
+      options: [.skipsHiddenFiles, .skipsPackageDescendants]
+    ) else { return }
+    var reported = 0
+    for case let file as URL in files where reported < Self.maxFilesPerFolder {
+      guard (try? file.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+      onChange(file)
+      reported += 1
+    }
+  }
+
+  /// Whether the path, below the watched folder, is hidden or inside a package such as an app or a `.download`.
+  private func isHiddenOrPackaged(_ path: String) -> Bool {
+    guard path.hasPrefix(root + "/") else { return false }
+    var partial = root
+    let components = path.dropFirst(root.count + 1).split(separator: "/")
+    for (index, component) in components.enumerated() {
+      if component.hasPrefix(".") { return true }
+      partial += "/" + component
+      let isLast = index == components.count - 1
+      if !isLast, (try? URL(fileURLWithPath: partial).resourceValues(forKeys: [.isPackageKey]))?.isPackage == true {
+        return true
+      }
+    }
+    return false
   }
 
   func stop() {

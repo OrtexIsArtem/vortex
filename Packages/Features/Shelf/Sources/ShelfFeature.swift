@@ -14,8 +14,8 @@ public struct ShelfFeature: Sendable {
   /// Unpinned items leave the shelf this long after they were added.
   static let lifetime: TimeInterval = 24 * 60 * 60
   static let expiryCheckInterval: Duration = .seconds(600)
-  /// A file in the watched folder counts as written once its size stays the same this long.
-  static let settleInterval: Duration = .milliseconds(1500)
+  /// A file in the watched folder counts as written once its size has stayed the same for two checks this far apart.
+  static let settleInterval: Duration = .seconds(1)
 
   @ObservableState
   public struct State: Equatable {
@@ -26,8 +26,10 @@ public struct ShelfFeature: Sendable {
     /// overwritten.
     var savesToDisk = true
     var isRunning = false
-    /// Files that arrived before the shelf was loaded.
-    var pending: [URL] = []
+    /// What arrived before the shelf was loaded; added right after, so nothing overwrites the saved shelf.
+    var pending: [Arrival] = []
+    /// Files in the watched folder that are still being written.
+    var waitingFiles: Set<URL> = []
     var selection: Set<ShelfItem.ID> = []
     /// Where a shift-click selection starts.
     var selectionAnchor: ShelfItem.ID?
@@ -54,6 +56,12 @@ public struct ShelfFeature: Sendable {
     func dragItems(startingAt id: ShelfItem.ID) -> [DragItem] {
       let ids = selection.contains(id) ? items.ids.filter(selection.contains) : [id]
       return ids.compactMap { items[id: $0] }.filter { !unavailable.contains($0.id) }.map(\.dragItem)
+    }
+
+    /// Things put on the shelf together, by the user (dropped on the tab) or by themselves.
+    public struct Arrival: Equatable, Sendable {
+      var items: [DroppedItem]
+      var isFresh: Bool
     }
 
     /// Files of the selected items that are still there.
@@ -84,7 +92,9 @@ public struct ShelfFeature: Sendable {
     case pinTapped(ShelfItem.ID)
     case removeTapped(ShelfItem.ID)
     case clearTapped
+    case watchedFileChanged(URL)
     case watchedFileWritten(URL)
+    case watchedFileGone(URL)
     case chooseFolderTapped
     case folderChosen(URL?)
     case stopWatchingTapped
@@ -98,11 +108,12 @@ public struct ShelfFeature: Sendable {
   @Dependency(\.quickLookClient) var quickLook
   @Dependency(\.uuid) var uuid
 
-  private enum CancelID {
+  private enum CancelID: Hashable {
     case load
     case expiry
     case save
     case watch
+    case wait(URL)
   }
 
   public init() {}
@@ -133,7 +144,7 @@ public struct ShelfFeature: Sendable {
 
       case .stop:
         state.isRunning = false
-        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.expiry), .cancel(id: CancelID.watch))
+        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.expiry), stopWatching(&state))
 
       case let .loaded(items):
         state.items = IdentifiedArray(items, uniquingIDsWith: { first, _ in first })
@@ -141,11 +152,9 @@ public struct ShelfFeature: Sendable {
         let pending = state.pending
         state.pending = []
         return .merge(
-          loadInfo(for: state.items.elements),
-          removeExpired(&state),
-          add(pending.map(DroppedItem.file), isFresh: true, &state),
-          checkExpiry(),
-          watch(state)
+          [loadInfo(for: state.items.elements), removeExpired(&state)]
+            + pending.map { add($0.items, isFresh: $0.isFresh, &state) }
+            + [checkExpiry(), watch(state)]
         )
 
       case .loadFailed:
@@ -153,11 +162,15 @@ public struct ShelfFeature: Sendable {
         return .send(.loaded([]))
 
       case let .dropped(dropped):
+        guard state.isLoaded else {
+          state.pending.append(State.Arrival(items: dropped, isFresh: false))
+          return .none
+        }
         return add(dropped, isFresh: false, &state)
 
       case let .filesReceived(urls):
         guard state.isLoaded else {
-          state.pending.append(contentsOf: urls)
+          state.pending.append(State.Arrival(items: urls.map(DroppedItem.file), isFresh: true))
           return .none
         }
         return add(urls.map(DroppedItem.file), isFresh: true, &state)
@@ -223,6 +236,7 @@ public struct ShelfFeature: Sendable {
         return .send(.quickLookPressed)
 
       case .removeSelectedPressed:
+        guard !state.selection.isEmpty else { return .none }
         let removed = remove(state.selection, &state)
         return .merge(deleteCopies(of: removed), save(state))
 
@@ -243,9 +257,24 @@ public struct ShelfFeature: Sendable {
         let removed = remove(Set(state.items.filter { !$0.isPinned }.ids), &state)
         return .merge(deleteCopies(of: removed), save(state))
 
+      case let .watchedFileChanged(url):
+        guard state.isRunning, state.settings.passes(url) else { return .none }
+        // Every change starts the wait for that file over.
+        state.waitingFiles.insert(url)
+        return .run { [files, clock] send in
+          let isWritten = await Self.waitUntilWritten(url, files: files, clock: clock)
+          await send(isWritten ? .watchedFileWritten(url) : .watchedFileGone(url))
+        }
+        .cancellable(id: CancelID.wait(url), cancelInFlight: true)
+
       case let .watchedFileWritten(url):
+        state.waitingFiles.remove(url)
         guard state.isRunning else { return .none }
         return add([.file(url)], isFresh: true, &state)
+
+      case let .watchedFileGone(url):
+        state.waitingFiles.remove(url)
+        return .none
 
       case .chooseFolderTapped:
         return .run { [files] send in await send(.folderChosen(await files.chooseFolder())) }
@@ -253,11 +282,11 @@ public struct ShelfFeature: Sendable {
       case let .folderChosen(folder):
         guard let folder else { return .none }
         state.$settings.withLock { $0.watchedFolder = folder }
-        return watch(state)
+        return .merge(stopWatching(&state), watch(state))
 
       case .stopWatchingTapped:
         state.$settings.withLock { $0.watchedFolder = nil }
-        return .cancel(id: CancelID.watch)
+        return stopWatching(&state)
 
       case let .extensionsChanged(text):
         state.$settings.withLock { $0.watchedExtensions = ShelfSettings.extensions(from: text) }
@@ -299,9 +328,10 @@ public struct ShelfFeature: Sendable {
         let item = ShelfItem(id: uuid(), content: .copy(fileName: url.lastPathComponent), addedAt: now)
         copies.append(saveCopy(item, isFresh: isFresh) { [files] destination in try await files.copy(url, destination) })
         continue
-      case let .image(png):
-        let item = ShelfItem(id: uuid(), content: .copy(fileName: Self.imageFileName(addedAt: now)), addedAt: now)
-        copies.append(saveCopy(item, isFresh: isFresh) { [files] destination in try await files.write(png, destination) })
+      case let .image(data, fileExtension):
+        let name = Self.imageFileName(addedAt: now, fileExtension: fileExtension)
+        let item = ShelfItem(id: uuid(), content: .copy(fileName: name), addedAt: now)
+        copies.append(saveCopy(item, isFresh: isFresh) { [files] destination in try await files.write(data, destination) })
         continue
       case let .text(text):
         content = .text(text)
@@ -318,7 +348,7 @@ public struct ShelfFeature: Sendable {
       item.addedAt = now
       front.append(item)
     }
-    state.items = IdentifiedArray(uniqueElements: front + state.items.elements)
+    state.items = IdentifiedArray(front + state.items.elements, uniquingIDsWith: { first, _ in first })
     if isFresh { arrived(added.map(\.id) + moved, &state) }
     return .merge([loadInfo(for: added), save(state)] + copies)
   }
@@ -365,29 +395,31 @@ public struct ShelfFeature: Sendable {
     return .merge(deleteCopies(of: removed), save(state))
   }
 
-  /// Watches the folder from the settings, if any. A new file lands on the shelf once it is fully written:
-  /// every change starts the wait for that file over.
+  /// Watches the folder from the settings, if any; each change goes through `watchedFileChanged`.
   private func watch(_ state: State) -> Effect<Action> {
     guard state.isRunning, state.isLoaded, let folder = state.settings.watchedFolder else {
       return .cancel(id: CancelID.watch)
     }
-    return .run { [files, clock, settings = state.$settings] send in
-      var waits: [URL: Task<Void, Never>] = [:]
-      defer { waits.values.forEach { $0.cancel() } }
-      for await url in files.changes(folder) where settings.wrappedValue.passes(url) {
-        waits[url]?.cancel()
-        waits[url] = Task {
-          guard await Self.waitUntilWritten(url, files: files, clock: clock) else { return }
-          await send(.watchedFileWritten(url))
-        }
+    return .run { [files] send in
+      for await url in files.changes(folder) {
+        await send(.watchedFileChanged(url))
       }
     }
     .cancellable(id: CancelID.watch, cancelInFlight: true)
   }
 
-  /// True once the file keeps the same size for `settleInterval`; false when it goes away or the wait is cancelled.
+  /// Stops watching the folder and every wait for a file in it.
+  private func stopWatching(_ state: inout State) -> Effect<Action> {
+    let waits = state.waitingFiles.map { Effect<Action>.cancel(id: CancelID.wait($0)) }
+    state.waitingFiles = []
+    return .merge([.cancel(id: CancelID.watch)] + waits)
+  }
+
+  /// True once the file's size stays the same for two checks `settleInterval` apart; false when it goes away,
+  /// stays empty, or the wait is cancelled.
   static func waitUntilWritten(_ url: URL, files: FileClient, clock: any Clock<Duration>) async -> Bool {
     var lastSize: Int64?
+    var steadyChecks = 0
     while true {
       do {
         try await clock.sleep(for: settleInterval)
@@ -395,7 +427,14 @@ public struct ShelfFeature: Sendable {
         return false
       }
       guard let info = await files.info(url), !info.isDirectory, let size = info.size else { return false }
-      if size > 0, size == lastSize { return true }
+      if size == lastSize {
+        // An empty file that stays empty is a placeholder, not a build.
+        if size == 0 { return false }
+        steadyChecks += 1
+        if steadyChecks == 2 { return true }
+      } else {
+        steadyChecks = 0
+      }
       lastSize = size
     }
   }
@@ -438,9 +477,10 @@ public struct ShelfFeature: Sendable {
     }
   }
 
-  /// Writes the whole shelf; a newer save cancels an older one that has not finished.
+  /// Writes the whole shelf; a newer save cancels an older one that has not finished. Never before the saved shelf
+  /// has been read, which would overwrite it.
   private func save(_ state: State) -> Effect<Action> {
-    guard state.savesToDisk else { return .none }
+    guard state.isLoaded, state.savesToDisk else { return .none }
     let items = state.items.elements
     return .run { _ in
       try await database.write { db in try ShelfItem.save(items, in: db) }
@@ -451,11 +491,11 @@ public struct ShelfFeature: Sendable {
   }
 
   /// "Image 2026-10-04 at 14.03.12.png": the name an image dropped without a file gets.
-  static func imageFileName(addedAt date: Date) -> String {
+  static func imageFileName(addedAt date: Date, fileExtension: String) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-    return "Image \(formatter.string(from: date)).png"
+    return "Image \(formatter.string(from: date)).\(fileExtension)"
   }
 }
 
