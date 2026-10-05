@@ -16,6 +16,8 @@
 - Files that vanish while being written (temporary files renamed by the build tool) and empty files that stay empty are skipped.
 - Files already in a folder are not added; watching runs only while the feature is on.
 
+- The empty shelf offers Watch a folder… and names the folders it already watches.
+
 ## On the shelf
 - Newest first. A tile shows a preview (Quick Look thumbnail, or the extension), the name, size or "Folder", and age.
 - Click selects, ⌘-click adds or removes, ⇧-click selects a range, a click on empty space clears the selection.

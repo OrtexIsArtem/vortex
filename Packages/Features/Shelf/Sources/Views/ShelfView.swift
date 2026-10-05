@@ -18,7 +18,12 @@ public struct ShelfView: View {
     VStack(alignment: .leading, spacing: 0) {
       header
       if store.items.isEmpty {
-        EmptyShelf(isTargeted: isTargeted)
+        EmptyShelf(
+          isTargeted: isTargeted,
+          watchedFolders: store.settings.watchedFolders.map(\.folder)
+        ) {
+          store.send(.chooseFolderTapped)
+        }
       } else {
         ScrollView {
           TimelineView(.everyMinute) { timeline in
@@ -122,9 +127,11 @@ public struct ShelfView: View {
   }
 }
 
-/// The whole tab is a drop zone while the shelf is empty.
+/// The whole tab is a drop zone while the shelf is empty; it also offers to watch a folder for new builds.
 private struct EmptyShelf: View {
   let isTargeted: Bool
+  let watchedFolders: [URL]
+  let watchFolder: () -> Void
 
   var body: some View {
     VStack(spacing: 6) {
@@ -145,6 +152,19 @@ private struct EmptyShelf: View {
         .foregroundStyle(VortexColor.tertiaryText)
         .multilineTextAlignment(.center)
         .frame(maxWidth: 360)
+      if !watchedFolders.isEmpty {
+        Text("New files from \(watchedFolders.map(\.lastPathComponent).formatted(.list(type: .and))) appear here by themselves.", bundle: .module)
+          .font(.system(size: 11.5))
+          .foregroundStyle(VortexColor.tertiaryText)
+          .multilineTextAlignment(.center)
+          .frame(maxWidth: 360)
+      }
+      Button(action: watchFolder) {
+        Text("Watch a folder…", bundle: .module)
+      }
+      .buttonStyle(.quietCapsule)
+      .padding(.top, 10)
+      .help(Text("New files in it land on the shelf by themselves, for example builds", bundle: .module))
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background {

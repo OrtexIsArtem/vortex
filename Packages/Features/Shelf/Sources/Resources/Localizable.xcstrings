@@ -1,12 +1,13 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Choose…" : {
+    "Add folder…" : {
+      "comment" : "Opens the folder picker to watch a folder",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вибрати…"
+            "value" : "Додати папку…"
           }
         }
       }
@@ -91,6 +92,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Папка, файл збірки або …/last_builds/*.aab"
+          }
+        }
+      }
+    },
+    "New files from %@ appear here by themselves." : {
+      "comment" : "%@ lists watched folder names",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові файли з %@ з’являться тут самі."
+          }
+        }
+      }
+    },
+    "New files in it land on the shelf by themselves, for example builds" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові файли з неї самі потраплятимуть на полицю, наприклад збірки"
           }
         }
       }
@@ -246,6 +268,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стежити"
+          }
+        }
+      }
+    },
+    "Watch a folder…" : {
+      "comment" : "Button on the empty shelf: opens the folder picker",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стежити за папкою…"
           }
         }
       }

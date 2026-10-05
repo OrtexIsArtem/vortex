@@ -16,7 +16,7 @@ struct ShelfSettingsView: View {
         Button {
           store.send(.chooseFolderTapped)
         } label: {
-          Text("Choose…", bundle: .module)
+          Text("Add folder…", bundle: .module)
         }
         .buttonStyle(.quietCapsule)
       }
