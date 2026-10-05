@@ -2,5 +2,10 @@
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| Watched folder | none | Subfolders count too; chosen with the folder picker |
-| File types | ipa, apk, dmg, zip | Shown while a folder is watched; extensions separated by commas or spaces, any case, dots optional; empty takes every file |
+| Watched folders | none | Any number; subfolders count too |
+| File types of a folder | ipa, apk, aab, dmg, zip | Per folder; commas or spaces, any case, dots optional; empty takes every file |
+
+- A folder is added with Choose… or by typing or pasting a path and pressing Watch (or Enter).
+- A folder path watches it for the default types; a file path (an earlier build) watches its folder for that file's type;
+  a pattern like `~/StudioProjects/app/last_builds/*.aab` watches that folder for `aab`. `~` is the home folder.
+- Adding a folder that is already watched adds the new type to it. A path that does not exist shows "Nothing is at …".

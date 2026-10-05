@@ -300,7 +300,9 @@ struct ShelfFeatureTests {
 
     await store.send(.chooseFolderTapped)
     await store.receive(\.folderChosen)
-    #expect(store.state.settings.watchedFolder == builds)
+    #expect(store.state.settings.watchedFolders == [
+      ShelfSettings.WatchedFolder(folder: builds, extensions: ShelfSettings.defaultExtensions),
+    ])
     await start(store)
 
     sizes.setValue([Self.ipa: 10, Self.notes: 5])
@@ -372,15 +374,68 @@ struct ShelfFeatureTests {
 
   @Test
   func fileTypesAreCleanedUp() async {
+    let builds = URL(fileURLWithPath: "/b")
     let store = makeStore()
-    await store.send(.extensionsChanged(" ipa, .APK  dmg,,ipa ")) {
-      $0.$settings.withLock { $0.watchedExtensions = ["ipa", "apk", "dmg"] }
+    await store.send(.folderChosen(builds))
+    await store.send(.extensionsChanged(builds, " ipa, .APK  *.dmg,,ipa "))
+    #expect(store.state.settings.watchedFolders.first?.extensions == ["ipa", "apk", "dmg"])
+    #expect(store.state.settings.takes(URL(fileURLWithPath: "/b/App.IPA")))
+    #expect(store.state.settings.takes(URL(fileURLWithPath: "/b/sub/App.ipa")))
+    #expect(!store.state.settings.takes(URL(fileURLWithPath: "/b/notes.txt")))
+    #expect(!store.state.settings.takes(URL(fileURLWithPath: "/b/.App.ipa")))
+    #expect(!store.state.settings.takes(URL(fileURLWithPath: "/elsewhere/App.ipa")))
+    await store.send(.extensionsChanged(builds, ""))
+    #expect(store.state.settings.takes(URL(fileURLWithPath: "/b/notes.txt")))
+  }
+
+  @Test
+  func aPathToWatchCanBeAFolderAnExampleFileOrAPattern() async {
+    let builds = URL(fileURLWithPath: "/Users/me/StudioProjects/app/last_builds")
+    let example = builds.appending(path: "kurzurlaub-dev-1.0.0-65-20260923-230220.aab")
+    let store = makeStore()
+    store.dependencies.fileClient.info = { url in
+      switch url.path {
+      case builds.path, "/Users/me/Exports": FileInfo(size: nil, isDirectory: true)
+      case example.path: FileInfo(size: 1, isDirectory: false)
+      default: nil
+      }
     }
-    #expect(store.state.settings.passes(URL(fileURLWithPath: "/b/App.IPA")))
-    #expect(!store.state.settings.passes(URL(fileURLWithPath: "/b/notes.txt")))
-    #expect(!store.state.settings.passes(URL(fileURLWithPath: "/b/.App.ipa")))
-    await store.send(.extensionsChanged(""))
-    #expect(store.state.settings.passes(URL(fileURLWithPath: "/b/notes.txt")))
+    await store.send(.watchPathSubmitted(example.path))
+    await store.receive(\.watchPathChecked)
+    #expect(store.state.settings.watchedFolders == [ShelfSettings.WatchedFolder(folder: builds, extensions: ["aab"])])
+
+    // The same folder again with a pattern adds the type.
+    await store.send(.watchPathSubmitted(builds.path + "/*.apk"))
+    await store.receive(\.watchPathChecked)
+    #expect(store.state.settings.watchedFolders == [ShelfSettings.WatchedFolder(folder: builds, extensions: ["aab", "apk"])])
+
+    await store.send(.watchPathSubmitted(" /Users/me/Exports/ "))
+    await store.receive(\.watchPathChecked)
+    #expect(store.state.settings.watchedFolders.last
+      == ShelfSettings.WatchedFolder(folder: URL(fileURLWithPath: "/Users/me/Exports"), extensions: ShelfSettings.defaultExtensions))
+
+    await store.send(.watchPathSubmitted("/Users/me/Missing/*.ipa"))
+    await store.receive(\.watchPathChecked) { $0.pathNotFound = "/Users/me/Missing/*.ipa" }
+    #expect(store.state.settings.watchedFolders.count == 2)
+
+    await store.send(.stopWatchingTapped(builds))
+    #expect(store.state.settings.watchedFolders.map(\.folder) == [URL(fileURLWithPath: "/Users/me/Exports")])
+  }
+
+  @Test
+  func everyWatchedFolderIsWatched() async {
+    let watched = LockIsolated<[String]>([])
+    let store = makeStore()
+    store.dependencies.fileClient.changes = { [watched] folder in
+      watched.withValue { $0.append(folder.lastPathComponent) }
+      return AsyncStream { _ in }
+    }
+    await store.send(.folderChosen(URL(fileURLWithPath: "/a/ios")))
+    await store.send(.folderChosen(URL(fileURLWithPath: "/a/android")))
+    await start(store)
+    await store.send(.stop)
+    await store.finish()
+    #expect(Set(watched.value) == ["ios", "android"])
   }
 
   @Test

@@ -36,8 +36,9 @@ public struct FileClient: Sendable {
   /// Asks the user to pick a folder; nil when they cancel.
   public var chooseFolder: @Sendable () async -> URL?
   /// Files created, changed or renamed inside the folder and its subfolders, as the system reports them, and the
-  /// files of a folder moved in. Hidden files and folders, and whatever sits inside packages (apps, partial Safari
-  /// downloads) are left out. A file being written may be reported several times. Ending the stream stops watching.
+  /// files of a folder moved in, with paths that start with the folder as given. Hidden files and folders, and
+  /// whatever sits inside packages (apps, partial Safari downloads) are left out. A file being written may be
+  /// reported several times. Ending the stream stops watching.
   public var changes: @Sendable (_ folder: URL) -> AsyncStream<URL> = { _ in .finished }
 }
 
@@ -123,6 +124,8 @@ private final class FolderWatcher: @unchecked Sendable {
   private let queue = DispatchQueue(label: "io.github.ortexisartem.vortex.folder-watcher", qos: .utility)
   /// The watched folder as FSEvents spells paths, with symbolic links resolved.
   private let root: String
+  /// The watched folder as the caller gave it; reported paths start with it.
+  private let given: String
   /// Set once by `start`, then touched only on `queue`.
   private var stream: FSEventStreamRef?
 
@@ -130,6 +133,7 @@ private final class FolderWatcher: @unchecked Sendable {
     self.folder = folder
     self.onChange = onChange
     root = folder.resolvingSymlinksInPath().path
+    given = folder.path
   }
 
   /// False when the folder can't be watched, for example when it does not exist.
@@ -175,7 +179,7 @@ private final class FolderWatcher: @unchecked Sendable {
       kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemModified | kFSEventStreamEventFlagItemRenamed
     ) != 0
     guard changed, isFile || isFolder, !isHiddenOrPackaged(path) else { return }
-    let url = URL(fileURLWithPath: path)
+    let url = URL(fileURLWithPath: path.hasPrefix(root + "/") ? given + path.dropFirst(root.count) : path)
     if isFile {
       onChange(url)
       return

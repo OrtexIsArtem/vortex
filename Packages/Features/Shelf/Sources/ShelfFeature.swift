@@ -28,8 +28,10 @@ public struct ShelfFeature: Sendable {
     var isRunning = false
     /// What arrived before the shelf was loaded; added right after, so nothing overwrites the saved shelf.
     var pending: [Arrival] = []
-    /// Files in the watched folder that are still being written.
+    /// Files in the watched folders that are still being written.
     var waitingFiles: Set<URL> = []
+    /// A path the user asked to watch that does not exist.
+    var pathNotFound: String?
     var selection: Set<ShelfItem.ID> = []
     /// Where a shift-click selection starts.
     var selectionAnchor: ShelfItem.ID?
@@ -97,8 +99,12 @@ public struct ShelfFeature: Sendable {
     case watchedFileGone(URL)
     case chooseFolderTapped
     case folderChosen(URL?)
-    case stopWatchingTapped
-    case extensionsChanged(String)
+    /// A folder, an example file or a pattern like `…/last_builds/*.aab`, typed or pasted by the user.
+    case watchPathSubmitted(String)
+    /// What is at the submitted path: a folder, a file (or a pattern in an existing folder), or nothing.
+    case watchPathChecked(String, isDirectory: Bool?)
+    case stopWatchingTapped(URL)
+    case extensionsChanged(URL, String)
   }
 
   @Dependency(\.continuousClock) var clock
@@ -258,7 +264,7 @@ public struct ShelfFeature: Sendable {
         return .merge(deleteCopies(of: removed), save(state))
 
       case let .watchedFileChanged(url):
-        guard state.isRunning, state.settings.passes(url) else { return .none }
+        guard state.isRunning, state.settings.takes(url) else { return .none }
         // Every change starts the wait for that file over.
         state.waitingFiles.insert(url)
         return .run { [files, clock] send in
@@ -281,15 +287,39 @@ public struct ShelfFeature: Sendable {
 
       case let .folderChosen(folder):
         guard let folder else { return .none }
-        state.$settings.withLock { $0.watchedFolder = folder }
+        return startWatching(ShelfSettings.WatchedFolder(folder: folder, extensions: ShelfSettings.defaultExtensions), &state)
+
+      case let .watchPathSubmitted(text):
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .none }
+        state.pathNotFound = nil
+        let url = URL(fileURLWithPath: NSString(string: trimmed).expandingTildeInPath)
+        return .run { [files] send in
+          if url.lastPathComponent.contains("*") {
+            // A pattern such as `*.aab` names no file; its folder has to exist.
+            let folder = await files.info(url.deletingLastPathComponent())
+            await send(.watchPathChecked(trimmed, isDirectory: folder?.isDirectory == true ? false : nil))
+          } else {
+            await send(.watchPathChecked(trimmed, isDirectory: await files.info(url)?.isDirectory))
+          }
+        }
+
+      case let .watchPathChecked(text, isDirectory):
+        guard let isDirectory else {
+          state.pathNotFound = text
+          return .none
+        }
+        return startWatching(ShelfSettings.watchedFolder(forPath: text, isDirectory: isDirectory), &state)
+
+      case let .stopWatchingTapped(folder):
+        state.$settings.withLock { $0.watchedFolders.removeAll { $0.folder.path == folder.path } }
         return .merge(stopWatching(&state), watch(state))
 
-      case .stopWatchingTapped:
-        state.$settings.withLock { $0.watchedFolder = nil }
-        return stopWatching(&state)
-
-      case let .extensionsChanged(text):
-        state.$settings.withLock { $0.watchedExtensions = ShelfSettings.extensions(from: text) }
+      case let .extensionsChanged(folder, text):
+        state.$settings.withLock { settings in
+          guard let index = settings.watchedFolders.firstIndex(where: { $0.folder.path == folder.path }) else { return }
+          settings.watchedFolders[index].extensions = ShelfSettings.extensions(from: text)
+        }
         return .none
       }
     }
@@ -395,20 +425,41 @@ public struct ShelfFeature: Sendable {
     return .merge(deleteCopies(of: removed), save(state))
   }
 
-  /// Watches the folder from the settings, if any; each change goes through `watchedFileChanged`.
+  /// Watches the folders from the settings; each change goes through `watchedFileChanged`.
   private func watch(_ state: State) -> Effect<Action> {
-    guard state.isRunning, state.isLoaded, let folder = state.settings.watchedFolder else {
+    let folders = state.settings.watchedFolders.map(\.folder)
+    guard state.isRunning, state.isLoaded, !folders.isEmpty else {
       return .cancel(id: CancelID.watch)
     }
     return .run { [files] send in
-      for await url in files.changes(folder) {
-        await send(.watchedFileChanged(url))
+      await withTaskGroup(of: Void.self) { group in
+        for folder in folders {
+          group.addTask {
+            for await url in files.changes(folder) {
+              await send(.watchedFileChanged(url))
+            }
+          }
+        }
       }
     }
     .cancellable(id: CancelID.watch, cancelInFlight: true)
   }
 
-  /// Stops watching the folder and every wait for a file in it.
+  /// Adds a folder to watch, or takes the new types for a folder already watched, and restarts watching.
+  private func startWatching(_ watched: ShelfSettings.WatchedFolder, _ state: inout State) -> Effect<Action> {
+    state.pathNotFound = nil
+    state.$settings.withLock { settings in
+      if let index = settings.watchedFolders.firstIndex(where: { $0.folder == watched.folder }) {
+        let types = settings.watchedFolders[index].extensions
+        settings.watchedFolders[index].extensions = types.isEmpty ? [] : Array(Set(types + watched.extensions)).sorted()
+      } else {
+        settings.watchedFolders.append(watched)
+      }
+    }
+    return .merge(stopWatching(&state), watch(state))
+  }
+
+  /// Stops watching the folders and every wait for a file in them.
   private func stopWatching(_ state: inout State) -> Effect<Action> {
     let waits = state.waitingFiles.map { Effect<Action>.cancel(id: CancelID.wait($0)) }
     state.waitingFiles = []

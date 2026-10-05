@@ -1,16 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Change…" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Змінити…"
-          }
-        }
-      }
-    },
     "Choose…" : {
       "localizations" : {
         "uk" : {
@@ -53,12 +43,13 @@
         }
       }
     },
-    "Extensions separated by commas; leave empty to take every file." : {
+    "every file" : {
+      "comment" : "Placeholder of an empty file types field",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Розширення через кому; залиште порожнім, щоб брати всі файли."
+            "value" : "усі файли"
           }
         }
       }
@@ -73,6 +64,16 @@
         }
       }
     },
+    "File types, separated by commas; empty takes every file" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Типи файлів через кому; порожнє поле — усі файли"
+          }
+        }
+      }
+    },
     "Folder" : {
       "localizations" : {
         "uk" : {
@@ -83,12 +84,23 @@
         }
       }
     },
-    "New files in it land on the shelf once they are fully written, and the notch flashes." : {
+    "Folder, a build file or …/last_builds/*.aab" : {
+      "comment" : "Placeholder of the field for a path to watch",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нові файли з неї потрапляють на полицю, щойно повністю запишуться, а виріз блимає."
+            "value" : "Папка, файл збірки або …/last_builds/*.aab"
+          }
+        }
+      }
+    },
+    "New files of the right type land on the shelf once they are fully written, and the notch flashes." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові файли потрібних типів потрапляють на полицю, щойно повністю запишуться, а виріз блимає."
           }
         }
       }
@@ -104,12 +116,33 @@
         }
       }
     },
+    "Nothing is at %@." : {
+      "comment" : "The typed path does not exist",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "За шляхом %@ нічого немає."
+          }
+        }
+      }
+    },
     "Or on the menu bar icon. The shelf keeps links to your files and clears itself after 24 hours." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Або на значок у рядку меню. Полиця зберігає посилання на файли й очищується сама через 24 години."
+          }
+        }
+      }
+    },
+    "Path to watch" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шлях для стеження"
           }
         }
       }
@@ -206,13 +239,24 @@
         }
       }
     },
-    "Watched folder" : {
-      "comment" : "New files from this folder land on the shelf",
+    "Watch" : {
+      "comment" : "Starts watching the typed path",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відстежувана папка"
+            "value" : "Стежити"
+          }
+        }
+      }
+    },
+    "Watched folders" : {
+      "comment" : "New files from these folders land on the shelf",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відстежувані папки"
           }
         }
       }

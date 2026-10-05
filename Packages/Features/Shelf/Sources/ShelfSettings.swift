@@ -4,25 +4,44 @@ import VortexCore
 
 /// What the user sets for the shelf. Stored as JSON; unreadable keys fall back to their defaults.
 public struct ShelfSettings: Codable, Equatable, Sendable {
-  public static let defaultExtensions = ["ipa", "apk", "dmg", "zip"]
+  /// Types a folder takes when it is added without an example file.
+  public static let defaultExtensions = ["ipa", "apk", "aab", "dmg", "zip"]
 
-  /// New files appearing in this folder or its subfolders land on the shelf; nil watches nothing.
-  public var watchedFolder: URL?
-  /// Extensions of files the folder passes on, lowercased, without dots; empty passes every file.
-  public var watchedExtensions = Self.defaultExtensions
+  /// Folders whose new files land on the shelf, such as the folder a build script writes to.
+  public var watchedFolders: [WatchedFolder] = []
+
+  /// A folder and the file types it passes on to the shelf. Build files get a new name every time
+  /// (`app-1.0.0-65-20260923-230220.aab`), so the folder and the type are what stays the same.
+  public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable {
+    public var folder: URL
+    /// Lowercased, without dots; empty takes every file.
+    public var extensions: [String]
+
+    public var id: URL { folder }
+
+    /// The folder is kept in one spelling, without a trailing slash, so the same folder is never added twice.
+    public init(folder: URL, extensions: [String]) {
+      self.folder = URL(filePath: folder.standardizedFileURL.path, directoryHint: .notDirectory)
+      self.extensions = extensions
+    }
+
+    /// Whether a new file belongs on the shelf: it is in the folder or below, and of one of its types.
+    func takes(_ url: URL) -> Bool {
+      guard url.path.hasPrefix(folder.path + "/"), !url.lastPathComponent.hasPrefix(".") else { return false }
+      return extensions.isEmpty || extensions.contains(url.pathExtension.lowercased())
+    }
+  }
 
   public init() {}
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    watchedFolder = try? container.decodeIfPresent(URL.self, forKey: .watchedFolder)
-    watchedExtensions = (try? container.decodeIfPresent([String].self, forKey: .watchedExtensions)) ?? Self.defaultExtensions
+    watchedFolders = (try? container.decodeIfPresent([WatchedFolder].self, forKey: .watchedFolders)) ?? []
   }
 
-  /// Whether a file found in the watched folder belongs on the shelf.
-  func passes(_ url: URL) -> Bool {
-    guard !url.lastPathComponent.hasPrefix(".") else { return false }
-    return watchedExtensions.isEmpty || watchedExtensions.contains(url.pathExtension.lowercased())
+  /// Whether a new file found in one of the watched folders belongs on the shelf.
+  func takes(_ url: URL) -> Bool {
+    watchedFolders.contains { $0.takes(url) }
   }
 
   /// "ipa, .APK  dmg" → ["ipa", "apk", "dmg"].
@@ -30,8 +49,20 @@ public struct ShelfSettings: Codable, Equatable, Sendable {
     var seen = Set<String>()
     return text
       .split(whereSeparator: { $0 == "," || $0.isWhitespace })
-      .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased() }
+      .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".*")).lowercased() }
       .filter { !$0.isEmpty && seen.insert($0).inserted }
+  }
+
+  /// What a path the user gives means: a folder to watch for the usual build types; an example file, whose folder is
+  /// watched for files of its type; or a pattern like `…/last_builds/*.aab`. Leading `~` is the home folder.
+  static func watchedFolder(forPath text: String, isDirectory: Bool) -> WatchedFolder {
+    let url = URL(fileURLWithPath: NSString(string: text.trimmingCharacters(in: .whitespacesAndNewlines)).expandingTildeInPath)
+      .standardizedFileURL
+    if isDirectory {
+      return WatchedFolder(folder: url, extensions: defaultExtensions)
+    }
+    let type = url.pathExtension.lowercased()
+    return WatchedFolder(folder: url.deletingLastPathComponent(), extensions: type.isEmpty ? defaultExtensions : [type])
   }
 }
 

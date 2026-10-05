@@ -9,12 +9,12 @@
 - The same file, folder, text or link moves to the front instead of being added again; images without a file are added each time.
 - Whatever arrives before the shelf has loaded waits and is added right after, so the saved shelf is never overwritten.
 
-## Watched folder
-- New or changed files of the chosen types anywhere in the watched folder land on the shelf, marked with a dot; the notch flashes.
+## Watched folders
+- Build files get a new name every time, so the shelf watches folders instead: new or changed files of a folder's types, anywhere inside it, land on the shelf with a dot; the notch flashes.
 - A file lands once it is fully written: its size stayed the same over two checks a second apart, with no change meanwhile.
 - Files of a folder moved in land too. Hidden files and folders, and the insides of packages (apps, partial downloads), are skipped.
 - Files that vanish while being written (temporary files renamed by the build tool) and empty files that stay empty are skipped.
-- Files already in the folder are not added; watching runs only while the feature is on.
+- Files already in a folder are not added; watching runs only while the feature is on.
 
 ## On the shelf
 - Newest first. A tile shows a preview (Quick Look thumbnail, or the extension), the name, size or "Folder", and age.
