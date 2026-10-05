@@ -43,15 +43,23 @@ public struct ShelfFeature: Sendable {
     var unavailable: Set<ShelfItem.ID> = []
     /// Grows by one for every arrival that should flash the notch.
     var flashes = 0
+    /// The color of the latest flash: by the number of new files, see `ShelfSettings.flashColors`.
+    var flashColor = ColorValue.white
     @Shared(.notchIndicators) var indicators
     @Shared(.shelfSettings) var settings
 
     public init() {}
 
-    /// The tray and the number of items in the closed notch.
+    /// The tray and the number of items in the closed notch. With an empty shelf it shows no ears, but can still
+    /// flash the notch (Test in settings).
     var indicator: NotchIndicator? {
-      guard isRunning, !items.isEmpty else { return nil }
-      return NotchIndicator(leading: [.symbol("tray.full")], trailing: [.text("\(items.count)")], flash: flashes)
+      guard isRunning else { return nil }
+      return NotchIndicator(
+        leading: items.isEmpty ? [] : [.symbol("tray.full")],
+        trailing: items.isEmpty ? [] : [.text("\(items.count)")],
+        flash: flashes,
+        flashColor: flashColor
+      )
     }
 
     /// What dragging an item carries: the whole selection if the item is in it, otherwise the item alone.
@@ -105,6 +113,13 @@ public struct ShelfFeature: Sendable {
     case watchPathChecked(String, isDirectory: Bool?)
     case stopWatchingTapped(URL)
     case extensionsChanged(URL, String)
+    case flashColorChanged(index: Int, ColorValue)
+    case flashColorAdded
+    case lastFlashColorRemoved
+    case flashColorsReset
+    /// Plays the flashes for the first, second… new file three seconds later, so the window can be closed first.
+    case testFlashTapped
+    case testFlash(newFiles: Int)
   }
 
   @Dependency(\.continuousClock) var clock
@@ -120,6 +135,7 @@ public struct ShelfFeature: Sendable {
     case save
     case watch
     case wait(URL)
+    case testFlash
   }
 
   public init() {}
@@ -315,6 +331,42 @@ public struct ShelfFeature: Sendable {
         state.$settings.withLock { $0.watchedFolders.removeAll { $0.folder.path == folder.path } }
         return .merge(stopWatching(&state), watch(state))
 
+      case let .flashColorChanged(index, color):
+        state.$settings.withLock { settings in
+          guard settings.flashColors.indices.contains(index) else { return }
+          settings.flashColors[index] = color
+        }
+        return .none
+
+      case .flashColorAdded:
+        state.$settings.withLock { $0.flashColors.append($0.nextFlashColor) }
+        return .none
+
+      case .lastFlashColorRemoved:
+        state.$settings.withLock { _ = $0.flashColors.popLast() }
+        return .none
+
+      case .flashColorsReset:
+        state.$settings.withLock { $0.flashColors = ShelfSettings.defaultFlashColors }
+        return .none
+
+      case .testFlashTapped:
+        let colors = state.settings.flashColors.count
+        return .run { send in
+          try await clock.sleep(for: .seconds(3))
+          // Every color, then the white that follows the last one.
+          for newFiles in 1...(colors + 1) {
+            await send(.testFlash(newFiles: newFiles))
+            try await clock.sleep(for: .seconds(1.8))
+          }
+        }
+        .cancellable(id: CancelID.testFlash, cancelInFlight: true)
+
+      case let .testFlash(newFiles):
+        state.flashColor = state.settings.flashColor(forNewFiles: newFiles)
+        state.flashes += 1
+        return .none
+
       case let .extensionsChanged(folder, text):
         state.$settings.withLock { settings in
           guard let index = settings.watchedFolders.firstIndex(where: { $0.folder.path == folder.path }) else { return }
@@ -383,10 +435,11 @@ public struct ShelfFeature: Sendable {
     return .merge([loadInfo(for: added), save(state)] + copies)
   }
 
-  /// Marks things that came by themselves and flashes the notch once.
+  /// Marks things that came by themselves and flashes the notch once, in the color for the number of new files.
   private func arrived(_ ids: [ShelfItem.ID], _ state: inout State) {
     guard !ids.isEmpty else { return }
     state.fresh.formUnion(ids)
+    state.flashColor = state.settings.flashColor(forNewFiles: state.fresh.count)
     state.flashes += 1
   }
 

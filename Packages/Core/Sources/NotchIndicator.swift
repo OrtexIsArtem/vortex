@@ -18,12 +18,16 @@ public struct NotchIndicator: Equatable, Sendable {
   /// Add one to make the notch flash once, e.g. when a new file lands on the shelf. Only growth counts:
   /// an indicator that is removed and comes back with the same number does not flash.
   public var flash: Int
+  /// The color of that flash: a glow around the notch that spreads past its edges.
+  public var flashColor: ColorValue
 
-  public init(leading: [Item], trailing: [Item], priority: Int = 0, flash: Int = 0) {
+  /// An indicator with no items shows no ears; it can still flash the notch.
+  public init(leading: [Item], trailing: [Item], priority: Int = 0, flash: Int = 0, flashColor: ColorValue = .white) {
     self.leading = leading
     self.trailing = trailing
     self.priority = priority
     self.flash = flash
+    self.flashColor = flashColor
   }
 }
 
@@ -44,6 +48,7 @@ public struct NotchEars: Equatable, Sendable {
 
   public init(indicators: [FeatureID: NotchIndicator]) {
     let ranked = indicators
+      .filter { !$0.value.leading.isEmpty || !$0.value.trailing.isEmpty }
       .sorted { $0.value.priority != $1.value.priority ? $0.value.priority > $1.value.priority : $0.key < $1.key }
       .map(\.value)
     switch ranked.count {
@@ -56,15 +61,18 @@ public struct NotchEars: Equatable, Sendable {
     }
   }
 
-  /// Whether some indicator's `flash` grew past the number last seen for its feature. `seen` keeps the numbers of
-  /// removed indicators too, so one that comes back with an old number does not flash.
-  public static func shouldFlash(_ indicators: [FeatureID: NotchIndicator], seen: inout [FeatureID: Int]) -> Bool {
-    var grew = false
-    for (id, indicator) in indicators {
-      if indicator.flash > seen[id, default: 0] { grew = true }
+  /// The color to flash in when some indicator's `flash` grew past the number last seen for its feature; nil when
+  /// none did. `seen` keeps the numbers of removed indicators too, so one that comes back with an old number does not
+  /// flash.
+  public static func flash(_ indicators: [FeatureID: NotchIndicator], seen: inout [FeatureID: Int]) -> ColorValue? {
+    var color: ColorValue?
+    for (id, indicator) in indicators.sorted(by: { $0.key < $1.key }) {
+      if color == nil, indicator.flash > seen[id, default: 0] {
+        color = indicator.flashColor
+      }
       seen[id] = indicator.flash
     }
-    return grew
+    return color
   }
 
   /// Text for the menu bar icon on displays without a notch, e.g. "8:42  2".

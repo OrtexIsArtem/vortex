@@ -12,6 +12,7 @@ final class EarsModel {
   var ears = NotchEars()
   /// Grows by one for every flash, see `NotchIndicator.flash`.
   var flashes = 0
+  var flashColor = ColorValue.white
 
   nonisolated init() {}
 }
@@ -42,7 +43,7 @@ struct NotchEarsView: View {
     .padding(.horizontal, hasEars ? VortexMetrics.shoulder : 0)
     .background {
       shape.fill(VortexColor.notch)
-      shape.fill(Color.white.opacity(flash))
+      shape.fill(model.flashColor.color.opacity(flash))
     }
     .environment(\.colorScheme, .dark)
     .accessibilityHidden(true)

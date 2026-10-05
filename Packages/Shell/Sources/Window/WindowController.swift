@@ -48,6 +48,9 @@ final class WindowController: NSObject {
     let hit: NotchHitView
     let model: EarsModel
     let notch: CGRect
+    /// Shown only while the notch flashes; it never takes clicks.
+    let glowPanel: VortexPanel
+    let glow: GlowModel
   }
 
   private struct Placement {
@@ -60,8 +63,10 @@ final class WindowController: NSObject {
   private var mainPanel: VortexPanel?
   private var ears: [CGDirectDisplayID: Ears] = [:]
   private var currentEars = NotchEars()
-  /// The last flash number seen per feature, see `NotchEars.shouldFlash`.
+  /// The last flash number seen per feature, see `NotchEars.flash`.
   private var seenFlashes: [FeatureID: Int] = [:]
+  /// Incremented on every flash, so an older flash never hides the glow of a newer one.
+  private var flashGeneration = 0
   private var indicatorsObservation: ObserveToken?
   private var outsideActivityObservation: ObserveToken?
   private var menuBarItem: NSStatusItem?
@@ -245,7 +250,10 @@ final class WindowController: NSObject {
   // MARK: - Closed notch
 
   private func rebuildEars() {
-    ears.values.forEach { $0.panel.orderOut(nil) }
+    ears.values.forEach {
+      $0.panel.orderOut(nil)
+      $0.glowPanel.orderOut(nil)
+    }
     ears.removeAll()
     for screen in NSScreen.screens {
       guard let notch = screen.notchRect else { continue }
@@ -255,7 +263,17 @@ final class WindowController: NSObject {
       hit.onHoverChanged = { [weak self] isInside in self?.emit(.notchHoverChanged(isInside: isInside)) }
       hit.onClick = { [weak self] in self?.emit(.notchClicked) }
       hit.onFileDragEntered = { [weak self] in self?.emit(.fileDragEnteredNotch) }
-      let entry = Ears(panel: VortexPanel(acceptsKey: false, root: hit, content: NotchEarsView(model: model)), hit: hit, model: model, notch: notch)
+      let glow = GlowModel()
+      let glowPanel = VortexPanel(acceptsKey: false, root: NSView(), content: NotchGlowView(model: glow))
+      glowPanel.ignoresMouseEvents = true
+      let entry = Ears(
+        panel: VortexPanel(acceptsKey: false, root: hit, content: NotchEarsView(model: model)),
+        hit: hit,
+        model: model,
+        notch: notch,
+        glowPanel: glowPanel,
+        glow: glow
+      )
       ears[screen.displayID] = entry
       layOut(entry)
       entry.panel.orderFrontRegardless()
@@ -269,6 +287,20 @@ final class WindowController: NSObject {
     entry.model.earWidth = earWidth
     let shoulder = earWidth > 0 ? VortexMetrics.shoulder : 0
     entry.panel.setFrame(ScreenGeometry.earsFrame(notch: entry.notch, earWidth: earWidth, shoulder: shoulder), display: true)
+
+    let silhouette = CGSize(width: entry.notch.width + earWidth * 2, height: entry.notch.height)
+    let size = CGSize(
+      width: silhouette.width + (shoulder + GlowMetrics.spread) * 2,
+      height: entry.notch.height + GlowMetrics.depth
+    )
+    entry.glow.silhouette = silhouette
+    entry.glow.size = size
+    entry.glow.shoulder = shoulder
+    entry.glow.cornerRadius = earWidth > 0 ? EarsMetrics.cornerRadius : VortexMetrics.notchCornerRadius
+    entry.glowPanel.setFrame(
+      CGRect(x: entry.notch.midX - size.width / 2, y: entry.notch.maxY - size.height, width: size.width, height: size.height),
+      display: false
+    )
   }
 
   private func indicatorsChanged() {
@@ -278,8 +310,32 @@ final class WindowController: NSObject {
       ears.values.forEach(layOut)
       updateMenuBarTitle()
     }
-    if NotchEars.shouldFlash(indicators, seen: &seenFlashes) {
-      ears.values.forEach { $0.model.flashes += 1 }
+    if let color = NotchEars.flash(indicators, seen: &seenFlashes) {
+      flash(color)
+    }
+  }
+
+  /// Lights the notch up in the color, with a glow that spreads past its edges, then hides the glow again.
+  private func flash(_ color: ColorValue) {
+    flashGeneration += 1
+    let current = flashGeneration
+    let isWindowOpen = mainPanel?.isVisible == true
+    for entry in ears.values {
+      entry.model.flashColor = color
+      entry.model.flashes += 1
+      entry.glow.color = color
+      // Behind the ears, so they stay readable; over the open window, which would hide it.
+      if isWindowOpen {
+        entry.glowPanel.orderFrontRegardless()
+      } else {
+        entry.glowPanel.order(.below, relativeTo: entry.panel.windowNumber)
+      }
+      entry.glow.trigger += 1
+    }
+    Task { @MainActor [weak self] in
+      try? await Task.sleep(for: .seconds(2))
+      guard let self, self.flashGeneration == current else { return }
+      self.ears.values.forEach { $0.glowPanel.orderOut(nil) }
     }
   }
 

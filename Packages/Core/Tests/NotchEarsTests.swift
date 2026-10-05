@@ -39,15 +39,25 @@ struct NotchEarsTests {
   }
 
   @Test
-  func flashesOnlyWhenTheNumberGrows() {
+  func flashesOnlyWhenTheNumberGrowsInTheColorAskedFor() {
     var seen: [FeatureID: Int] = [:]
-    let shelf = { (flash: Int) in NotchIndicator(leading: [], trailing: [.text("1")], flash: flash) }
-    #expect(!NotchEars.shouldFlash(["shelf": shelf(0)], seen: &seen))
-    #expect(NotchEars.shouldFlash(["shelf": shelf(1)], seen: &seen))
-    #expect(!NotchEars.shouldFlash(["shelf": shelf(1), "timer": shelf(0)], seen: &seen))
+    let blue = ColorValue(hex: 0x5AC8FA)
+    let shelf = { (flash: Int) in NotchIndicator(leading: [], trailing: [.text("1")], flash: flash, flashColor: blue) }
+    #expect(NotchEars.flash(["shelf": shelf(0)], seen: &seen) == nil)
+    #expect(NotchEars.flash(["shelf": shelf(1)], seen: &seen) == blue)
+    #expect(NotchEars.flash(["shelf": shelf(1), "timer": shelf(0)], seen: &seen) == nil)
     // Hidden, then back with the same number: no flash.
-    #expect(!NotchEars.shouldFlash([:], seen: &seen))
-    #expect(!NotchEars.shouldFlash(["shelf": shelf(1)], seen: &seen))
-    #expect(NotchEars.shouldFlash(["shelf": shelf(2)], seen: &seen))
+    #expect(NotchEars.flash([:], seen: &seen) == nil)
+    #expect(NotchEars.flash(["shelf": shelf(1)], seen: &seen) == nil)
+    #expect(NotchEars.flash(["shelf": shelf(2)], seen: &seen) == blue)
+  }
+
+  @Test
+  func indicatorsWithoutItemsShowNoEars() {
+    let flashOnly = NotchIndicator(leading: [], trailing: [], priority: 20, flash: 3)
+    #expect(NotchEars(indicators: ["shelf": flashOnly]).isEmpty)
+    let ears = NotchEars(indicators: ["shelf": flashOnly, "timer": timer])
+    #expect(ears.left == [.progress(0.7)])
+    #expect(ears.right == [.text("8:42")])
   }
 }

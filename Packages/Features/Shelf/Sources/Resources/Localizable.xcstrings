@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Add a color" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати колір"
+          }
+        }
+      }
+    },
     "Add folder…" : {
       "comment" : "Opens the folder picker to watch a folder",
       "localizations" : {
@@ -12,6 +22,16 @@
         }
       }
     },
+    "Back to blue and green" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернути блакитний і зелений"
+          }
+        }
+      }
+    },
     "Clear" : {
       "comment" : "Takes all items off the shelf except pinned ones",
       "localizations" : {
@@ -19,6 +39,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Очистити"
+          }
+        }
+      }
+    },
+    "Color %lld" : {
+      "comment" : "VoiceOver name of the flash color for the n-th new file",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колір %lld"
           }
         }
       }
@@ -96,6 +127,16 @@
         }
       }
     },
+    "New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. Opening the shelf starts the count over." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові файли блимають вирізом: колір 1 для першого нового файлу, колір 2 для другого і так далі; після останнього кольору — білим. Коли відкриваєте полицю, лік починається знову."
+          }
+        }
+      }
+    },
     "New files from %@ appear here by themselves." : {
       "comment" : "%@ lists watched folder names",
       "localizations" : {
@@ -134,6 +175,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не знайдено"
+          }
+        }
+      }
+    },
+    "Notch flash" : {
+      "comment" : "Settings: colors of the notch flash for new files",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блимання вирізу"
           }
         }
       }
@@ -180,6 +232,16 @@
         }
       }
     },
+    "Plays the flashes in 3 seconds: close the window to watch the notch" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Програє блимання через 3 с: закрийте вікно, щоб бачити виріз"
+          }
+        }
+      }
+    },
     "Quick Look" : {
       "localizations" : {
         "uk" : {
@@ -206,6 +268,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прибрати з полиці"
+          }
+        }
+      }
+    },
+    "Remove the last color" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прибрати останній колір"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "comment" : "Puts the default flash colors back",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скинути"
           }
         }
       }
@@ -247,6 +330,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Знімає з полиці все, крім закріпленого"
+          }
+        }
+      }
+    },
+    "Test" : {
+      "comment" : "Plays the notch flashes three seconds later",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевірити"
           }
         }
       }

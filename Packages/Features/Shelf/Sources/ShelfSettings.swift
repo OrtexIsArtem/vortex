@@ -9,6 +9,13 @@ public struct ShelfSettings: Codable, Equatable, Sendable {
 
   /// Folders whose new files land on the shelf, such as the folder a build script writes to.
   public var watchedFolders: [WatchedFolder] = []
+  /// The notch flashes in the first color for the first new file, in the second for the second, and so on;
+  /// after the last one, in white. Calm blue and green by default.
+  public var flashColors = Self.defaultFlashColors
+
+  public static let defaultFlashColors = [ColorValue(hex: 0x5AC8FA), ColorValue(hex: 0x4ADE80)]
+  /// Offered, in turn, for colors the user adds after the defaults.
+  static let moreFlashColors = [ColorValue(hex: 0xA78BFA), ColorValue(hex: 0xFBBF24), ColorValue(hex: 0xF472B6)]
 
   /// A folder and the file types it passes on to the shelf. Build files get a new name every time
   /// (`app-1.0.0-65-20260923-230220.aab`), so the folder and the type are what stays the same.
@@ -37,6 +44,18 @@ public struct ShelfSettings: Codable, Equatable, Sendable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     watchedFolders = (try? container.decodeIfPresent([WatchedFolder].self, forKey: .watchedFolders)) ?? []
+    flashColors = (try? container.decodeIfPresent([ColorValue].self, forKey: .flashColors)) ?? Self.defaultFlashColors
+  }
+
+  /// The flash color for the n-th new file; white past the last color.
+  func flashColor(forNewFiles count: Int) -> ColorValue {
+    flashColors.indices.contains(count - 1) ? flashColors[count - 1] : .white
+  }
+
+  /// A color for a slot the user adds: the next suggestion, then white.
+  var nextFlashColor: ColorValue {
+    let added = flashColors.count - Self.defaultFlashColors.count
+    return Self.moreFlashColors.indices.contains(added) ? Self.moreFlashColors[added] : .white
   }
 
   /// Whether a new file found in one of the watched folders belongs on the shelf.

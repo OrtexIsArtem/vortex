@@ -12,4 +12,4 @@ The notch window and the menu bar icon are not here: they belong to Shell.
 | Clients/AppsClient.swift, QuickLookClient.swift | running apps and `AppIcon`; the Quick Look panel, which Vortex windows hand over through `QuickLook` |
 | Views/DragSource.swift, DropTarget.swift | drags out (`DragSourceArea`: hover, clicks, several items) and in (`dropTarget`) |
 | OutsideActivity.swift | whether a drag out, Quick Look or the folder picker is in use, so the shell keeps the window open |
-| Views/FileThumbnail.swift | Quick Look thumbnails made in the background, `FileIcon` |
+| Views/FileThumbnail.swift, ColorWell.swift | Quick Look thumbnails made in the background, `FileIcon`; a color picker whose panel floats above Vortex |

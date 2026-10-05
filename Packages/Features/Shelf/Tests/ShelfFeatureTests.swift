@@ -96,10 +96,86 @@ struct ShelfFeatureTests {
     #expect(store.state.fresh == [uuid(0), uuid(1)])
     #expect(store.state.flashes == 1)
     @Shared(.notchIndicators) var indicators
-    #expect(indicators[ShelfFeature.id] == NotchIndicator(leading: [.symbol("tray.full")], trailing: [.text("2")], flash: 1))
+    #expect(indicators[ShelfFeature.id] == NotchIndicator(
+      leading: [.symbol("tray.full")], trailing: [.text("2")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
+    ))
     await store.send(.tabHidden) { $0.fresh = [] }
     await store.send(.stop)
     #expect(indicators[ShelfFeature.id] == nil)
+  }
+
+  @Test
+  func theFlashColorFollowsTheNumberOfNewFiles() async {
+    let store = makeStore()
+    await start(store)
+    let (blue, green) = (ShelfSettings.defaultFlashColors[0], ShelfSettings.defaultFlashColors[1])
+    await store.send(.filesReceived([Self.ipa])) { _ in }
+    #expect(store.state.flashColor == blue)
+    await store.send(.filesReceived([Self.apk]))
+    #expect(store.state.flashColor == green)
+    await store.send(.filesReceived([Self.notes]))
+    #expect(store.state.flashColor == .white)
+    #expect(store.state.flashes == 3)
+    // Looking at the shelf starts the count over.
+    await store.send(.tabHidden)
+    await store.send(.filesReceived([URL(fileURLWithPath: "/Users/me/Builds/next.ipa")]))
+    #expect(store.state.flashColor == blue)
+    await store.send(.stop)
+  }
+
+  @Test
+  func anEmptyShelfShowsNoEarsButCanFlash() async {
+    let store = makeStore()
+    await start(store)
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[ShelfFeature.id] == NotchIndicator(leading: [], trailing: [], flash: 0))
+    #expect(NotchEars(indicators: indicators).isEmpty)
+    await store.send(.stop)
+  }
+
+  @Test
+  func theTestPlaysEveryColorThenWhiteThreeSecondsLater() async {
+    let store = makeStore()
+    await start(store)
+    let (blue, green) = (ShelfSettings.defaultFlashColors[0], ShelfSettings.defaultFlashColors[1])
+    await store.send(.testFlashTapped)
+    await clock.advance(by: .milliseconds(2900))
+    #expect(store.state.flashes == 0)
+    await clock.advance(by: .milliseconds(100))
+    await store.receive(\.testFlash) {
+      $0.flashColor = blue
+      $0.flashes = 1
+    }
+    await clock.advance(by: .seconds(1.8))
+    await store.receive(\.testFlash) {
+      $0.flashColor = green
+      $0.flashes = 2
+    }
+    await clock.advance(by: .seconds(1.8))
+    await store.receive(\.testFlash) {
+      $0.flashColor = .white
+      $0.flashes = 3
+    }
+    await clock.advance(by: .seconds(1.8))
+    await store.send(.stop)
+    await store.finish()
+  }
+
+  @Test
+  func flashColorsCanBeAddedChangedRemovedAndReset() async {
+    let store = makeStore()
+    let red = ColorValue(hex: 0xFF5A5A)
+    await store.send(.flashColorAdded)
+    #expect(store.state.settings.flashColors == ShelfSettings.defaultFlashColors + [ShelfSettings.moreFlashColors[0]])
+    await store.send(.flashColorChanged(index: 0, red))
+    #expect(store.state.settings.flashColors.first == red)
+    #expect(store.state.settings.flashColor(forNewFiles: 3) == ShelfSettings.moreFlashColors[0])
+    #expect(store.state.settings.flashColor(forNewFiles: 4) == .white)
+    for _ in 0..<3 { await store.send(.lastFlashColorRemoved) }
+    #expect(store.state.settings.flashColors.isEmpty)
+    #expect(store.state.settings.flashColor(forNewFiles: 1) == .white)
+    await store.send(.flashColorsReset)
+    #expect(store.state.settings.flashColors == ShelfSettings.defaultFlashColors)
   }
 
   @Test
