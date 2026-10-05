@@ -146,7 +146,9 @@ final class WindowController: NSObject {
       withAnimation(self.openAnimation) {
         self.presentation.isExpanded = true
       } completion: { [weak self] in
-        guard let self, self.generation == current else { return }
+        // Out of the notch the window has no shadow: macOS draws a light rim along a window's shadow, which shows
+        // as a strip between the window and the top of the screen. Under the menu bar icon the shadow lifts it.
+        guard let self, self.generation == current, placement.notch == nil else { return }
         panel.hasShadow = true
         panel.invalidateShadow()
       }

@@ -7,7 +7,7 @@
 - The menu bar icon and the "Open Vortex" shortcut open and close the window.
 - A feature's shortcut opens the window on its tab, or switches to it; pressed again on that tab, it closes the window.
 - Dragging files, images, links or text to the notch opens the window on the first enabled feature that accepts files; with no such feature nothing happens.
-- The window grows out of the notch of the screen with the pointer; on a screen without a notch it opens under the menu bar icon.
+- The window grows out of the notch of the screen with the pointer, flush with the top of the screen and without a shadow; on a screen without a notch it opens under the menu bar icon, with a shadow.
 - The window opens on the last tab the user chose; if that feature is gone or turned off, on the first feature, then on Settings.
 - Opening for dragged files does not change the remembered tab.
 
