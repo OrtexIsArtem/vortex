@@ -391,6 +391,9 @@ final class WindowController: NSObject {
     if let button = item.button {
       button.image = VortexGlyph.menuBarImage()
       button.imagePosition = .imageLeading
+      // The title is the timer's time and changes every second: equal-width digits keep the item, and the icons to its
+      // left, from shifting.
+      button.font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.menuBarFont(ofSize: 0).pointSize, weight: .regular)
       button.target = self
       button.action = #selector(menuBarIconPressed)
       button.sendAction(on: [.leftMouseUp, .rightMouseUp])
