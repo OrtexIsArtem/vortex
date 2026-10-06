@@ -23,6 +23,8 @@ final class GlowModel {
 enum GlowMetrics {
   static let spread: CGFloat = 130
   static let depth: CGFloat = 100
+  /// One flash: the keyframes of `NotchGlowView` add up to it. An alarm flashes again as each one ends.
+  static let flashDuration: Duration = .milliseconds(1500)
 }
 
 /// A soft gradient falling from the notch, and a halo hugging its outline; blinks twice, then fades.

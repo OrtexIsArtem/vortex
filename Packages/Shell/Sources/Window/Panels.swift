@@ -108,6 +108,9 @@ final class NotchHitView: HoverTrackingView {
   /// Where the pointer is, in the view: where it came in, and wherever it moves after that. Silent while hover is
   /// suppressed, so it never leads to an open that hover would not.
   var onPointerMoved: ((NSPoint) -> Void)?
+  /// The pointer came in or moved here, even while hover is suppressed: the user is looking at the notch. It opens
+  /// nothing.
+  var onPointerPresent: (() -> Void)?
   var onFileDragEntered: (() -> Void)?
   private var isHoverSuppressed = false
 
@@ -137,6 +140,7 @@ final class NotchHitView: HoverTrackingView {
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
   override func mouseEntered(with event: NSEvent) {
+    onPointerPresent?()
     guard !isHoverSuppressed else { return }
     // The point goes first, so the shell knows the ear before the hover can open the window (the delay may be 0).
     onPointerMoved?(convert(event.locationInWindow, from: nil))
@@ -144,6 +148,7 @@ final class NotchHitView: HoverTrackingView {
   }
 
   override func mouseMoved(with event: NSEvent) {
+    onPointerPresent?()
     guard !isHoverSuppressed else { return }
     onPointerMoved?(convert(event.locationInWindow, from: nil))
   }

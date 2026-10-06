@@ -77,11 +77,8 @@ final class WindowController: NSObject {
   private var flashGeneration = 0
   /// The last alarm number seen per feature, see `NotchEars.unseenAlarm`.
   private var seenAlarms: [FeatureID: Int] = [:]
-  /// Whether the notch is flashing for an unseen alarm.
-  private var isAlarming = false
-  /// Incremented whenever an alarm starts or is seen, so the loop of an older one stops.
-  private var alarmGeneration = 0
-  private static let alarmInterval: Duration = .milliseconds(1500)
+  /// Flashes the notch while an alarm is unseen; nil while none flashes.
+  private var alarmTask: Task<Void, Never>?
   private static let alarmFlashesWithWindowOpen = 3
   private var indicatorsObservation: ObserveToken?
   private var outsideActivityObservation: ObserveToken?
@@ -281,13 +278,10 @@ final class WindowController: NSObject {
       let hit = NotchHitView()
       hit.onHoverChanged = { [weak self] isInside in
         // The shell forgets the ear when the pointer leaves, so this does too.
-        if isInside {
-          self?.seeAlarms()
-        } else {
-          self?.pointerEar = nil
-        }
+        if !isInside { self?.pointerEar = nil }
         self?.emit(.notchHoverChanged(isInside: isInside))
       }
+      hit.onPointerPresent = { [weak self] in self?.seeAlarms() }
       hit.onPointerMoved = { [weak self, weak hit] point in
         guard let self, let hit else { return }
         self.pointerMoved(over: self.currentEars.feature(atX: point.x, width: hit.bounds.width, notchWidth: notch.width))
@@ -361,46 +355,38 @@ final class WindowController: NSObject {
     if let color = NotchEars.flash(indicators, seen: &seenFlashes) {
       flash(color)
     }
-    if !isAlarming, NotchEars.unseenAlarm(indicators, seen: seenAlarms) != nil {
-      startAlarm()
-    }
+    startAlarmIfUnseen()
   }
 
-  /// Flashes the notch every 1.5 s while an alarm is unseen. With the window open the user is at Vortex already: a few
-  /// flashes say it, and it counts as seen. Without a notch on any screen there is nothing to flash.
-  private func startAlarm() {
-    isAlarming = true
-    alarmGeneration += 1
-    let current = alarmGeneration
-    Task { @MainActor [weak self] in
+  /// Flashes the notch, one flash after another, while an alarm is unseen. With the window open the user is at Vortex
+  /// already: a few flashes say it, and it counts as seen. Without a notch on any screen the alarm waits for one.
+  private func startAlarmIfUnseen() {
+    guard alarmTask == nil, !ears.isEmpty, NotchEars.unseenAlarm(indicators, seen: seenAlarms) != nil else { return }
+    alarmTask = Task { @MainActor [weak self] in
       var flashesWithWindowOpen = 0
-      while let self, self.alarmGeneration == current {
-        guard let color = NotchEars.unseenAlarm(self.indicators, seen: self.seenAlarms) else {
-          self.isAlarming = false
+      while !Task.isCancelled {
+        guard let self else { return }
+        // Not cancelled, so this is the current alarm task: `seeAlarms` cancels a task as it lets it go.
+        guard let color = NotchEars.unseenAlarm(self.indicators, seen: self.seenAlarms), !self.ears.isEmpty else {
+          self.alarmTask = nil
           return
         }
-        guard !self.ears.isEmpty else {
+        if flashesWithWindowOpen >= Self.alarmFlashesWithWindowOpen {
           self.seeAlarms()
           return
         }
         self.flash(color)
-        if self.mainPanel?.isVisible == true {
-          flashesWithWindowOpen += 1
-          if flashesWithWindowOpen >= Self.alarmFlashesWithWindowOpen {
-            self.seeAlarms()
-            return
-          }
-        }
-        try? await Task.sleep(for: Self.alarmInterval)
+        if self.mainPanel?.isVisible == true { flashesWithWindowOpen += 1 }
+        try? await Task.sleep(for: GlowMetrics.flashDuration)
       }
     }
   }
 
-  /// The user has seen the alarms showing now: the pointer came over the notch, or the window opened.
+  /// The user has seen the alarms showing now: the pointer is over the notch, or the window opened.
   private func seeAlarms() {
     NotchEars.seeAlarms(indicators, seen: &seenAlarms)
-    isAlarming = false
-    alarmGeneration += 1
+    alarmTask?.cancel()
+    alarmTask = nil
   }
 
   /// Lights the notch up in the color, with a glow that spreads past its edges, then hides the glow again.
@@ -441,6 +427,8 @@ final class WindowController: NSObject {
 
   private func screensChanged() {
     rebuildEars()
+    // An alarm that waited for a notch flashes on the one that came back.
+    startAlarmIfUnseen()
     emit(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
   }
 

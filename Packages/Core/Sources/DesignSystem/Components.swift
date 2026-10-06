@@ -33,15 +33,21 @@ extension ToggleStyle where Self == VortexToggleStyle {
   public static var vortex: VortexToggleStyle { VortexToggleStyle() }
 }
 
-/// The one primary action of a screen: a filled capsule.
+/// The one primary action of a screen: a filled capsule. Next to the notch, where the controls are 34 pt, a taller one.
 public struct PrimaryCapsuleButtonStyle: ButtonStyle {
-  public init() {}
+  private let height: CGFloat
+  private let fontSize: CGFloat
+
+  public init(height: CGFloat = 30, fontSize: CGFloat = 12.5) {
+    self.height = height
+    self.fontSize = fontSize
+  }
 
   public func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.system(size: 12.5, weight: .semibold))
+      .font(.system(size: fontSize, weight: .semibold))
       .padding(.horizontal, 14)
-      .frame(height: 30)
+      .frame(height: height)
       .background(Capsule().fill(VortexColor.accent))
       .foregroundStyle(VortexColor.onAccent)
       .opacity(configuration.isPressed ? 0.8 : 1)
@@ -55,13 +61,19 @@ extension ButtonStyle where Self == PrimaryCapsuleButtonStyle {
 
 /// Any other action: a quiet capsule that does not compete with the primary one.
 public struct QuietCapsuleButtonStyle: ButtonStyle {
-  public init() {}
+  private let height: CGFloat
+  private let fontSize: CGFloat
+
+  public init(height: CGFloat = 30, fontSize: CGFloat = 12.5) {
+    self.height = height
+    self.fontSize = fontSize
+  }
 
   public func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.system(size: 12.5, weight: .medium))
+      .font(.system(size: fontSize, weight: .medium))
       .padding(.horizontal, 14)
-      .frame(height: 30)
+      .frame(height: height)
       .background(Capsule().fill(VortexColor.raised))
       .foregroundStyle(VortexColor.primaryText)
       .opacity(configuration.isPressed ? 0.7 : 1)
