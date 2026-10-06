@@ -4,14 +4,13 @@ import os
 import VortexCore
 import VortexPlatform
 
-/// One timer at a time: started from a preset, shown in the closed notch; when time is up, a sound, a notification
-/// with "+5 min" and three flashes of the notch. It goes on while the window is closed and after a relaunch.
+/// One timer at a time: set on the drum, started, shown in the closed notch; when time is up, a sound, a notification
+/// with "+5 min", and the notch flashes until the user looks at it. It goes on while the window is closed and after a
+/// relaunch.
 @Reducer
 public struct TimerFeature: Sendable {
   public static let id: FeatureID = "timer"
   static let addedTime: TimeInterval = 5 * 60
-  static let flashesWhenDone = 3
-  static let flashInterval: Duration = .milliseconds(1500)
   static let doneNotificationID = "timer.done"
   static let addFiveButtonID = "timer.addFive"
 
@@ -24,33 +23,28 @@ public struct TimerFeature: Sendable {
     var isEnabled = false
     /// Set on every tick, so the views and the notch show the time left.
     var now = Date.distantPast
-    /// The preset the user moved to in the Timer tab, until the tab is shown again; nil shows `settings.initialPreset`.
-    var chosenPreset: Int?
-    /// Grows by one for every flash of the notch.
-    var flashes = 0
+    /// Grows by one when time is up and on every test, so each is a new alarm in the notch.
+    var alarms = 0
+    /// The last alarm flashes the notch until the user sees it; a new run ends it.
+    var isAlarming = false
     /// System sounds, for the settings.
     var sounds: [String] = []
 
     public init() {}
 
-    /// The preset the Timer tab shows.
-    var carouselPreset: Int {
-      if let chosenPreset, settings.presets.contains(chosenPreset) { return chosenPreset }
-      return settings.initialPreset
-    }
-
     /// The ring (or pause) and the time left in the closed notch. Without a run it shows no ears but can still flash.
     var indicator: NotchIndicator? {
       guard isEnabled else { return nil }
+      let alarm = isAlarming ? alarms : nil
       guard let run else {
-        return NotchIndicator(leading: [], trailing: [], priority: 10, flash: flashes, flashColor: settings.flashColor)
+        return NotchIndicator(leading: [], trailing: [], priority: 10, flashColor: settings.flashColor, alarm: alarm)
       }
       return NotchIndicator(
         leading: [run.isPaused ? .symbol("pause.fill") : .progress(run.fractionLeft(at: now))],
         trailing: [.text(TimerRun.clockText(seconds: run.secondsLeft(at: now)))],
         priority: 10,
-        flash: flashes,
-        flashColor: settings.flashColor
+        flashColor: settings.flashColor,
+        alarm: alarm
       )
     }
   }
@@ -58,30 +52,25 @@ public struct TimerFeature: Sendable {
   public enum Action: Equatable, Sendable {
     case start
     case stop
-    /// A preset on Home: starts a run of that many minutes.
-    case presetTapped(Int)
-    case previousPresetTapped
-    case nextPresetTapped
-    /// Start in the Timer tab: starts the preset it shows.
+    /// The drum was scrolled, dragged or clicked, or an arrow key pressed: the minutes to start, kept within its range.
+    case minutesChanged(Int)
+    /// Starts a run of the minutes on the drum.
     case startTapped
-    /// The Timer tab became visible: the window opened on it, or the user switched to it.
-    case tabShown
     case pauseTapped
     case resumeTapped
+    /// "+5": five more minutes on the drum, or on the run while one goes.
     case addFiveMinutesTapped
     case stopTapped
     case tick
     /// The shared run changed: by this feature, or from outside it, such as another Vortex writing the run file or the
     /// file edited or deleted.
     case runChanged
-    case flashDue
     case notificationButtonPressed(String)
     case settingsShown
     case soundsLoaded([String])
-    case presetsSubmitted(String)
     case soundChosen(String?)
     case flashColorChanged(ColorValue)
-    /// Plays the sound and the flashes three seconds later, so the window can be closed first.
+    /// Plays the sound and starts the flashes three seconds later, so the window can be closed first.
     case testTapped
     case testAlarm
   }
@@ -95,7 +84,6 @@ public struct TimerFeature: Sendable {
     case tick
     case runChanges
     case buttons
-    case alarm
     case test
   }
 
@@ -117,34 +105,24 @@ public struct TimerFeature: Sendable {
 
       case .stop:
         state.isEnabled = false
+        state.isAlarming = false
         state.$run.withLock { $0 = nil }
         return .merge(
           saveRun(state),
           .cancel(id: CancelID.tick),
           .cancel(id: CancelID.runChanges),
           .cancel(id: CancelID.buttons),
-          .cancel(id: CancelID.alarm),
           .cancel(id: CancelID.test)
         )
 
-      case let .presetTapped(minutes):
-        return startRun(minutes: minutes, &state)
-
-      case .previousPresetTapped:
-        moveCarousel(by: -1, &state)
-        return .none
-
-      case .nextPresetTapped:
-        moveCarousel(by: 1, &state)
+      case let .minutesChanged(minutes):
+        // While a run goes the drum shows its time left and takes no input.
+        guard state.run == nil else { return .none }
+        state.$settings.withLock { $0.minutes = TimerSettings.clamped(minutes) }
         return .none
 
       case .startTapped:
-        return startRun(minutes: state.carouselPreset, &state)
-
-      case .tabShown:
-        // The tab opens on the preset started last: one browsed and left without starting is forgotten.
-        state.chosenPreset = nil
-        return .none
+        return startRun(minutes: state.settings.minutes, &state)
 
       case .pauseTapped:
         let now = self.now
@@ -159,6 +137,10 @@ public struct TimerFeature: Sendable {
         return .merge(tick(state), saveRun(state))
 
       case .addFiveMinutesTapped:
+        guard state.run != nil else {
+          state.$settings.withLock { $0.minutes = TimerSettings.clamped($0.minutes + Int(Self.addedTime / 60)) }
+          return .none
+        }
         // A whole number of seconds: the ticks stay on the whole seconds of the time left.
         state.now = now
         state.$run.withLock { $0?.add(Self.addedTime) }
@@ -178,6 +160,8 @@ public struct TimerFeature: Sendable {
         // here. This feature's own changes come here too, a moment later, and find them in step; setting the ticks
         // again does no harm, as they keep to the whole seconds of the time left.
         state.now = now
+        // A run started elsewhere ends the alarm, as one started here does.
+        if state.run != nil { state.isAlarming = false }
         let indicator = state.indicator
         if state.indicators[Self.id] != indicator {
           // `.onChange` below compares the state before and after an action, so it never sees such a change.
@@ -185,24 +169,16 @@ public struct TimerFeature: Sendable {
         }
         return tick(state)
 
-      case .flashDue:
-        state.flashes += 1
-        return .none
-
       case let .notificationButtonPressed(button):
-        // "+5 min" on the notification that time is up: five more minutes, as a new run.
+        // "+5 min" on the notification that time is up: five more minutes, as a new run; the drum keeps its time.
         guard button == Self.addFiveButtonID else { return .none }
-        return startRun(minutes: Int(Self.addedTime / 60), remembering: false, &state)
+        return startRun(minutes: Int(Self.addedTime / 60), &state)
 
       case .settingsShown:
         return .run { send in await send(.soundsLoaded(await sounds.names())) }
 
       case let .soundsLoaded(names):
         state.sounds = names
-        return .none
-
-      case let .presetsSubmitted(text):
-        state.$settings.withLock { $0.presets = TimerSettings.presets(from: text) }
         return .none
 
       case let .soundChosen(sound):
@@ -222,7 +198,7 @@ public struct TimerFeature: Sendable {
         .cancellable(id: CancelID.test, cancelInFlight: true)
 
       case .testAlarm:
-        return alarm(state)
+        return alarm(&state)
       }
     }
     .onChange(of: \.indicator) { _, indicator in
@@ -233,28 +209,19 @@ public struct TimerFeature: Sendable {
     }
   }
 
-  /// Starts a run unless one is going: one timer at a time.
-  private func startRun(minutes: Int, remembering: Bool = true, _ state: inout State) -> Effect<Action> {
+  /// Starts a run unless one is going: one timer at a time. A new run ends the alarm of the last one.
+  private func startRun(minutes: Int, _ state: inout State) -> Effect<Action> {
     guard state.isEnabled, state.run == nil else { return .none }
     let now = self.now
     state.now = now
-    state.chosenPreset = nil
+    state.isAlarming = false
     state.$run.withLock { $0 = TimerRun.started(minutes: minutes, at: now) }
-    if remembering {
-      state.$settings.withLock { $0.lastMinutes = minutes }
-    }
     return .merge(
       tick(state),
       saveRun(state),
       // The first run asks once whether Vortex may notify; later calls return the saved answer.
       .run { _ in _ = await notifications.requestAuthorization() }
     )
-  }
-
-  private func moveCarousel(by step: Int, _ state: inout State) {
-    let presets = state.settings.presets
-    guard let index = presets.firstIndex(of: state.carouselPreset) else { return }
-    state.chosenPreset = presets[min(max(index + step, 0), presets.count - 1)]
   }
 
   /// Sends `runChanged` whenever the shared run changes. A change from outside the reducer (another Vortex, the run
@@ -312,22 +279,17 @@ public struct TimerFeature: Sendable {
     return .merge(
       .cancel(id: CancelID.tick),
       saveRun(state),
-      alarm(state),
+      alarm(&state),
       .run { _ in await notifications.post(Self.doneNotificationID, title, body, [addFive]) }
     )
   }
 
-  /// The sound, and three flashes of the notch 1.5 s apart.
-  private func alarm(_ state: State) -> Effect<Action> {
-    let sound = state.settings.sound
-    return .run { send in
-      if let sound { await sounds.play(sound) }
-      for flash in 0..<Self.flashesWhenDone {
-        if flash > 0 { try await clock.sleep(for: Self.flashInterval) }
-        await send(.flashDue)
-      }
-    }
-    .cancellable(id: CancelID.alarm, cancelInFlight: true)
+  /// The sound, and a new alarm: the shell flashes the notch until the user looks at it.
+  private func alarm(_ state: inout State) -> Effect<Action> {
+    state.alarms += 1
+    state.isAlarming = true
+    guard let sound = state.settings.sound else { return .none }
+    return .run { _ in await sounds.play(sound) }
   }
 
   private func listenToNotificationButtons() -> Effect<Action> {

@@ -5,39 +5,37 @@ import VortexCore
 @testable import FeatureTimer
 
 struct TimerSettingsTests {
-  @Test
-  func presetsAreCleanedUpFromText() {
-    #expect(TimerSettings.presets(from: "25, 5 10,abc 0 5 700") == [5, 10, 25])
-    #expect(TimerSettings.presets(from: "1 2 3 4 5 6 7") == [1, 2, 3, 4, 5, 6])
-    #expect(TimerSettings.presets(from: "  ") == TimerSettings.defaultPresets)
-  }
-
-  @Test
-  func missingOrBrokenKeysFallBackToDefaults() throws {
-    let settings = try JSONDecoder().decode(TimerSettings.self, from: Data(#"{"presets": "x", "lastMinutes": 10}"#.utf8))
-    #expect(settings.presets == TimerSettings.defaultPresets)
-    #expect(settings.lastMinutes == 10)
-    #expect(settings.sound == TimerSettings.defaultSound)
-    #expect(settings.flashColor == TimerSettings.defaultFlashColor)
-  }
-
   func decoded(_ json: String) throws -> TimerSettings {
     try JSONDecoder().decode(TimerSettings.self, from: Data(json.utf8))
   }
 
   @Test
-  func lastMinutesOutsideThePresetRangeFallBackToTwentyFive() throws {
-    for minutes in ["-5", "0", "601", "9999", "-9223372036854775808", "9223372036854775807"] {
-      let settings = try decoded(#"{"lastMinutes": \#(minutes)}"#)
-      #expect(settings.lastMinutes == 25)
-      // The sum that once overflowed on the smallest of these.
-      #expect(settings.initialPreset == 25)
+  func missingOrBrokenKeysFallBackToDefaults() throws {
+    let settings = try decoded(#"{"lastMinutes": "x", "sound": 5}"#)
+    #expect(settings.minutes == TimerSettings.defaultMinutes)
+    #expect(settings.sound == TimerSettings.defaultSound)
+    #expect(settings.flashColor == TimerSettings.defaultFlashColor)
+  }
+
+  @Test
+  func theMinutesOfTheLastPresetCarryOverAndTheOldPresetsAreLeftBehind() throws {
+    let settings = try decoded(#"{"presets": [5, 10, 45], "lastMinutes": 45, "sound": "Basso"}"#)
+    #expect(settings.minutes == 45)
+    #expect(settings.sound == "Basso")
+    let saved = try JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any]
+    #expect(saved?["lastMinutes"] as? Int == 45)
+    #expect(saved?["presets"] == nil)
+  }
+
+  @Test
+  func minutesPastEitherEndOfTheDrumMoveToThatEnd() throws {
+    for (saved, minutes) in [("-5", 1), ("0", 1), ("121", 120), ("600", 120), ("-9223372036854775808", 1), ("9223372036854775807", 120)] {
+      #expect(try decoded(#"{"lastMinutes": \#(saved)}"#).minutes == minutes)
     }
-    #expect(try decoded(#"{"lastMinutes": 1}"#).lastMinutes == 1)
-    #expect(try decoded(#"{"lastMinutes": 600}"#).lastMinutes == 600)
+    #expect(try decoded(#"{"lastMinutes": 1}"#).minutes == 1)
+    #expect(try decoded(#"{"lastMinutes": 120}"#).minutes == 120)
     // Not a whole number of minutes at all.
-    #expect(try decoded(#"{"lastMinutes": 7.5}"#).lastMinutes == 25)
-    #expect(try decoded(#"{"lastMinutes": "ten"}"#).lastMinutes == 25)
+    #expect(try decoded(#"{"lastMinutes": 7.5}"#).minutes == TimerSettings.defaultMinutes)
   }
 
   @Test
@@ -54,16 +52,8 @@ struct TimerSettingsTests {
   func noSoundSurvivesSaving() throws {
     var settings = TimerSettings()
     settings.sound = nil
+    settings.minutes = 7
     let decoded = try JSONDecoder().decode(TimerSettings.self, from: JSONEncoder().encode(settings))
     #expect(decoded == settings)
-  }
-
-  @Test
-  func theTabOpensOnTheLastPresetOrTheClosestOne() {
-    var settings = TimerSettings()
-    #expect(settings.initialPreset == 25)
-    settings.presets = [5, 30, 60]
-    #expect(settings.initialPreset == 30)
-    #expect(settings.presetsText == "5, 30, 60")
   }
 }

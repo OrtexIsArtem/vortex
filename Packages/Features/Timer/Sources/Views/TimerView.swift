@@ -2,7 +2,8 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// The Timer tab: ‹ 25 min › and Start; while a run is going, the time left in large digits and its controls.
+/// The Timer tab: the minutes in large digits, the drum under them, «+5 хв» and Start; while a run goes, the time left,
+/// when it ends, the drum turning towards zero, and pause and stop.
 public struct TimerView: View {
   let store: StoreOf<TimerFeature>
   @Environment(\.isWindowOpen) private var isWindowOpen
@@ -19,12 +20,33 @@ public struct TimerView: View {
         .frame(height: VortexMetrics.headerHeight)
         .padding(.leading, 10)
 
-      Group {
-        if let run = store.run {
-          RunningTimer(run: run, store: store)
-        } else {
-          PresetCarousel(minutes: store.carouselPreset, presets: store.settings.presets) { store.send($0) }
+      VStack(spacing: 0) {
+        Group {
+          if let run = store.run {
+            RunningTime(run: run, store: store)
+          } else {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+              Text(store.settings.minutes, format: .number)
+                .font(.system(size: 76, weight: .thin).monospacedDigit())
+              Text("min", bundle: .module)
+                .font(.system(size: 15))
+                .foregroundStyle(VortexColor.secondaryText)
+            }
+            // The drum says the same to VoiceOver.
+            .accessibilityHidden(true)
+          }
         }
+        .frame(height: 76)
+        caption
+          .font(.system(size: 12.5))
+          .foregroundStyle(VortexColor.tertiaryText)
+          .frame(height: 18)
+          .padding(.top, 6)
+        DrumRuler(store: store, style: .tab)
+          .frame(width: 360)
+          .padding(.top, 10)
+        controls
+          .padding(.top, 22)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       // Centered in the window rather than in the space under the header.
@@ -33,9 +55,13 @@ public struct TimerView: View {
     .focusable()
     .focusEffectDisabled()
     .focused($isFocused)
-    .onKeyPress(.leftArrow) { carousel(.previousPresetTapped) }
-    .onKeyPress(.rightArrow) { carousel(.nextPresetTapped) }
-    .onKeyPress(.return) { carousel(.startTapped) }
+    .onKeyPress(.leftArrow) { turn(by: -1) }
+    .onKeyPress(.rightArrow) { turn(by: 1) }
+    .onKeyPress(.return) {
+      guard store.run == nil else { return .ignored }
+      store.send(.startTapped)
+      return .handled
+    }
     // Only the press toggles, so a held key toggles once. Its repeats are taken without doing anything: left alone, each
     // would reach the end of the responder chain, where AppKit beeps.
     .onKeyPress(.space, phases: .down) { _ in
@@ -45,106 +71,44 @@ public struct TimerView: View {
     }
     .onKeyPress(.space, phases: .repeat) { _ in store.run == nil ? .ignored : .handled }
     .task(id: isWindowOpen) {
-      guard isWindowOpen else { return }
-      store.send(.tabShown)
-      isFocused = true
+      if isWindowOpen { isFocused = true }
     }
   }
 
-  /// The carousel keys work only before a run starts.
-  private func carousel(_ action: TimerFeature.Action) -> KeyPress.Result {
+  /// ← → turn the drum a minute before a run starts.
+  private func turn(by minutes: Int) -> KeyPress.Result {
     guard store.run == nil else { return .ignored }
-    store.send(action)
+    store.send(.minutesChanged(store.settings.minutes + minutes))
     return .handled
   }
-}
 
-/// ‹ 25 min › and Start.
-private struct PresetCarousel: View {
-  let minutes: Int
-  let presets: [Int]
-  let send: @MainActor (TimerFeature.Action) -> Void
-
-  var body: some View {
-    VStack(spacing: 22) {
-      HStack(spacing: 14) {
-        ArrowButton(symbol: "chevron.left", label: Text("Shorter", bundle: .module)) {
-          send(.previousPresetTapped)
-        }
-        .disabled(minutes == presets.first)
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-          Text(minutes, format: .number)
-            .font(.system(size: 76, weight: .thin).monospacedDigit())
-            .contentTransition(.numericText())
-          Text("min", bundle: .module)
-            .font(.system(size: 15))
-            .foregroundStyle(VortexColor.secondaryText)
-        }
-        .frame(minWidth: 170)
-        .animation(.snappy(duration: 0.2), value: minutes)
-        ArrowButton(symbol: "chevron.right", label: Text("Longer", bundle: .module)) {
-          send(.nextPresetTapped)
-        }
-        .disabled(minutes == presets.last)
+  /// "of 25 min · until 14:57"; paused, "Paused · of 25 min"; nothing before a run starts.
+  @ViewBuilder
+  private var caption: some View {
+    if let run = store.run {
+      let total = Text("of \(run.totalMinutes) min", bundle: .module)
+      if case let .running(endsAt) = run.phase {
+        total + Text(verbatim: " · ") + Text("until \(endsAt, format: .dateTime.hour().minute())", bundle: .module)
+      } else {
+        Text("Paused", bundle: .module) + Text(verbatim: " · ") + total
       }
+    } else {
+      Color.clear
+    }
+  }
+
+  /// «+5 хв», and Start or the run's pause and stop. «+5 хв» stays in its place in both.
+  private var controls: some View {
+    HStack(spacing: 10) {
       Button {
-        send(.startTapped)
+        store.send(.addFiveMinutesTapped)
       } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "play.fill")
-            .font(.system(size: 9))
-          Text("Start", bundle: .module)
-        }
+        Text("+5 min", bundle: .module)
       }
-      .buttonStyle(.primaryCapsule)
-    }
-  }
-}
+      .buttonStyle(.quietCapsule)
+      .accessibilityLabel(Text("Add 5 minutes", bundle: .module))
 
-private struct ArrowButton: View {
-  let symbol: String
-  let label: Text
-  let action: () -> Void
-  @Environment(\.isEnabled) private var isEnabled
-
-  var body: some View {
-    Button(action: action) {
-      Image(systemName: symbol)
-        .font(.system(size: 15, weight: .medium))
-        .frame(width: VortexMetrics.hitTarget, height: VortexMetrics.hitTarget)
-        .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .foregroundStyle(isEnabled ? VortexColor.secondaryText : VortexColor.track)
-    .help(label)
-    .accessibilityLabel(label)
-  }
-}
-
-/// The time left, when it ends, how much is left as a line, and the controls. Only the digits and the line follow the
-/// ticks; the rest stays as it is until the run changes.
-private struct RunningTimer: View {
-  let run: TimerRun
-  let store: StoreOf<TimerFeature>
-
-  var body: some View {
-    VStack(spacing: 0) {
-      // No digit animation: it would run every second for the whole run, and costs a lot of CPU even unseen.
-      TickReader(store: store) { now in
-        Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: now)))
-      }
-      .font(.system(size: 76, weight: .thin).monospacedDigit())
-      .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
-      caption
-        .font(.system(size: 12.5))
-        .foregroundStyle(VortexColor.tertiaryText)
-        .padding(.top, 2)
-      TickReader(store: store) { now in
-        ProgressLine(fraction: run.fractionLeft(at: now))
-      }
-      .frame(width: 260, height: 2)
-      .padding(.top, 20)
-      HStack(spacing: 10) {
+      if let run = store.run {
         RoundButton(
           symbol: run.isPaused ? "play.fill" : "pause.fill",
           label: run.isPaused ? Text("Resume", bundle: .module) : Text("Pause", bundle: .module),
@@ -155,40 +119,34 @@ private struct RunningTimer: View {
         RoundButton(symbol: "stop.fill", label: Text("Stop", bundle: .module)) {
           store.send(.stopTapped)
         }
+      } else {
         Button {
-          store.send(.addFiveMinutesTapped)
+          store.send(.startTapped)
         } label: {
-          Text("+5 min", bundle: .module)
+          HStack(spacing: 6) {
+            Image(systemName: "play.fill")
+              .font(.system(size: 9))
+            Text("Start", bundle: .module)
+          }
         }
-        .buttonStyle(.quietCapsule)
+        .buttonStyle(.primaryCapsule)
       }
-      .padding(.top, 22)
     }
-  }
-
-  /// "of 25 min · until 14:57"; paused, "Paused · of 25 min".
-  private var caption: Text {
-    let total = Text("of \(run.totalMinutes) min", bundle: .module)
-    guard case let .running(endsAt) = run.phase else {
-      return Text("Paused", bundle: .module) + Text(verbatim: " · ") + total
-    }
-    return total + Text(verbatim: " · ") + Text("until \(endsAt, format: .dateTime.hour().minute())", bundle: .module)
+    .frame(height: VortexMetrics.hitTarget)
   }
 }
 
-/// A thin line: the time left out of the total.
-private struct ProgressLine: View {
-  let fraction: Double
+/// The time left in large digits; paused, dimmed. No digit animation: it would run every second for the whole run, and
+/// costs a lot of CPU even unseen.
+private struct RunningTime: View {
+  let run: TimerRun
+  let store: StoreOf<TimerFeature>
 
   var body: some View {
-    GeometryReader { geometry in
-      ZStack(alignment: .leading) {
-        Capsule().fill(VortexColor.track)
-        Capsule()
-          .fill(VortexColor.primaryText)
-          .frame(width: geometry.size.width * min(max(fraction, 0), 1))
-      }
+    TickReader(store: store) { now in
+      Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: now)))
     }
-    .accessibilityHidden(true)
+    .font(.system(size: 76, weight: .thin).monospacedDigit())
+    .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
   }
 }

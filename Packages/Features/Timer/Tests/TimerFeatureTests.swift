@@ -39,6 +39,12 @@ struct TimerFeatureTests {
     return store
   }
 
+  /// Turns the drum to `minutes` and starts.
+  func startRun(_ store: TestStoreOf<TimerFeature>, minutes: Int) async {
+    await store.send(.minutesChanged(minutes))
+    await store.send(.startTapped)
+  }
+
   /// Moves the date the feature reads and the clock its effects sleep on.
   func pass(_ seconds: Int) async {
     now.withValue { $0 += TimeInterval(seconds) }
@@ -46,12 +52,12 @@ struct TimerFeatureTests {
   }
 
   @Test
-  func aPresetStartsARunThatTicksInTheNotch() async {
+  func startStartsTheMinutesOnTheDrumAndTicksInTheNotch() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(25))
+    await startRun(store, minutes: 25)
     #expect(store.state.run == TimerRun.started(minutes: 25, at: now.value))
-    #expect(store.state.settings.lastMinutes == 25)
+    #expect(store.state.settings.minutes == 25)
     @Shared(.notchIndicators) var indicators
     #expect(indicators[TimerFeature.id]?.leading == [.progress(1)])
     #expect(indicators[TimerFeature.id]?.trailing == [.text("25:00")])
@@ -68,7 +74,7 @@ struct TimerFeatureTests {
   func pausingStopsTheClockUntilResumed() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(10))
+    await startRun(store, minutes: 10)
     await pass(3)
     await store.send(.pauseTapped)
     #expect(store.state.run?.phase == .paused(remaining: 597))
@@ -88,7 +94,7 @@ struct TimerFeatureTests {
   func fiveMoreMinutesWhileRunningOrPaused() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(5))
+    await startRun(store, minutes: 5)
     await store.send(.addFiveMinutesTapped)
     #expect(store.state.run == TimerRun(phase: .running(endsAt: now.value + 600), total: 600))
     await store.send(.pauseTapped)
@@ -101,12 +107,12 @@ struct TimerFeatureTests {
   func stopEndsTheRunQuietly() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(5))
+    await startRun(store, minutes: 5)
     await store.send(.stopTapped)
     #expect(store.state.run == nil)
     @Shared(.notchIndicators) var indicators
     #expect(indicators[TimerFeature.id] == NotchIndicator(
-      leading: [], trailing: [], priority: 10, flash: 0, flashColor: TimerSettings.defaultFlashColor
+      leading: [], trailing: [], priority: 10, flashColor: TimerSettings.defaultFlashColor
     ))
     await pass(600)
     #expect(played.value.isEmpty)
@@ -114,21 +120,39 @@ struct TimerFeatureTests {
   }
 
   @Test
-  func whenTimeIsUpItPlaysTheSoundNotifiesAndFlashesThreeTimes() async {
+  func whenTimeIsUpItPlaysTheSoundNotifiesAndRaisesAnAlarmInTheNotch() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(5))
+    await startRun(store, minutes: 5)
     await pass(300)
     await store.receive(\.tick)
-    await store.receive(\.flashDue)
-    await store.receive(\.flashDue)
-    await store.receive(\.flashDue)
     #expect(store.state.run == nil)
-    #expect(store.state.flashes == 3)
-    #expect(played.value == [TimerSettings.defaultSound])
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[TimerFeature.id] == NotchIndicator(
+      leading: [], trailing: [], priority: 10, flashColor: TimerSettings.defaultFlashColor, alarm: 1
+    ))
+    // The shell flashes the notch until the user sees it; the next run ends the alarm either way.
+    await startRun(store, minutes: 5)
+    #expect(indicators[TimerFeature.id]?.alarm == nil)
     await store.send(.stop)
     await store.finish()
+    #expect(played.value == [TimerSettings.defaultSound])
     #expect(posted.value == ["\(TimerFeature.doneNotificationID):\(TimerFeature.addFiveButtonID)"])
+  }
+
+  @Test
+  func plusFiveOnTheNotificationEndsTheAlarm() async {
+    let store = makeStore()
+    await store.send(.start)
+    await startRun(store, minutes: 5)
+    await pass(300)
+    await store.receive(\.tick)
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[TimerFeature.id]?.alarm == 1)
+    buttons.continuation.yield(TimerFeature.addFiveButtonID)
+    await store.receive(\.notificationButtonPressed)
+    #expect(indicators[TimerFeature.id]?.alarm == nil)
+    await store.send(.stop)
   }
 
   @Test
@@ -161,7 +185,7 @@ struct TimerFeatureTests {
   func aRunEndedOutsideTheFeatureStopsTheTicksAndLeavesTheNotch() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(25))
+    await startRun(store, minutes: 25)
     await pass(1)
     await store.receive(\.tick)
     // Another Vortex stops the run, or the run file is deleted: the shared run changes without an action.
@@ -170,7 +194,7 @@ struct TimerFeatureTests {
     await store.receive(\.runChanged)
     @Shared(.notchIndicators) var indicators
     #expect(indicators[TimerFeature.id] == NotchIndicator(
-      leading: [], trailing: [], priority: 10, flash: 0, flashColor: TimerSettings.defaultFlashColor
+      leading: [], trailing: [], priority: 10, flashColor: TimerSettings.defaultFlashColor
     ))
     // No tick comes any more: each would move the time on.
     let stoppedAt = store.state.now
@@ -208,7 +232,7 @@ struct TimerFeatureTests {
     } operation: {
       let store = makeStore()
       await store.send(.start)
-      await store.send(.presetTapped(25))
+      await startRun(store, minutes: 25)
       await store.send(.pauseTapped).finish()
       #expect(saved().flatMap(TimerRun.decodeSaved) == TimerRun(phase: .paused(remaining: 1500), total: 1500))
       await store.send(.addFiveMinutesTapped).finish()
@@ -226,7 +250,8 @@ struct TimerFeatureTests {
     buttons.continuation.yield(TimerFeature.addFiveButtonID)
     await store.receive(\.notificationButtonPressed)
     #expect(store.state.run == TimerRun.started(minutes: 5, at: now.value))
-    #expect(store.state.settings.lastMinutes == 25)
+    // The drum keeps its time.
+    #expect(store.state.settings.minutes == 25)
     await store.send(.stop)
   }
 
@@ -234,50 +259,46 @@ struct TimerFeatureTests {
   func oneTimerAtATime() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(25))
-    await store.send(.presetTapped(5))
+    await startRun(store, minutes: 25)
+    await store.send(.startTapped)
     #expect(store.state.run?.total == 1500)
     await store.send(.stop)
   }
 
   @Test
-  func theCarouselMovesThroughPresetsAndStartsTheOneShown() async {
+  func theDrumStaysWithinItsRangeAndTakesNoInputWhileARunGoes() async {
     let store = makeStore()
     await store.send(.start)
-    #expect(store.state.carouselPreset == 25)
-    await store.send(.nextPresetTapped)
-    await store.send(.nextPresetTapped)
-    await store.send(.nextPresetTapped)
-    #expect(store.state.carouselPreset == 60)
-    await store.send(.previousPresetTapped)
-    #expect(store.state.carouselPreset == 45)
+    await store.send(.minutesChanged(0))
+    #expect(store.state.settings.minutes == 1)
+    await store.send(.minutesChanged(500))
+    #expect(store.state.settings.minutes == 120)
+    await store.send(.minutesChanged(40))
     await store.send(.startTapped)
-    #expect(store.state.run?.total == TimeInterval(45 * 60))
-    #expect(store.state.settings.lastMinutes == 45)
+    #expect(store.state.run?.total == TimeInterval(40 * 60))
+    await store.send(.minutesChanged(10))
+    #expect(store.state.settings.minutes == 40)
     await store.send(.stop)
   }
 
   @Test
-  func theTabOpensOnThePresetStartedLastWhateverWasBrowsedBefore() async {
+  func plusFiveWithoutARunAddsToTheDrumUpToItsEnd() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.nextPresetTapped)
-    await store.send(.nextPresetTapped)
-    #expect(store.state.carouselPreset == 60)
-    // Left without starting; later the window opens on the tab again.
-    await store.send(.tabShown)
-    #expect(store.state.carouselPreset == store.state.settings.lastMinutes)
-    #expect(store.state.carouselPreset == 25)
+    await store.send(.addFiveMinutesTapped)
+    #expect(store.state.settings.minutes == 30)
+    #expect(store.state.run == nil)
+    await store.send(.minutesChanged(118))
+    await store.send(.addFiveMinutesTapped)
+    #expect(store.state.settings.minutes == 120)
     await store.send(.stop)
   }
 
   @Test
-  func settingsCleanUpPresetsAndPlayTheChosenSound() async {
+  func settingsPlayTheChosenSound() async {
     let store = makeStore()
     await store.send(.settingsShown)
     await store.receive(\.soundsLoaded) { $0.sounds = ["Basso", "Glass"] }
-    await store.send(.presetsSubmitted("90, 3, x, 3"))
-    #expect(store.state.settings.presets == [3, 90])
     await store.send(.soundChosen("Basso"))
     #expect(store.state.settings.sound == "Basso")
     await store.send(.soundChosen(nil))
@@ -295,22 +316,22 @@ struct TimerFeatureTests {
     #expect(played.value.isEmpty)
     await clock.advance(by: .milliseconds(1))
     await store.receive(\.testAlarm)
-    await store.receive(\.flashDue)
-    #expect(played.value == [TimerSettings.defaultSound])
-    await clock.advance(by: .seconds(3))
-    // The state moves on only when the test receives the actions of the effect.
-    await store.receive(\.flashDue)
-    await store.receive(\.flashDue)
-    #expect(store.state.flashes == 3)
-    #expect(posted.value.isEmpty)
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[TimerFeature.id]?.alarm == 1)
+    // Each test is a new alarm, even when the last one was never ended.
+    await store.send(.testAlarm)
+    #expect(indicators[TimerFeature.id]?.alarm == 2)
     await store.send(.stop)
+    await store.finish()
+    #expect(played.value == [TimerSettings.defaultSound, TimerSettings.defaultSound])
+    #expect(posted.value.isEmpty)
   }
 
   @Test
   func turningTheFeatureOffEndsTheRun() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.presetTapped(25))
+    await startRun(store, minutes: 25)
     await store.send(.stop)
     #expect(store.state.run == nil)
     @Shared(.notchIndicators) var indicators

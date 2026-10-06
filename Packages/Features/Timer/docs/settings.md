@@ -4,7 +4,6 @@ DataFolder/timer.json; unreadable keys fall back to their defaults.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| Presets | 5, 10, 15, 25, 45, 60 | minutes 1–600, at most six (they stand next to the notch on Home); invalid parts are dropped, nothing valid brings the defaults back |
 | Sound | Glass | a system sound or none; choosing one plays it |
-| Notch flash | warm orange #FF9F43 | the color of the three flashes when time is up; Test plays them |
-| Last preset (not shown) | 25 | the preset started last |
+| Notch flash | warm orange #FF9F43 | the color the notch flashes in when time is up, until the pointer comes over it; Test plays it |
+| Minutes on the drum (set on the drum) | 25 | 1–120; saved as `lastMinutes`, so the preset started last before the drum carries over; values past either end move to it |

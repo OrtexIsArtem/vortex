@@ -1,12 +1,32 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld min" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld хв"
+          }
+        }
+      }
+    },
     "+5 min" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "+5 хв"
+          }
+        }
+      }
+    },
+    "Add 5 minutes" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати 5 хвилин"
           }
         }
       }
@@ -21,32 +41,12 @@
         }
       }
     },
-    "Longer" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Більше часу"
-          }
-        }
-      }
-    },
     "min" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "хв"
-          }
-        }
-      }
-    },
-    "Minutes, separated by commas. Up to six: on Home they stand next to the notch." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Хвилини через кому. До шести: на Головній вони стоять біля вирізу."
           }
         }
       }
@@ -101,12 +101,12 @@
         }
       }
     },
-    "Plays the sound and the flashes in 3 seconds: close the window to watch the notch" : {
+    "Plays the sound and the flashes in 3 seconds: close the window to watch the notch, point at it to stop them" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Програє звук і блимання через 3 с: закрийте вікно, щоб бачити виріз"
+            "value" : "Програє звук і блимання через 3 с: закрийте вікно, щоб бачити виріз, і наведіть на нього, щоб зупинити"
           }
         }
       }
@@ -121,16 +121,6 @@
         }
       }
     },
-    "Presets" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пресети"
-          }
-        }
-      }
-    },
     "Resume" : {
       "localizations" : {
         "uk" : {
@@ -141,12 +131,13 @@
         }
       }
     },
-    "Shorter" : {
+    "Scroll, drag or click a tick" : {
+      "comment" : "Tooltip of the drum that sets the timer's minutes",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Менше часу"
+            "value" : "Прокрутіть, потягніть або клацніть поділку"
           }
         }
       }
@@ -222,12 +213,13 @@
         }
       }
     },
-    "Timer for %lld minutes" : {
+    "Timer length" : {
+      "comment" : "VoiceOver name of the drum that sets the timer's minutes",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Таймер на %lld хв"
+            "value" : "Тривалість таймера"
           }
         }
       }
@@ -242,12 +234,12 @@
         }
       }
     },
-    "When time is up, the notch flashes three times in this color." : {
+    "When time is up, the notch flashes in this color until you point at it." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Коли час вийде, виріз блимне тричі цим кольором."
+            "value" : "Коли час вийде, виріз блиматиме цим кольором, доки ви не наведете на нього вказівник."
           }
         }
       }
