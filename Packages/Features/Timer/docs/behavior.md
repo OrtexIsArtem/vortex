@@ -3,7 +3,7 @@
 ## Setting the time
 - The drum shows the minutes to start under a fixed mark: a tick per minute, a longer one every five; it turns from 1 to 120.
 - Towards its edges the ticks crowd, shrink and fade, as on a drum seen from the front; in the Timer tab every fifth tick has its number.
-- A mouse wheel turns it a minute per notch; two fingers on the trackpad, a minute per 6 pt (9 pt in the Timer tab), with momentum.
+- A mouse wheel turns it a minute per notch; two fingers on the trackpad, a minute per 9 pt (13 pt in the Timer tab); after the fingers lift it coasts half as far.
 - The drum moves with the fingers or the pointer: a swipe or a drag to the left, or a swipe up, adds time.
 - A drag keeps the window open, even past its edge; released outside it, the window waits 1.5 s for the pointer to come back before it may close.
 - A click on a tick turns that tick to the mark; a press moved more than 2 pt either way is a drag, not a click.

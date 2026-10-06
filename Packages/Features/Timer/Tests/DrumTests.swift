@@ -1,5 +1,6 @@
 import CoreGraphics
 import Testing
+import VortexPlatform
 
 @testable import FeatureTimer
 
@@ -37,7 +38,7 @@ struct DrumTests {
   func aTrackpadTurnsAMinutePerSpacingFollowingTheFingers() {
     var steps = ScrollSteps()
     func turn(x: CGFloat = 0, y: CGFloat = 0, begins: Bool = false) -> Int {
-      steps.minutes(x: x, y: y, isPrecise: true, beginsGesture: begins, points: 6)
+      steps.minutes(for: ScrollDelta(x: x, y: y, isPrecise: true, beginsGesture: begins), points: 6)
     }
     // Fingers to the left: the drum moves left and later minutes come under the mark.
     #expect(turn(x: -4, begins: true) == 0)
@@ -52,7 +53,7 @@ struct DrumTests {
   func everySwipeStartsAfresh() {
     var steps = ScrollSteps()
     func turn(x: CGFloat, begins: Bool = false) -> Int {
-      steps.minutes(x: x, y: 0, isPrecise: true, beginsGesture: begins, points: 6)
+      steps.minutes(for: ScrollDelta(x: x, y: 0, isPrecise: true, beginsGesture: begins), points: 6)
     }
     #expect(turn(x: -5.9, begins: true) == 0)
     // A new touch drops what the last swipe left over.
@@ -63,10 +64,19 @@ struct DrumTests {
   }
 
   @Test
+  func afterTheFingersLiftTheDrumCoastsHalfAsFar() {
+    var steps = ScrollSteps()
+    #expect(steps.minutes(for: ScrollDelta(x: -12, y: 0, isPrecise: true, beginsGesture: true), points: 6) == 2)
+    #expect(steps.minutes(for: ScrollDelta(x: -12, y: 0, isPrecise: true, isMomentum: true), points: 6) == 1)
+    #expect(steps.minutes(for: ScrollDelta(x: -6, y: 0, isPrecise: true, isMomentum: true), points: 6) == 0)
+    #expect(steps.minutes(for: ScrollDelta(x: -6, y: 0, isPrecise: true, isMomentum: true), points: 6) == 1)
+  }
+
+  @Test
   func aMouseWheelTurnsAMinutePerNotchWhateverItsSpeed() {
     var steps = ScrollSteps()
     func turn(_ y: CGFloat) -> Int {
-      steps.minutes(x: 0, y: y, isPrecise: false, beginsGesture: false, points: 6)
+      steps.minutes(for: ScrollDelta(x: 0, y: y, isPrecise: false), points: 6)
     }
     #expect(turn(-1) == 1)
     #expect(turn(-4.5) == 1)

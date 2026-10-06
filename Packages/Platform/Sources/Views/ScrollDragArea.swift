@@ -1,19 +1,38 @@
 import AppKit
 import SwiftUI
 
+/// Two fingers on the trackpad or the mouse wheel over a `ScrollDragArea`.
+public struct ScrollDelta: Equatable, Sendable {
+  /// How far the content under the pointer should move, positive to the right and down, with the user's scroll
+  /// direction setting applied.
+  public var x: CGFloat
+  public var y: CGFloat
+  /// From a trackpad or a Magic Mouse, in points; otherwise from a mouse wheel, about one line per notch.
+  public var isPrecise: Bool
+  /// The fingers just touched down.
+  public var beginsGesture: Bool
+  /// The fingers have lifted and the scroll coasts on.
+  public var isMomentum: Bool
+
+  public init(x: CGFloat, y: CGFloat, isPrecise: Bool, beginsGesture: Bool = false, isMomentum: Bool = false) {
+    self.x = x
+    self.y = y
+    self.isPrecise = isPrecise
+    self.beginsGesture = beginsGesture
+    self.isMomentum = isMomentum
+  }
+}
+
 /// What happens on a `ScrollDragArea`. Points are in the area's own coordinates, from its top left corner.
 public enum ScrollDragEvent: Equatable, Sendable {
-  /// Two fingers on the trackpad or the mouse wheel: how far the content under the pointer should move, positive to the
-  /// right and down, with the user's scroll direction setting applied. `beginsGesture`: the fingers just touched down.
-  case scrolled(x: CGFloat, y: CGFloat, isPrecise: Bool, beginsGesture: Bool)
+  case scrolled(ScrollDelta)
   case pressed(CGPoint)
   case dragged(CGPoint)
   case released(CGPoint)
 }
 
 /// The surface of a control that turns by scrolling or dragging, such as the timer's drum. Lay it over the control's
-/// drawing. A precise scroll comes from a trackpad or a Magic Mouse, in points; any other from a mouse wheel, about one
-/// line per notch. A press counts as `OutsideActivity` until it is released, so a drag that leaves the window does not
+/// drawing. A press counts as `OutsideActivity` until it is released, so a drag that leaves the window does not
 /// close it; released outside the window, it holds on for a moment more, to come back to the window. AppKit-backed:
 /// SwiftUI on macOS 14 has no scroll events outside a scroll view.
 public struct ScrollDragArea: NSViewRepresentable {
@@ -64,12 +83,13 @@ public final class ScrollDragView: NSView {
   override public func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
   override public func scrollWheel(with event: NSEvent) {
-    onEvent(.scrolled(
+    onEvent(.scrolled(ScrollDelta(
       x: event.scrollingDeltaX,
       y: event.scrollingDeltaY,
       isPrecise: event.hasPreciseScrollingDeltas,
-      beginsGesture: event.phase.contains(.began) || event.phase.contains(.mayBegin)
-    ))
+      beginsGesture: event.phase.contains(.began) || event.phase.contains(.mayBegin),
+      isMomentum: !event.momentumPhase.isEmpty
+    )))
   }
 
   override public func mouseDown(with event: NSEvent) {

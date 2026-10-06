@@ -65,8 +65,8 @@ struct DrumRuler: View {
     guard store.run == nil else { return }
     let minutes = self.minutes
     switch event {
-    case let .scrolled(x, y, isPrecise, beginsGesture):
-      let steps = scroll.minutes(x: x, y: y, isPrecise: isPrecise, beginsGesture: beginsGesture, points: style.spacing)
+    case let .scrolled(delta):
+      let steps = scroll.minutes(for: delta, points: style.scrollPoints)
       if steps != 0 { turn(to: minutes + steps) }
     case let .pressed(point):
       drag = DragStart(point: point, minutes: minutes)
@@ -105,8 +105,11 @@ private struct DragStart {
 
 /// The drum's sizes: small next to the notch on Home, large with numbers in the Timer tab.
 struct DrumStyle {
-  /// Between ticks under the mark; a trackpad turns the drum a minute per this many points.
+  /// Between ticks under the mark; a drag turns the drum a minute per this many points, so it follows the pointer.
   var spacing: CGFloat
+  /// Two fingers on the trackpad turn it a minute per this many points: a little more than `spacing`, so it is not
+  /// too quick.
+  var scrollPoints: CGFloat
   var height: CGFloat
   var minorTick: CGFloat
   var majorTick: CGFloat
@@ -118,11 +121,11 @@ struct DrumStyle {
   var showsNumbers: Bool
 
   static let home = DrumStyle(
-    spacing: 6, height: 34, minorTick: 7, majorTick: 12, baseline: 25, middle: 17, markTop: 4, markHeight: 23,
+    spacing: 6, scrollPoints: 9, height: 34, minorTick: 7, majorTick: 12, baseline: 25, middle: 17, markTop: 4, markHeight: 23,
     showsNumbers: false
   )
   static let tab = DrumStyle(
-    spacing: 9, height: 56, minorTick: 9, majorTick: 16, baseline: 32, middle: 22, markTop: 4, markHeight: 32,
+    spacing: 9, scrollPoints: 13, height: 56, minorTick: 9, majorTick: 16, baseline: 32, middle: 22, markTop: 4, markHeight: 32,
     showsNumbers: true
   )
 }
@@ -161,19 +164,20 @@ struct DrumGeometry {
 }
 
 /// Turns scrolls into whole minutes. The drum moves with the fingers, so a swipe to the left or up brings later minutes
-/// under the mark. A mouse wheel turns it a minute per notch; a trackpad, a minute per `points`. What is left over
-/// towards the next minute is dropped when the fingers touch down again or turn back, so every swipe starts afresh.
+/// under the mark. A mouse wheel turns it a minute per notch; a trackpad, a minute per `points`, and half as far once
+/// the fingers lift and it coasts. What is left over towards the next minute is dropped when the fingers touch down
+/// again or turn back, so every swipe starts afresh.
 struct ScrollSteps {
   /// Points towards the next minute; positive adds time.
   private var remainder: CGFloat = 0
 
-  mutating func minutes(x: CGFloat, y: CGFloat, isPrecise: Bool, beginsGesture: Bool, points: CGFloat) -> Int {
-    let push = -(abs(x) > abs(y) ? x : y)
-    guard isPrecise else {
+  mutating func minutes(for delta: ScrollDelta, points: CGFloat) -> Int {
+    let push = -(abs(delta.x) > abs(delta.y) ? delta.x : delta.y) * (delta.isMomentum ? 0.5 : 1)
+    guard delta.isPrecise else {
       remainder = 0
       return push > 0 ? 1 : push < 0 ? -1 : 0
     }
-    if beginsGesture || (push != 0 && remainder != 0 && (push > 0) != (remainder > 0)) {
+    if delta.beginsGesture || (push != 0 && remainder != 0 && (push > 0) != (remainder > 0)) {
       remainder = 0
     }
     remainder += push
