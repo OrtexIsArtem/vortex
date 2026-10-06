@@ -47,6 +47,9 @@ targets:
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Artem Pronenko"
+        # Tasks read the address of the page open in a browser, with the user's permission per browser.
+        INFOPLIST_KEY_NSAppleEventsUsageDescription: "Vortex saves the address of the page open in your browser with a task."
+        CODE_SIGN_ENTITLEMENTS: App/Vortex.entitlements
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: YES
@@ -60,4 +63,5 @@ targets:
         - package: VortexKit/FeatureClipboardTests
         - package: VortexKit/FeatureHomeTests
         - package: VortexKit/FeatureShelfTests
+        - package: VortexKit/FeatureTasksTests
         - package: VortexKit/FeatureTimerTests

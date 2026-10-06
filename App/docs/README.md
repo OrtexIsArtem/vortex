@@ -4,4 +4,9 @@ Entry point only: main.swift starts AppKit with AppDelegate, which creates `Shel
 
 Debug builds can be driven by scripts without touching the pointer, through distributed notifications:
 - `io.github.ortexisartem.vortex.debug.toggle` — open or close the window, as the shortcut does;
-- `io.github.ortexisartem.vortex.debug.indicator` — show or hide a test indicator in the notch.
+- `io.github.ortexisartem.vortex.debug.indicator` — show or hide a test indicator in the notch;
+- `io.github.ortexisartem.vortex.debug.permissions` — ask now for Screen Recording and Automation of the running browsers;
+- `io.github.ortexisartem.vortex.debug.tab` — switch to a tab (userInfo `id`; `settings` takes a `section`);
+- features add their own: Tasks drives a capture with `…taskCapture`, `…taskCaptureImage`, `…taskFrame`, `…taskSave` and more, listed in TasksModule.
+
+Target settings also give the app the Apple Events entitlement and its usage text, for the page addresses of browsers.
