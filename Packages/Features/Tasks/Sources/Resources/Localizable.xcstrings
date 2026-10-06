@@ -1,0 +1,502 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "7 days" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 днів"
+          }
+        }
+      }
+    },
+    "Active" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активні"
+          }
+        }
+      }
+    },
+    "All" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усі"
+          }
+        }
+      }
+    },
+    "Allow it in System Settings › Privacy & Security › Screen Recording, then open Vortex again." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дозвольте в Системних параметрах › Приватність і безпека › Запис екрана, потім відкрийте Vortex знову."
+          }
+        }
+      }
+    },
+    "Allowed: tasks get screenshots and window titles." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дозволено: задачі отримують знімки екрана й заголовки вікон."
+          }
+        }
+      }
+    },
+    "Back to active" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернути в активні"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скасувати"
+          }
+        }
+      }
+    },
+    "Clear search" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистити пошук"
+          }
+        }
+      }
+    },
+    "Click to see the whole screen" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клацніть, щоб побачити весь екран"
+          }
+        }
+      }
+    },
+    "Delete the task" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видалити задачу"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Filter of the task list: tasks marked done",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виконані"
+          }
+        }
+      }
+    },
+    "Done tasks are deleted with their screenshots 30 days after they were done." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виконані задачі видаляються разом зі знімками через 30 днів."
+          }
+        }
+      }
+    },
+    "Esc to cancel" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc — скасувати"
+          }
+        }
+      }
+    },
+    "Frame again" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обвести знову"
+          }
+        }
+      }
+    },
+    "Frame an area" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виділи область"
+          }
+        }
+      }
+    },
+    "Freeze frame" : {
+      "comment" : "Shown in the notch while the frozen screen waits for a frame",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стоп-кадр"
+          }
+        }
+      }
+    },
+    "Freezes the screen to frame what the task is about." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зупиняє екран, щоб обвести рамкою те, про що задача."
+          }
+        }
+      }
+    },
+    "From the text: " : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "З тексту: "
+          }
+        }
+      }
+    },
+    "High" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Високий"
+          }
+        }
+      }
+    },
+    "Low" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Низький"
+          }
+        }
+      }
+    },
+    "Mark as active" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернути в активні"
+          }
+        }
+      }
+    },
+    "Mark as done" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Позначити виконаною"
+          }
+        }
+      }
+    },
+    "Mark done" : {
+      "comment" : "Button that marks the open task done",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Середній"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Назва"
+          }
+        }
+      }
+    },
+    "Needed for screenshots and window titles. After allowing it, open Vortex again." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потрібен для знімків екрана й заголовків вікон. Після дозволу відкрийте Vortex знову."
+          }
+        }
+      }
+    },
+    "New task" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нова задача"
+          }
+        }
+      }
+    },
+    "New task from the screen" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нова задача з екрана"
+          }
+        }
+      }
+    },
+    "No active tasks" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активних задач немає"
+          }
+        }
+      }
+    },
+    "No done tasks yet" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виконаних задач ще немає"
+          }
+        }
+      }
+    },
+    "No tasks yet" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задач ще немає"
+          }
+        }
+      }
+    },
+    "Nothing found" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нічого не знайдено"
+          }
+        }
+      }
+    },
+    "Open System Settings" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрити Системні параметри"
+          }
+        }
+      }
+    },
+    "Open the source" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрити джерело"
+          }
+        }
+      }
+    },
+    "Press + or your shortcut, frame what matters on the screen and press Return." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисніть + або свою гарячу клавішу, обведіть рамкою потрібне на екрані й натисніть Return."
+          }
+        }
+      }
+    },
+    "Priority" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пріоритет"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зберегти"
+          }
+        }
+      }
+    },
+    "Screen Recording" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запис екрана"
+          }
+        }
+      }
+    },
+    "Search" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пошук"
+          }
+        }
+      }
+    },
+    "Show the whole screen" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати весь екран"
+          }
+        }
+      }
+    },
+    "Task %lld" : {
+      "comment" : "Default title of a new task",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задача %lld"
+          }
+        }
+      }
+    },
+    "Task done" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачу виконано"
+          }
+        }
+      }
+    },
+    "Tasks" : {
+      "comment" : "Feature name in the sidebar and settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачі"
+          }
+        }
+      }
+    },
+    "The whole screen is saved too" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повний знімок екрана теж збережено"
+          }
+        }
+      }
+    },
+    "Today" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сьогодні"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скасувати"
+          }
+        }
+      }
+    },
+    "Use" : {
+      "comment" : "Puts the text found in the frame into the title",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Підставити"
+          }
+        }
+      }
+    },
+    "Vortex can't see the screen" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex не бачить екран"
+          }
+        }
+      }
+    },
+    "Yesterday" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Учора"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

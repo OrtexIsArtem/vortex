@@ -1,6 +1,7 @@
 import FeatureClipboard
 import FeatureHome
 import FeatureShelf
+import FeatureTasks
 import FeatureTimer
 import VortexCore
 
@@ -13,6 +14,7 @@ public enum FeatureRegistry {
   public static let all: [any FeatureModule.Type] = [
     HomeModule.self,
     TimerModule.self,
+    TasksModule.self,
     ClipboardModule.self,
     ShelfModule.self,
   ]
