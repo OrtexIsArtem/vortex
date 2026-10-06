@@ -16,11 +16,11 @@ struct DrumRuler: View {
     Group {
       if let run = store.run {
         TickReader(store: store) { now in
-          DrumTicks(value: run.remaining(at: now) / 60, style: style)
+          DrumTicks(value: run.remaining(at: now) / 60, last: Int((run.total / 60).rounded(.up)), style: style)
         }
         .accessibilityHidden(true)
       } else {
-        DrumTicks(value: Double(store.settings.minutes), style: style)
+        DrumTicks(value: Double(store.settings.minutes), last: TimerSettings.minuteRange.upperBound, style: style)
           .animation(.snappy(duration: 0.2), value: store.settings.minutes)
           .overlay {
             GeometryReader { proxy in
@@ -34,8 +34,8 @@ struct DrumRuler: View {
           .accessibilityValue(Text("\(store.settings.minutes) min", bundle: .module))
           .accessibilityAdjustableAction { direction in
             switch direction {
-            case .increment: store.send(.minutesChanged(store.settings.minutes + 1))
-            case .decrement: store.send(.minutesChanged(store.settings.minutes - 1))
+            case .increment: turn(to: store.settings.minutes + 1)
+            case .decrement: turn(to: store.settings.minutes - 1)
             @unknown default: break
             }
           }
@@ -61,36 +61,41 @@ struct DrumRuler: View {
   private func handle(_ event: ScrollDragEvent, width: CGFloat) {
     let minutes = store.settings.minutes
     switch event {
-    case let .scrolled(x, y, isPrecise):
-      let steps = scroll.minutes(x: x, y: y, isPrecise: isPrecise, points: style.spacing)
-      if steps != 0 { store.send(.minutesChanged(minutes + steps)) }
+    case let .scrolled(x, y, isPrecise, beginsGesture):
+      let steps = scroll.minutes(x: x, y: y, isPrecise: isPrecise, beginsGesture: beginsGesture, points: style.spacing)
+      if steps != 0 { turn(to: minutes + steps) }
     case let .pressed(point):
-      drag = DragStart(x: point.x, minutes: minutes)
+      drag = DragStart(point: point, minutes: minutes)
     case let .dragged(point):
       guard var start = drag else { return }
-      // The drum follows the pointer: dragging to the left brings later minutes under the mark.
-      let distance = start.x - point.x
-      if !start.moved, abs(distance) > 2 {
+      if !start.moved, hypot(point.x - start.point.x, point.y - start.point.y) > 2 {
         start.moved = true
         drag = start
       }
+      // The drum follows the pointer: dragging to the left brings later minutes under the mark.
       if start.moved {
-        store.send(.minutesChanged(start.minutes + Int((distance / style.spacing).rounded())))
+        turn(to: start.minutes + Int(((start.point.x - point.x) / style.spacing).rounded()))
       }
     case let .released(point):
       defer { drag = nil }
       guard let start = drag, !start.moved else { return }
       // A click turns the tick under the pointer to the mark.
       let drum = DrumGeometry(width: width, spacing: style.spacing)
-      store.send(.minutesChanged(drum.minute(atX: point.x, value: Double(start.minutes))))
+      turn(to: drum.minute(atX: point.x, value: Double(start.minutes)))
     }
+  }
+
+  /// Sends only a change: a drag reports the same minute many times, and the drum stops at its ends.
+  private func turn(to minutes: Int) {
+    guard TimerSettings.clamped(minutes) != store.settings.minutes else { return }
+    store.send(.minutesChanged(minutes))
   }
 }
 
 private struct DragStart {
-  let x: CGFloat
+  let point: CGPoint
   let minutes: Int
-  /// Past a couple of points the press is a drag; otherwise it ends as a click.
+  /// Past a couple of points either way the press is a drag; otherwise it ends as a click.
   var moved = false
 }
 
@@ -152,17 +157,22 @@ struct DrumGeometry {
 }
 
 /// Turns scrolls into whole minutes. The drum moves with the fingers, so a swipe to the left or up brings later minutes
-/// under the mark. A mouse wheel turns it a minute per notch; a trackpad, a minute per `points`.
+/// under the mark. A mouse wheel turns it a minute per notch; a trackpad, a minute per `points`. What is left over
+/// towards the next minute is dropped when the fingers touch down again or turn back, so every swipe starts afresh.
 struct ScrollSteps {
+  /// Points towards the next minute; positive adds time.
   private var remainder: CGFloat = 0
 
-  mutating func minutes(x: CGFloat, y: CGFloat, isPrecise: Bool, points: CGFloat) -> Int {
-    let delta = abs(x) > abs(y) ? x : y
+  mutating func minutes(x: CGFloat, y: CGFloat, isPrecise: Bool, beginsGesture: Bool, points: CGFloat) -> Int {
+    let push = -(abs(x) > abs(y) ? x : y)
     guard isPrecise else {
       remainder = 0
-      return delta > 0 ? -1 : delta < 0 ? 1 : 0
+      return push > 0 ? 1 : push < 0 ? -1 : 0
     }
-    remainder -= delta
+    if beginsGesture || (push != 0 && remainder != 0 && (push > 0) != (remainder > 0)) {
+      remainder = 0
+    }
+    remainder += push
     let steps = (remainder / points).rounded(.towardZero)
     remainder -= steps * points
     return Int(steps)
@@ -173,6 +183,8 @@ struct ScrollSteps {
 /// smoothly from one minute to the next.
 private struct DrumTicks: View, Animatable {
   var value: Double
+  /// The last minute with a tick: the drum's end, or the total of the run going.
+  let last: Int
   let style: DrumStyle
 
   // SwiftUI interpolates it off the main actor's view updates; a Double is safe to hand over.
@@ -185,7 +197,11 @@ private struct DrumTicks: View, Animatable {
     Canvas { context, size in
       let drum = DrumGeometry(width: size.width, spacing: style.spacing)
       let under = Int(value.rounded(.down))
-      for minute in max(0, under - drum.reach)...(under + drum.reach) {
+      let unlitMajor = VortexColor.primaryText.opacity(0.32)
+      let unlitMinor = VortexColor.primaryText.opacity(0.18)
+      let first = max(0, under - drum.reach)
+      let last = max(first, min(self.last, under + drum.reach))
+      for minute in first...last {
         guard let spot = drum.spot(of: Double(minute), value: value) else { continue }
         let nearness = 0.6 + 0.4 * spot.facing
         let isMajor = minute % 5 == 0
@@ -194,16 +210,17 @@ private struct DrumTicks: View, Animatable {
         let bottom = style.middle + (style.baseline - style.middle) * nearness
         let width = 0.8 + 0.7 * spot.facing
         let color = isMajor
-          ? (isLit ? VortexColor.primaryText : VortexColor.primaryText.opacity(0.32))
-          : (isLit ? VortexColor.secondaryText : VortexColor.primaryText.opacity(0.18))
+          ? (isLit ? VortexColor.primaryText : unlitMajor)
+          : (isLit ? VortexColor.secondaryText : unlitMinor)
         context.opacity = 0.15 + 0.85 * spot.facing * spot.facing
         context.fill(
           Path(roundedRect: CGRect(x: spot.x - width / 2, y: bottom - height, width: width, height: height), cornerRadius: width / 2),
           with: .color(color)
         )
         if style.showsNumbers, isMajor, spot.facing > 0.35 {
+          // One size, so the text layout is cached; the fading says how far round the drum the number is.
           let number = Text(verbatim: String(minute))
-            .font(.system(size: 10 * nearness).monospacedDigit())
+            .font(.system(size: 10).monospacedDigit())
             .foregroundStyle(isLit ? VortexColor.secondaryText : VortexColor.tertiaryText)
           context.draw(number, at: CGPoint(x: spot.x, y: bottom + 5), anchor: .top)
         }

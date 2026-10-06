@@ -36,23 +36,41 @@ struct DrumTests {
   @Test
   func aTrackpadTurnsAMinutePerSpacingFollowingTheFingers() {
     var steps = ScrollSteps()
+    func turn(x: CGFloat = 0, y: CGFloat = 0, begins: Bool = false) -> Int {
+      steps.minutes(x: x, y: y, isPrecise: true, beginsGesture: begins, points: 6)
+    }
     // Fingers to the left: the drum moves left and later minutes come under the mark.
-    #expect(steps.minutes(x: -4, y: 0, isPrecise: true, points: 6) == 0)
-    #expect(steps.minutes(x: -4, y: 0, isPrecise: true, points: 6) == 1)
-    #expect(steps.minutes(x: -13, y: 1, isPrecise: true, points: 6) == 2)
-    // Up adds time too; right and down take it away.
-    var vertical = ScrollSteps()
-    #expect(vertical.minutes(x: 0, y: -6, isPrecise: true, points: 6) == 1)
-    #expect(vertical.minutes(x: 0, y: 30, isPrecise: true, points: 6) == -5)
-    #expect(vertical.minutes(x: 3, y: 0, isPrecise: true, points: 6) == 0)
+    #expect(turn(x: -4, begins: true) == 0)
+    #expect(turn(x: -4) == 1)
+    #expect(turn(x: -13, y: 1) == 2)
+    // Up adds time too, with the 3 pt left over; right and down take it away.
+    #expect(turn(y: -3) == 1)
+    #expect(turn(y: 30) == -5)
+  }
+
+  @Test
+  func everySwipeStartsAfresh() {
+    var steps = ScrollSteps()
+    func turn(x: CGFloat, begins: Bool = false) -> Int {
+      steps.minutes(x: x, y: 0, isPrecise: true, beginsGesture: begins, points: 6)
+    }
+    #expect(turn(x: -5.9, begins: true) == 0)
+    // A new touch drops what the last swipe left over.
+    #expect(turn(x: -0.2, begins: true) == 0)
+    #expect(turn(x: -5) == 0)
+    // Turning back starts from nothing, not from what was left over the other way.
+    #expect(turn(x: 6) == -1)
   }
 
   @Test
   func aMouseWheelTurnsAMinutePerNotchWhateverItsSpeed() {
     var steps = ScrollSteps()
-    #expect(steps.minutes(x: 0, y: -1, isPrecise: false, points: 6) == 1)
-    #expect(steps.minutes(x: 0, y: -4.5, isPrecise: false, points: 6) == 1)
-    #expect(steps.minutes(x: 0, y: 2, isPrecise: false, points: 6) == -1)
-    #expect(steps.minutes(x: 0, y: 0, isPrecise: false, points: 6) == 0)
+    func turn(_ y: CGFloat) -> Int {
+      steps.minutes(x: 0, y: y, isPrecise: false, beginsGesture: false, points: 6)
+    }
+    #expect(turn(-1) == 1)
+    #expect(turn(-4.5) == 1)
+    #expect(turn(2) == -1)
+    #expect(turn(0) == 0)
   }
 }

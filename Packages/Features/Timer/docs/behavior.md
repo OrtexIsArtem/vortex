@@ -29,7 +29,7 @@
 ## When time is up
 - The chosen sound plays once.
 - A notification «Час вийшов» appears with a «+5 хв» button.
-- The notch flashes every 1.5 s until the pointer comes over it or the window opens; with the window open, three times.
+- The notch flashes, one flash after another, until the pointer comes or moves over it or the window opens; with the window open, three times.
 - Starting a run, also with «+5 хв» on the notification, stops the flashes.
 - «+5 хв» on the notification starts a five-minute run.
 - The first run asks macOS once for permission to notify; without it everything else still happens.

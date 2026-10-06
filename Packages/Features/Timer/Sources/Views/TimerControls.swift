@@ -42,20 +42,3 @@ struct RoundButton: View {
     .accessibilityLabel(label)
   }
 }
-
-/// The time left as a ring, like the one in the closed notch.
-struct ProgressRing: View {
-  let fraction: Double
-
-  var body: some View {
-    ZStack {
-      Circle().stroke(VortexColor.track, lineWidth: 2)
-      Circle()
-        .trim(from: 0, to: min(max(fraction, 0), 1))
-        .stroke(VortexColor.primaryText, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-        .rotationEffect(.degrees(-90))
-    }
-    .padding(1)
-    .accessibilityHidden(true)
-  }
-}

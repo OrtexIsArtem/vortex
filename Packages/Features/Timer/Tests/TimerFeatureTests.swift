@@ -259,9 +259,14 @@ struct TimerFeatureTests {
   func oneTimerAtATime() async {
     let store = makeStore()
     await store.send(.start)
+    let startedAt = now.value
     await startRun(store, minutes: 25)
+    await pass(60)
     await store.send(.startTapped)
-    #expect(store.state.run?.total == 1500)
+    // Neither Start nor "+5 min" on a notification replaces the run going.
+    buttons.continuation.yield(TimerFeature.addFiveButtonID)
+    await store.receive(\.notificationButtonPressed)
+    #expect(store.state.run == TimerRun.started(minutes: 25, at: startedAt))
     await store.send(.stop)
   }
 

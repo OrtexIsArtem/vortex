@@ -10,7 +10,8 @@ import VortexPlatform
 @Reducer
 public struct TimerFeature: Sendable {
   public static let id: FeatureID = "timer"
-  static let addedTime: TimeInterval = 5 * 60
+  static let addedMinutes = 5
+  static let addedTime = TimeInterval(addedMinutes * 60)
   static let doneNotificationID = "timer.done"
   static let addFiveButtonID = "timer.addFive"
 
@@ -118,7 +119,7 @@ public struct TimerFeature: Sendable {
       case let .minutesChanged(minutes):
         // While a run goes the drum shows its time left and takes no input.
         guard state.run == nil else { return .none }
-        state.$settings.withLock { $0.minutes = TimerSettings.clamped(minutes) }
+        setMinutes(minutes, &state)
         return .none
 
       case .startTapped:
@@ -138,7 +139,7 @@ public struct TimerFeature: Sendable {
 
       case .addFiveMinutesTapped:
         guard state.run != nil else {
-          state.$settings.withLock { $0.minutes = TimerSettings.clamped($0.minutes + Int(Self.addedTime / 60)) }
+          setMinutes(state.settings.minutes + Self.addedMinutes, &state)
           return .none
         }
         // A whole number of seconds: the ticks stay on the whole seconds of the time left.
@@ -160,8 +161,6 @@ public struct TimerFeature: Sendable {
         // here. This feature's own changes come here too, a moment later, and find them in step; setting the ticks
         // again does no harm, as they keep to the whole seconds of the time left.
         state.now = now
-        // A run started elsewhere ends the alarm, as one started here does.
-        if state.run != nil { state.isAlarming = false }
         let indicator = state.indicator
         if state.indicators[Self.id] != indicator {
           // `.onChange` below compares the state before and after an action, so it never sees such a change.
@@ -172,7 +171,7 @@ public struct TimerFeature: Sendable {
       case let .notificationButtonPressed(button):
         // "+5 min" on the notification that time is up: five more minutes, as a new run; the drum keeps its time.
         guard button == Self.addFiveButtonID else { return .none }
-        return startRun(minutes: Int(Self.addedTime / 60), &state)
+        return startRun(minutes: Self.addedMinutes, &state)
 
       case .settingsShown:
         return .run { send in await send(.soundsLoaded(await sounds.names())) }
@@ -207,6 +206,14 @@ public struct TimerFeature: Sendable {
         return .none
       }
     }
+  }
+
+  /// The drum's minutes, kept within its range. An unchanged value is not set again: every set re-renders the views
+  /// and saves the settings file, and a drag sends the same minute many times.
+  private func setMinutes(_ minutes: Int, _ state: inout State) {
+    let minutes = TimerSettings.clamped(minutes)
+    guard minutes != state.settings.minutes else { return }
+    state.$settings.withLock { $0.minutes = minutes }
   }
 
   /// Starts a run unless one is going: one timer at a time. A new run ends the alarm of the last one.

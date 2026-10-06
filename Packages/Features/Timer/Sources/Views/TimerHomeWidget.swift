@@ -50,14 +50,9 @@ struct TimerHomeWidget: View {
         store.send(.addFiveMinutesTapped)
       } label: {
         Text(verbatim: "+5")
-          .font(.system(size: 13, weight: .medium).monospacedDigit())
-          .padding(.horizontal, 12)
-          .frame(minWidth: 44, minHeight: 34)
-          .background(Capsule().fill(VortexColor.raised))
-          .contentShape(Capsule())
+          .monospacedDigit()
       }
-      .buttonStyle(.plain)
-      .foregroundStyle(VortexColor.primaryText)
+      .buttonStyle(QuietCapsuleButtonStyle(height: 34, fontSize: 13))
       .help(Text("Add 5 minutes", bundle: .module))
       .accessibilityLabel(Text("Add 5 minutes", bundle: .module))
 
@@ -82,15 +77,8 @@ struct TimerHomeWidget: View {
               .font(.system(size: 8))
             Text("Start", bundle: .module)
           }
-          .font(.system(size: 13, weight: .semibold))
-          .padding(.leading, 13)
-          .padding(.trailing, 15)
-          .frame(minHeight: 34)
-          .background(Capsule().fill(VortexColor.accent))
-          .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(VortexColor.onAccent)
+        .buttonStyle(PrimaryCapsuleButtonStyle(height: 34, fontSize: 13))
       }
     }
   }
