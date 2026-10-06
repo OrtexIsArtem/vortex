@@ -75,6 +75,8 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
           intentIdentifiers: []
         )
         center.setNotificationCategories(Set(categories.values))
+        // Registering categories is asynchronous: reading them back waits for it, so the first post has its buttons.
+        _ = await center.notificationCategories()
       }
       content.categoryIdentifier = category
     }
