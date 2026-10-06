@@ -14,6 +14,9 @@ struct TickReader<Content: View>: View {
 
   var body: some View {
     content(isWindowOpen ? store.now : Date.now)
+      // The switch to the store's time happens as the window starts to open; animated along with the opening,
+      // the time from when it closed would cross-fade into the current one.
+      .transaction { $0.animation = nil }
   }
 }
 
