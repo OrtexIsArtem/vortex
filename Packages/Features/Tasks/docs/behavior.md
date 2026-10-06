@@ -2,7 +2,7 @@
 
 ## Capture
 - The shortcut (none by default, set in Settings › Features › Tasks) or + in the tab starts a capture; Esc cancels it at any step.
-- First the app in front, its window title and, in a browser, the page address are noted (a browser's one-time Automation prompt is answered first); then the display under the pointer is taken and freezes.
+- First the app in front (the one behind Vortex's window when Vortex itself is in front), its window title and, in a browser, the page address are noted (a browser's one-time Automation prompt is answered first); then the display under the pointer is taken and freezes.
 - Vortex's own windows are not on the frozen screen; the notch shows «Стоп-кадр · Esc», later «Нова задача · Esc»; «Виділи область · Esc — скасувати» shows above the Dock.
 - Dragging draws the frame, with a crosshair pointer (macOS 15+); outside it the screen dims; its size shows under it. A frame under 8 pt is taken for a click and ignored.
 - Once drawn, the framed part moves to the left, the rest blurs, and the fields show: title, priority, source, retake, Cancel, Save.

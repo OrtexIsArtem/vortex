@@ -29,10 +29,19 @@ struct EditingShortcutsTests {
     #expect(EditingShortcuts.action(for: key("v", code: 9, [])) == nil)
   }
 
-  /// C and V sit on the same keys in QWERTY, QWERTZ and AZERTY, the Latin layouts shortcuts fall back to.
   @Test
-  func cyrillicLayoutMapsByTheLatinKey() {
-    #expect(EditingShortcuts.action(for: key("м", code: 9)) == #selector(NSText.paste(_:)))
-    #expect(EditingShortcuts.action(for: key("с", code: 8)) == #selector(NSText.copy(_:)))
+  func capsLockChangesNothing() {
+    #expect(EditingShortcuts.action(for: key("v", code: 9, [.command, .capsLock])) == #selector(NSText.paste(_:)))
+  }
+
+  /// Under a Cyrillic layout a key means what it types in the Latin layout the Mac uses for shortcuts: ⌘С is ⌘C on
+  /// QWERTY, QWERTZ and AZERTY, whichever of them this Mac has.
+  @Test
+  func cyrillicLayoutMapsByTheLatinKey() throws {
+    for (cyrillic, code) in [("м", UInt16(9)), ("с", 8), ("ф", 0), ("я", 6)] {
+      let latin = try #require(EditingShortcuts.latinCharacter(keyCode: code))
+      #expect(EditingShortcuts.action(for: key(cyrillic, code: code)) == EditingShortcuts.action(for: key(latin, code: code)))
+    }
+    #expect(EditingShortcuts.action(for: key("м", code: 9)) != nil)
   }
 }

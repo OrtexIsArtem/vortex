@@ -26,9 +26,9 @@ public struct FrontWindow: Codable, Equatable, Sendable {
   }
 }
 
-/// The app in front and what is open in it. Vortex's own panels never take the front, so this is the app the user
-/// was in when they pressed a shortcut. The window title needs the Screen Recording permission; the page address
-/// needs Automation of that browser, which macOS asks for once per browser.
+/// The app in front and what is open in it: the app the user was in when they pressed a shortcut, or, when Vortex
+/// itself is in front, the app whose window is in front behind Vortex's. The window title needs the Screen Recording
+/// permission; the page address needs Automation of that browser, which macOS asks for once per browser.
 @DependencyClient
 public struct FrontWindowClient: Sendable {
   /// Each part is nil when it can't be known.
@@ -39,9 +39,12 @@ extension FrontWindowClient: DependencyKey {
   public static let liveValue = FrontWindowClient(
     current: {
       let front = await MainActor.run { () -> (AppInfo, pid_t)? in
-        guard let app = NSWorkspace.shared.frontmostApplication, let id = app.bundleIdentifier,
-              id != Bundle.main.bundleIdentifier
-        else { return nil }
+        guard var app = NSWorkspace.shared.frontmostApplication else { return nil }
+        if app.processIdentifier == ProcessInfo.processInfo.processIdentifier {
+          guard let behind = NSRunningApplication.behindVortex() else { return nil }
+          app = behind
+        }
+        guard let id = app.bundleIdentifier else { return nil }
         return (AppInfo(bundleID: id, name: app.localizedName ?? id), app.processIdentifier)
       }
       guard let front else { return FrontWindow() }
@@ -62,6 +65,19 @@ extension FrontWindowClient: DependencyKey {
       .compactMap { FrontWindow.cleanTitle($0[kCGWindowName as String] as? String) }
       .first
     return title
+  }
+}
+
+extension NSRunningApplication {
+  /// The app whose ordinary window is in front on screen, Vortex's own windows left out.
+  static func behindVortex() -> NSRunningApplication? {
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+      as? [[String: Any]] ?? []
+    let owner = windows.lazy
+      .filter { ($0[kCGWindowLayer as String] as? Int) == 0 }
+      .compactMap { $0[kCGWindowOwnerPID as String] as? pid_t }
+      .first { $0 != ProcessInfo.processInfo.processIdentifier }
+    return owner.flatMap(NSRunningApplication.init(processIdentifier:))
   }
 }
 

@@ -4,12 +4,12 @@ import SwiftUI
 /// A window over all of one display, above everything, the menu bar and the notch included: the frozen screen while a
 /// task is captured. Esc and Return that no field takes go to `onEscape` and `onReturn`.
 ///
-/// Vortex comes to the front with it, so the pointer and the keyboard work from the start (a click would bring it
-/// anyway); `close` gives the front back to the app the user was in, with its keyboard focus.
+/// Vortex comes to the front with it, so the pointer and the keyboard work from the start; `close` gives the front
+/// back to the app the user was in, with its keyboard focus.
 ///
-/// It never hides another app: when one comes to the front, such as a prompt of the system (Screen Recording's
-/// periodic confirmation, a browser's Automation) or after ⌘Tab, `onInterrupted` is called, as it is when one already
-/// came to the front between the moment the screen was taken and `show`.
+/// An app coming to the front calls `onInterrupted` rather than staying hidden under it, also one that came between
+/// the moment the screen was taken and `show`: a prompt of the system (Screen Recording's periodic confirmation, a
+/// browser's Automation), or the app picked with ⌘Tab.
 @MainActor
 public final class ScreenOverlay {
   private var panel: OverlayPanel?
@@ -21,7 +21,7 @@ public final class ScreenOverlay {
 
   public var isShown: Bool { panel != nil }
 
-  /// `over` is the bundle id of the app that was in front when the screen was taken, nil for none or Vortex.
+  /// `over` is the bundle id of the app the user was in when the screen was taken, nil when not known.
   public func show(
     _ content: some View,
     on displayID: CGDirectDisplayID,
@@ -30,8 +30,9 @@ public final class ScreenOverlay {
     onReturn: @escaping @MainActor () -> Void,
     onInterrupted: @escaping @MainActor () -> Void
   ) {
+    // Vortex itself in front is no interruption: the user was in its window.
     let front = Self.frontApp()
-    guard front?.bundleIdentifier == app else {
+    guard front == nil || front?.bundleIdentifier == app else {
       // Called once `show` has returned, as it would be for a later interruption.
       Task { @MainActor in onInterrupted() }
       return
@@ -44,17 +45,21 @@ public final class ScreenOverlay {
     panel.setFrame(screen.frame, display: true)
     panel.makeKeyAndOrderFront(nil)
     self.panel = panel
-    coveredApp = front
+    coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
     NSApp.activate()
     stopWatchingActivations()
     activations = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification,
       object: nil,
       queue: .main
-    ) { note in
+    ) { [weak self] note in
       let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
       guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
-      MainActor.assumeIsolated { onInterrupted() }
+      MainActor.assumeIsolated {
+        // Once: another app coming meanwhile changes nothing.
+        self?.stopWatchingActivations()
+        onInterrupted()
+      }
     }
   }
 
@@ -71,6 +76,12 @@ public final class ScreenOverlay {
     activations = nil
   }
 
+  /// To `app`, or, when it is gone or unknown, to the app whose window is in front.
+  private static func giveFront(to app: NSRunningApplication?) {
+    let target = app.flatMap { $0.isTerminated ? nil : $0 } ?? NSRunningApplication.behindVortex()
+    target?.activate(from: .current)
+  }
+
   public func close() {
     stopWatchingActivations()
     panel?.orderOut(nil)
@@ -79,8 +90,8 @@ public final class ScreenOverlay {
     // The content's pointer, such as a crosshair, would stay until the app under it sets one.
     NSCursor.arrow.set()
     // Still in front, so nothing else took it meanwhile: the app the user was in gets it back.
-    if NSApp.isActive, let coveredApp, !coveredApp.isTerminated {
-      coveredApp.activate(from: .current)
+    if NSApp.isActive {
+      Self.giveFront(to: coveredApp)
     }
     coveredApp = nil
   }

@@ -6,7 +6,8 @@ public enum EditingShortcuts {
   /// The action for ⌘X, ⌘C, ⌘V, ⌘A, ⌘Z, ⇧⌘Z and ⌘Q; nil for any other key. Under a Cyrillic or other non-Latin
   /// layout the keys count as in the Latin one, as in every Mac app.
   public static func action(for event: NSEvent) -> Selector? {
-    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    // Caps Lock, the keypad and fn don't change a shortcut.
+    let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
     let isShifted = flags == [.command, .shift]
     guard flags == .command || isShifted else { return nil }
     switch (latinKey(of: event), isShifted) {
@@ -30,7 +31,7 @@ public enum EditingShortcuts {
     return latinCharacter(keyCode: event.keyCode)
   }
 
-  private static func latinCharacter(keyCode: UInt16) -> String? {
+  static func latinCharacter(keyCode: UInt16) -> String? {
     guard let source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue(),
           let property = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData),
           let bytes = CFDataGetBytePtr(Unmanaged<CFData>.fromOpaque(property).takeUnretainedValue())
@@ -45,7 +46,7 @@ public enum EditingShortcuts {
         UInt16(kUCKeyActionDisplay),
         0,
         UInt32(LMGetKbdType()),
-        OptionBits(kUCKeyTranslateNoDeadKeysBit),
+        OptionBits(kUCKeyTranslateNoDeadKeysMask),
         &deadKeys,
         characters.count,
         &length,
