@@ -182,8 +182,9 @@ private struct EmptyShelf: View {
 }
 
 /// The last tile of the grid: a reminder that more can be dropped.
-private struct DropTile: View {
+struct DropTile: View {
   let isTargeted: Bool
+  var height: CGFloat = 100
 
   var body: some View {
     VStack(spacing: 6) {
@@ -193,7 +194,7 @@ private struct DropTile: View {
         .font(.system(size: 11.5))
     }
     .foregroundStyle(isTargeted ? VortexColor.primaryText : VortexColor.tertiaryText)
-    .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
+    .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
     .background {
       RoundedRectangle(cornerRadius: 14, style: .continuous)
         .strokeBorder(

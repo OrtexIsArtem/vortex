@@ -249,6 +249,31 @@ struct ClipboardFeatureTests {
     await store.send(.stop)
   }
 
+  // MARK: - Dropping on the clipboard
+
+  @Test
+  func somethingDroppedIsCopiedAndJoinsTheHistory() async {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    await store.send(.dropped([.text("release notes")]))
+    await store.receive(\.copied)
+    #expect(written.value == [.text("release notes")])
+    #expect(store.state.items.first?.content == .text("release notes"))
+    await store.send(.stop)
+  }
+
+  @Test
+  func droppedFilesAreCopiedTogetherOtherwiseTheFirstThing() {
+    let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
+    let apk = URL(fileURLWithPath: "/tmp/b.apk")
+    let link = URL(string: "https://example.com")!
+    #expect(ClipboardFeature.copiedContent(of: [.file(ipa), .text("x"), .file(apk)]) == .files([ipa, apk]))
+    #expect(ClipboardFeature.copiedContent(of: [.image(Data([1]), fileExtension: "jpeg"), .link(link)]) == .link(link))
+    #expect(ClipboardFeature.copiedContent(of: [.image(Data([1]), fileExtension: "PNG")]) == .image(Data([1])))
+    #expect(ClipboardFeature.copiedContent(of: [.image(Data([1]), fileExtension: "jpeg")]) == nil)
+  }
+
   // MARK: - Saving
 
   @Test

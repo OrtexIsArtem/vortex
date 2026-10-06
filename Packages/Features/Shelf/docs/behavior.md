@@ -33,3 +33,8 @@
 ## Expiry and the notch
 - Unpinned items leave the shelf 24 hours after they were added, checked every 10 minutes and at start.
 - While the shelf has items, the closed notch shows a tray and their number; turning the feature off hides it.
+
+## On Home
+- The shelf sits in the dock as small tiles with their names; the last tile takes drops.
+- Tiles drag out, open on double-click and have the same menu as in the tab; the whole widget takes drops.
+- While the window shows Home, the shelf counts as seen: fresh marks and the flash count start over when it closes.

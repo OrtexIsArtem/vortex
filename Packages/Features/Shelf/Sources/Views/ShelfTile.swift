@@ -10,6 +10,8 @@ struct ShelfTile: View {
   let isFresh: Bool
   let isUnavailable: Bool
   let now: Date
+  /// Smaller, for the dock on Home: a lower preview and the name only.
+  var isCompact = false
   let dragItems: @MainActor () -> [DragItem]
   let send: @MainActor (ShelfFeature.Action) -> Void
   @State private var isHovered = false
@@ -17,13 +19,13 @@ struct ShelfTile: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       preview
-        .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
+        .frame(maxWidth: .infinity, minHeight: isCompact ? 72 : 100, maxHeight: isCompact ? 72 : 100)
         .background(VortexColor.thumbnail)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: isCompact ? 12 : 14, style: .continuous))
         .overlay {
           // Around the preview, not over it, so it shows on white images too.
           if isSelected {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
+            RoundedRectangle(cornerRadius: isCompact ? 15 : 17, style: .continuous)
               .strokeBorder(VortexColor.accent, lineWidth: 2)
               .padding(-3)
           }
@@ -38,15 +40,18 @@ struct ShelfTile: View {
           }
         }
       Text(verbatim: title)
-        .font(.system(size: 12, weight: .medium))
+        .font(.system(size: isCompact ? 11 : 12, weight: isCompact ? .regular : .medium))
+        .foregroundStyle(isCompact ? VortexColor.secondaryText : VortexColor.primaryText)
         .lineLimit(1)
         .truncationMode(.middle)
-        .padding(.top, 8)
-      details
-        .font(.system(size: 11))
-        .foregroundStyle(VortexColor.tertiaryText)
-        .lineLimit(1)
-        .padding(.top, 2)
+        .padding(.top, isCompact ? 6 : 8)
+      if !isCompact {
+        details
+          .font(.system(size: 11))
+          .foregroundStyle(VortexColor.tertiaryText)
+          .lineLimit(1)
+          .padding(.top, 2)
+      }
     }
     .opacity(isUnavailable ? 0.45 : 1)
     .overlay {

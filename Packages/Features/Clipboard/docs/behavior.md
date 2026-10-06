@@ -20,3 +20,9 @@
 - Clear removes everything except pinned items.
 - When the tab is shown, files that are gone are marked "Not found"; such cards can't be copied or dragged.
 - Revealed secrets hide again every time the tab is shown.
+
+## On Home
+- The clipboard sits in the dock as one-line rows: an icon for the kind and the start of the item; secrets stay dots.
+- A click copies the item again; a row drags out; right-click has Copy, Pin and Delete.
+- Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy. Files dropped together are copied together.
+- So a clipboard row dragged to the shelf lands on the shelf, and a shelf file dragged to the clipboard is copied.

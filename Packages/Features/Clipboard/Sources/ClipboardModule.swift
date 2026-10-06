@@ -22,6 +22,10 @@ public enum ClipboardModule: FeatureModule {
     AnyView(ClipboardSettingsView(store: store))
   }
 
+  public static func makeHomeWidget() -> HomeWidget? {
+    HomeWidget(id: id, slot: .dock, view: ClipboardHomeWidget(store: store))
+  }
+
   public static func setEnabled(_ isEnabled: Bool) {
     store.send(isEnabled ? .start : .stop)
   }

@@ -23,6 +23,10 @@ public enum ShelfModule: FeatureModule {
     AnyView(ShelfSettingsView(store: store))
   }
 
+  public static func makeHomeWidget() -> HomeWidget? {
+    HomeWidget(id: id, slot: .dock, view: ShelfHomeWidget(store: store))
+  }
+
   public static func setEnabled(_ isEnabled: Bool) {
     store.send(isEnabled ? .start : .stop)
   }

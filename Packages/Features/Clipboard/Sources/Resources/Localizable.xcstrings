@@ -189,6 +189,16 @@
         }
       }
     },
+    "Release to copy" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відпустіть, щоб скопіювати"
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "uk" : {

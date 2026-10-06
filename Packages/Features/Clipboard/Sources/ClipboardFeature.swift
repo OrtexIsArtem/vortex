@@ -38,6 +38,8 @@ public struct ClipboardFeature: Sendable {
     case loaded([ClipboardItem])
     case loadFailed
     case copied(ClipboardCopy)
+    /// Something dropped on the clipboard on Home: copied, as if the user had copied it.
+    case dropped([DroppedItem])
     case imageSaved(ClipboardItem)
     case itemTapped(ClipboardItem.ID)
     case copiedAgain(ClipboardItem.ID)
@@ -160,6 +162,14 @@ public struct ClipboardFeature: Sendable {
         }
         return insert(item, &state)
 
+      case let .dropped(items):
+        guard let content = Self.copiedContent(of: items) else { return .none }
+        return .run { send in
+          await pasteboard.write(content, false, nil)
+          // The pasteboard watcher skips Vortex's own writes, so the drop joins the history here.
+          await send(.copied(ClipboardCopy(PasteboardCopy(content: content))))
+        }
+
       case let .itemTapped(id):
         guard let item = state.items[id: id], !state.unavailable.contains(id) else { return .none }
         return .run { [files] send in
@@ -277,6 +287,28 @@ public struct ClipboardFeature: Sendable {
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
     return "Image \(formatter.string(from: date)).png"
+  }
+
+  /// What dropping things on the clipboard copies: every dropped file together, otherwise the first image, link or
+  /// text. Only PNG images: the history keeps images as PNG files.
+  static func copiedContent(of items: [DroppedItem]) -> PasteboardContent? {
+    let files = items.compactMap { item -> URL? in
+      if case let .file(url) = item { url } else { nil }
+    }
+    if !files.isEmpty { return .files(files) }
+    for item in items {
+      switch item {
+      case let .image(data, fileExtension) where fileExtension.lowercased() == "png":
+        return .image(data)
+      case .image, .file:
+        continue
+      case let .link(url):
+        return .link(url)
+      case let .text(text):
+        return .text(text)
+      }
+    }
+    return nil
   }
 
   private func watch() -> Effect<Action> {
