@@ -389,6 +389,7 @@ public struct ShelfFeature: Sendable {
     var added: [ShelfItem] = []
     var moved: [ShelfItem.ID] = []
     var copies: [Effect<Action>] = []
+    var copiedNames: Set<String> = []
     func isKnown(_ matches: (ShelfItem) -> Bool) -> Bool {
       if let existing = state.items.first(where: matches) {
         moved.append(existing.id)
@@ -406,8 +407,12 @@ public struct ShelfFeature: Sendable {
           content = .file(url)
           break
         }
-        // A file of Vortex's own, such as a clipboard image, goes away with its owner: the shelf keeps a copy.
-        let item = ShelfItem(id: uuid(), content: .copy(fileName: url.lastPathComponent), addedAt: now)
+        // A file of Vortex's own, such as a clipboard image, goes away with its owner: the shelf keeps a copy. The copy
+        // keeps only the name, so the same file dropped again finds its copy by it, unless that copy's file is gone.
+        let copy = ShelfItem.Content.copy(fileName: url.lastPathComponent)
+        if isKnown({ $0.content == copy && !state.unavailable.contains($0.id) }) { continue }
+        guard copiedNames.insert(url.lastPathComponent).inserted else { continue }
+        let item = ShelfItem(id: uuid(), content: copy, addedAt: now)
         copies.append(saveCopy(item, isFresh: isFresh) { [files] destination in try await files.copy(url, destination) })
         continue
       case let .image(data, fileExtension):

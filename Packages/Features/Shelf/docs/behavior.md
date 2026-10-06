@@ -9,6 +9,7 @@
 - Only a look counts: the window opening on another tab, for example from another feature's ear, keeps the dots and the count.
 - Files and folders are kept by reference; images without a file are saved as PNG copies.
 - Files from Vortex's own data folder (a clipboard image) are copied, since they could go away with their owner.
+- Such a file dropped again moves its copy to the front instead of being copied again; copies are matched by file name.
 - The same file, folder, text or link moves to the front instead of being added again; images without a file are added each time.
 - Whatever arrives before the shelf has loaded waits and is added right after, so the saved shelf is never overwritten.
 

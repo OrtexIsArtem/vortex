@@ -235,6 +235,25 @@ struct ShelfFeatureTests {
     #expect(Set(removed.value) == Set(folders))
   }
 
+  @Test
+  func aFileOfVortexsOwnDroppedAgainMovesItsCopyToTheFront() async {
+    let store = makeStore()
+    await start(store)
+    let clipboardImage = DataFolder.url.appending(path: "Clipboard/ABC/Image 2026-10-06 at 14.03.12.png")
+    await store.send(.dropped([.file(clipboardImage)]))
+    await store.receive(\.copySaved)
+    now.withValue { $0 += 60 }
+    await store.send(.dropped([.file(Self.ipa)]))
+    now.withValue { $0 += 60 }
+    // The same clipboard row dragged to the shelf again, here twice in one drop.
+    await store.send(.dropped([.file(clipboardImage), .file(clipboardImage)]))
+    #expect(contents(store) == [.copy(fileName: "Image 2026-10-06 at 14.03.12.png"), .file(Self.ipa)])
+    #expect(store.state.items.first?.addedAt == now.value)
+    #expect(copied.value.count == 1)
+    await store.send(.stop)
+    await store.finish()
+  }
+
   // MARK: - Expiry
 
   @Test
