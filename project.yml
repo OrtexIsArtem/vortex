@@ -58,5 +58,6 @@ targets:
         - package: VortexKit/VortexShellTests
         - package: VortexKit/FeatureTemplateTests
         - package: VortexKit/FeatureClipboardTests
+        - package: VortexKit/FeatureHomeTests
         - package: VortexKit/FeatureShelfTests
         - package: VortexKit/FeatureTimerTests

@@ -25,16 +25,24 @@ private struct TabContent: View {
   let store: StoreOf<ShellFeature>
 
   var body: some View {
-    switch store.selectedTab {
-    case .settings:
-      SettingsView(store: store)
-    case let .feature(id):
-      if let module = FeatureRegistry.module(for: id) {
-        module.makeTab()
-      } else {
+    Group {
+      switch store.selectedTab {
+      case .settings:
         SettingsView(store: store)
+      case let .feature(id):
+        if let module = FeatureRegistry.module(for: id) {
+          module.makeTab()
+        } else {
+          SettingsView(store: store)
+        }
       }
     }
+    .environment(\.homeWidgets, homeWidgets)
+  }
+
+  /// Widgets of the enabled features, in sidebar order: Home lays them out.
+  private var homeWidgets: [HomeWidget] {
+    store.sidebarFeatures.compactMap { FeatureRegistry.module(for: $0.id)?.makeHomeWidget() }
   }
 }
 

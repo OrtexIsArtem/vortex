@@ -17,6 +17,8 @@ public enum VortexColor {
   public static let thumbnail = dynamic(dark: 0x18181B, light: 0xE6E6EA)
   /// Dashed outline of drop zones.
   public static let dropOutline = dynamic(dark: 0x3A3A3F, light: 0xC4C4CA)
+  /// The dock at the bottom of Home.
+  public static let dock = dynamic(dark: 0x0E0E10, light: 0xF1F1F4)
   /// Fill of the one primary action on a screen.
   public static let accent = dynamic(dark: 0xF5F5F7, light: 0x1D1D1F)
   /// Text and icons on top of `accent`.

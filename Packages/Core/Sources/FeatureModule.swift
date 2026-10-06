@@ -25,6 +25,8 @@ public protocol FeatureModule {
   static func makeTab() -> AnyView
   /// The feature's own section in Settings › Features, if it has settings.
   static func makeSettings() -> AnyView?
+  /// The feature's widget on Home, if it has one; see `HomeSlot`.
+  static func makeHomeWidget() -> HomeWidget?
   /// Called at launch and whenever the user turns the feature on or off. Start and stop background work here.
   static func setEnabled(_ isEnabled: Bool)
   /// Files given to Vortex outside the feature's tab, see `acceptsFileDrops`. The window stays as it is.
@@ -34,6 +36,7 @@ public protocol FeatureModule {
 extension FeatureModule {
   public static var acceptsFileDrops: Bool { false }
   public static func makeSettings() -> AnyView? { nil }
+  public static func makeHomeWidget() -> HomeWidget? { nil }
   public static func setEnabled(_ isEnabled: Bool) {}
   public static func receiveFiles(_ urls: [URL]) {}
 

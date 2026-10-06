@@ -1,0 +1,27 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Home" : {
+      "comment" : "Feature name in the sidebar and settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Головна"
+          }
+        }
+      }
+    },
+    "Widgets of enabled features appear here" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тут з’являться віджети увімкнених фіч"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
