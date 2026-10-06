@@ -1,0 +1,17 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Timer" : {
+      "comment" : "Feature name in the sidebar and settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
