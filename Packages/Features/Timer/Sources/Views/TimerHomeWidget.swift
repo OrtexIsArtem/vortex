@@ -43,13 +43,19 @@ struct TimerHomeWidget: View {
           .frame(width: 16, height: 16)
       }
     } else {
-      HStack(spacing: 6) {
-        Image(systemName: "timer")
-          .font(.system(size: 13))
-          .foregroundStyle(VortexColor.tertiaryText)
-          .frame(width: 20)
-          .accessibilityHidden(true)
-        ForEach(leftPresets, id: \.self) { chip($0) }
+      // Short of room left of the notch, the icon goes first; the chips keep their size.
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 6) {
+          Image(systemName: "timer")
+            .font(.system(size: 13))
+            .foregroundStyle(VortexColor.tertiaryText)
+            .frame(width: 20)
+            .accessibilityHidden(true)
+          ForEach(leftPresets, id: \.self) { chip($0) }
+        }
+        HStack(spacing: 6) {
+          ForEach(leftPresets, id: \.self) { chip($0) }
+        }
       }
     }
   }
@@ -123,6 +129,9 @@ private struct PresetChip: View {
         }
         Text(minutes, format: .number)
       }
+      // The number never wraps, whatever room the row gives the chip.
+      .lineLimit(1)
+      .fixedSize(horizontal: true, vertical: false)
       .font(.system(size: 13, weight: isMarked ? .semibold : .medium).monospacedDigit())
       .padding(.horizontal, 12)
       .frame(minWidth: 44, minHeight: 34)

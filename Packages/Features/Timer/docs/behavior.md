@@ -7,6 +7,7 @@
 - The preset started last is marked with ▶ on Home, and the Timer tab opens on it; "+5 min" on a notification does not change it.
 - On Home the presets stand next to the notch, half on each side; while a run goes there: «з 25 хв», the ring, the time, pause, stop and «+5 хв».
 - Without a notch (window under the menu bar icon) they stand in one row.
+- When the presets left of the notch do not fit, the ⏱ icon goes first; the numbers on the chips never wrap.
 
 ## While it runs
 - Pause keeps the time left; Resume goes on from there; Space pauses and resumes in the Timer tab.
