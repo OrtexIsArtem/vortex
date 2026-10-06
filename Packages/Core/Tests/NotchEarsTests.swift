@@ -60,4 +60,26 @@ struct NotchEarsTests {
     #expect(ears.left == [.progress(0.7)])
     #expect(ears.right == [.text("8:42")])
   }
+
+  @Test
+  func earsKnowTheirFeatures() {
+    let timer = NotchIndicator(leading: [.progress(0.5)], trailing: [.text("8:42")], priority: 10)
+    let shelf = NotchIndicator(leading: [.symbol("tray.full")], trailing: [.text("2")])
+    let one = NotchEars(indicators: ["timer": timer])
+    #expect(one.leftFeature == "timer")
+    #expect(one.rightFeature == "timer")
+    let two = NotchEars(indicators: ["timer": timer, "shelf": shelf])
+    #expect(two.leftFeature == "timer")
+    #expect(two.rightFeature == "shelf")
+    #expect(NotchEars().leftFeature == nil)
+  }
+
+  @Test
+  func aPointOnAnEarBelongsToItsFeature() {
+    let ears = NotchEars(left: [.text("8:42")], right: [.text("2")], leftFeature: "timer", rightFeature: "shelf")
+    // 300 pt wide with a 180 pt cutout in the middle: 60 pt on each side.
+    #expect(ears.feature(atX: 30, width: 300, notchWidth: 180) == "timer")
+    #expect(ears.feature(atX: 150, width: 300, notchWidth: 180) == nil)
+    #expect(ears.feature(atX: 280, width: 300, notchWidth: 180) == "shelf")
+  }
 }

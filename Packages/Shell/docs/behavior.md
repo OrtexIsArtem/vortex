@@ -3,6 +3,7 @@
 ## Opening
 - Hovering the notch opens the window after the hover delay (0.3 s by default); leaving the notch earlier cancels it.
 - Clicking the notch opens the window at once; clicking it again closes it.
+- Clicking an ear of the closed notch opens the window on that indicator's feature (the timer's ear on the Timer tab), without changing the remembered tab; a feature that is off opens the last tab.
 - Clicking the notch of a window that opened by hover keeps it open, as if the click had opened it.
 - The menu bar icon and the "Open Vortex" shortcut open and close the window.
 - A feature's shortcut opens the window on its tab, or switches to it; pressed again on that tab, it closes the window.

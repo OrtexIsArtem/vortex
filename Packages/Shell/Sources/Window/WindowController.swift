@@ -22,7 +22,8 @@ enum OpenReason: Equatable, Sendable {
 /// What happens around the notch, the window and the menu bar icon.
 enum WindowEvent: Equatable, Sendable {
   case notchHoverChanged(isInside: Bool)
-  case notchClicked
+  /// A click on the closed notch or on the notch of the open window; `feature` owns the ear clicked, nil on the cutout.
+  case notchClicked(feature: FeatureID?)
   case fileDragEnteredNotch
   case menuBarIconClicked
   case filesDroppedOnMenuBarIcon([URL])
@@ -92,7 +93,7 @@ final class WindowController: NSObject {
   func install(content: some View, menu: NSMenu) {
     menuBarMenu = menu
     presentation.notch = NSScreen.screens.lazy.compactMap(\.notchRect).first?.size
-    presentation.onNotchTapped = { [weak self] in self?.emit(.notchClicked) }
+    presentation.onNotchTapped = { [weak self] in self?.emit(.notchClicked(feature: nil)) }
     mainPanel = makeMainPanel(content: AnyView(content))
     rebuildEars()
     indicatorsObservation = observe { [weak self] in self?.indicatorsChanged() }
@@ -263,7 +264,11 @@ final class WindowController: NSObject {
       model.notchSize = notch.size
       let hit = NotchHitView()
       hit.onHoverChanged = { [weak self] isInside in self?.emit(.notchHoverChanged(isInside: isInside)) }
-      hit.onClick = { [weak self] in self?.emit(.notchClicked) }
+      hit.onClick = { [weak self, weak hit] point in
+        guard let self, let hit else { return }
+        let feature = self.currentEars.feature(atX: point.x, width: hit.bounds.width, notchWidth: notch.width)
+        self.emit(.notchClicked(feature: feature))
+      }
       hit.onFileDragEntered = { [weak self] in self?.emit(.fileDragEnteredNotch) }
       let glow = GlowModel()
       let glowPanel = VortexPanel(acceptsKey: false, root: NSView(), content: NotchGlowView(model: glow))
@@ -308,8 +313,14 @@ final class WindowController: NSObject {
   private func indicatorsChanged() {
     let newEars = NotchEars(indicators: indicators)
     if newEars != currentEars {
+      // The countdown changes every second; the panels change size only when the ears get wider or narrower.
+      let isResized = EarsMetrics.earWidth(for: newEars) != EarsMetrics.earWidth(for: currentEars)
       currentEars = newEars
-      ears.values.forEach(layOut)
+      if isResized {
+        ears.values.forEach(layOut)
+      } else {
+        ears.values.forEach { $0.model.ears = newEars }
+      }
       updateMenuBarTitle()
     }
     if let color = NotchEars.flash(indicators, seen: &seenFlashes) {

@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Foundation
 
 /// What a feature shows in the closed notch: small "ears" on both sides of the cutout.
 public struct NotchIndicator: Equatable, Sendable {
@@ -38,27 +39,51 @@ public struct NotchIndicator: Equatable, Sendable {
 public struct NotchEars: Equatable, Sendable {
   public var left: [NotchIndicator.Item]
   public var right: [NotchIndicator.Item]
+  /// The features whose indicators fill the ears; a click on an ear opens its feature.
+  public var leftFeature: FeatureID?
+  public var rightFeature: FeatureID?
 
   public var isEmpty: Bool { left.isEmpty && right.isEmpty }
 
-  public init(left: [NotchIndicator.Item] = [], right: [NotchIndicator.Item] = []) {
+  public init(
+    left: [NotchIndicator.Item] = [],
+    right: [NotchIndicator.Item] = [],
+    leftFeature: FeatureID? = nil,
+    rightFeature: FeatureID? = nil
+  ) {
     self.left = left
     self.right = right
+    self.leftFeature = leftFeature
+    self.rightFeature = rightFeature
   }
 
   public init(indicators: [FeatureID: NotchIndicator]) {
     let ranked = indicators
       .filter { !$0.value.leading.isEmpty || !$0.value.trailing.isEmpty }
       .sorted { $0.value.priority != $1.value.priority ? $0.value.priority > $1.value.priority : $0.key < $1.key }
-      .map(\.value)
     switch ranked.count {
     case 0:
       self.init()
     case 1:
-      self.init(left: ranked[0].leading, right: ranked[0].trailing)
+      let (id, indicator) = ranked[0]
+      self.init(left: indicator.leading, right: indicator.trailing, leftFeature: id, rightFeature: id)
     default:
-      self.init(left: ranked[0].leading + ranked[0].trailing, right: ranked[1].leading + ranked[1].trailing)
+      let (first, second) = (ranked[0], ranked[1])
+      self.init(
+        left: first.value.leading + first.value.trailing,
+        right: second.value.leading + second.value.trailing,
+        leftFeature: first.key,
+        rightFeature: second.key
+      )
     }
+  }
+
+  /// The feature whose ear is at `x`, in a view `width` wide with the cutout in the middle; nil on the cutout itself.
+  public func feature(atX x: CGFloat, width: CGFloat, notchWidth: CGFloat) -> FeatureID? {
+    let side = (width - notchWidth) / 2
+    if x < side { return leftFeature }
+    if x > width - side { return rightFeature }
+    return nil
   }
 
   /// The color to flash in when some indicator's `flash` grew past the number last seen for its feature; nil when

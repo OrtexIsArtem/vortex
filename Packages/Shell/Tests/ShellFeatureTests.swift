@@ -89,8 +89,8 @@ struct ShellFeatureTests {
   @Test
   func clickOpensAtOnceAndClosesOnSecondClick() async {
     let store = makeStore()
-    await store.send(.window(.notchClicked)) { $0.openReason = .click }
-    await store.send(.window(.notchClicked)) { $0.openReason = nil }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = nil }
     #expect(presented.value == [.click])
     #expect(dismissals.value == 1)
   }
@@ -98,7 +98,7 @@ struct ShellFeatureTests {
   @Test
   func clickDoesNothingWhenTurnedOff() async {
     let store = makeStore { $0.openOnClick = false }
-    await store.send(.window(.notchClicked))
+    await store.send(.window(.notchClicked(feature: nil)))
     #expect(presented.value.isEmpty)
   }
 
@@ -106,11 +106,33 @@ struct ShellFeatureTests {
   func clickKeepsAWindowOpenedByHoverOpen() async {
     let store = makeStore()
     await openByHover(store)
-    await store.send(.window(.notchClicked)) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
     await store.send(.window(.pointerInsideWindowChanged(isInside: false)))
     await clock.advance(by: .seconds(3))
     #expect(dismissals.value == 0)
-    await store.send(.window(.notchClicked)) { $0.openReason = nil }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = nil }
+  }
+
+  @Test
+  func clickingAnEarOpensItsFeatureWithoutChangingTheRememberedTab() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    await store.send(.window(.notchClicked(feature: "timer"))) {
+      $0.openReason = .click
+      $0.selectedTab = .feature("timer")
+    }
+    #expect(store.state.settings.lastTab == "feature:tasks")
+  }
+
+  @Test
+  func clickingTheEarOfAFeatureThatIsOffOpensTheLastTab() async {
+    let store = makeStore {
+      $0.lastTab = "feature:tasks"
+      $0.disabledFeatures = ["timer"]
+    }
+    await store.send(.window(.notchClicked(feature: "timer"))) {
+      $0.openReason = .click
+    }
+    #expect(store.state.selectedTab == .feature("tasks"))
   }
 
   @Test
@@ -163,7 +185,7 @@ struct ShellFeatureTests {
   @Test
   func pointerLeavingDoesNotCloseAWindowOpenedOnPurpose() async {
     let store = makeStore()
-    await store.send(.window(.notchClicked)) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
     await store.send(.window(.pointerInsideWindowChanged(isInside: true))) { $0.isPointerInsideWindow = true }
     await store.send(.window(.pointerInsideWindowChanged(isInside: false))) { $0.isPointerInsideWindow = false }
     await clock.advance(by: .seconds(3))
@@ -183,14 +205,14 @@ struct ShellFeatureTests {
   @Test
   func clickOutsideCloses() async {
     let store = makeStore()
-    await store.send(.window(.notchClicked)) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
     await store.send(.window(.clickedOutside)) { $0.openReason = nil }
   }
 
   @Test
   func clickOutsideDoesNothingWhenTurnedOff() async {
     let store = makeStore { $0.closeOnClickOutside = false }
-    await store.send(.window(.notchClicked)) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
     await store.send(.window(.clickedOutside))
     #expect(dismissals.value == 0)
   }
@@ -210,7 +232,7 @@ struct ShellFeatureTests {
   @Test
   func screenChangesCloseTheWindow() async {
     let store = makeStore()
-    await store.send(.window(.notchClicked)) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
     await store.send(.window(.screensChanged(everyScreenHasNotch: true))) { $0.openReason = nil }
     #expect(dismissals.value == 1)
   }

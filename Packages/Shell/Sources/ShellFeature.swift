@@ -317,10 +317,16 @@ struct ShellFeature {
       }
       .cancellable(id: CancelID.hoverOpen, cancelInFlight: true)
 
-    case .notchClicked:
+    case let .notchClicked(feature):
       switch state.openReason {
       case nil:
-        return state.settings.openOnClick ? open(.click, &state) : .none
+        guard state.settings.openOnClick else { return .none }
+        let effect = open(.click, &state)
+        // An ear opens its feature, without changing the remembered tab; the cutout opens the last tab.
+        if let feature, state.isAvailable(.feature(feature)) {
+          state.selectedTab = .feature(feature)
+        }
+        return effect
       case let reason? where reason.isPassing:
         // Clicking a window that opened on the way past keeps it open, as if the click had opened it.
         state.openReason = .click

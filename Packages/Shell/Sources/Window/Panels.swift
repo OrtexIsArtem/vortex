@@ -98,7 +98,8 @@ class HoverTrackingView: NSView {
 /// Covers the closed notch: reports hover, clicks and files dragged onto it. It takes every event inside
 /// its bounds, so the SwiftUI content below it stays purely visual.
 final class NotchHitView: HoverTrackingView {
-  var onClick: (() -> Void)?
+  /// A click, with its point in the view.
+  var onClick: ((NSPoint) -> Void)?
   var onFileDragEntered: (() -> Void)?
   private var isHoverSuppressed = false
 
@@ -133,7 +134,7 @@ final class NotchHitView: HoverTrackingView {
     super.mouseExited(with: event)
   }
 
-  override func mouseDown(with event: NSEvent) { onClick?() }
+  override func mouseDown(with event: NSEvent) { onClick?(convert(event.locationInWindow, from: nil)) }
 
   /// Only a trigger to open the window: what is dragged lands in the tab that takes files, not here.
   override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
