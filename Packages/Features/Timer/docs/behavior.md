@@ -5,14 +5,15 @@
 - Towards its edges the ticks crowd, shrink and fade, as on a drum seen from the front; in the Timer tab every fifth tick has its number.
 - A mouse wheel turns it a minute per notch; two fingers on the trackpad, a minute per 6 pt (9 pt in the Timer tab), with momentum.
 - The drum moves with the fingers or the pointer: a swipe or a drag to the left, or a swipe up, adds time.
+- A drag keeps the window open, even past its edge; released outside it, the window waits 1.5 s for the pointer to come back before it may close.
 - A click on a tick turns that tick to the mark; a press moved more than 2 pt either way is a drag, not a click.
 - ← → in the Timer tab turn it a minute; VoiceOver can adjust it too.
-- The drum stands at 5 minutes whenever it shows: it goes back there when the window closes, when a run starts, and when its tab is shown again, whatever was set before.
+- The drum stands at 5 minutes whenever it shows: it goes back there as the window opens, when its tab is shown again and when a run starts, whatever was set before.
 - On Home «+5» and «+10» turn it on by that much, up to 120.
 
 ## Starting
 - One timer at a time: Start (or Return in the Timer tab) starts a run of the minutes on the drum.
-- The Timer tab has quick starts under Start: 5, 10, 15, 30 and 60 minutes, each starting at once; the drum stays as it is.
+- The Timer tab has quick starts under Start: 5, 10, 15, 30 and 60 minutes, each starting at once.
 - On Home the drum and its minutes stand left of the notch, «+5», «+10» and Start right of it.
 - Without a notch (window under the menu bar icon) they stand in one row; short of room left of the notch, the drum narrows.
 

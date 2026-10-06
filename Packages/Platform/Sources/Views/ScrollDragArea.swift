@@ -14,7 +14,8 @@ public enum ScrollDragEvent: Equatable, Sendable {
 /// The surface of a control that turns by scrolling or dragging, such as the timer's drum. Lay it over the control's
 /// drawing. A precise scroll comes from a trackpad or a Magic Mouse, in points; any other from a mouse wheel, about one
 /// line per notch. A press counts as `OutsideActivity` until it is released, so a drag that leaves the window does not
-/// close it. AppKit-backed: SwiftUI on macOS 14 has no scroll events outside a scroll view.
+/// close it; released outside the window, it holds on for a moment more, to come back to the window. AppKit-backed:
+/// SwiftUI on macOS 14 has no scroll events outside a scroll view.
 public struct ScrollDragArea: NSViewRepresentable {
   private let help: String?
   private let onEvent: @MainActor (ScrollDragEvent) -> Void
@@ -46,7 +47,6 @@ public final class ScrollDragView: NSView {
       guard isPressed != oldValue else { return }
       if isPressed {
         OutsideActivity.shared.begin()
-        watchForLostRelease()
       } else {
         releaseWatch?.cancel()
         releaseWatch = nil
@@ -55,6 +55,8 @@ public final class ScrollDragView: NSView {
     }
   }
   private var releaseWatch: Task<Void, Never>?
+  /// How long a drag released outside the window keeps it open, so the pointer can come back to it.
+  private static let holdAfterOutsideRelease: Duration = .milliseconds(1500)
 
   override public var isFlipped: Bool { true }
 
@@ -71,7 +73,10 @@ public final class ScrollDragView: NSView {
   }
 
   override public func mouseDown(with event: NSEvent) {
+    // A press during the hold after the last one carries on from it.
+    releaseWatch?.cancel()
     isPressed = true
+    watchForLostRelease()
     onEvent(.pressed(point(of: event)))
   }
 
@@ -81,7 +86,16 @@ public final class ScrollDragView: NSView {
 
   override public func mouseUp(with event: NSEvent) {
     onEvent(.released(point(of: event)))
-    isPressed = false
+    guard let window, !NSMouseInRect(NSEvent.mouseLocation, window.frame, false) else {
+      isPressed = false
+      return
+    }
+    releaseWatch?.cancel()
+    releaseWatch = Task { @MainActor [weak self] in
+      try? await Task.sleep(for: Self.holdAfterOutsideRelease)
+      guard let self, !Task.isCancelled else { return }
+      self.isPressed = false
+    }
   }
 
   /// Taken off screen in the middle of a press, it gets no release: the press ends here.

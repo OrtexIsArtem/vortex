@@ -61,6 +61,8 @@ struct DrumRuler: View {
 
   /// The minutes are read at each event: several can come before the view is drawn again.
   private func handle(_ event: ScrollDragEvent, width: CGFloat) {
+    // Events already on their way when a run starts find the drum showing the time left.
+    guard store.run == nil else { return }
     let minutes = self.minutes
     switch event {
     case let .scrolled(x, y, isPrecise, beginsGesture):

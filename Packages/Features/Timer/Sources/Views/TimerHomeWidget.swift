@@ -34,8 +34,13 @@ struct TimerHomeWidget: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // Set back as the window opens, while the content is still faded out: as it closes, the jump would show.
     .onChange(of: isWindowOpen) { _, isOpen in
-      if !isOpen { setDrumBack() }
+      if isOpen { setDrumBack() }
+    }
+    // Set back when any run starts, also one from the notification's «+5 хв», so the drum shows 5 once it is over.
+    .onChange(of: store.run == nil) { _, isIdle in
+      if !isIdle { setDrumBack() }
     }
   }
 
@@ -69,7 +74,6 @@ struct TimerHomeWidget: View {
         addButton(10, label: Text("Add 10 minutes", bundle: .module))
         Button {
           store.send(.startTapped(minutes: minutes))
-          setDrumBack()
         } label: {
           HStack(spacing: 6) {
             Image(systemName: "play.fill")
@@ -95,7 +99,7 @@ struct TimerHomeWidget: View {
     .accessibilityLabel(label)
   }
 
-  /// Back to five minutes, without the drum turning there: the window is closing, or the run started.
+  /// Back to five minutes, without the drum turning there: the window is opening, or a run started.
   private func setDrumBack() {
     var transaction = Transaction()
     transaction.disablesAnimations = true

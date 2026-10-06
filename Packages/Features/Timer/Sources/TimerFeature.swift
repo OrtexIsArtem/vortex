@@ -155,7 +155,7 @@ public struct TimerFeature: Sendable {
         return tick(state)
 
       case let .notificationButtonPressed(button):
-        // "+5 min" on the notification that time is up: five more minutes, as a new run; the drum keeps its time.
+        // "+5 min" on the notification that time is up: five more minutes, as a new run.
         guard button == Self.addFiveButtonID else { return .none }
         return startRun(minutes: Self.addedMinutes, &state)
 

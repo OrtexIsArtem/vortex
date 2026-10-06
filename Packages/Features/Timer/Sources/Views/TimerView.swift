@@ -77,8 +77,13 @@ public struct TimerView: View {
     .task(id: isWindowOpen) {
       if isWindowOpen { isFocused = true }
     }
+    // Set back as the window opens, while the content is still faded out: as it closes, the jump would show.
     .onChange(of: isWindowOpen) { _, isOpen in
-      if !isOpen { setDrumBack() }
+      if isOpen { setDrumBack() }
+    }
+    // Set back when any run starts, also one from the notification's «+5 хв», so the drum shows 5 once it is over.
+    .onChange(of: store.run == nil) { _, isIdle in
+      if !isIdle { setDrumBack() }
     }
   }
 
@@ -91,10 +96,9 @@ public struct TimerView: View {
 
   private func start(_ minutes: Int) {
     store.send(.startTapped(minutes: minutes))
-    setDrumBack()
   }
 
-  /// Back to five minutes, without the drum turning there: the window is closing, or the run started.
+  /// Back to five minutes, without the drum turning there: the window is opening, or a run started.
   private func setDrumBack() {
     var transaction = Transaction()
     transaction.disablesAnimations = true
@@ -146,8 +150,7 @@ public struct TimerView: View {
     .frame(height: VortexMetrics.hitTarget)
   }
 
-  /// One click starts a run of that many minutes; the drum stays as it is. Hidden while a run goes, but its room is
-  /// kept, so nothing moves.
+  /// One click starts a run of that many minutes. Hidden while a run goes, but its room is kept, so nothing moves.
   private var quickStarts: some View {
     HStack(spacing: 6) {
       ForEach(TimerFeature.quickStarts, id: \.self) { quick in
