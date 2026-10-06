@@ -1,6 +1,216 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "+5 min" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+5 хв"
+          }
+        }
+      }
+    },
+    "Flash color" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колір блимання"
+          }
+        }
+      }
+    },
+    "Longer" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Більше часу"
+          }
+        }
+      }
+    },
+    "min" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "хв"
+          }
+        }
+      }
+    },
+    "Minutes, separated by commas. Up to six: on Home they stand next to the notch." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хвилини через кому. До шести: на Головній вони стоять біля вирізу."
+          }
+        }
+      }
+    },
+    "No sound" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без звуку"
+          }
+        }
+      }
+    },
+    "Notch flash" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блимання вирізу"
+          }
+        }
+      }
+    },
+    "of %lld min" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "з %lld хв"
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
+    "Plays the sound and the flashes in 3 seconds: close the window to watch the notch" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Програє звук і блимання через 3 с: закрийте вікно, щоб бачити виріз"
+          }
+        }
+      }
+    },
+    "Plays when time is up." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лунає, коли час вийшов."
+          }
+        }
+      }
+    },
+    "Presets" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пресети"
+          }
+        }
+      }
+    },
+    "Resume" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продовжити"
+          }
+        }
+      }
+    },
+    "Shorter" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Менше часу"
+          }
+        }
+      }
+    },
+    "Sound" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звук"
+          }
+        }
+      }
+    },
+    "Start" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старт"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зупинити"
+          }
+        }
+      }
+    },
+    "Test" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевірити"
+          }
+        }
+      }
+    },
+    "The %lld-minute timer is done" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер на %lld хв закінчився"
+          }
+        }
+      }
+    },
+    "Time's up" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Час вийшов"
+          }
+        }
+      }
+    },
     "Timer" : {
       "comment" : "Feature name in the sidebar and settings",
       "localizations" : {
@@ -8,6 +218,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таймер"
+          }
+        }
+      }
+    },
+    "until %@" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "до %@"
+          }
+        }
+      }
+    },
+    "When time is up, the notch flashes three times in this color." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коли час вийде, виріз блимне тричі цим кольором."
           }
         }
       }

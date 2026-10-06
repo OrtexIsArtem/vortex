@@ -16,6 +16,7 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 - `make check` — no-network rule (also runs as a build phase)
 - `make open` — regenerate and open in Xcode
 - `make install-cli` — link the `vortex` command (Tools/CLI) into /opt/homebrew/bin
+- `scripts/strings.py <Localizable.xcstrings> <entries.json>` — add keys with their uk translations to a String Catalog
 - `make build` skips macro validation; in the Xcode UI the first build asks to "Trust & Enable" the TCA macro packages once.
 - To check the running app without the pointer, use the debug notifications described in App/docs/README.md.
 
