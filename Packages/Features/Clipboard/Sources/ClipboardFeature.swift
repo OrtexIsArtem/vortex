@@ -165,6 +165,8 @@ public struct ClipboardFeature: Sendable {
         return insert(item, &state)
 
       case let .dropped(items):
+        // Before the saved history is read, a drop would be saved over it: a save deletes the rows not in memory.
+        guard state.isLoaded else { return .none }
         return .run { [files] send in
           let resolved = await Self.resolvingOwnFiles(in: items, files: files)
           guard let content = Self.copiedContent(of: resolved) else { return }
