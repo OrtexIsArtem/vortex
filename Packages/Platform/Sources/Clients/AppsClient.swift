@@ -11,6 +11,9 @@ public struct AppsClient: Sendable {
   public var running: @Sendable () async -> [AppInfo] = { [] }
   /// Asks the user to pick an app in /Applications; nil when they cancel.
   public var choose: @Sendable () async -> AppInfo?
+  /// Brings the app to the front, launching it when it is not running; with `url`, has that app open it, as a
+  /// browser opens a page.
+  public var open: @Sendable (_ bundleID: String, _ url: URL?) async -> Void
 }
 
 extension AppsClient: DependencyKey {
@@ -47,6 +50,20 @@ extension AppsClient: DependencyKey {
             let name = FileManager.default.displayName(atPath: url.path)
             continuation.resume(returning: AppInfo(bundleID: id, name: name.hasSuffix(".app") ? String(name.dropLast(4)) : name))
           }
+        }
+      }
+    },
+    open: { bundleID, url in
+      await MainActor.run {
+        guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+          // The app is gone: the page still opens, in the default browser.
+          if let url { NSWorkspace.shared.open(url) }
+          return
+        }
+        if let url {
+          NSWorkspace.shared.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+          NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
         }
       }
     }
