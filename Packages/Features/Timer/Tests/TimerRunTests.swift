@@ -70,30 +70,51 @@ struct TimerRunTests {
   @Test
   func aSavedRunWithImpossibleValuesIsNoRun() {
     // Each of these once decoded as a run and then stopped Vortex with a crash at every launch.
-    #expect(saved(#"{"running":{"endsAt":1e300}}"#) == nil)
-    #expect(saved(#"{"running":{"endsAt":-1e300}}"#) == nil)
     #expect(saved(#"{"paused":{"remaining":-1e30}}"#) == nil)
     #expect(saved(#"{"paused":{"remaining":1e300}}"#, total: "1e300") == nil)
     // A time left below zero or above the total.
     #expect(saved(#"{"paused":{"remaining":-1}}"#) == nil)
     #expect(saved(#"{"paused":{"remaining":301}}"#) == nil)
-    // An end beyond the dates a run can have.
-    #expect(saved(#"{"running":{"endsAt":1000000001}}"#) == nil)
-    #expect(saved(#"{"running":{"endsAt":-1000000001}}"#) == nil)
     // A total that is no run: nothing, below nothing, over a day.
     for total in ["0", "-300", "86401", "1e300"] {
       #expect(saved(#"{"running":{"endsAt":800000300}}"#, total: total) == nil)
     }
+    // A number beyond what a Double holds: the decoder refuses it, so it never gets as far as an infinite end.
+    #expect(saved(#"{"running":{"endsAt":1e999}}"#) == nil)
+    #expect(saved(#"{"running":{"endsAt":-1e999}}"#) == nil)
   }
 
   @Test
   func theEdgesOfWhatIsPossibleAreStillARun() {
     #expect(saved(#"{"running":{"endsAt":800000300}}"#) != nil)
-    #expect(saved(#"{"running":{"endsAt":1000000000}}"#, total: "86400") != nil)
-    #expect(saved(#"{"running":{"endsAt":-1000000000}}"#, total: "1") != nil)
+    #expect(saved(#"{"running":{"endsAt":800000300}}"#, total: "86400") != nil)
+    #expect(saved(#"{"running":{"endsAt":800000300}}"#, total: "1") != nil)
     #expect(saved(#"{"paused":{"remaining":0}}"#) != nil)
     #expect(saved(#"{"paused":{"remaining":300}}"#) != nil)
     #expect(saved(#"{"paused":{"remaining":86400}}"#, total: "86400") != nil)
+  }
+
+  @Test
+  func anEndDateFarFromNowIsStillARunAndNeverShowsMoreThanTheTotal() {
+    // The end date has no bound: one that stopped at September 2032 would turn every saved run into no run from then
+    // on. Any end a file can hold is safe, because the time left is kept within 0...total before it is rounded.
+    let farOff = ["1000000001", "1.2e9", "4102444800", "1e300", "1.7976931348623157e308"]
+    for endsAt in farOff {
+      let run = saved(#"{"running":{"endsAt":\#(endsAt)}}"#)
+      #expect(run != nil, "endsAt \(endsAt)")
+      #expect(run?.secondsLeft(at: start) == 300, "endsAt \(endsAt)")
+      #expect(run?.secondsLeft(at: .distantPast) == 300, "endsAt \(endsAt)")
+      #expect(run?.fractionLeft(at: start) == 1, "endsAt \(endsAt)")
+      #expect(run?.isOver(at: start) == false, "endsAt \(endsAt)")
+    }
+    // An end long gone is a run that is over, the same way.
+    for endsAt in farOff.map({ "-" + $0 }) {
+      let run = saved(#"{"running":{"endsAt":\#(endsAt)}}"#)
+      #expect(run != nil, "endsAt \(endsAt)")
+      #expect(run?.secondsLeft(at: start) == 0, "endsAt \(endsAt)")
+      #expect(run?.secondsLeft(at: .distantFuture) == 0, "endsAt \(endsAt)")
+      #expect(run?.isOver(at: start) == true, "endsAt \(endsAt)")
+    }
   }
 
   @Test
@@ -118,8 +139,9 @@ struct TimerRunTests {
     #expect(run.secondsLeft(at: start) == 300)
     #expect(run.fractionLeft(at: start) == 1)
     #expect(!run.isOver(at: start))
-    // The farthest end a saved run may have, seen from a date far in the past: no overflow, still no more than the total.
-    let farthest = TimerRun(phase: .running(endsAt: Date(timeIntervalSinceReferenceDate: TimerRun.farthestEnd)), total: 300)
+    // The farthest end there is, seen from a date far in the past: no overflow, still no more than the total.
+    let farthest = TimerRun(phase: .running(endsAt: Date(timeIntervalSinceReferenceDate: .greatestFiniteMagnitude)), total: 300)
+    #expect(farthest.hasPossibleValues)
     #expect(farthest.secondsLeft(at: start) == 300)
     #expect(farthest.secondsLeft(at: .distantPast) == 300)
     // And never below zero, whichever the phase.

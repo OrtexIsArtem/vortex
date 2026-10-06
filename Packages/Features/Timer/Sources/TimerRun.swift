@@ -93,18 +93,16 @@ public struct TimerRun: Codable, Equatable, Sendable {
 
   /// The longest a run can be: a day.
   static let longestTotal: TimeInterval = 24 * 60 * 60
-  /// How far from the reference date (the start of 2001) the end of a saved run may lie, in seconds: forward to
-  /// September 2032, back to April 1969. Raise it before 2032, or a run saved then would count as no run.
-  static let farthestEnd: TimeInterval = 1e9
 
   /// Whether the values are possible for a run. Anything else comes from a damaged or hand-edited file, and would
-  /// stop the whole-second arithmetic of a launch with a crash.
+  /// stop the whole-second arithmetic of a launch with a crash. The end of a running run has no bound of its own, only
+  /// that it is a number: `remaining(at:)` keeps the time left within 0...total, so no date, however far off, reaches
+  /// the arithmetic. (A bound on the date would sooner or later turn every saved run into no run.)
   var hasPossibleValues: Bool {
     guard total.isFinite, total > 0, total <= Self.longestTotal else { return false }
     switch phase {
     case let .running(endsAt):
-      let seconds = endsAt.timeIntervalSinceReferenceDate
-      return seconds.isFinite && abs(seconds) <= Self.farthestEnd
+      return endsAt.timeIntervalSinceReferenceDate.isFinite
     case let .paused(remaining):
       return remaining.isFinite && remaining >= 0 && remaining <= total
     }
