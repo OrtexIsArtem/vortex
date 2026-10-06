@@ -10,6 +10,8 @@ struct ShelfHomeWidget: View {
   @State private var isTargeted = false
 
   static let width: CGFloat = 352
+  /// How far the selection ring of a tile reaches beyond it.
+  private static let ringRoom: CGFloat = 3
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -46,9 +48,13 @@ struct ShelfHomeWidget: View {
             }
             DropTile(isTargeted: isTargeted, height: 72)
           }
+          // The ring of a selected tile sits 3 pt outside it and a scroll view clips what lies outside: the grid
+          // gets that room here and the scroll view takes it back below, so the tiles stay where they are.
+          .padding([.top, .horizontal], Self.ringRoom)
         }
       }
       .scrollIndicators(.never)
+      .padding([.top, .horizontal], -Self.ringRoom)
     }
     .frame(width: Self.width)
     .frame(maxHeight: .infinity, alignment: .top)
