@@ -24,7 +24,7 @@ public struct TimerFeature: Sendable {
     var isEnabled = false
     /// Set on every tick, so the views and the notch show the time left.
     var now = Date.distantPast
-    /// The preset the user moved to in the Timer tab; nil shows `settings.initialPreset`.
+    /// The preset the user moved to in the Timer tab, until the tab is shown again; nil shows `settings.initialPreset`.
     var chosenPreset: Int?
     /// Grows by one for every flash of the notch.
     var flashes = 0
@@ -64,6 +64,8 @@ public struct TimerFeature: Sendable {
     case nextPresetTapped
     /// Start in the Timer tab: starts the preset it shows.
     case startTapped
+    /// The Timer tab became visible: the window opened on it, or the user switched to it.
+    case tabShown
     case pauseTapped
     case resumeTapped
     case addFiveMinutesTapped
@@ -138,6 +140,11 @@ public struct TimerFeature: Sendable {
 
       case .startTapped:
         return startRun(minutes: state.carouselPreset, &state)
+
+      case .tabShown:
+        // The tab opens on the preset started last: one browsed and left without starting is forgotten.
+        state.chosenPreset = nil
+        return .none
 
       case .pauseTapped:
         let now = self.now

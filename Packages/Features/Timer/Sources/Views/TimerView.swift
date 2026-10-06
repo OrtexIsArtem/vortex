@@ -45,7 +45,9 @@ public struct TimerView: View {
     }
     .onKeyPress(.space, phases: .repeat) { _ in store.run == nil ? .ignored : .handled }
     .task(id: isWindowOpen) {
-      if isWindowOpen { isFocused = true }
+      guard isWindowOpen else { return }
+      store.send(.tabShown)
+      isFocused = true
     }
   }
 

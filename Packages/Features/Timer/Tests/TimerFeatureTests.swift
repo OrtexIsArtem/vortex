@@ -258,6 +258,20 @@ struct TimerFeatureTests {
   }
 
   @Test
+  func theTabOpensOnThePresetStartedLastWhateverWasBrowsedBefore() async {
+    let store = makeStore()
+    await store.send(.start)
+    await store.send(.nextPresetTapped)
+    await store.send(.nextPresetTapped)
+    #expect(store.state.carouselPreset == 60)
+    // Left without starting; later the window opens on the tab again.
+    await store.send(.tabShown)
+    #expect(store.state.carouselPreset == store.state.settings.lastMinutes)
+    #expect(store.state.carouselPreset == 25)
+    await store.send(.stop)
+  }
+
+  @Test
   func settingsCleanUpPresetsAndPlayTheChosenSound() async {
     let store = makeStore()
     await store.send(.settingsShown)
