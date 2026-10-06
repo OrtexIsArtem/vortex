@@ -53,6 +53,25 @@ struct NotchEarsTests {
   }
 
   @Test
+  func anAlarmStaysUnseenUntilSeenAndANewNumberStartsAnother() {
+    var seen: [FeatureID: Int] = [:]
+    let orange = ColorValue(hex: 0xFF9F43)
+    let timer = { (alarm: Int?) in NotchIndicator(leading: [], trailing: [], flashColor: orange, alarm: alarm) }
+    #expect(NotchEars.unseenAlarm(["timer": timer(nil)], seen: seen) == nil)
+    #expect(NotchEars.unseenAlarm(["timer": timer(1)], seen: seen) == orange)
+    // Asked again, it is still unseen: nothing but seeing it ends it.
+    #expect(NotchEars.unseenAlarm(["timer": timer(1)], seen: seen) == orange)
+    NotchEars.seeAlarms(["timer": timer(1)], seen: &seen)
+    #expect(NotchEars.unseenAlarm(["timer": timer(1)], seen: seen) == nil)
+    #expect(NotchEars.unseenAlarm(["timer": timer(2)], seen: seen) == orange)
+    // Ended by the feature before anyone saw it.
+    #expect(NotchEars.unseenAlarm(["timer": timer(nil)], seen: seen) == nil)
+    // A feature that counts from the start again still rings.
+    NotchEars.seeAlarms(["timer": timer(2)], seen: &seen)
+    #expect(NotchEars.unseenAlarm(["timer": timer(1)], seen: seen) == orange)
+  }
+
+  @Test
   func indicatorsWithoutItemsShowNoEars() {
     let flashOnly = NotchIndicator(leading: [], trailing: [], priority: 20, flash: 3)
     #expect(NotchEars(indicators: ["shelf": flashOnly]).isEmpty)

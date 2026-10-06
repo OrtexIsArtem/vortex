@@ -21,14 +21,25 @@ public struct NotchIndicator: Equatable, Sendable {
   public var flash: Int
   /// The color of that flash: a glow around the notch that spreads past its edges.
   public var flashColor: ColorValue
+  /// An alarm, such as the timer's time up: the notch flashes in `flashColor` again and again until the user has seen
+  /// it, by pointing at the notch or opening the window. A new number starts a new alarm; nil ends it unseen.
+  public var alarm: Int?
 
   /// An indicator with no items shows no ears; it can still flash the notch.
-  public init(leading: [Item], trailing: [Item], priority: Int = 0, flash: Int = 0, flashColor: ColorValue = .white) {
+  public init(
+    leading: [Item],
+    trailing: [Item],
+    priority: Int = 0,
+    flash: Int = 0,
+    flashColor: ColorValue = .white,
+    alarm: Int? = nil
+  ) {
     self.leading = leading
     self.trailing = trailing
     self.priority = priority
     self.flash = flash
     self.flashColor = flashColor
+    self.alarm = alarm
   }
 }
 
@@ -98,6 +109,22 @@ public struct NotchEars: Equatable, Sendable {
       seen[id] = indicator.flash
     }
     return color
+  }
+
+  /// The flash color of an alarm the user has not seen: an indicator's `alarm` other than the one last seen for its
+  /// feature. nil when there is none.
+  public static func unseenAlarm(_ indicators: [FeatureID: NotchIndicator], seen: [FeatureID: Int]) -> ColorValue? {
+    indicators
+      .sorted { $0.key < $1.key }
+      .first { id, indicator in indicator.alarm.map { $0 != seen[id] } ?? false }?
+      .value.flashColor
+  }
+
+  /// Counts the alarms showing now as seen.
+  public static func seeAlarms(_ indicators: [FeatureID: NotchIndicator], seen: inout [FeatureID: Int]) {
+    for (id, indicator) in indicators {
+      if let alarm = indicator.alarm { seen[id] = alarm }
+    }
   }
 
   /// Text for the menu bar icon on displays without a notch, e.g. "8:42  2".
