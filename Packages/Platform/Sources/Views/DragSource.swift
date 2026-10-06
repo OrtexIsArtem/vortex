@@ -56,10 +56,12 @@ public struct DragSourceArea: NSViewRepresentable {
 }
 
 public final class DragSourceView: NSView, NSDraggingSource {
-  fileprivate var items: @MainActor () -> [DragItem] = { [] }
-  fileprivate var onClick: @MainActor (DragSourceClick) -> Void = { _ in }
-  fileprivate var onHover: @MainActor (Bool) -> Void = { _ in }
+  var items: @MainActor () -> [DragItem] = { [] }
+  var onClick: @MainActor (DragSourceClick) -> Void = { _ in }
+  var onHover: @MainActor (Bool) -> Void = { _ in }
   private var mouseDown: NSEvent?
+  /// The pressed item had nothing to drag (a hidden secret, a missing file), so the press stays a click.
+  private var hasNothingToDrag = false
   /// A drag starts once the pointer has moved this far with the button down.
   private let dragThreshold: CGFloat = 4
 
@@ -83,22 +85,29 @@ public final class DragSourceView: NSView, NSDraggingSource {
 
   override public func mouseDown(with event: NSEvent) {
     mouseDown = event
+    hasNothingToDrag = false
   }
 
   override public func mouseDragged(with event: NSEvent) {
-    guard let mouseDown else { return }
+    guard let mouseDown, !hasNothingToDrag else { return }
     let start = mouseDown.locationInWindow
     let distance = hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y)
     guard distance >= dragThreshold else { return }
-    self.mouseDown = nil
     let items = items()
-    guard !items.isEmpty else { return }
+    guard !items.isEmpty else {
+      // A pointer that slipped while clicking: the release still reports the click. Asked once per press.
+      hasNothingToDrag = true
+      return
+    }
+    self.mouseDown = nil
     beginDrag(items, with: mouseDown)
   }
 
   override public func mouseUp(with event: NSEvent) {
     guard mouseDown != nil else { return }
     mouseDown = nil
+    // A press with nothing to drag released away from the item was a try to drag it, not a click.
+    if hasNothingToDrag, !isMousePoint(convert(event.locationInWindow, from: nil), in: bounds) { return }
     onClick(DragSourceClick(count: event.clickCount, modifiers: EventModifiers(event.modifierFlags)))
   }
 
