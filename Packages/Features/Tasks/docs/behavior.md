@@ -4,12 +4,14 @@
 - The shortcut (none by default, set in Settings › Features › Tasks) or + in the tab starts a capture; Esc cancels it at any step.
 - First the app in front, its window title and, in a browser, the page address are noted (a browser's one-time Automation prompt is answered first); then the display under the pointer is taken and freezes.
 - Vortex's own windows are not on the frozen screen; the notch shows «Стоп-кадр · Esc», later «Нова задача · Esc»; «Виділи область · Esc — скасувати» shows above the Dock.
-- Dragging draws the frame; outside it the screen dims; its size shows under it. A frame under 8 pt is taken for a click and ignored.
+- Dragging draws the frame, with a crosshair pointer (macOS 15+); outside it the screen dims; its size shows under it. A frame under 8 pt is taken for a click and ignored.
 - Once drawn, the framed part moves to the left, the rest blurs, and the fields show: title, priority, source, retake, Cancel, Save.
-- The title is «Задача N», selected, so typing replaces it; ⌘V, ⌘C, ⌘X, ⌘A and ⌘Z work in it; «Підставити» puts the first line of text found in the frame instead.
+- The title is «Задача N», selected, so typing replaces it, also right after a frame drawn with the mouse; ⌘V, ⌘C, ⌘X, ⌘A and ⌘Z work in it, also under a Cyrillic layout; «Підставити» puts the first line of text found in the frame instead and hides once it is the title.
 - Priority is Low by default; Low, Medium or High.
 - Return saves, also from the title field; an emptied title saves as «Задача N»; the retake button draws the frame again on the same frozen screen.
 - A second press of the shortcut while a capture is under way does nothing.
+- Vortex comes to the front with the frozen screen; saving or cancelling gives the front back to the app the user was in, with its keyboard focus.
+- Another app coming to the front ends the capture, so the frozen screen never hides it: a prompt of the system (Screen Recording's periodic confirmation, a browser's Automation) or ⌘Tab.
 
 ## After saving
 - The framed part and the whole screen are saved; the text on both is recognized in the background (Ukrainian, Russian, English).

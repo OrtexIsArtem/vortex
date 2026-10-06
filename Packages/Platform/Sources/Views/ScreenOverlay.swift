@@ -2,47 +2,87 @@ import AppKit
 import SwiftUI
 
 /// A window over all of one display, above everything, the menu bar and the notch included: the frozen screen while a
-/// task is captured. It takes the keyboard without bringing Vortex to the front, so the app the user was in stays the
-/// active one. Esc and Return that no field takes go to `onEscape` and `onReturn`.
+/// task is captured. Esc and Return that no field takes go to `onEscape` and `onReturn`.
+///
+/// Vortex comes to the front with it, so the pointer and the keyboard work from the start (a click would bring it
+/// anyway); `close` gives the front back to the app the user was in, with its keyboard focus.
+///
+/// It never hides another app: when one comes to the front, such as a prompt of the system (Screen Recording's
+/// periodic confirmation, a browser's Automation) or after ⌘Tab, `onInterrupted` is called, as it is when one already
+/// came to the front between the moment the screen was taken and `show`.
 @MainActor
 public final class ScreenOverlay {
   private var panel: OverlayPanel?
+  private var activations: (any NSObjectProtocol)?
+  /// The app the user was in, which gets the front back.
+  private var coveredApp: NSRunningApplication?
 
   public init() {}
 
   public var isShown: Bool { panel != nil }
 
+  /// `over` is the bundle id of the app that was in front when the screen was taken, nil for none or Vortex.
   public func show(
     _ content: some View,
     on displayID: CGDirectDisplayID,
+    over app: String?,
     onEscape: @escaping @MainActor () -> Void,
-    onReturn: @escaping @MainActor () -> Void
+    onReturn: @escaping @MainActor () -> Void,
+    onInterrupted: @escaping @MainActor () -> Void
   ) {
+    let front = Self.frontApp()
+    guard front?.bundleIdentifier == app else {
+      // Called once `show` has returned, as it would be for a later interruption.
+      Task { @MainActor in onInterrupted() }
+      return
+    }
     guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
     let panel = self.panel ?? OverlayPanel()
     panel.onEscape = onEscape
     panel.onReturn = onReturn
-    let host = OverlayHostingView(rootView: AnyView(content))
-    host.cursor = cursor
-    panel.contentView = host
+    panel.contentView = NSHostingView(rootView: AnyView(content))
     panel.setFrame(screen.frame, display: true)
     panel.makeKeyAndOrderFront(nil)
     self.panel = panel
-  }
-
-  /// The pointer over the whole overlay, such as a crosshair while a frame is drawn; nil leaves it to the content.
-  public var cursor: NSCursor? {
-    didSet {
-      guard cursor !== oldValue, let host = panel?.contentView as? OverlayHostingView else { return }
-      host.cursor = cursor
-      panel?.invalidateCursorRects(for: host)
+    coveredApp = front
+    NSApp.activate()
+    stopWatchingActivations()
+    activations = NSWorkspace.shared.notificationCenter.addObserver(
+      forName: NSWorkspace.didActivateApplicationNotification,
+      object: nil,
+      queue: .main
+    ) { note in
+      let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+      guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
+      MainActor.assumeIsolated { onInterrupted() }
     }
   }
 
+  /// The app in front; nil for Vortex.
+  private static func frontApp() -> NSRunningApplication? {
+    guard let app = NSWorkspace.shared.frontmostApplication,
+          app.processIdentifier != ProcessInfo.processInfo.processIdentifier
+    else { return nil }
+    return app
+  }
+
+  private func stopWatchingActivations() {
+    if let activations { NSWorkspace.shared.notificationCenter.removeObserver(activations) }
+    activations = nil
+  }
+
   public func close() {
+    stopWatchingActivations()
     panel?.orderOut(nil)
     panel?.contentView = nil
     panel = nil
+    // The content's pointer, such as a crosshair, would stay until the app under it sets one.
+    NSCursor.arrow.set()
+    // Still in front, so nothing else took it meanwhile: the app the user was in gets it back.
+    if NSApp.isActive, let coveredApp, !coveredApp.isTerminated {
+      coveredApp.activate(from: .current)
+    }
+    coveredApp = nil
   }
 }
 
@@ -86,14 +126,5 @@ private final class OverlayPanel: NSPanel {
     } else {
       super.keyDown(with: event)
     }
-  }
-}
-
-private final class OverlayHostingView: NSHostingView<AnyView> {
-  var cursor: NSCursor?
-
-  override func resetCursorRects() {
-    super.resetCursorRects()
-    if let cursor { addCursorRect(bounds, cursor: cursor) }
   }
 }

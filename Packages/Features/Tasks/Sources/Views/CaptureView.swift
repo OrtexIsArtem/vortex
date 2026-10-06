@@ -59,6 +59,7 @@ private struct Framing: View {
     }
     .frame(width: size.width, height: size.height, alignment: .topLeading)
     .contentShape(Rectangle())
+    .modifier(AreaPointer(kind: .selecting))
     .gesture(
       DragGesture(minimumDistance: 0, coordinateSpace: .local)
         .onChanged { value in
@@ -79,6 +80,30 @@ extension Framing {
   /// The rectangle between where the drag began and where the pointer is, whichever way it went.
   static func frame(from start: CGPoint, to end: CGPoint) -> CGRect {
     CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y))
+  }
+}
+
+/// The system's pointers, on macOS 15 and later: for selecting an area while the frame is drawn, the usual one once
+/// the fields show, the text one over the title.
+private struct AreaPointer: ViewModifier {
+  enum Kind {
+    case selecting
+    case usual
+    case text
+  }
+
+  let kind: Kind
+
+  func body(content: Content) -> some View {
+    if #available(macOS 15, *) {
+      switch kind {
+      case .selecting: content.pointerStyle(.rectSelection)
+      case .usual: content.pointerStyle(.default)
+      case .text: content.pointerStyle(.horizontalText)
+      }
+    } else {
+      content
+    }
   }
 }
 
@@ -220,9 +245,17 @@ private struct CaptureDetails: View {
         .opacity(hasMoved ? 1 : 0)
     }
     .frame(width: screen.width, height: screen.height, alignment: .topLeading)
+    .modifier(AreaPointer(kind: .usual))
     .onAppear {
       withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) { hasMoved = true }
-      isTitleFocused = true
+    }
+    .task {
+      // SwiftUI drops a focus request while the drag that drew the frame winds down: it is asked again on the next
+      // frames until the title has the keyboard, with «Задача N» selected.
+      for _ in 0..<10 where !isTitleFocused && !Task.isCancelled {
+        isTitleFocused = true
+        try? await Task.sleep(for: .milliseconds(30))
+      }
     }
   }
 
@@ -246,10 +279,11 @@ private struct CaptureDetails: View {
       .textFieldStyle(.plain)
       .font(.system(size: 22, weight: .semibold))
       .focused($isTitleFocused)
+      .modifier(AreaPointer(kind: .text))
       .onSubmit { store.send(.saveTapped) }
       .padding(.top, 6)
 
-      if let suggestion = store.suggestion {
+      if let suggestion = store.suggestion, suggestion != store.title {
         HStack(spacing: 8) {
           (Text("From the text: ", bundle: .module) + Text(verbatim: suggestion))
             .lineLimit(1)

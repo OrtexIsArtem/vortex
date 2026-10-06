@@ -24,15 +24,16 @@ final class CaptureOverlay: NSObject {
       shownCapture = nil
       return
     }
-    // A crosshair while the frame is drawn; then the fields' own pointers.
-    overlay.cursor = capture.isFramed ? nil : .crosshair
     guard shownCapture != capture.capturedAt else { return }
     shownCapture = capture.capturedAt
     overlay.show(
       CaptureView(store: capture),
       on: capture.screenshot.displayID,
+      over: capture.source.app?.bundleID,
       onEscape: { capture.send(.cancelTapped) },
-      onReturn: { capture.send(.saveTapped) }
+      onReturn: { capture.send(.saveTapped) },
+      // Another app came to the front, such as a prompt of the system: it must not stay hidden under the frozen screen.
+      onInterrupted: { capture.send(.cancelTapped) }
     )
   }
 }
