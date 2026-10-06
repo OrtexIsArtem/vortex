@@ -126,13 +126,11 @@ private struct RunningTimer: View {
   let send: @MainActor (TimerFeature.Action) -> Void
 
   var body: some View {
-    let secondsLeft = run.secondsLeft(at: now)
     VStack(spacing: 0) {
-      Text(verbatim: TimerRun.clockText(seconds: secondsLeft))
+      // No digit animation: it would run every second for the whole run, and costs a lot of CPU even unseen.
+      Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: now)))
         .font(.system(size: 76, weight: .thin).monospacedDigit())
         .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
-        .contentTransition(.numericText(countsDown: true))
-        .animation(.snappy(duration: 0.25), value: secondsLeft)
       caption
         .font(.system(size: 12.5))
         .foregroundStyle(VortexColor.tertiaryText)
