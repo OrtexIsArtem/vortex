@@ -68,6 +68,9 @@ public struct TimerFeature: Sendable {
     case addFiveMinutesTapped
     case stopTapped
     case tick
+    /// The shared run changed: by this feature, or from outside it, such as another Vortex writing the run file or the
+    /// file edited or deleted.
+    case runChanged
     case flashDue
     case notificationButtonPressed(String)
     case settingsShown
@@ -87,6 +90,7 @@ public struct TimerFeature: Sendable {
 
   private enum CancelID {
     case tick
+    case runChanges
     case buttons
     case alarm
     case test
@@ -104,13 +108,14 @@ public struct TimerFeature: Sendable {
         if state.run?.isOver(at: state.now) == true {
           state.$run.withLock { $0 = nil }
         }
-        return .merge(listenToNotificationButtons(), tick(state))
+        return .merge(listenToNotificationButtons(), followRunChanges(state), tick(state))
 
       case .stop:
         state.isEnabled = false
         state.$run.withLock { $0 = nil }
         return .merge(
           .cancel(id: CancelID.tick),
+          .cancel(id: CancelID.runChanges),
           .cancel(id: CancelID.buttons),
           .cancel(id: CancelID.alarm),
           .cancel(id: CancelID.test)
@@ -156,6 +161,18 @@ public struct TimerFeature: Sendable {
         state.now = now
         guard state.run?.isOver(at: state.now) == true else { return .none }
         return timeIsUp(&state)
+
+      case .runChanged:
+        // A change from outside reached the state without an action: the time, the notch and the ticks follow the run
+        // here. This feature's own changes come here too, a moment later, and find them in step; setting the ticks
+        // again does no harm, as they keep to the whole seconds of the time left.
+        state.now = now
+        let indicator = state.indicator
+        if state.indicators[Self.id] != indicator {
+          // `.onChange` below compares the state before and after an action, so it never sees such a change.
+          state.$indicators.withLock { $0[Self.id] = indicator }
+        }
+        return tick(state)
 
       case .flashDue:
         state.flashes += 1
@@ -226,6 +243,26 @@ public struct TimerFeature: Sendable {
     let presets = state.settings.presets
     guard let index = presets.firstIndex(of: state.carouselPreset) else { return }
     state.chosenPreset = presets[min(max(index + step, 0), presets.count - 1)]
+  }
+
+  /// Sends `runChanged` whenever the shared run changes. A change from outside the reducer (another Vortex, the run
+  /// file edited or deleted) sets the shared value without any action, so the ticks and the notch would not follow it.
+  private func followRunChanges(_ state: State) -> Effect<Action> {
+    .run { [run = state.$run] send in
+      // The publisher reports a change before the new value is stored, so the action is sent from here, a moment
+      // later. Only the newest change is kept: the action reads the run from the state.
+      let (changes, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+      let subscription = run.publisher
+        .removeDuplicates()
+        // The run as it is now.
+        .dropFirst()
+        .sink { _ in continuation.yield() }
+      defer { subscription.cancel() }
+      for await _ in changes {
+        await send(.runChanged)
+      }
+    }
+    .cancellable(id: CancelID.runChanges, cancelInFlight: true)
   }
 
   /// A tick at every whole second of the time left while a run is going.

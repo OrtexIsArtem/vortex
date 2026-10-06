@@ -26,5 +26,6 @@
 
 ## Lifetime
 - A run goes on while the window is closed and after Vortex relaunches; one that ran out while Vortex was closed is dropped quietly.
+- A run changed from outside (another Vortex, the run file edited or deleted) is followed at once: the notch shows it and it ticks, or stops.
 - Turning the feature off ends the run.
 - Test in the settings plays the sound and the flashes three seconds later, without a notification.

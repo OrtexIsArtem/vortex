@@ -156,6 +156,45 @@ struct TimerFeatureTests {
   }
 
   @Test
+  func aRunEndedOutsideTheFeatureStopsTheTicksAndLeavesTheNotch() async {
+    let store = makeStore()
+    await store.send(.start)
+    await store.send(.presetTapped(25))
+    await pass(1)
+    await store.receive(\.tick)
+    // Another Vortex stops the run, or the run file is deleted: the shared run changes without an action.
+    @Shared(.timerRun) var run
+    $run.withLock { $0 = nil }
+    await store.receive(\.runChanged)
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[TimerFeature.id] == NotchIndicator(
+      leading: [], trailing: [], priority: 10, flash: 0, flashColor: TimerSettings.defaultFlashColor
+    ))
+    // No tick comes any more: each would move the time on.
+    let stoppedAt = store.state.now
+    await pass(5)
+    #expect(store.state.now == stoppedAt)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aRunStartedOutsideTheFeatureTicksInTheNotch() async {
+    let store = makeStore()
+    await store.send(.start)
+    // Another Vortex starts a run: the shared run changes without an action.
+    @Shared(.timerRun) var run
+    $run.withLock { $0 = TimerRun(phase: .running(endsAt: now.value + 90), total: 300) }
+    await store.receive(\.runChanged)
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[TimerFeature.id]?.leading == [.progress(0.3)])
+    #expect(indicators[TimerFeature.id]?.trailing == [.text("1:30")])
+    await pass(1)
+    await store.receive(\.tick)
+    #expect(indicators[TimerFeature.id]?.trailing == [.text("1:29")])
+    await store.send(.stop)
+  }
+
+  @Test
   func plusFiveOnTheNotificationStartsFiveMoreMinutes() async {
     let store = makeStore()
     await store.send(.start)
