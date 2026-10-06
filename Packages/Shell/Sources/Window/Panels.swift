@@ -85,23 +85,35 @@ final class VortexPanel: NSPanel {
 class HoverTrackingView: NSView {
   var onHoverChanged: ((Bool) -> Void)?
 
+  /// What the tracking area reports; a subclass adds what else it needs, such as `.mouseMoved`.
+  var trackingOptions: NSTrackingArea.Options {
+    [.mouseEnteredAndExited, .activeAlways, .inVisibleRect]
+  }
+
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
     trackingAreas.forEach(removeTrackingArea)
-    addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    addTrackingArea(NSTrackingArea(rect: .zero, options: trackingOptions, owner: self))
   }
 
   override func mouseEntered(with event: NSEvent) { onHoverChanged?(true) }
   override func mouseExited(with event: NSEvent) { onHoverChanged?(false) }
 }
 
-/// Covers the closed notch: reports hover, clicks and files dragged onto it. It takes every event inside
-/// its bounds, so the SwiftUI content below it stays purely visual.
+/// Covers the closed notch: reports hover, where the pointer is, clicks and files dragged onto it. It takes every
+/// event inside its bounds, so the SwiftUI content below it stays purely visual.
 final class NotchHitView: HoverTrackingView {
   /// A click, with its point in the view.
   var onClick: ((NSPoint) -> Void)?
+  /// Where the pointer is, in the view: where it came in, and wherever it moves after that. Silent while hover is
+  /// suppressed, so it never leads to an open that hover would not.
+  var onPointerMoved: ((NSPoint) -> Void)?
   var onFileDragEntered: (() -> Void)?
   private var isHoverSuppressed = false
+
+  override var trackingOptions: NSTrackingArea.Options {
+    super.trackingOptions.union(.mouseMoved)
+  }
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
@@ -126,7 +138,14 @@ final class NotchHitView: HoverTrackingView {
 
   override func mouseEntered(with event: NSEvent) {
     guard !isHoverSuppressed else { return }
+    // The point goes first, so the shell knows the ear before the hover can open the window (the delay may be 0).
+    onPointerMoved?(convert(event.locationInWindow, from: nil))
     super.mouseEntered(with: event)
+  }
+
+  override func mouseMoved(with event: NSEvent) {
+    guard !isHoverSuppressed else { return }
+    onPointerMoved?(convert(event.locationInWindow, from: nil))
   }
 
   override func mouseExited(with event: NSEvent) {

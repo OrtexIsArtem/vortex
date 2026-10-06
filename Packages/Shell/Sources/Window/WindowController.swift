@@ -22,6 +22,10 @@ enum OpenReason: Equatable, Sendable {
 /// What happens around the notch, the window and the menu bar icon.
 enum WindowEvent: Equatable, Sendable {
   case notchHoverChanged(isInside: Bool)
+  /// The ear under the pointer changed: `feature` owns the ear it is over, nil on the cutout. Sent when the pointer
+  /// comes in over an ear (before its `notchHoverChanged`) and whenever the ear under it changes after that. Leaving
+  /// the notch resets it to nil without an event of its own: `notchHoverChanged(isInside: false)` says so.
+  case notchPointerOver(feature: FeatureID?)
   /// A click on the closed notch or on the notch of the open window; `feature` owns the ear clicked, nil on the cutout.
   case notchClicked(feature: FeatureID?)
   case fileDragEnteredNotch
@@ -64,6 +68,9 @@ final class WindowController: NSObject {
   private var mainPanel: VortexPanel?
   private var ears: [CGDirectDisplayID: Ears] = [:]
   private var currentEars = NotchEars()
+  /// The feature whose ear the pointer is over, as the shell last heard it: nil on the cutout and while the pointer is
+  /// away. A move is reported only when this changes; it starts over when the pointer leaves the notch, as in the shell.
+  private var pointerEar: FeatureID?
   /// The last flash number seen per feature, see `NotchEars.flash`.
   private var seenFlashes: [FeatureID: Int] = [:]
   /// Incremented on every flash, so an older flash never hides the glow of a newer one.
@@ -263,7 +270,15 @@ final class WindowController: NSObject {
       let model = EarsModel()
       model.notchSize = notch.size
       let hit = NotchHitView()
-      hit.onHoverChanged = { [weak self] isInside in self?.emit(.notchHoverChanged(isInside: isInside)) }
+      hit.onHoverChanged = { [weak self] isInside in
+        // The shell forgets the ear when the pointer leaves, so this does too.
+        if !isInside { self?.pointerEar = nil }
+        self?.emit(.notchHoverChanged(isInside: isInside))
+      }
+      hit.onPointerMoved = { [weak self, weak hit] point in
+        guard let self, let hit else { return }
+        self.pointerMoved(over: self.currentEars.feature(atX: point.x, width: hit.bounds.width, notchWidth: notch.width))
+      }
       hit.onClick = { [weak self, weak hit] point in
         guard let self, let hit else { return }
         let feature = self.currentEars.feature(atX: point.x, width: hit.bounds.width, notchWidth: notch.width)
@@ -286,6 +301,13 @@ final class WindowController: NSObject {
       entry.panel.orderFrontRegardless()
     }
     updateMenuBarIcon()
+  }
+
+  /// Tells the shell which ear the pointer is over, only when that changes: hovering opens the ear's feature.
+  private func pointerMoved(over feature: FeatureID?) {
+    guard feature != pointerEar else { return }
+    pointerEar = feature
+    emit(.notchPointerOver(feature: feature))
   }
 
   private func layOut(_ entry: Ears) {

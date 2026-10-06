@@ -25,6 +25,9 @@ struct ShellFeature {
     var settingsSection: SettingsSection = .general
     /// Why the window is open; nil while it is closed.
     var openReason: OpenReason?
+    /// The feature whose ear the pointer is over in the closed notch; nil on the cutout and while the pointer is away.
+    /// Hovering opens the window on that feature's tab.
+    var hoveredEar: FeatureID?
     var isPointerInsideWindow = false
     /// Something of Vortex's is in use outside the window (a drag, Quick Look, the folder picker); it stays open meanwhile.
     var isHeldOpen = false
@@ -214,7 +217,8 @@ struct ShellFeature {
 
         case .hoverDelayElapsed:
           guard !state.isOpen else { return .none }
-          return open(.hover, &state)
+          // What counts is where the pointer is now, when the delay ends.
+          return open(.hover, onEarOf: state.hoveredEar, &state)
 
         case .pointerLeaveDelayElapsed:
           guard state.isOpen, !state.isPointerInsideWindow, !state.isHeldOpen else { return .none }
@@ -309,7 +313,10 @@ struct ShellFeature {
   private func handle(_ event: WindowEvent, state: inout State) -> Effect<Action> {
     switch event {
     case let .notchHoverChanged(isInside):
-      guard isInside else { return .cancel(id: CancelID.hoverOpen) }
+      guard isInside else {
+        state.hoveredEar = nil
+        return .cancel(id: CancelID.hoverOpen)
+      }
       guard !state.isOpen, state.settings.openOnHover else { return .none }
       return .run { [delay = state.settings.hoverDelay] send in
         try await clock.sleep(for: .seconds(delay))
@@ -317,16 +324,15 @@ struct ShellFeature {
       }
       .cancellable(id: CancelID.hoverOpen, cancelInFlight: true)
 
+    case let .notchPointerOver(feature):
+      state.hoveredEar = feature
+      return .none
+
     case let .notchClicked(feature):
       switch state.openReason {
       case nil:
         guard state.settings.openOnClick else { return .none }
-        let effect = open(.click, &state)
-        // An ear opens its feature, without changing the remembered tab; the cutout opens the last tab.
-        if let feature, state.isAvailable(.feature(feature)) {
-          state.selectedTab = .feature(feature)
-        }
-        return effect
+        return open(.click, onEarOf: feature, &state)
       case let reason? where reason.isPassing:
         // Clicking a window that opened on the way past keeps it open, as if the click had opened it.
         state.openReason = .click
@@ -381,6 +387,16 @@ struct ShellFeature {
       .cancel(id: CancelID.hoverOpen),
       .run { _ in await window.present(reason) }
     )
+  }
+
+  /// Opens on the tab of the feature whose ear the pointer is on, without changing the remembered tab. Over the cutout,
+  /// or when the feature is off or has no tab, it opens the last tab.
+  private func open(_ reason: OpenReason, onEarOf feature: FeatureID?, _ state: inout State) -> Effect<Action> {
+    let effect = open(reason, &state)
+    if let feature, state.isAvailable(.feature(feature)) {
+      state.selectedTab = .feature(feature)
+    }
+    return effect
   }
 
   private func close(_ state: inout State) -> Effect<Action> {

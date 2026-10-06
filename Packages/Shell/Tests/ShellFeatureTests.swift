@@ -136,6 +136,103 @@ struct ShellFeatureTests {
   }
 
   @Test
+  func hoveringAnEarOpensItsFeatureWithoutChangingTheRememberedTab() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    // The window controller reports the ear as the pointer comes in, before the hover itself.
+    await store.send(.window(.notchPointerOver(feature: "timer"))) { $0.hoveredEar = "timer" }
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(299))
+    #expect(presented.value.isEmpty)
+    await clock.advance(by: .milliseconds(1))
+    await store.receive(\.hoverDelayElapsed) {
+      $0.openReason = .hover
+      $0.selectedTab = .feature("timer")
+    }
+    #expect(store.state.settings.lastTab == "feature:tasks")
+    #expect(presented.value == [.hover])
+  }
+
+  @Test
+  func hoveringTheCutoutOpensTheLastTab() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    await store.send(.window(.notchPointerOver(feature: nil)))
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(300))
+    await store.receive(\.hoverDelayElapsed) { $0.openReason = .hover }
+    #expect(store.state.selectedTab == .feature("tasks"))
+  }
+
+  @Test
+  func movingFromAnEarOntoTheCutoutBeforeTheDelayOpensTheLastTab() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    await store.send(.window(.notchPointerOver(feature: "timer"))) { $0.hoveredEar = "timer" }
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(200))
+    await store.send(.window(.notchPointerOver(feature: nil))) { $0.hoveredEar = nil }
+    await clock.advance(by: .milliseconds(100))
+    await store.receive(\.hoverDelayElapsed) { $0.openReason = .hover }
+    #expect(store.state.selectedTab == .feature("tasks"))
+  }
+
+  @Test
+  func movingOntoAnEarBeforeTheDelayOpensItsFeatureWithoutRestartingTheDelay() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(200))
+    await store.send(.window(.notchPointerOver(feature: "shelf"))) { $0.hoveredEar = "shelf" }
+    await clock.advance(by: .milliseconds(100))
+    await store.receive(\.hoverDelayElapsed) {
+      $0.openReason = .hover
+      $0.selectedTab = .feature("shelf")
+    }
+    #expect(store.state.settings.lastTab == "feature:tasks")
+  }
+
+  /// A feature that is off ("timer"), and one that has no tab at all ("gone").
+  @Test(arguments: ["timer", "gone"])
+  func hoveringTheEarOfAFeatureWithoutATabOpensTheLastTab(ear: FeatureID) async {
+    let store = makeStore {
+      $0.lastTab = "feature:tasks"
+      $0.disabledFeatures = ["timer"]
+    }
+    await store.send(.window(.notchPointerOver(feature: ear))) { $0.hoveredEar = ear }
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(300))
+    await store.receive(\.hoverDelayElapsed) { $0.openReason = .hover }
+    #expect(store.state.selectedTab == .feature("tasks"))
+  }
+
+  @Test
+  func leavingTheNotchForgetsTheEar() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    // A click on the timer's ear showed its tab, and the pointer then rested on that ear.
+    await store.send(.window(.notchClicked(feature: "timer"))) {
+      $0.openReason = .click
+      $0.selectedTab = .feature("timer")
+    }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = nil }
+    await store.send(.window(.notchPointerOver(feature: "timer"))) { $0.hoveredEar = "timer" }
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(100))
+    await store.send(.window(.notchHoverChanged(isInside: false))) { $0.hoveredEar = nil }
+    // Back in over the cutout, which reports no ear: the last tab, not the timer's.
+    await store.send(.window(.notchHoverChanged(isInside: true)))
+    await clock.advance(by: .milliseconds(300))
+    await store.receive(\.hoverDelayElapsed) {
+      $0.openReason = .hover
+      $0.selectedTab = .feature("tasks")
+    }
+  }
+
+  @Test
+  func theEarUnderThePointerOnlyMattersToHoverAndClick() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    await store.send(.window(.notchPointerOver(feature: "timer"))) { $0.hoveredEar = "timer" }
+    await store.send(.openHotkeyPressed) { $0.openReason = .hotkey }
+    #expect(store.state.selectedTab == .feature("tasks"))
+  }
+
+  @Test
   func hotkeyAndMenuBarIconToggle() async {
     let store = makeStore()
     await store.send(.openHotkeyPressed) { $0.openReason = .hotkey }
@@ -441,5 +538,63 @@ struct ShellFeatureTests {
     #expect(controller.responds(to: #selector(NSDraggingDestination.draggingEntered(_:))))
     #expect(controller.responds(to: #selector(NSDraggingDestination.draggingExited(_:))))
     #expect(controller.responds(to: #selector(NSDraggingDestination.performDragOperation(_:))))
+  }
+
+  // MARK: - The notch's hit view
+
+  /// A pointer event at `x`, as a tracking area sends it to the view.
+  func pointerEvent(_ type: NSEvent.EventType, x: CGFloat) throws -> NSEvent {
+    let location = NSPoint(x: x, y: 10)
+    let event = switch type {
+    case .mouseEntered, .mouseExited:
+      NSEvent.enterExitEvent(
+        with: type, location: location, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
+        eventNumber: 0, trackingNumber: 0, userData: nil
+      )
+    default:
+      NSEvent.mouseEvent(
+        with: type, location: location, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
+        eventNumber: 0, clickCount: 0, pressure: 0
+      )
+    }
+    return try #require(event)
+  }
+
+  @Test
+  func theNotchReportsWhereThePointerComesInAndMoves() throws {
+    let hit = NotchHitView(frame: NSRect(x: 0, y: 0, width: 300, height: 32))
+    var log: [String] = []
+    hit.onPointerMoved = { log.append("at \(Int($0.x))") }
+    hit.onHoverChanged = { log.append($0 ? "in" : "out") }
+    hit.mouseEntered(with: try pointerEvent(.mouseEntered, x: 30))
+    hit.mouseMoved(with: try pointerEvent(.mouseMoved, x: 150))
+    hit.mouseExited(with: try pointerEvent(.mouseExited, x: 150))
+    // The point goes before the hover, so the shell knows the ear when the hover starts.
+    #expect(log == ["at 30", "in", "at 150", "out"])
+  }
+
+  @Test
+  func theNotchSaysNothingWhileHoverIsSuppressedUntilThePointerLeaves() throws {
+    let hit = NotchHitView(frame: NSRect(x: 0, y: 0, width: 300, height: 32))
+    var log: [String] = []
+    hit.onPointerMoved = { log.append("at \(Int($0.x))") }
+    hit.onHoverChanged = { log.append($0 ? "in" : "out") }
+    // The window closed under the pointer: whatever the pointer does on the notch must not open it again.
+    hit.suppressHoverUntilPointerLeaves()
+    hit.mouseEntered(with: try pointerEvent(.mouseEntered, x: 30))
+    hit.mouseMoved(with: try pointerEvent(.mouseMoved, x: 150))
+    #expect(log.isEmpty)
+    hit.mouseExited(with: try pointerEvent(.mouseExited, x: 150))
+    hit.mouseEntered(with: try pointerEvent(.mouseEntered, x: 270))
+    hit.mouseMoved(with: try pointerEvent(.mouseMoved, x: 280))
+    #expect(log == ["out", "at 270", "in", "at 280"])
+  }
+
+  @Test
+  func onlyTheNotchAsksForMouseMoves() {
+    #expect(NotchHitView().trackingOptions.contains(.mouseMoved))
+    #expect(NotchHitView().trackingOptions.contains(.mouseEnteredAndExited))
+    // The window's own tracking view needs no stream of moves.
+    #expect(!HoverTrackingView().trackingOptions.contains(.mouseMoved))
   }
 }
