@@ -22,6 +22,10 @@ public enum TimerModule: FeatureModule {
     AnyView(TimerSettingsView(store: store))
   }
 
+  public static func makeHomeWidget() -> HomeWidget? {
+    HomeWidget(id: id, slot: .header, view: TimerHomeWidget(store: store))
+  }
+
   public static func setEnabled(_ isEnabled: Bool) {
     store.send(isEnabled ? .start : .stop)
   }

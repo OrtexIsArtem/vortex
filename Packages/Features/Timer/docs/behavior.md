@@ -5,6 +5,8 @@
 - A preset on Home starts a run at once.
 - In the Timer tab, ‹ › (or ← →) pick a preset and Start (or Return) starts it.
 - The preset started last is marked with ▶ on Home, and the Timer tab opens on it; "+5 min" on a notification does not change it.
+- On Home the presets stand next to the notch, half on each side; while a run goes there: «з 25 хв», the ring, the time, pause, stop and «+5 хв».
+- Without a notch (window under the menu bar icon) they stand in one row.
 
 ## While it runs
 - Pause keeps the time left; Resume goes on from there; Space pauses and resumes in the Timer tab.

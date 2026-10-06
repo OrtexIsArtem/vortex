@@ -222,6 +222,16 @@
         }
       }
     },
+    "Timer for %lld minutes" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер на %lld хв"
+          }
+        }
+      }
+    },
     "until %@" : {
       "localizations" : {
         "uk" : {
