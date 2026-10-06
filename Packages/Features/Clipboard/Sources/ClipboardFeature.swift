@@ -40,6 +40,8 @@ public struct ClipboardFeature: Sendable {
     case copied(ClipboardCopy)
     /// Something dropped on the clipboard on Home: copied, as if the user had copied it.
     case dropped([DroppedItem])
+    /// What a drop comes to once Vortex's own files are read and the content is hashed, both off the main actor.
+    case dropPrepared(ClipboardCopy)
     case imageSaved(ClipboardItem)
     case itemTapped(ClipboardItem.ID)
     case copiedAgain(ClipboardItem.ID)
@@ -163,11 +165,25 @@ public struct ClipboardFeature: Sendable {
         return insert(item, &state)
 
       case let .dropped(items):
-        guard let content = Self.copiedContent(of: items) else { return .none }
+        return .run { [files] send in
+          let resolved = await Self.resolvingOwnFiles(in: items, files: files)
+          guard let content = Self.copiedContent(of: resolved) else { return }
+          // Hashing an image is not for the main thread, so it happens here, together with the reading.
+          await send(.dropPrepared(ClipboardCopy(PasteboardCopy(content: content))))
+        }
+
+      case let .dropPrepared(copied):
+        if let existing = state.items.first(where: { $0.fingerprint == copied.fingerprint }) {
+          // Files dropped just now exist, whatever the last check of the history found.
+          if case .files = existing.content { state.unavailable.remove(existing.id) }
+          // The history already holds it: copying that item again keeps its marks, so a secret stays one.
+          if !state.unavailable.contains(existing.id) { return .send(.itemTapped(existing.id)) }
+        }
+        let content = copied.copy.content
         return .run { send in
           await pasteboard.write(content, false, nil)
           // The pasteboard watcher skips Vortex's own writes, so the drop joins the history here.
-          await send(.copied(ClipboardCopy(PasteboardCopy(content: content))))
+          await send(.copied(copied))
         }
 
       case let .itemTapped(id):
@@ -287,6 +303,27 @@ public struct ClipboardFeature: Sendable {
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
     return "Image \(formatter.string(from: date)).png"
+  }
+
+  /// Whether a file lives in Vortex's own data folder: the history's image files, the shelf's copies. Such a file goes
+  /// away with its owner.
+  static func isOwnFile(_ url: URL) -> Bool {
+    url.standardizedFileURL.path.hasPrefix(DataFolder.url.standardizedFileURL.path + "/")
+  }
+
+  /// A drop with Vortex's own files made safe to copy: a PNG becomes the image it is (an image row dragged back reads as
+  /// the very image it came from), any other file of its own is left out, since a reference to it would not last.
+  static func resolvingOwnFiles(in items: [DroppedItem], files: FileClient) async -> [DroppedItem] {
+    var resolved: [DroppedItem] = []
+    for item in items {
+      guard case let .file(url) = item, isOwnFile(url) else {
+        resolved.append(item)
+        continue
+      }
+      guard url.pathExtension.lowercased() == "png", let png = try? await files.read(url) else { continue }
+      resolved.append(.image(png, fileExtension: "png"))
+    }
+    return resolved
   }
 
   /// What dropping things on the clipboard copies: every dropped file together, otherwise the first image, link or

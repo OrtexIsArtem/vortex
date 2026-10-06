@@ -14,12 +14,20 @@ struct ClipboardFeatureTests {
   let now = LockIsolated(Date(timeIntervalSinceReferenceDate: 800_000_000))
   let copies = AsyncStream.makeStream(of: PasteboardCopy.self)
   let written = LockIsolated<[PasteboardContent]>([])
+  /// The same writes with the secret flag and the source they were given.
+  let writes = LockIsolated<[Write]>([])
   let savedFiles = LockIsolated<[URL]>([])
   let removedFiles = LockIsolated<[URL]>([])
   let missingFiles = LockIsolated<Set<URL>>([])
 
   static let terminal = AppInfo(bundleID: "com.apple.Terminal", name: "Terminal")
   static let passwords = AppInfo(bundleID: "com.example.passwords", name: "Passwords")
+
+  struct Write: Equatable, Sendable {
+    var content: PasteboardContent
+    var isConcealed: Bool
+    var source: AppInfo?
+  }
 
   func makeStore(_ state: ClipboardFeature.State = ClipboardFeature.State()) -> TestStoreOf<ClipboardFeature> {
     TestStore(initialState: state) {
@@ -30,7 +38,10 @@ struct ClipboardFeatureTests {
       $0.date = DateGenerator { [now] in now.value }
       $0.uuid = .incrementing
       $0.pasteboardClient.copies = { [copies] in copies.stream }
-      $0.pasteboardClient.write = { [written] content, _, _ in written.withValue { $0.append(content) } }
+      $0.pasteboardClient.write = { [written, writes] content, isConcealed, source in
+        written.withValue { $0.append(content) }
+        writes.withValue { $0.append(Write(content: content, isConcealed: isConcealed, source: source)) }
+      }
       $0.appsClient.running = { [] }
       $0.fileClient.write = { [savedFiles] _, url in savedFiles.withValue { $0.append(url) } }
       $0.fileClient.read = { _ in Data([1, 2, 3]) }
@@ -56,6 +67,12 @@ struct ClipboardFeatureTests {
   ) {
     now.withValue { $0 += 60 }
     copies.continuation.yield(PasteboardCopy(content: content, isConcealed: concealed, source: source, frontApps: frontApps))
+  }
+
+  /// Lets the "Copied" mark run out, so no effect is left running.
+  func finishCopiedMark(_ store: TestStoreOf<ClipboardFeature>) async {
+    await clock.advance(by: .seconds(1.2))
+    await store.receive(\.copiedMarkElapsed)
   }
 
   func savedHistory() throws -> [ClipboardItem] {
@@ -272,6 +289,168 @@ struct ClipboardFeatureTests {
     #expect(ClipboardFeature.copiedContent(of: [.image(Data([1]), fileExtension: "jpeg"), .link(link)]) == .link(link))
     #expect(ClipboardFeature.copiedContent(of: [.image(Data([1]), fileExtension: "PNG")]) == .image(Data([1])))
     #expect(ClipboardFeature.copiedContent(of: [.image(Data([1]), fileExtension: "jpeg")]) == nil)
+  }
+
+  @Test
+  func droppedExternalFilesJoinTheHistoryAsOneRow() async {
+    let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
+    let apk = URL(fileURLWithPath: "/tmp/b.apk")
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    await store.send(.dropped([.file(ipa), .file(apk)]))
+    await store.receive(\.copied)
+    #expect(store.state.items.map(\.content) == [.files([ipa, apk])])
+    #expect(written.value == [.files([ipa, apk])])
+    await store.send(.stop)
+  }
+
+  @Test
+  func externalFilesWinOverAnOwnImageDroppedWithThem() async {
+    let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
+    let shelfCopy = DataFolder.url.appending(path: "Shelf/ABC/Image 2026-10-06 at 13.40.12.png")
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    await store.send(.dropped([.file(shelfCopy), .file(ipa)]))
+    await store.receive(\.copied)
+    #expect(store.state.items.map(\.content) == [.files([ipa])])
+    #expect(written.value == [.files([ipa])])
+    await store.send(.stop)
+  }
+
+  @Test
+  func droppingWhatTheHistoryHoldsCopiesThatItemAgain() async {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.text("one"), from: Self.passwords)
+    await store.receive(\.copied)
+    copy(.text("two"))
+    await store.receive(\.copied)
+    now.withValue { $0 += 60 }
+
+    await store.send(.dropped([.text("one")]))
+    await store.receive(\.copiedAgain)
+    // No new row: the old one moves up, shows the mark and goes to the pasteboard with its own source.
+    #expect(store.state.items.map(\.content) == [.text("one"), .text("two")])
+    #expect(store.state.justCopied == uuid(0))
+    #expect(writes.value == [Write(content: .text("one"), isConcealed: false, source: Self.passwords)])
+    await finishCopiedMark(store)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aSecretDroppedBackStaysASecretAndOffTheDisk() async throws {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.text("hunter2"), concealed: true)
+    await store.receive(\.copied)
+
+    // Pressing a secret row and moving a few points drags its text; here it lands on the clipboard again.
+    await store.send(.dropped([.text("hunter2")]))
+    await store.receive(\.copiedAgain)
+    #expect(store.state.items.count == 1)
+    #expect(store.state.items.first?.isConcealed == true)
+    #expect(writes.value == [Write(content: .text("hunter2"), isConcealed: true, source: Self.terminal)])
+    await finishCopiedMark(store)
+    await store.send(.stop)
+    await store.finish()
+    #expect(try savedHistory().isEmpty)
+  }
+
+  @Test
+  func anImageRowDroppedBackIsCopiedAgainNotKeptAsAFile() async throws {
+    let png = Data([0x89, 0x50])
+    let store = makeStore()
+    store.exhaustivity = .off
+    // Reading the item's file gives back the PNG that was saved there.
+    store.dependencies.fileClient.read = { _ in png }
+    await start(store)
+    copy(.image(png))
+    await store.receive(\.imageSaved)
+    let file = try #require(store.state.items.first?.imageURL)
+    #expect(file.path.hasPrefix(ClipboardItem.imagesFolder.path))
+
+    await store.send(.dropped([.file(file)]))
+    await store.receive(\.copiedAgain)
+    #expect(store.state.items.count == 1)
+    #expect(written.value == [.image(png)])
+    await finishCopiedMark(store)
+    await store.send(.stop)
+  }
+
+  @Test
+  func anOwnPNGDroppedIsCopiedAsAnImageNotAsAFile() async throws {
+    let png = Data([0x89, 0x50, 0x4E])
+    // An image the shelf saved as a copy: the shelf deletes its file together with its item.
+    let shelfCopy = DataFolder.url.appending(path: "Shelf/ABC/Image 2026-10-06 at 13.40.12.png")
+    let store = makeStore()
+    store.exhaustivity = .off
+    store.dependencies.fileClient.read = { _ in png }
+    await start(store)
+    await store.send(.dropped([.file(shelfCopy)]))
+    await store.receive(\.imageSaved)
+    let item = try #require(store.state.items.first)
+    #expect(store.state.items.count == 1)
+    #expect(item.imageURL != nil)
+    #expect(written.value == [.image(png)])
+    #expect(savedFiles.value == [item.imageURL])
+    await store.send(.stop)
+    await store.finish()
+  }
+
+  @Test
+  func anOwnFileThatIsNotAPNGIsLeftOut() async {
+    let jpeg = DataFolder.url.appending(path: "Shelf/ABC/Image 2026-10-06 at 13.40.12.jpeg")
+    let reads = LockIsolated<[URL]>([])
+    let store = makeStore()
+    store.exhaustivity = .off
+    store.dependencies.fileClient.read = { [reads] url in
+      reads.withValue { $0.append(url) }
+      return Data([1])
+    }
+    await start(store)
+    await store.send(.dropped([.file(jpeg)]))
+    await store.send(.stop)
+    await store.finish()
+    #expect(store.state.items.isEmpty)
+    #expect(written.value.isEmpty)
+    // Nothing is made of it, so it is not even read.
+    #expect(reads.value.isEmpty)
+  }
+
+  @Test
+  func filesInTheDataFolderAreVortexsOwn() {
+    #expect(ClipboardFeature.isOwnFile(ClipboardItem.imagesFolder.appending(path: "ABC/Image.png")))
+    #expect(ClipboardFeature.isOwnFile(DataFolder.url.appending(path: "Shelf/ABC/Image.png")))
+    #expect(!ClipboardFeature.isOwnFile(URL(fileURLWithPath: "/tmp/Image.png")))
+    // A neighbor whose name only starts the same is not inside the folder.
+    #expect(!ClipboardFeature.isOwnFile(URL(fileURLWithPath: DataFolder.url.path + "2/Image.png")))
+  }
+
+  @Test
+  func droppedFilesThatWereMissingEarlierAreCopiedAndNoLongerMissing() async {
+    let rebuilt = URL(fileURLWithPath: "/tmp/app-release.apk")
+    missingFiles.setValue([rebuilt])
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.files([rebuilt]))
+    await store.receive(\.copied)
+    await store.send(.tabShown)
+    await store.receive(\.unavailableChecked) { $0.unavailable = [uuid(0)] }
+
+    // The build is made again at the same path and dragged here: it exists now, whatever the last check said.
+    missingFiles.setValue([])
+    await store.send(.dropped([.file(rebuilt)]))
+    await store.receive(\.copiedAgain)
+    #expect(store.state.items.count == 1)
+    #expect(store.state.unavailable.isEmpty)
+    #expect(written.value == [.files([rebuilt])])
+    await finishCopiedMark(store)
+    await store.send(.stop)
   }
 
   // MARK: - Saving
