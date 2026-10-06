@@ -17,6 +17,7 @@
 - A card shows a preview, the app it was copied in and how long ago.
 - Clicking a card copies it again, with the marks of the app it came from, and moves it to the top; "Copied" shows once it is on the pasteboard.
 - Dragging a card drops its text, link, image file or files into another app; the item stays in the history.
+- A hidden secret doesn't drag; once the eye shows it, it does.
 - Hovering a card shows Pin and Delete; right click has Copy, Pin, Show in Finder (files) and Delete.
 - Clear removes everything except pinned items.
 - When the tab is shown, files that are gone are marked "Not found"; such cards can't be copied or dragged.
@@ -25,7 +26,7 @@
 ## On Home
 - The clipboard sits in the dock as one-line rows: an icon for the kind and the start of the item; secrets stay dots.
 - A click copies the item again; a row drags out; right-click has Copy, Pin and Delete.
-- Secrets never drag out of Home, and in the tab only while shown: dropped on the shelf, one would be saved to disk.
+- Secrets never drag out of Home: dropped on the shelf, one would be saved to disk.
 - Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy. Files dropped together are copied together.
 - So a clipboard row dragged to the shelf lands on the shelf, and a shelf file dragged to the clipboard is copied.
 - Dropping something the history already holds copies that item again, with its own marks, so a secret stays one; Vortex's own files are copied as their image, never as a reference (a PNG becomes the image, any other is ignored).

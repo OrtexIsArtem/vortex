@@ -39,7 +39,7 @@ public struct NotchIndicator: Equatable, Sendable {
 public struct NotchEars: Equatable, Sendable {
   public var left: [NotchIndicator.Item]
   public var right: [NotchIndicator.Item]
-  /// The features whose indicators fill the ears; a click on an ear opens its feature.
+  /// The features whose indicators fill the ears; a hover or a click on an ear opens its feature.
   public var leftFeature: FeatureID?
   public var rightFeature: FeatureID?
 
