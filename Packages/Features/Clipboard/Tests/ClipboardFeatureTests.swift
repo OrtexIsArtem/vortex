@@ -266,6 +266,52 @@ struct ClipboardFeatureTests {
     await store.send(.stop)
   }
 
+  // MARK: - Dragging out
+
+  func makeItem(_ content: ClipboardItem.Content, isConcealed: Bool = false) -> ClipboardItem {
+    ClipboardItem(
+      id: uuid(0), content: content, source: Self.terminal, copiedAt: now.value, isConcealed: isConcealed, fingerprint: "x"
+    )
+  }
+
+  @Test
+  func aSecretDragsOutOnlyWhileItIsShown() {
+    // The shelf takes text dropped on it and saves it, so a hidden secret must not leave the row at all.
+    let secret = makeItem(.text("hunter2"), isConcealed: true)
+    #expect(secret.dragItems(isRevealed: false).isEmpty)
+    #expect(secret.dragItems(isRevealed: true) == [.text("hunter2")])
+    // Whatever kind of content a secret holds.
+    let others: [ClipboardItem.Content] = [
+      .link(URL(string: "https://example.com/reset?token=abc")!),
+      .files([URL(fileURLWithPath: "/tmp/keys.txt")]),
+      .image(fileName: "Image.png"),
+    ]
+    for content in others {
+      #expect(makeItem(content, isConcealed: true).dragItems(isRevealed: false).isEmpty)
+      #expect(!makeItem(content, isConcealed: true).dragItems(isRevealed: true).isEmpty)
+    }
+  }
+
+  @Test
+  func anItemThatIsNotASecretDragsOutAsBefore() {
+    let link = URL(string: "https://github.com/OrtexIsArtem/vortex")!
+    let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
+    let apk = URL(fileURLWithPath: "/tmp/b.apk")
+    let image = makeItem(.image(fileName: "Image.png"))
+    let drags: [(item: ClipboardItem, expected: [DragItem])] = [
+      (makeItem(.text("SELECT * FROM orders")), [.text("SELECT * FROM orders")]),
+      (makeItem(.link(link)), [.link(link)]),
+      (makeItem(.files([ipa, apk])), [.file(ipa), .file(apk)]),
+      (image, image.imageURL.map { [.file($0)] } ?? []),
+    ]
+    #expect(image.imageURL != nil)
+    for (item, expected) in drags {
+      // Showing or hiding matters only to a secret.
+      #expect(item.dragItems(isRevealed: false) == expected)
+      #expect(item.dragItems(isRevealed: true) == expected)
+    }
+  }
+
   // MARK: - Dropping on the clipboard
 
   @Test

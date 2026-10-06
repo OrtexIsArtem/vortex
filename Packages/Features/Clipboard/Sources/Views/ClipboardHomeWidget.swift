@@ -86,7 +86,8 @@ private struct ClipboardRow: View {
     .opacity(isUnavailable ? 0.45 : 1)
     .overlay {
       DragSourceArea(
-        items: { isUnavailable ? [] : item.dragItems },
+        // Home has no eye to show a secret, so a secret never drags from here.
+        items: { isUnavailable ? [] : item.dragItems(isRevealed: false) },
         onClick: { _ in send(.itemTapped(item.id)) }
       )
     }

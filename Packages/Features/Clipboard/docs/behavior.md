@@ -24,6 +24,7 @@
 ## On Home
 - The clipboard sits in the dock as one-line rows: an icon for the kind and the start of the item; secrets stay dots.
 - A click copies the item again; a row drags out; right-click has Copy, Pin and Delete.
+- Secrets never drag out of Home, and in the tab only while shown: dropped on the shelf, one would be saved to disk.
 - Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy. Files dropped together are copied together.
 - So a clipboard row dragged to the shelf lands on the shelf, and a shelf file dragged to the clipboard is copied.
 - Dropping something the history already holds copies that item again, with its own marks, so a secret stays one; Vortex's own files are copied as their image, never as a reference (a PNG becomes the image, any other is ignored).

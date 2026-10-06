@@ -33,7 +33,7 @@ struct ClipboardCard: View {
     .opacity(isUnavailable ? 0.45 : 1)
     .overlay {
       DragSourceArea(
-        items: { isUnavailable ? [] : item.dragItems },
+        items: { isUnavailable ? [] : item.dragItems(isRevealed: isRevealed) },
         onClick: { _ in send(.itemTapped(item.id)) },
         onHover: { isHovered = $0 }
       )

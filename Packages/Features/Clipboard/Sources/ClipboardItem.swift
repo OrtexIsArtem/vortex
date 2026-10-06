@@ -43,9 +43,11 @@ public struct ClipboardItem: Identifiable, Equatable, Sendable {
     }
   }
 
-  /// What a drag of the item carries into another app.
-  var dragItems: [DragItem] {
-    switch content {
+  /// What a drag of the item carries into another app. A secret carries nothing unless the user has it shown: wherever
+  /// it is dropped it arrives as plain text or a file, and the shelf would save that to disk.
+  func dragItems(isRevealed: Bool) -> [DragItem] {
+    guard !isConcealed || isRevealed else { return [] }
+    return switch content {
     case let .text(text): [.text(text)]
     case let .link(url): [.link(url)]
     case .image, .files: fileURLs.map(DragItem.file)
