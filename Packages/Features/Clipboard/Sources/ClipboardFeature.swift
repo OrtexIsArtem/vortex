@@ -168,8 +168,7 @@ public struct ClipboardFeature: Sendable {
         // Before the saved history is read, a drop would be saved over it: a save deletes the rows not in memory.
         guard state.isLoaded else { return .none }
         return .run { [files] send in
-          let resolved = await Self.resolvingOwnFiles(in: items, files: files)
-          guard let content = Self.copiedContent(of: resolved) else { return }
+          guard let content = await Self.copiedContent(of: items, files: files) else { return }
           // Hashing an image is not for the main thread, so it happens here, together with the reading.
           await send(.dropPrepared(ClipboardCopy(PasteboardCopy(content: content))))
         }
@@ -313,19 +312,26 @@ public struct ClipboardFeature: Sendable {
     url.standardizedFileURL.path.hasPrefix(DataFolder.url.standardizedFileURL.path + "/")
   }
 
-  /// A drop with Vortex's own files made safe to copy: a PNG becomes the image it is (an image row dragged back reads as
-  /// the very image it came from), any other file of its own is left out, since a reference to it would not last.
-  static func resolvingOwnFiles(in items: [DroppedItem], files: FileClient) async -> [DroppedItem] {
-    var resolved: [DroppedItem] = []
-    for item in items {
-      guard case let .file(url) = item, isOwnFile(url) else {
-        resolved.append(item)
-        continue
-      }
-      guard url.pathExtension.lowercased() == "png", let png = try? await files.read(url) else { continue }
-      resolved.append(.image(png, fileExtension: "png"))
+  /// What a drop that may hold Vortex's own files copies, as `copiedContent(of:)` decides it. A reference to an own file
+  /// would not last, so an own PNG counts as the image it is (an image row dragged back reads as the very image it came
+  /// from) and any other own file is left out. Files from elsewhere win, and then no own file is read; otherwise own
+  /// PNGs are read in drop order, only until one of them is what the drop copies.
+  static func copiedContent(of items: [DroppedItem], files: FileClient) async -> PasteboardContent? {
+    let others = items.filter { item in
+      if case let .file(url) = item { !isOwnFile(url) } else { true }
     }
-    return resolved
+    if others.contains(where: { if case .file = $0 { true } else { false } }) {
+      return copiedContent(of: others)
+    }
+    for item in items {
+      if case let .file(url) = item {
+        // One of Vortex's own: files from elsewhere are handled above.
+        guard url.pathExtension.lowercased() == "png", let png = try? await files.read(url) else { continue }
+        return .image(png)
+      }
+      if let content = copiedContent(of: [item]) { return content }
+    }
+    return nil
   }
 
   /// What dropping things on the clipboard copies: every dropped file together, otherwise the first image, link or

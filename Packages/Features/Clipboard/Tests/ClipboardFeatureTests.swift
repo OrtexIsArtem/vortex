@@ -523,6 +523,30 @@ struct ClipboardFeatureTests {
   }
 
   @Test
+  func ownPNGsAreReadOnlyUntilOneIsCopiedAndNotAtAllNextToFilesFromElsewhere() async {
+    let shelf = DataFolder.url.appending(path: "Shelf")
+    let (a, b, c) = (shelf.appending(path: "A/a.png"), shelf.appending(path: "B/b.png"), shelf.appending(path: "C/c.png"))
+    let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
+    let reads = LockIsolated<[URL]>([])
+    var files = FileClient()
+    files.read = { url in
+      reads.withValue { $0.append(url) }
+      struct Unreadable: Error {}
+      if url == a { throw Unreadable() }
+      return Data(url.lastPathComponent.utf8)
+    }
+    // Several own PNGs, as when shelf tiles are dragged together: the first that reads is copied, the rest is not read.
+    #expect(await ClipboardFeature.copiedContent(of: [.file(a), .file(b), .file(c)], files: files) == .image(Data("b.png".utf8)))
+    #expect(reads.value == [a, b])
+    reads.setValue([])
+    #expect(await ClipboardFeature.copiedContent(of: [.file(b), .file(ipa), .file(c)], files: files) == .files([ipa]))
+    #expect(reads.value.isEmpty)
+    // What comes first in the drop still wins.
+    #expect(await ClipboardFeature.copiedContent(of: [.text("notes"), .file(b)], files: files) == .text("notes"))
+    #expect(reads.value.isEmpty)
+  }
+
+  @Test
   func filesInTheDataFolderAreVortexsOwn() {
     #expect(ClipboardFeature.isOwnFile(ClipboardItem.imagesFolder.appending(path: "ABC/Image.png")))
     #expect(ClipboardFeature.isOwnFile(DataFolder.url.appending(path: "Shelf/ABC/Image.png")))
