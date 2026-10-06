@@ -4,14 +4,20 @@ import os
 import VortexCore
 import VortexPlatform
 
-/// One timer at a time: set on the drum, started, shown in the closed notch; when time is up, a sound, a notification
-/// with "+5 min", and the notch flashes until the user looks at it. It goes on while the window is closed and after a
-/// relaunch.
+/// One timer at a time: set on the drum or picked from the quick starts, shown in the closed notch; when time is up, a
+/// sound, a notification with "+5 min", and the notch flashes until the user looks at it. It goes on while the window is
+/// closed and after a relaunch.
 @Reducer
 public struct TimerFeature: Sendable {
   public static let id: FeatureID = "timer"
+  /// The minutes the drum turns through.
+  static let minuteRange = 1...120
+  /// Where the drum stands whenever it shows, whatever was set on it before.
+  static let defaultMinutes = 5
+  /// The Timer tab's quick starts: one click starts a run of that many minutes.
+  static let quickStarts = [5, 10, 15, 30, 60]
+  /// "+5 min" on the notification that time is up starts a run of this many minutes.
   static let addedMinutes = 5
-  static let addedTime = TimeInterval(addedMinutes * 60)
   static let doneNotificationID = "timer.done"
   static let addFiveButtonID = "timer.addFive"
 
@@ -53,14 +59,10 @@ public struct TimerFeature: Sendable {
   public enum Action: Equatable, Sendable {
     case start
     case stop
-    /// The drum was scrolled, dragged or clicked, or an arrow key pressed: the minutes to start, kept within its range.
-    case minutesChanged(Int)
-    /// Starts a run of the minutes on the drum.
-    case startTapped
+    /// Start under the drum, or a quick start: a run of that many minutes, kept within the drum's range.
+    case startTapped(minutes: Int)
     case pauseTapped
     case resumeTapped
-    /// "+5": five more minutes on the drum, or on the run while one goes.
-    case addFiveMinutesTapped
     case stopTapped
     case tick
     /// The shared run changed: by this feature, or from outside it, such as another Vortex writing the run file or the
@@ -116,14 +118,8 @@ public struct TimerFeature: Sendable {
           .cancel(id: CancelID.test)
         )
 
-      case let .minutesChanged(minutes):
-        // While a run goes the drum shows its time left and takes no input.
-        guard state.run == nil else { return .none }
-        setMinutes(minutes, &state)
-        return .none
-
-      case .startTapped:
-        return startRun(minutes: state.settings.minutes, &state)
+      case let .startTapped(minutes):
+        return startRun(minutes: Self.clampedMinutes(minutes), &state)
 
       case .pauseTapped:
         let now = self.now
@@ -136,16 +132,6 @@ public struct TimerFeature: Sendable {
         state.now = now
         state.$run.withLock { $0?.resume(at: now) }
         return .merge(tick(state), saveRun(state))
-
-      case .addFiveMinutesTapped:
-        guard state.run != nil else {
-          setMinutes(state.settings.minutes + Self.addedMinutes, &state)
-          return .none
-        }
-        // A whole number of seconds: the ticks stay on the whole seconds of the time left.
-        state.now = now
-        state.$run.withLock { $0?.add(Self.addedTime) }
-        return saveRun(state)
 
       case .stopTapped:
         state.$run.withLock { $0 = nil }
@@ -208,12 +194,9 @@ public struct TimerFeature: Sendable {
     }
   }
 
-  /// The drum's minutes, kept within its range. An unchanged value is not set again: every set re-renders the views
-  /// and saves the settings file, and a drag sends the same minute many times.
-  private func setMinutes(_ minutes: Int, _ state: inout State) {
-    let minutes = TimerSettings.clamped(minutes)
-    guard minutes != state.settings.minutes else { return }
-    state.$settings.withLock { $0.minutes = minutes }
+  /// Within `minuteRange`.
+  static func clampedMinutes(_ minutes: Int) -> Int {
+    min(max(minutes, minuteRange.lowerBound), minuteRange.upperBound)
   }
 
   /// Starts a run unless one is going: one timer at a time. A new run ends the alarm of the last one.

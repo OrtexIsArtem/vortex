@@ -5,21 +5,21 @@
 - Towards its edges the ticks crowd, shrink and fade, as on a drum seen from the front; in the Timer tab every fifth tick has its number.
 - A mouse wheel turns it a minute per notch; two fingers on the trackpad, a minute per 6 pt (9 pt in the Timer tab), with momentum.
 - The drum moves with the fingers or the pointer: a swipe or a drag to the left, or a swipe up, adds time.
-- A click on a tick turns that tick to the mark.
+- A click on a tick turns that tick to the mark; a press moved more than 2 pt either way is a drag, not a click.
 - ← → in the Timer tab turn it a minute; VoiceOver can adjust it too.
-- «+5» adds five minutes to the drum, up to 120.
-- The minutes stay on the drum after a start and a relaunch; «+5 хв» on a notification does not change them.
+- The drum stands at 5 minutes whenever it shows: it goes back there when the window closes, when a run starts, and when its tab is shown again, whatever was set before.
+- On Home «+5» and «+10» turn it on by that much, up to 120.
 
 ## Starting
 - One timer at a time: Start (or Return in the Timer tab) starts a run of the minutes on the drum.
-- On Home the drum and its minutes stand left of the notch, «+5» and Start right of it.
+- The Timer tab has quick starts under Start: 5, 10, 15, 30 and 60 minutes, each starting at once; the drum stays as it is.
+- On Home the drum and its minutes stand left of the notch, «+5», «+10» and Start right of it.
 - Without a notch (window under the menu bar icon) they stand in one row; short of room left of the notch, the drum narrows.
 
 ## While it runs
 - The drum shows the time left, turning towards zero, and takes no input; beside it the time, e.g. 8:42.
-- Start gives way to pause and stop; «+5» stays where it was.
+- Start, the quick starts and «+5» «+10» give way to pause and stop.
 - Pause keeps the time left; Resume goes on from there; Space pauses and resumes in the Timer tab.
-- +5 adds five minutes to the time left and to the total, running or paused.
 - Stop ends the run without a sound.
 - The Timer tab shows the time in large digits and «з 25 хв · до 14:57», paused «Пауза · з 25 хв».
 - The closed notch shows a ring of the time left and the time; paused, a pause sign instead of the ring.

@@ -21,6 +21,16 @@
         }
       }
     },
+    "Add 10 minutes" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати 10 хвилин"
+          }
+        }
+      }
+    },
     "Add 5 minutes" : {
       "localizations" : {
         "uk" : {
@@ -158,6 +168,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Старт"
+          }
+        }
+      }
+    },
+    "Start a %lld-minute timer" : {
+      "comment" : "Tooltip and VoiceOver name of a quick start in the Timer tab",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустити таймер на %lld хв"
           }
         }
       }

@@ -11,31 +11,18 @@ struct TimerSettingsTests {
 
   @Test
   func missingOrBrokenKeysFallBackToDefaults() throws {
-    let settings = try decoded(#"{"lastMinutes": "x", "sound": 5}"#)
-    #expect(settings.minutes == TimerSettings.defaultMinutes)
+    let settings = try decoded(#"{"sound": 5, "flashColor": "orange"}"#)
     #expect(settings.sound == TimerSettings.defaultSound)
     #expect(settings.flashColor == TimerSettings.defaultFlashColor)
   }
 
   @Test
-  func theMinutesOfTheLastPresetCarryOverAndTheOldPresetsAreLeftBehind() throws {
+  func anOlderFileKeepsItsSoundAndLeavesThePresetsBehind() throws {
     let settings = try decoded(#"{"presets": [5, 10, 45], "lastMinutes": 45, "sound": "Basso"}"#)
-    #expect(settings.minutes == 45)
     #expect(settings.sound == "Basso")
     let saved = try JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any]
-    #expect(saved?["lastMinutes"] as? Int == 45)
     #expect(saved?["presets"] == nil)
-  }
-
-  @Test
-  func minutesPastEitherEndOfTheDrumMoveToThatEnd() throws {
-    for (saved, minutes) in [("-5", 1), ("0", 1), ("121", 120), ("600", 120), ("-9223372036854775808", 1), ("9223372036854775807", 120)] {
-      #expect(try decoded(#"{"lastMinutes": \#(saved)}"#).minutes == minutes)
-    }
-    #expect(try decoded(#"{"lastMinutes": 1}"#).minutes == 1)
-    #expect(try decoded(#"{"lastMinutes": 120}"#).minutes == 120)
-    // Not a whole number of minutes at all.
-    #expect(try decoded(#"{"lastMinutes": 7.5}"#).minutes == TimerSettings.defaultMinutes)
+    #expect(saved?["lastMinutes"] == nil)
   }
 
   @Test
@@ -52,7 +39,6 @@ struct TimerSettingsTests {
   func noSoundSurvivesSaving() throws {
     var settings = TimerSettings()
     settings.sound = nil
-    settings.minutes = 7
     let decoded = try JSONDecoder().decode(TimerSettings.self, from: JSONEncoder().encode(settings))
     #expect(decoded == settings)
   }

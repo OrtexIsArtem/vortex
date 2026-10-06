@@ -8,6 +8,8 @@ import VortexPlatform
 /// run goes it shows the time left, turning towards zero, and takes no input.
 struct DrumRuler: View {
   let store: StoreOf<TimerFeature>
+  /// The minutes to start. The view that shows the drum keeps them, and sets them back when it goes away.
+  @Binding var minutes: Int
   let style: DrumStyle
   @State private var scroll = ScrollSteps()
   @State private var drag: DragStart?
@@ -20,8 +22,8 @@ struct DrumRuler: View {
         }
         .accessibilityHidden(true)
       } else {
-        DrumTicks(value: Double(store.settings.minutes), last: TimerSettings.minuteRange.upperBound, style: style)
-          .animation(.snappy(duration: 0.2), value: store.settings.minutes)
+        DrumTicks(value: Double(minutes), last: TimerFeature.minuteRange.upperBound, style: style)
+          .animation(.snappy(duration: 0.2), value: minutes)
           .overlay {
             GeometryReader { proxy in
               ScrollDragArea(help: String(localized: "Scroll, drag or click a tick", bundle: .module)) {
@@ -31,11 +33,11 @@ struct DrumRuler: View {
           }
           .accessibilityElement()
           .accessibilityLabel(Text("Timer length", bundle: .module))
-          .accessibilityValue(Text("\(store.settings.minutes) min", bundle: .module))
+          .accessibilityValue(Text("\(minutes) min", bundle: .module))
           .accessibilityAdjustableAction { direction in
             switch direction {
-            case .increment: turn(to: store.settings.minutes + 1)
-            case .decrement: turn(to: store.settings.minutes - 1)
+            case .increment: turn(to: minutes + 1)
+            case .decrement: turn(to: minutes - 1)
             @unknown default: break
             }
           }
@@ -57,9 +59,9 @@ struct DrumRuler: View {
     }
   }
 
-  /// The minutes are read from the store at each event: several can come before the view is drawn again.
+  /// The minutes are read at each event: several can come before the view is drawn again.
   private func handle(_ event: ScrollDragEvent, width: CGFloat) {
-    let minutes = store.settings.minutes
+    let minutes = self.minutes
     switch event {
     case let .scrolled(x, y, isPrecise, beginsGesture):
       let steps = scroll.minutes(x: x, y: y, isPrecise: isPrecise, beginsGesture: beginsGesture, points: style.spacing)
@@ -85,10 +87,10 @@ struct DrumRuler: View {
     }
   }
 
-  /// Sends only a change: a drag reports the same minute many times, and the drum stops at its ends.
-  private func turn(to minutes: Int) {
-    guard TimerSettings.clamped(minutes) != store.settings.minutes else { return }
-    store.send(.minutesChanged(minutes))
+  /// Sets only a change, within the drum's range: a drag reports the same minute many times.
+  private func turn(to value: Int) {
+    let value = TimerFeature.clampedMinutes(value)
+    if value != minutes { minutes = value }
   }
 }
 

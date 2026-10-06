@@ -2,7 +2,7 @@
 
 ## Provides
 - `TimerModule`: id `timer`, tab, settings; `setEnabled` resumes a saved run or ends the run.
-- Home widget in the `header` slot: the drum and its minutes left of `notchCutout`, «+5» and Start (or pause and stop) right of it.
+- Home widget in the `header` slot: the drum and its minutes left of `notchCutout`, «+5», «+10» and Start (or pause and stop) right of it.
 - Indicator `timer` in `@Shared(.notchIndicators)`, priority 10:
   - a ring (or a pause sign) and the time left;
   - no ears without a run;

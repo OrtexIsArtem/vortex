@@ -39,10 +39,9 @@ struct TimerFeatureTests {
     return store
   }
 
-  /// Turns the drum to `minutes` and starts.
+  /// Start under the drum, or a quick start.
   func startRun(_ store: TestStoreOf<TimerFeature>, minutes: Int) async {
-    await store.send(.minutesChanged(minutes))
-    await store.send(.startTapped)
+    await store.send(.startTapped(minutes: minutes))
   }
 
   /// Moves the date the feature reads and the clock its effects sleep on.
@@ -52,12 +51,11 @@ struct TimerFeatureTests {
   }
 
   @Test
-  func startStartsTheMinutesOnTheDrumAndTicksInTheNotch() async {
+  func startStartsTheMinutesAskedForAndTicksInTheNotch() async {
     let store = makeStore()
     await store.send(.start)
     await startRun(store, minutes: 25)
     #expect(store.state.run == TimerRun.started(minutes: 25, at: now.value))
-    #expect(store.state.settings.minutes == 25)
     @Shared(.notchIndicators) var indicators
     #expect(indicators[TimerFeature.id]?.leading == [.progress(1)])
     #expect(indicators[TimerFeature.id]?.trailing == [.text("25:00")])
@@ -87,19 +85,6 @@ struct TimerFeatureTests {
     await pass(1)
     await store.receive(\.tick)
     #expect(indicators[TimerFeature.id]?.trailing == [.text("9:56")])
-    await store.send(.stop)
-  }
-
-  @Test
-  func fiveMoreMinutesWhileRunningOrPaused() async {
-    let store = makeStore()
-    await store.send(.start)
-    await startRun(store, minutes: 5)
-    await store.send(.addFiveMinutesTapped)
-    #expect(store.state.run == TimerRun(phase: .running(endsAt: now.value + 600), total: 600))
-    await store.send(.pauseTapped)
-    await store.send(.addFiveMinutesTapped)
-    #expect(store.state.run == TimerRun(phase: .paused(remaining: 900), total: 900))
     await store.send(.stop)
   }
 
@@ -235,8 +220,6 @@ struct TimerFeatureTests {
       await startRun(store, minutes: 25)
       await store.send(.pauseTapped).finish()
       #expect(saved().flatMap(TimerRun.decodeSaved) == TimerRun(phase: .paused(remaining: 1500), total: 1500))
-      await store.send(.addFiveMinutesTapped).finish()
-      #expect(saved().flatMap(TimerRun.decodeSaved) == TimerRun(phase: .paused(remaining: 1800), total: 1800))
       await store.send(.stopTapped).finish()
       #expect(saved() == Data("null".utf8))
       await store.send(.stop)
@@ -250,8 +233,6 @@ struct TimerFeatureTests {
     buttons.continuation.yield(TimerFeature.addFiveButtonID)
     await store.receive(\.notificationButtonPressed)
     #expect(store.state.run == TimerRun.started(minutes: 5, at: now.value))
-    // The drum keeps its time.
-    #expect(store.state.settings.minutes == 25)
     await store.send(.stop)
   }
 
@@ -262,7 +243,7 @@ struct TimerFeatureTests {
     let startedAt = now.value
     await startRun(store, minutes: 25)
     await pass(60)
-    await store.send(.startTapped)
+    await store.send(.startTapped(minutes: 5))
     // Neither Start nor "+5 min" on a notification replaces the run going.
     buttons.continuation.yield(TimerFeature.addFiveButtonID)
     await store.receive(\.notificationButtonPressed)
@@ -271,32 +252,17 @@ struct TimerFeatureTests {
   }
 
   @Test
-  func theDrumStaysWithinItsRangeAndTakesNoInputWhileARunGoes() async {
+  func aStartIsKeptWithinTheDrumsRange() async {
     let store = makeStore()
     await store.send(.start)
-    await store.send(.minutesChanged(0))
-    #expect(store.state.settings.minutes == 1)
-    await store.send(.minutesChanged(500))
-    #expect(store.state.settings.minutes == 120)
-    await store.send(.minutesChanged(40))
-    await store.send(.startTapped)
-    #expect(store.state.run?.total == TimeInterval(40 * 60))
-    await store.send(.minutesChanged(10))
-    #expect(store.state.settings.minutes == 40)
+    await startRun(store, minutes: 0)
+    #expect(store.state.run?.total == 60)
+    await store.send(.stopTapped)
+    await startRun(store, minutes: 500)
+    #expect(store.state.run?.total == TimeInterval(120 * 60))
     await store.send(.stop)
-  }
-
-  @Test
-  func plusFiveWithoutARunAddsToTheDrumUpToItsEnd() async {
-    let store = makeStore()
-    await store.send(.start)
-    await store.send(.addFiveMinutesTapped)
-    #expect(store.state.settings.minutes == 30)
-    #expect(store.state.run == nil)
-    await store.send(.minutesChanged(118))
-    await store.send(.addFiveMinutesTapped)
-    #expect(store.state.settings.minutes == 120)
-    await store.send(.stop)
+    #expect(TimerFeature.clampedMinutes(-7) == 1)
+    #expect(TimerFeature.clampedMinutes(TimerFeature.defaultMinutes + 10) == 15)
   }
 
   @Test

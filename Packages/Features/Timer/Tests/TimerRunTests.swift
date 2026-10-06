@@ -36,17 +36,6 @@ struct TimerRunTests {
   }
 
   @Test
-  func fiveMoreMinutesGoToTheTimeLeftAndTheTotal() {
-    var running = TimerRun.started(minutes: 25, at: start)
-    running.add(300)
-    #expect(running.phase == .running(endsAt: start + 1800))
-    #expect(running.totalMinutes == 30)
-    var paused = TimerRun(phase: .paused(remaining: 60), total: 600)
-    paused.add(300)
-    #expect(paused == TimerRun(phase: .paused(remaining: 360), total: 900))
-  }
-
-  @Test
   func clockTextReadsLikeAClock() {
     #expect(TimerRun.clockText(seconds: 1500) == "25:00")
     #expect(TimerRun.clockText(seconds: 522) == "8:42")

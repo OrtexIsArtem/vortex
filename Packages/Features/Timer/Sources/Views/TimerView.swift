@@ -2,12 +2,14 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// The Timer tab: the minutes in large digits, the drum under them, «+5 хв» and Start; while a run goes, the time left,
-/// when it ends, the drum turning towards zero, and pause and stop.
+/// The Timer tab: the minutes in large digits, the drum under them and Start, then the quick starts; while a run goes,
+/// the time left, when it ends, the drum turning towards zero, and pause and stop.
 public struct TimerView: View {
   let store: StoreOf<TimerFeature>
   @Environment(\.isWindowOpen) private var isWindowOpen
   @FocusState private var isFocused: Bool
+  /// The drum stands at five minutes whenever the tab shows, whatever was set on it before.
+  @State private var minutes = TimerFeature.defaultMinutes
 
   public init(store: StoreOf<TimerFeature>) {
     self.store = store
@@ -26,7 +28,7 @@ public struct TimerView: View {
             RunningTime(run: run, store: store)
           } else {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-              Text(store.settings.minutes, format: .number)
+              Text(minutes, format: .number)
                 .font(.system(size: 76, weight: .thin).monospacedDigit())
               Text("min", bundle: .module)
                 .font(.system(size: 15))
@@ -42,11 +44,13 @@ public struct TimerView: View {
           .foregroundStyle(VortexColor.tertiaryText)
           .frame(height: 18)
           .padding(.top, 6)
-        DrumRuler(store: store, style: .tab)
+        DrumRuler(store: store, minutes: $minutes, style: .tab)
           .frame(width: 360)
           .padding(.top, 10)
         controls
-          .padding(.top, 22)
+          .padding(.top, 18)
+        quickStarts
+          .padding(.top, 12)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       // Centered in the window rather than in the space under the header.
@@ -59,7 +63,7 @@ public struct TimerView: View {
     .onKeyPress(.rightArrow) { turn(by: 1) }
     .onKeyPress(.return) {
       guard store.run == nil else { return .ignored }
-      store.send(.startTapped)
+      start(minutes)
       return .handled
     }
     // Only the press toggles, so a held key toggles once. Its repeats are taken without doing anything: left alone, each
@@ -73,13 +77,28 @@ public struct TimerView: View {
     .task(id: isWindowOpen) {
       if isWindowOpen { isFocused = true }
     }
+    .onChange(of: isWindowOpen) { _, isOpen in
+      if !isOpen { setDrumBack() }
+    }
   }
 
   /// ← → turn the drum a minute before a run starts.
-  private func turn(by minutes: Int) -> KeyPress.Result {
+  private func turn(by step: Int) -> KeyPress.Result {
     guard store.run == nil else { return .ignored }
-    store.send(.minutesChanged(store.settings.minutes + minutes))
+    minutes = TimerFeature.clampedMinutes(minutes + step)
     return .handled
+  }
+
+  private func start(_ minutes: Int) {
+    store.send(.startTapped(minutes: minutes))
+    setDrumBack()
+  }
+
+  /// Back to five minutes, without the drum turning there: the window is closing, or the run started.
+  private func setDrumBack() {
+    var transaction = Transaction()
+    transaction.disablesAnimations = true
+    withTransaction(transaction) { minutes = TimerFeature.defaultMinutes }
   }
 
   /// "of 25 min · until 14:57"; paused, "Paused · of 25 min"; nothing before a run starts.
@@ -97,17 +116,9 @@ public struct TimerView: View {
     }
   }
 
-  /// «+5 хв», and Start or the run's pause and stop. «+5 хв» stays in its place in both.
+  /// Start for the drum's minutes; while a run goes, pause and stop.
   private var controls: some View {
     HStack(spacing: 10) {
-      Button {
-        store.send(.addFiveMinutesTapped)
-      } label: {
-        Text("+5 min", bundle: .module)
-      }
-      .buttonStyle(.quietCapsule)
-      .accessibilityLabel(Text("Add 5 minutes", bundle: .module))
-
       if let run = store.run {
         RoundButton(
           symbol: run.isPaused ? "play.fill" : "pause.fill",
@@ -121,7 +132,7 @@ public struct TimerView: View {
         }
       } else {
         Button {
-          store.send(.startTapped)
+          start(minutes)
         } label: {
           HStack(spacing: 6) {
             Image(systemName: "play.fill")
@@ -133,6 +144,28 @@ public struct TimerView: View {
       }
     }
     .frame(height: VortexMetrics.hitTarget)
+  }
+
+  /// One click starts a run of that many minutes; the drum stays as it is. Hidden while a run goes, but its room is
+  /// kept, so nothing moves.
+  private var quickStarts: some View {
+    HStack(spacing: 6) {
+      ForEach(TimerFeature.quickStarts, id: \.self) { quick in
+        Button {
+          start(quick)
+        } label: {
+          Text(quick, format: .number)
+            .monospacedDigit()
+            .frame(minWidth: 16)
+        }
+        .buttonStyle(.quietCapsule)
+        .help(Text("Start a \(quick)-minute timer", bundle: .module))
+        .accessibilityLabel(Text("Start a \(quick)-minute timer", bundle: .module))
+      }
+    }
+    .opacity(store.run == nil ? 1 : 0)
+    .disabled(store.run != nil)
+    .accessibilityHidden(store.run != nil)
   }
 }
 

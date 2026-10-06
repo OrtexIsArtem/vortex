@@ -10,7 +10,7 @@ public struct TimerRun: Codable, Equatable, Sendable {
   }
 
   public var phase: Phase
-  /// The minutes started plus every "+5 min", in seconds: the ring shows the time left out of it.
+  /// The minutes started, in seconds: the ring shows the time left out of it.
   public var total: TimeInterval
 
   public init(phase: Phase, total: TimeInterval) {
@@ -72,15 +72,6 @@ public struct TimerRun: Codable, Equatable, Sendable {
   mutating func resume(at now: Date) {
     guard case let .paused(remaining) = phase else { return }
     phase = .running(endsAt: now.addingTimeInterval(remaining))
-  }
-
-  /// Adds time to what is left and to the total.
-  mutating func add(_ seconds: TimeInterval) {
-    total += seconds
-    switch phase {
-    case let .running(endsAt): phase = .running(endsAt: endsAt.addingTimeInterval(seconds))
-    case let .paused(remaining): phase = .paused(remaining: remaining + seconds)
-    }
   }
 
   /// "25:00", "8:42", "0:05"; an hour or more "1:05:00".
