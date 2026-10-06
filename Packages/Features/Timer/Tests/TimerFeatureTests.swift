@@ -5,6 +5,8 @@ import VortexCore
 import VortexPlatform
 
 @testable import FeatureTimer
+// A file storage whose delayed writes never happen.
+@_spi(Internals) import Sharing
 
 @MainActor
 struct TimerFeatureTests {
@@ -192,6 +194,29 @@ struct TimerFeatureTests {
     await store.receive(\.tick)
     #expect(indicators[TimerFeature.id]?.trailing == [.text("1:29")])
     await store.send(.stop)
+  }
+
+  @Test
+  func everyChangeOfTheRunIsWrittenToItsFileAtOnce() async {
+    // The shared run writes a change at once only a second after the previous write. This storage never lets that second
+    // end, as when Vortex quits or is killed right after a change.
+    let files = LockIsolated<[URL: Data]>([:])
+    /// What the run file holds.
+    func saved() -> Data? { files.value.first { $0.key.lastPathComponent == "run.json" }?.value }
+    await withDependencies {
+      $0.defaultFileStorage = .inMemory(fileSystem: files, asyncAfter: { _, _ in })
+    } operation: {
+      let store = makeStore()
+      await store.send(.start)
+      await store.send(.presetTapped(25))
+      await store.send(.pauseTapped).finish()
+      #expect(saved().flatMap(TimerRun.decodeSaved) == TimerRun(phase: .paused(remaining: 1500), total: 1500))
+      await store.send(.addFiveMinutesTapped).finish()
+      #expect(saved().flatMap(TimerRun.decodeSaved) == TimerRun(phase: .paused(remaining: 1800), total: 1800))
+      await store.send(.stopTapped).finish()
+      #expect(saved() == Data("null".utf8))
+      await store.send(.stop)
+    }
   }
 
   @Test

@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import os
 import VortexCore
 import VortexPlatform
 
@@ -105,15 +106,18 @@ public struct TimerFeature: Sendable {
         state.isEnabled = true
         state.now = now
         // A run that ran out while Vortex was closed is over: nobody was there to hear it.
+        var dropped = Effect<Action>.none
         if state.run?.isOver(at: state.now) == true {
           state.$run.withLock { $0 = nil }
+          dropped = saveRun(state)
         }
-        return .merge(listenToNotificationButtons(), followRunChanges(state), tick(state))
+        return .merge(listenToNotificationButtons(), followRunChanges(state), tick(state), dropped)
 
       case .stop:
         state.isEnabled = false
         state.$run.withLock { $0 = nil }
         return .merge(
+          saveRun(state),
           .cancel(id: CancelID.tick),
           .cancel(id: CancelID.runChanges),
           .cancel(id: CancelID.buttons),
@@ -139,23 +143,23 @@ public struct TimerFeature: Sendable {
         let now = self.now
         state.now = now
         state.$run.withLock { $0?.pause(at: now) }
-        return .cancel(id: CancelID.tick)
+        return .merge(.cancel(id: CancelID.tick), saveRun(state))
 
       case .resumeTapped:
         let now = self.now
         state.now = now
         state.$run.withLock { $0?.resume(at: now) }
-        return tick(state)
+        return .merge(tick(state), saveRun(state))
 
       case .addFiveMinutesTapped:
         // A whole number of seconds: the ticks stay on the whole seconds of the time left.
         state.now = now
         state.$run.withLock { $0?.add(Self.addedTime) }
-        return .none
+        return saveRun(state)
 
       case .stopTapped:
         state.$run.withLock { $0 = nil }
-        return .cancel(id: CancelID.tick)
+        return .merge(.cancel(id: CancelID.tick), saveRun(state))
 
       case .tick:
         state.now = now
@@ -234,6 +238,7 @@ public struct TimerFeature: Sendable {
     }
     return .merge(
       tick(state),
+      saveRun(state),
       // The first run asks once whether Vortex may notify; later calls return the saved answer.
       .run { _ in _ = await notifications.requestAuthorization() }
     )
@@ -265,6 +270,17 @@ public struct TimerFeature: Sendable {
     .cancellable(id: CancelID.runChanges, cancelInFlight: true)
   }
 
+  /// Writes the run file at once; every change of the run returns it. On its own the shared run writes a change at once
+  /// only a second after the previous write, a sooner one when that second is over, and a quit or a kill before then
+  /// would lose it: after a relaunch a stopped run would come back, or a paused one go on.
+  private func saveRun(_ state: State) -> Effect<Action> {
+    .run { [run = state.$run] _ in
+      try await run.save()
+    } catch: { error, _ in
+      logger.error("Saving the timer run failed: \(error, privacy: .public)")
+    }
+  }
+
   /// A tick at every whole second of the time left while a run is going.
   private func tick(_ state: State) -> Effect<Action> {
     guard state.isEnabled, let run = state.run, !run.isPaused else { return .cancel(id: CancelID.tick) }
@@ -288,6 +304,7 @@ public struct TimerFeature: Sendable {
     let addFive = NotificationClient.Button(id: Self.addFiveButtonID, title: String(localized: "+5 min", bundle: .module))
     return .merge(
       .cancel(id: CancelID.tick),
+      saveRun(state),
       alarm(state),
       .run { _ in await notifications.post(Self.doneNotificationID, title, body, [addFive]) }
     )
@@ -315,3 +332,5 @@ public struct TimerFeature: Sendable {
     .cancellable(id: CancelID.buttons, cancelInFlight: true)
   }
 }
+
+private let logger = Logger(subsystem: "io.github.ortexisartem.vortex", category: "timer")
