@@ -11,5 +11,6 @@ System clients and system-backed views; features reach the system only through t
 | Clients/AppsClient.swift, QuickLookClient.swift | running apps and `AppIcon`; the Quick Look panel, which Vortex windows hand over through `QuickLook` |
 | Clients/SoundClient.swift, NotificationClient.swift | system sounds by name; notifications with buttons, shown even while Vortex is active (needs the app bundle, so not under `swift test`) |
 | Views/DragSource.swift, DropTarget.swift | drags out (`DragSourceArea`: hover, clicks, several items; a press with nothing to drag stays a click) and in (`dropTarget`) |
+| Views/ScrollDragArea.swift | the surface of a control turned by scrolling (trackpad in points, mouse wheel by notches) or dragging, such as the timer's drum |
 | OutsideActivity.swift | whether a drag out, Quick Look or the folder picker is in use, so the shell keeps the window open |
 | Views/FileThumbnail.swift, ColorWell.swift | Quick Look thumbnails made in the background, `FileIcon`; a color picker whose panel floats above Vortex |
