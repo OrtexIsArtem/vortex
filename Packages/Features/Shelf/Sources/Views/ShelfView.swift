@@ -6,7 +6,6 @@ import VortexPlatform
 /// The shelf tab: what the user put aside, ready to be dragged into any app.
 public struct ShelfView: View {
   let store: StoreOf<ShelfFeature>
-  @Environment(\.isWindowOpen) private var isWindowOpen
   @State private var isTargeted = false
   @FocusState private var isFocused: Bool
 
@@ -90,15 +89,7 @@ public struct ShelfView: View {
       store.send(.selectAllPressed)
       return .handled
     }
-    .task(id: isWindowOpen) {
-      if isWindowOpen {
-        store.send(.tabShown)
-        isFocused = true
-      } else {
-        store.send(.tabHidden)
-      }
-    }
-    .onDisappear { store.send(.tabHidden) }
+    .modifier(ShelfSeenTracking(store: store) { isFocused = true })
   }
 
   private var header: some View {

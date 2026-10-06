@@ -6,6 +6,7 @@
 - Those files get a dot until the user leaves the tab, and the notch flashes: a glow that spreads past its edges,
   blinking twice. Its color follows the number of new files: color 1 for the first, color 2 for the second… then white.
 - Looking at the shelf (leaving its tab) starts the count over; files dropped on the tab do not flash.
+- Only a look counts: the window opening on another tab, for example from another feature's ear, keeps the dots and the count.
 - Files and folders are kept by reference; images without a file are saved as PNG copies.
 - Files from Vortex's own data folder (a clipboard image) are copied, since they could go away with their owner.
 - The same file, folder, text or link moves to the front instead of being added again; images without a file are added each time.

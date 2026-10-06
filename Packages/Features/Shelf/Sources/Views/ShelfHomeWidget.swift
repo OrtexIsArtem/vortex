@@ -6,7 +6,6 @@ import VortexPlatform
 /// The shelf on Home: its files as small tiles to drag out, and a place to drop more.
 struct ShelfHomeWidget: View {
   let store: StoreOf<ShelfFeature>
-  @Environment(\.isWindowOpen) private var isWindowOpen
   @State private var isTargeted = false
 
   static let width: CGFloat = 352
@@ -62,9 +61,6 @@ struct ShelfHomeWidget: View {
       store.send(.dropped(items), animation: .snappy(duration: 0.25))
     }
     // Seeing the shelf on Home counts as seeing the shelf: fresh marks and the flash count start over afterwards.
-    .task(id: isWindowOpen) {
-      store.send(isWindowOpen ? .tabShown : .tabHidden)
-    }
-    .onDisappear { store.send(.tabHidden) }
+    .modifier(ShelfSeenTracking(store: store))
   }
 }
