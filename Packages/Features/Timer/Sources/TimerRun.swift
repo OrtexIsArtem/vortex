@@ -28,11 +28,11 @@ public struct TimerRun: Codable, Equatable, Sendable {
     if case .paused = phase { true } else { false }
   }
 
-  /// Seconds left, never below zero.
+  /// Seconds left: never below zero, and never more than the total, which a clock set back would otherwise exceed.
   func remaining(at now: Date) -> TimeInterval {
     switch phase {
-    case let .running(endsAt): max(endsAt.timeIntervalSince(now), 0)
-    case let .paused(remaining): remaining
+    case let .running(endsAt): min(max(endsAt.timeIntervalSince(now), 0), total)
+    case let .paused(remaining): min(max(remaining, 0), total)
     }
   }
 
@@ -91,9 +91,29 @@ public struct TimerRun: Codable, Equatable, Sendable {
       : String(format: "%ld:%02ld", minutes, rest)
   }
 
-  /// A saved run, or nil when the file holds none or can't be read.
+  /// The longest a run can be: a day.
+  static let longestTotal: TimeInterval = 24 * 60 * 60
+  /// How far from the reference date (the start of 2001) the end of a saved run may lie, in seconds: forward to
+  /// September 2032, back to April 1969. Raise it before 2032, or a run saved then would count as no run.
+  static let farthestEnd: TimeInterval = 1e9
+
+  /// Whether the values are possible for a run. Anything else comes from a damaged or hand-edited file, and would
+  /// stop the whole-second arithmetic of a launch with a crash.
+  var hasPossibleValues: Bool {
+    guard total.isFinite, total > 0, total <= Self.longestTotal else { return false }
+    switch phase {
+    case let .running(endsAt):
+      let seconds = endsAt.timeIntervalSinceReferenceDate
+      return seconds.isFinite && abs(seconds) <= Self.farthestEnd
+    case let .paused(remaining):
+      return remaining.isFinite && remaining >= 0 && remaining <= total
+    }
+  }
+
+  /// A saved run, or nil when the file holds none, can't be read or holds impossible values.
   static func decodeSaved(_ data: Data) -> TimerRun? {
-    try? JSONDecoder().decode(TimerRun.self, from: data)
+    guard let run = try? JSONDecoder().decode(TimerRun.self, from: data), run.hasPossibleValues else { return nil }
+    return run
   }
 }
 

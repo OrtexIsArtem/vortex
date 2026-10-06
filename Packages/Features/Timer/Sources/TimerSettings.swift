@@ -30,9 +30,15 @@ public struct TimerSettings: Codable, Equatable, Sendable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     presets = (try? container.decodeIfPresent([Int].self, forKey: .presets)).map(Self.normalized) ?? Self.defaultPresets
-    lastMinutes = (try? container.decodeIfPresent(Int.self, forKey: .lastMinutes)) ?? 25
-    // A saved null is the user's "no sound"; a missing key is the default.
-    sound = container.contains(.sound) ? (try? container.decode(String.self, forKey: .sound)) : Self.defaultSound
+    // Minutes outside the range of the presets were never started by the user; kept, they would overflow the sums.
+    lastMinutes = (try? container.decodeIfPresent(Int.self, forKey: .lastMinutes))
+      .flatMap { Self.presetRange.contains($0) ? $0 : nil } ?? 25
+    // A saved null is the user's "no sound"; a missing key, or a value that is not a name, is the default.
+    if (try? container.decodeNil(forKey: .sound)) == true {
+      sound = nil
+    } else {
+      sound = (try? container.decodeIfPresent(String.self, forKey: .sound)) ?? Self.defaultSound
+    }
     flashColor = (try? container.decodeIfPresent(ColorValue.self, forKey: .flashColor)) ?? Self.defaultFlashColor
   }
 

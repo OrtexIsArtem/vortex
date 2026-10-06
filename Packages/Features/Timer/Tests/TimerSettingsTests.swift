@@ -21,6 +21,35 @@ struct TimerSettingsTests {
     #expect(settings.flashColor == TimerSettings.defaultFlashColor)
   }
 
+  func decoded(_ json: String) throws -> TimerSettings {
+    try JSONDecoder().decode(TimerSettings.self, from: Data(json.utf8))
+  }
+
+  @Test
+  func lastMinutesOutsideThePresetRangeFallBackToTwentyFive() throws {
+    for minutes in ["-5", "0", "601", "9999", "-9223372036854775808", "9223372036854775807"] {
+      let settings = try decoded(#"{"lastMinutes": \#(minutes)}"#)
+      #expect(settings.lastMinutes == 25)
+      // The sum that once overflowed on the smallest of these.
+      #expect(settings.initialPreset == 25)
+    }
+    #expect(try decoded(#"{"lastMinutes": 1}"#).lastMinutes == 1)
+    #expect(try decoded(#"{"lastMinutes": 600}"#).lastMinutes == 600)
+    // Not a whole number of minutes at all.
+    #expect(try decoded(#"{"lastMinutes": 7.5}"#).lastMinutes == 25)
+    #expect(try decoded(#"{"lastMinutes": "ten"}"#).lastMinutes == 25)
+  }
+
+  @Test
+  func onlyASavedNullMeansNoSound() throws {
+    #expect(try decoded(#"{"sound": null}"#).sound == nil)
+    // A value that is no name, or a missing key, is the default, not "no sound".
+    #expect(try decoded(#"{"sound": 5}"#).sound == TimerSettings.defaultSound)
+    #expect(try decoded(#"{"sound": ["Basso"]}"#).sound == TimerSettings.defaultSound)
+    #expect(try decoded(#"{}"#).sound == TimerSettings.defaultSound)
+    #expect(try decoded(#"{"sound": "Basso"}"#).sound == "Basso")
+  }
+
   @Test
   func noSoundSurvivesSaving() throws {
     var settings = TimerSettings()
