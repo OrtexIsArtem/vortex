@@ -22,9 +22,9 @@ struct TimerSettingsView: View {
         .textFieldStyle(.roundedBorder)
         .frame(width: 190)
         .focused($isEditing)
-        .onSubmit { store.send(.presetsSubmitted(presets)) }
+        .onSubmit { commitPresets() }
         .onChange(of: isEditing) { _, isEditing in
-          if !isEditing { store.send(.presetsSubmitted(presets)) }
+          if !isEditing { commitPresets() }
         }
       }
 
@@ -65,7 +65,19 @@ struct TimerSettingsView: View {
       presets = store.settings.presetsText
       store.send(.settingsShown)
     }
+    // An edit still pending when the section goes away (a tab switch) is kept, not lost.
+    .onDisappear { commitPresets() }
+    // The presets changed from outside the field.
     .onChange(of: store.settings.presets) { presets = store.settings.presetsText }
+  }
+
+  /// Saves what was typed, then shows the list as saved: sorted, without what is invalid or past the sixth, or the
+  /// defaults when nothing valid was typed. Watching the saved presets is not enough for this: it stays silent when
+  /// the cleaned-up list equals the saved one, and the field would keep the typed text.
+  private func commitPresets() {
+    store.send(.presetsSubmitted(presets))
+    // The send has applied the change by now.
+    presets = store.settings.presetsText
   }
 
   /// The system sounds, and the chosen one even before they load, so the picker always has its selection.
