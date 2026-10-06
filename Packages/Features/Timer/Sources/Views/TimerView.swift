@@ -21,7 +21,7 @@ public struct TimerView: View {
 
       Group {
         if let run = store.run {
-          RunningTimer(run: run, now: store.now) { store.send($0) }
+          RunningTimer(run: run, store: store)
         } else {
           PresetCarousel(minutes: store.carouselPreset, presets: store.settings.presets) { store.send($0) }
         }
@@ -119,38 +119,42 @@ private struct ArrowButton: View {
   }
 }
 
-/// The time left, when it ends, how much is left as a line, and the controls.
+/// The time left, when it ends, how much is left as a line, and the controls. Only the digits and the line follow the
+/// ticks; the rest stays as it is until the run changes.
 private struct RunningTimer: View {
   let run: TimerRun
-  let now: Date
-  let send: @MainActor (TimerFeature.Action) -> Void
+  let store: StoreOf<TimerFeature>
 
   var body: some View {
     VStack(spacing: 0) {
       // No digit animation: it would run every second for the whole run, and costs a lot of CPU even unseen.
-      Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: now)))
-        .font(.system(size: 76, weight: .thin).monospacedDigit())
-        .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
+      TickReader(store: store) { now in
+        Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: now)))
+      }
+      .font(.system(size: 76, weight: .thin).monospacedDigit())
+      .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
       caption
         .font(.system(size: 12.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.top, 2)
-      ProgressLine(fraction: run.fractionLeft(at: now))
-        .frame(width: 260, height: 2)
-        .padding(.top, 20)
+      TickReader(store: store) { now in
+        ProgressLine(fraction: run.fractionLeft(at: now))
+      }
+      .frame(width: 260, height: 2)
+      .padding(.top, 20)
       HStack(spacing: 10) {
         RoundButton(
           symbol: run.isPaused ? "play.fill" : "pause.fill",
           label: run.isPaused ? Text("Resume", bundle: .module) : Text("Pause", bundle: .module),
           isProminent: true
         ) {
-          send(run.isPaused ? .resumeTapped : .pauseTapped)
+          store.send(run.isPaused ? .resumeTapped : .pauseTapped)
         }
         RoundButton(symbol: "stop.fill", label: Text("Stop", bundle: .module)) {
-          send(.stopTapped)
+          store.send(.stopTapped)
         }
         Button {
-          send(.addFiveMinutesTapped)
+          store.send(.addFiveMinutesTapped)
         } label: {
           Text("+5 min", bundle: .module)
         }

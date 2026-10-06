@@ -39,8 +39,10 @@ struct TimerHomeWidget: View {
         Text("of \(run.totalMinutes) min", bundle: .module)
           .font(.system(size: 12))
           .foregroundStyle(VortexColor.tertiaryText)
-        ProgressRing(fraction: run.fractionLeft(at: store.now))
-          .frame(width: 16, height: 16)
+        TickReader(store: store) { now in
+          ProgressRing(fraction: run.fractionLeft(at: now))
+        }
+        .frame(width: 16, height: 16)
       }
     } else {
       // Short of room left of the notch, the icon goes first; the chips keep their size.
@@ -64,10 +66,12 @@ struct TimerHomeWidget: View {
   private var trailing: some View {
     if let run = store.run {
       HStack(spacing: 4) {
-        Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: store.now)))
-          .font(.system(size: 15, weight: .medium).monospacedDigit())
-          .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
-          .padding(.trailing, 8)
+        TickReader(store: store) { now in
+          Text(verbatim: TimerRun.clockText(seconds: run.secondsLeft(at: now)))
+        }
+        .font(.system(size: 15, weight: .medium).monospacedDigit())
+        .foregroundStyle(run.isPaused ? VortexColor.secondaryText : VortexColor.primaryText)
+        .padding(.trailing, 8)
         RoundButton(
           symbol: run.isPaused ? "play.fill" : "pause.fill",
           label: run.isPaused ? Text("Resume", bundle: .module) : Text("Pause", bundle: .module),
