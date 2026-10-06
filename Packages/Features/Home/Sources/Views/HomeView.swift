@@ -21,7 +21,7 @@ struct HomeView: View {
       .frame(maxWidth: .infinity)
       .frame(height: VortexMetrics.headerHeight)
 
-      if layout.main.isEmpty && layout.dock.isEmpty {
+      if layout.isEmpty {
         EmptyHome()
       } else {
         if !layout.main.isEmpty {
@@ -34,9 +34,7 @@ struct HomeView: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         if !layout.dock.isEmpty {
-          Dock(widgets: layout.dock)
-            .frame(maxHeight: layout.dockHeight ?? .infinity)
-            .frame(height: layout.dockHeight)
+          Dock(widgets: layout.dock, height: layout.dockHeight)
             .padding(.top, layout.main.isEmpty ? 4 : 0)
         }
       }
@@ -47,6 +45,8 @@ struct HomeView: View {
 /// The panel at the bottom: widgets side by side, hairlines between them.
 private struct Dock: View {
   let widgets: [HomeWidget]
+  /// The height of the rounded panel itself, its margins not counted; nil fills the room that is left.
+  let height: CGFloat?
 
   var body: some View {
     HStack(alignment: .top, spacing: 16) {
@@ -62,6 +62,7 @@ private struct Dock: View {
     .padding(.vertical, 14)
     .padding(.horizontal, 16)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .frame(height: height)
     .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(VortexColor.dock))
     .padding(.leading, 4)
     .padding(.trailing, 12)
