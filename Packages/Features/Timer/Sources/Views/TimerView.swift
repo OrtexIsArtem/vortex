@@ -36,11 +36,14 @@ public struct TimerView: View {
     .onKeyPress(.leftArrow) { carousel(.previousPresetTapped) }
     .onKeyPress(.rightArrow) { carousel(.nextPresetTapped) }
     .onKeyPress(.return) { carousel(.startTapped) }
-    .onKeyPress(.space) {
+    // Only the press toggles, so a held key toggles once. Its repeats are taken without doing anything: left alone, each
+    // would reach the end of the responder chain, where AppKit beeps.
+    .onKeyPress(.space, phases: .down) { _ in
       guard let run = store.run else { return .ignored }
       store.send(run.isPaused ? .resumeTapped : .pauseTapped)
       return .handled
     }
+    .onKeyPress(.space, phases: .repeat) { _ in store.run == nil ? .ignored : .handled }
     .task(id: isWindowOpen) {
       if isWindowOpen { isFocused = true }
     }
