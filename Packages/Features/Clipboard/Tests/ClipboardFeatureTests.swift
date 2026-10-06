@@ -181,6 +181,23 @@ struct ClipboardFeatureTests {
   }
 
   @Test
+  func aSecretCopiedAgainFromAnAppThatDoesNotMarkItStaysASecret() async throws {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.text("hunter2"), from: Self.passwords, concealed: true)
+    await store.receive(\.copied)
+    // Pasted into an editor, selected there and copied again: the editor does not mark it as a secret.
+    copy(.text("hunter2"))
+    await store.receive(\.copied)
+    #expect(store.state.items.count == 1)
+    #expect(store.state.items.first?.isConcealed == true)
+    await store.send(.stop)
+    await store.finish()
+    #expect(try savedHistory().isEmpty)
+  }
+
+  @Test
   func concealedItemsHideAgainWhenTheWindowOpens() async {
     let store = makeStore()
     store.exhaustivity = .off

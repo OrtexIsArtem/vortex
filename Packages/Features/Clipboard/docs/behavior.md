@@ -9,6 +9,7 @@
 - Copies made while an ignored app was in front (since the previous check) are not recorded; what was recorded before stays.
 - Copies apps mark as transient or auto-generated (nspasteboard.org, text expanders) are not recorded; what Vortex copies itself is not recorded again.
 - Copies marked secret (password managers) are shown as •••• until the eye is clicked, kept in memory only and gone when Vortex quits; secret images are not recorded.
+- A secret stays hidden when the same text is copied again from an app that doesn't mark it, such as the editor it was pasted into.
 - Text over 2 MB and images over 30 MB are not recorded.
 
 ## The tab

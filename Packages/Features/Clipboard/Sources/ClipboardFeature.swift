@@ -373,11 +373,12 @@ public struct ClipboardFeature: Sendable {
     return .merge(removeFiles(of: Array(dropped)), save(state))
   }
 
-  /// Moves an item copied again to the top of its group.
+  /// Moves an item copied again to the top of its group. A secret stays one: copied again from an app that does not
+  /// mark it, such as an editor it was pasted into, it is still the content the first app marked.
   private func bump(_ id: ClipboardItem.ID, source: AppInfo?, isConcealed: Bool, _ state: inout State) -> Effect<Action> {
     state.items[id: id]?.copiedAt = now
     state.items[id: id]?.source = source
-    state.items[id: id]?.isConcealed = isConcealed
+    if isConcealed { state.items[id: id]?.isConcealed = true }
     state.items.sort(by: Self.displayOrder)
     return save(state)
   }
