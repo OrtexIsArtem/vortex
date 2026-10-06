@@ -363,6 +363,25 @@ struct ClipboardFeatureTests {
   }
 
   @Test
+  func nothingIsSavedBeforeTheHistoryLoads() async throws {
+    // A pinned item saved by an earlier launch; a save before it is read would delete it, as it is not in memory yet.
+    try ClipboardItem.migrator.migrate(database)
+    let pinned = ClipboardItem(
+      id: uuid(7), content: .text("pinned"), source: Self.terminal, copiedAt: now.value, isPinned: true,
+      fingerprint: ClipboardCopy.fingerprint(of: .text("pinned"))
+    )
+    try await database.write { db in try ClipboardItem.save([pinned], in: db) }
+
+    // The store is not started, so its history is not loaded; whatever changes it now is not written.
+    let store = makeStore()
+    store.exhaustivity = .off
+    await store.send(.copied(ClipboardCopy(PasteboardCopy(content: .text("copied too early")))))
+    await store.send(.clearTapped)
+    await store.finish()
+    #expect(try savedHistory() == [pinned])
+  }
+
+  @Test
   func droppedFilesAreCopiedTogetherOtherwiseTheFirstThing() {
     let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
     let apk = URL(fileURLWithPath: "/tmp/b.apk")

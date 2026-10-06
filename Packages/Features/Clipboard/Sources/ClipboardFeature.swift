@@ -394,9 +394,10 @@ public struct ClipboardFeature: Sendable {
     }
   }
 
-  /// Writes the history, secrets left out; a newer save cancels an older one that has not finished.
+  /// Writes the history, secrets left out; a newer save cancels an older one that has not finished. Never before the
+  /// saved history has been read: a save deletes the rows that are not in memory.
   private func save(_ state: State) -> Effect<Action> {
-    guard state.savesToDisk else { return .none }
+    guard state.isLoaded, state.savesToDisk else { return .none }
     let items = state.items.filter { !$0.isConcealed }
     return .run { _ in
       try await database.write { db in try ClipboardItem.save(Array(items), in: db) }
