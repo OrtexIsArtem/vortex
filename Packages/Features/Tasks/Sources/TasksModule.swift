@@ -1,6 +1,4 @@
-import AppKit
 import ComposableArchitecture
-import CoreGraphics
 import SwiftUI
 import VortexCore
 import VortexPlatform
@@ -54,22 +52,9 @@ public enum TasksModule: FeatureModule {
       // `…taskCaptureImage` freezes on the image file at userInfo `path` instead of the screen, as if it had been
       // taken on the main display; the source is read as for a real capture.
       on("taskCaptureImage") { info in
-        guard let path = info["path"], let screen = NSScreen.main,
-              let image = ScreenImage(contentsOf: URL(fileURLWithPath: path), scale: screen.backingScaleFactor)
-        else { return }
-        let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
-        let notch: CGRect? = {
-          guard screen.safeAreaInsets.top > 0, let left = screen.auxiliaryTopLeftArea?.width,
-                let right = screen.auxiliaryTopRightArea?.width else { return nil }
-          return CGRect(x: left, y: 0, width: screen.frame.width - left - right, height: screen.safeAreaInsets.top)
-        }()
-        let screenshot = Screenshot(
-          image: image,
-          screenFrame: screen.frame,
-          notch: notch,
-          bottomInset: screen.visibleFrame.minY - screen.frame.minY,
-          displayID: id
-        )
+        guard let path = info["path"], let screenshot = Screenshot.mainDisplay(showing: URL(fileURLWithPath: path)) else {
+          return
+        }
         Task {
           let source = await FrontWindowClient.liveValue.current()
           store.send(.captureTaken(screenshot, source))
@@ -100,7 +85,7 @@ public enum TasksModule: FeatureModule {
         let state: [String: Any] = [
           "isEnabled": store.isEnabled,
           "isLoaded": store.isLoaded,
-          "screenAccess": CGPreflightScreenCaptureAccess(),
+          "screenAccess": ScreenCaptureClient.liveValue.hasAccess(),
           "isCapturing": store.capture != nil,
           "isFramed": store.capture?.isFramed ?? false,
           "suggestion": store.capture?.suggestion ?? "",

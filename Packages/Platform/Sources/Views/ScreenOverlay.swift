@@ -18,7 +18,7 @@ public final class ScreenOverlay {
     onEscape: @escaping @MainActor () -> Void,
     onReturn: @escaping @MainActor () -> Void
   ) {
-    guard let screen = NSScreen.screens.first(where: { $0.overlayDisplayID == displayID }) ?? NSScreen.main else { return }
+    guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
     let panel = self.panel ?? OverlayPanel()
     panel.onEscape = onEscape
     panel.onReturn = onReturn
@@ -33,7 +33,7 @@ public final class ScreenOverlay {
   /// The pointer over the whole overlay, such as a crosshair while a frame is drawn; nil leaves it to the content.
   public var cursor: NSCursor? {
     didSet {
-      guard let host = panel?.contentView as? OverlayHostingView else { return }
+      guard cursor !== oldValue, let host = panel?.contentView as? OverlayHostingView else { return }
       host.cursor = cursor
       panel?.invalidateCursorRects(for: host)
     }
@@ -71,6 +71,14 @@ private final class OverlayPanel: NSPanel {
     onEscape()
   }
 
+  /// The app has no main menu, so nothing maps the standard editing shortcuts; the panel sends them itself.
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    if let action = EditingShortcuts.action(for: event), NSApp.sendAction(action, to: nil, from: self) {
+      return true
+    }
+    return super.performKeyEquivalent(with: event)
+  }
+
   override func keyDown(with event: NSEvent) {
     // Return and the keypad's Enter.
     if event.keyCode == 36 || event.keyCode == 76 {
@@ -87,11 +95,5 @@ private final class OverlayHostingView: NSHostingView<AnyView> {
   override func resetCursorRects() {
     super.resetCursorRects()
     if let cursor { addCursorRect(bounds, cursor: cursor) }
-  }
-}
-
-extension NSScreen {
-  var overlayDisplayID: CGDirectDisplayID {
-    (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
   }
 }

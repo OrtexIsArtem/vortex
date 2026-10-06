@@ -24,6 +24,8 @@ targets:
     platform: macOS
     sources:
       - path: App/Sources
+      # The texts of macOS prompts, in English and Ukrainian.
+      - path: App/Resources
     info:
       path: App/Info.plist
       properties:

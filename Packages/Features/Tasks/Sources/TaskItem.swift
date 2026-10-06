@@ -31,6 +31,11 @@ public struct TaskItem: Identifiable, Equatable, Sendable {
 
   public var isDone: Bool { completedAt != nil }
 
+  /// The title as shown and saved: an emptied one is "Task 13" again.
+  var displayTitle: String {
+    title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Self.defaultTitle(number: number) : title
+  }
+
   /// The pictures of every task, one folder per task.
   static let folder = DataFolder.url.appending(path: "Tasks", directoryHint: .isDirectory)
 

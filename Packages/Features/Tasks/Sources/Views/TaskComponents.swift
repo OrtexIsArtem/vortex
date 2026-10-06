@@ -12,6 +12,20 @@ extension TaskItem.Priority {
   }
 }
 
+/// Low, Medium and High, each with its bars.
+struct PriorityPicker: View {
+  let selection: Binding<TaskItem.Priority>
+
+  var body: some View {
+    SegmentedPicker(selection: selection, options: TaskItem.Priority.allCases) { priority in
+      HStack(spacing: 5) {
+        PriorityBars(priority: priority)
+        priority.name
+      }
+    }
+  }
+}
+
 /// Three bars of rising height, as many lit as the priority is high.
 struct PriorityBars: View {
   let priority: TaskItem.Priority
@@ -60,16 +74,17 @@ struct SourceLine: View {
   }
 }
 
-/// "14:21" today, "Yesterday", or "6 Oct".
+/// "14:21" today, "Yesterday", or "6 Oct", as of `now`.
 struct TaskDate: View {
   let date: Date
+  var now = Date.now
 
   var body: some View {
     let calendar = Calendar.current
     Group {
-      if calendar.isDateInToday(date) {
+      if calendar.isDate(date, inSameDayAs: now) {
         Text(date, format: .dateTime.hour().minute())
-      } else if calendar.isDateInYesterday(date) {
+      } else if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
         Text("Yesterday", bundle: .module)
       } else {
         Text(date, format: .dateTime.day().month(.abbreviated))

@@ -20,13 +20,7 @@ extension TextRecognitionClient: DependencyKey {
           request.usesLanguageCorrection = true
           do {
             try VNImageRequestHandler(cgImage: image.cgImage, options: [:]).perform([request])
-            // Vision measures from the bottom left: higher lines first, then left to right.
-            let lines = (request.results ?? [])
-              .sorted { abs($0.boundingBox.midY - $1.boundingBox.midY) > 0.005
-                ? $0.boundingBox.midY > $1.boundingBox.midY
-                : $0.boundingBox.minX < $1.boundingBox.minX }
-              .compactMap { $0.topCandidates(1).first?.string }
-            continuation.resume(returning: lines.joined(separator: "\n"))
+            continuation.resume(returning: readingOrder(request.results ?? []).joined(separator: "\n"))
           } catch {
             continuation.resume(throwing: error)
           }
@@ -43,4 +37,24 @@ extension DependencyValues {
     get { self[TextRecognitionClient.self] }
     set { self[TextRecognitionClient.self] = newValue }
   }
+}
+
+/// Lines top to bottom; pieces of text side by side on one row (columns, a sender and a time) left to right. Vision
+/// measures from the bottom left, so a higher line has a larger y.
+func readingOrder(_ observations: [VNRecognizedTextObservation]) -> [String] {
+  readingOrder(observations, box: \.boundingBox).compactMap { $0.topCandidates(1).first?.string }
+}
+
+/// The same order for anything with a box in Vision's coordinates.
+func readingOrder<Item>(_ items: [Item], box: (Item) -> CGRect) -> [Item] {
+  var rows: [(midY: CGFloat, items: [Item])] = []
+  for item in items.sorted(by: { box($0).midY > box($1).midY }) {
+    // Within half a line's height of the row's first piece, it belongs to that row.
+    if let last = rows.indices.last, abs(rows[last].midY - box(item).midY) < box(item).height / 2 {
+      rows[last].items.append(item)
+    } else {
+      rows.append((box(item).midY, [item]))
+    }
+  }
+  return rows.flatMap { row in row.items.sorted { box($0).minX < box($1).minX } }
 }

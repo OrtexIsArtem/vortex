@@ -64,14 +64,21 @@ private struct Framing: View {
         .onChanged { value in
           let start = start ?? value.startLocation
           self.start = start
-          store.send(.frameChanged(CGRect(origin: start, size: .zero).union(CGRect(origin: value.location, size: .zero))))
+          store.send(.frameChanged(Self.frame(from: start, to: value.location)))
         }
         .onEnded { value in
           let start = start ?? value.startLocation
           self.start = nil
-          store.send(.frameEnded(CGRect(origin: start, size: .zero).union(CGRect(origin: value.location, size: .zero))))
+          store.send(.frameEnded(Self.frame(from: start, to: value.location)))
         }
     )
+  }
+}
+
+extension Framing {
+  /// The rectangle between where the drag began and where the pointer is, whichever way it went.
+  static func frame(from start: CGPoint, to end: CGPoint) -> CGRect {
+    CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y))
   }
 }
 
@@ -147,10 +154,11 @@ private struct NotchPill: View {
   var body: some View {
     let ear: CGFloat = 112
     let notch = notch ?? CGRect(x: (screenWidth - 180) / 2, y: 0, width: 180, height: 30)
+    let width = notch.width + (ear + 14) * 2
     HStack(spacing: 0) {
       HStack(spacing: 7) {
         Circle()
-          .fill(Color.white)
+          .fill(VortexColor.notchText)
           .frame(width: 6, height: 6)
         label
       }
@@ -158,18 +166,16 @@ private struct NotchPill: View {
       .padding(.leading, 14)
       Spacer(minLength: notch.width)
       Text(verbatim: "Esc")
-        .foregroundStyle(Color.white.opacity(0.55))
+        .foregroundStyle(VortexColor.notchText.opacity(0.55))
         .frame(width: ear, alignment: .trailing)
         .padding(.trailing, 14)
     }
     .font(.system(size: 11.5, weight: .medium))
-    .foregroundStyle(Color.white)
-    .frame(width: notch.width + (ear + 14) * 2, height: notch.height)
-    .background(
-      UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12)
-        .fill(Color.black)
-    )
-    .offset(x: notch.midX - (notch.width + (ear + 14) * 2) / 2, y: 0)
+    .foregroundStyle(VortexColor.notchText)
+    .frame(width: width, height: notch.height)
+    // Rounded like the ears of the closed notch.
+    .background(UnevenRoundedRectangle(bottomLeadingRadius: 14, bottomTrailingRadius: 14).fill(VortexColor.notch))
+    .offset(x: notch.midX - width / 2, y: 0)
     .allowsHitTesting(false)
     .accessibilityHidden(true)
   }
@@ -270,15 +276,7 @@ private struct CaptureDetails: View {
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.bottom, 8)
-      SegmentedPicker(
-        selection: Binding(get: { store.priority }, set: { store.send(.priorityChosen($0)) }),
-        options: [TaskItem.Priority.low, .medium, .high]
-      ) { priority in
-        HStack(spacing: 5) {
-          PriorityBars(priority: priority)
-          priority.name
-        }
-      }
+      PriorityPicker(selection: Binding(get: { store.priority }, set: { store.send(.priorityChosen($0)) }))
 
       Hairline()
         .padding(.vertical, 14)

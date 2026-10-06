@@ -58,26 +58,10 @@ final class VortexPanel: NSPanel {
 
   /// The app has no main menu, so nothing maps the standard editing shortcuts; the panel sends them itself.
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
-    if let action = Self.standardAction(for: event), NSApp.sendAction(action, to: nil, from: self) {
+    if let action = EditingShortcuts.action(for: event), NSApp.sendAction(action, to: nil, from: self) {
       return true
     }
     return super.performKeyEquivalent(with: event)
-  }
-
-  private static func standardAction(for event: NSEvent) -> Selector? {
-    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    let isShifted = flags == [.command, .shift]
-    guard flags == .command || isShifted else { return nil }
-    switch (event.charactersIgnoringModifiers?.lowercased(), isShifted) {
-    case ("x", false): return #selector(NSText.cut(_:))
-    case ("c", false): return #selector(NSText.copy(_:))
-    case ("v", false): return #selector(NSText.paste(_:))
-    case ("a", false): return #selector(NSText.selectAll(_:))
-    case ("z", false): return Selector(("undo:"))
-    case ("z", true): return Selector(("redo:"))
-    case ("q", false): return #selector(NSApplication.terminate(_:))
-    default: return nil
-    }
   }
 }
 

@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import ComposableArchitecture
 
 /// The app the user is working in: its front window's title and, for a browser, the address of the open page.
@@ -79,6 +80,7 @@ enum BrowserPage {
     "com.operasoftware.Opera",
   ]
   private static let safari: Set<String> = ["com.apple.Safari", "com.apple.SafariTechnologyPreview"]
+  static var scriptable: Set<String> { chromium.union(safari) }
   /// AppleScript is used from this one thread, never two at a time.
   private static let queue = DispatchQueue(label: "io.github.ortexisartem.vortex.browser-page")
 
@@ -91,9 +93,9 @@ enum BrowserPage {
     } else {
       return nil
     }
-    // A browser that hangs, or a permission prompt left open, must not hold the capture for long.
+    // A browser that hangs must not hold the capture for long.
     let source = """
-      with timeout of 3 seconds
+      with timeout of 2 seconds
         tell application id "\(bundleID)" to \(command)
       end timeout
       """
@@ -102,6 +104,22 @@ enum BrowserPage {
         var error: NSDictionary?
         let result = NSAppleScript(source: source)?.executeAndReturnError(&error).stringValue
         continuation.resume(returning: result.flatMap(URL.init(string:)).flatMap { $0.scheme == nil ? nil : $0 })
+      }
+    }
+  }
+}
+
+extension FrontWindowClient {
+  /// Asks now for Automation of the running browsers that give their page, as the first capture from each would.
+  public static func askForBrowserAutomation() {
+    let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+    for bundleID in BrowserPage.scriptable.intersection(running) {
+      Thread.detachNewThread {
+        var target = AEAddressDesc()
+        let created = bundleID.withCString { AECreateDesc(typeApplicationBundleID, $0, strlen($0), &target) }
+        guard created == noErr else { return }
+        _ = AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, true)
+        AEDisposeDesc(&target)
       }
     }
   }

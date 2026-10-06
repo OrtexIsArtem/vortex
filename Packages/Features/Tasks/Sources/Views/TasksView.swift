@@ -168,7 +168,15 @@ private struct TaskList: View {
   let store: StoreOf<TasksFeature>
 
   var body: some View {
-    let tasks = store.state.visibleTasks(now: .now, calendar: .current)
+    // Today and Yesterday move on at midnight, also while the list stays on screen.
+    TimelineView(.everyMinute) { context in
+      content(now: context.date)
+    }
+  }
+
+  @ViewBuilder
+  private func content(now: Date) -> some View {
+    let tasks = store.state.visibleTasks(now: now, calendar: .current)
     Group {
       if !store.isLoaded {
         Color.clear
@@ -184,7 +192,7 @@ private struct TaskList: View {
         ScrollView {
           LazyVStack(spacing: 2) {
             ForEach(tasks) { task in
-              TaskRow(task: task, store: store)
+              TaskRow(task: task, now: now, store: store)
             }
           }
           .padding(.horizontal, 6)
@@ -229,6 +237,7 @@ private struct EmptyTasks: View {
 /// One task in the list: done mark, picture, title and source, priority and time.
 private struct TaskRow: View {
   let task: TaskItem
+  let now: Date
   let store: StoreOf<TasksFeature>
   @State private var isHovered = false
 
@@ -241,7 +250,7 @@ private struct TaskRow: View {
       .frame(width: 64, height: 44)
       .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
       VStack(alignment: .leading, spacing: 3) {
-        Text(verbatim: task.title)
+        Text(verbatim: task.displayTitle)
           .font(.system(size: 13, weight: .medium))
           .lineLimit(1)
           .strikethrough(task.isDone, color: VortexColor.tertiaryText)
@@ -252,7 +261,7 @@ private struct TaskRow: View {
       PriorityBars(priority: task.priority)
         .foregroundStyle(task.priority == .high ? VortexColor.primaryText : VortexColor.secondaryText)
         .help(task.priority.name)
-      TaskDate(date: task.createdAt)
+      TaskDate(date: task.createdAt, now: now)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .frame(minWidth: 44, alignment: .trailing)

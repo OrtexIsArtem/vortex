@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSAppleEventsUsageDescription" : {
+      "comment" : "Shown by macOS when Vortex first asks to read the page open in a browser",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex saves the address of the page open in your browser with a task."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex зберігає адресу сторінки, відкритої у браузері, разом із задачею."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

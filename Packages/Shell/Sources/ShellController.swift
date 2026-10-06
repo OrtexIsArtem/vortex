@@ -1,5 +1,4 @@
 import AppKit
-import CoreServices
 import ComposableArchitecture
 import FeatureRegistry
 import VortexCore
@@ -98,18 +97,9 @@ public final class ShellController: NSObject {
         object: nil,
         queue: .main
       ) { _ in
-        // Screen recording, for task screenshots and window titles; the system asks once.
-        _ = CGRequestScreenCaptureAccess()
-        // Automation of each running browser, for the address of the open page; asked once per browser.
-        for bundleID in ["com.google.Chrome", "com.apple.Safari"] {
-          Thread.detachNewThread {
-            var target = AEAddressDesc()
-            let created = bundleID.withCString { AECreateDesc(typeApplicationBundleID, $0, strlen($0), &target) }
-            guard created == noErr else { return }
-            _ = AEDeterminePermissionToAutomateTarget(&target, typeWildCard, typeWildCard, true)
-            AEDisposeDesc(&target)
-          }
-        }
+        // Screen Recording, then Automation of each running browser; the system asks once for each.
+        _ = ScreenCaptureClient.liveValue.requestAccess()
+        MainActor.assumeIsolated { FrontWindowClient.askForBrowserAutomation() }
       }
       center.addObserver(
         forName: Notification.Name("io.github.ortexisartem.vortex.debug.toggle"),

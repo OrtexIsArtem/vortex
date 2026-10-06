@@ -64,9 +64,7 @@ public struct TasksFeature: Sendable {
     var isStartingCapture = false
     /// Whether Vortex may record the screen, for the settings.
     var hasScreenAccess = true
-    /// The system's own prompt for Screen Recording was shown this session: it shows only once, so the next attempt
-    /// opens System Settings instead.
-    var hasAskedForScreenAccess = false
+    @Shared(.tasksSettings) var settings
 
     public init() {}
 
@@ -89,11 +87,6 @@ public struct TasksFeature: Sendable {
         }
     }
 
-    /// The newest active tasks, for Home.
-    var latestActive: [TaskItem] {
-      Array(tasks.filter { !$0.isDone }.sorted { $0.createdAt > $1.createdAt }.prefix(3))
-    }
-
     static func isIn(_ period: TaskFilter.Period, _ date: Date, now: Date, calendar: Calendar) -> Bool {
       switch period {
       case .all:
@@ -111,7 +104,7 @@ public struct TasksFeature: Sendable {
 
     /// Every word is found in the title, the recognized text, the app, the window title or the page address.
     static func matches(_ task: TaskItem, _ words: [Substring]) -> Bool {
-      let fields = [task.title, task.text, task.source.app?.name, task.source.windowTitle, task.source.url?.absoluteString]
+      let fields = [task.displayTitle, task.text, task.source.app?.name, task.source.windowTitle, task.source.url?.absoluteString]
         .compactMap { $0 }
       return words.allSatisfy { word in
         fields.contains { $0.range(of: word, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
@@ -205,9 +198,9 @@ public struct TasksFeature: Sendable {
       case .captureRequested:
         guard state.isEnabled, state.capture == nil, !state.isStartingCapture else { return .none }
         state.isStartingCapture = true
-        return .run { [hasAsked = state.hasAskedForScreenAccess] send in
+        return .run { [hasAsked = state.settings.askedForScreenRecording] send in
           guard screenCapture.hasAccess() else {
-            // The system asks once; after that only System Settings can allow it, so it opens there.
+            // The system asks once ever; after that only System Settings can allow it, so it opens there.
             if hasAsked {
               await files.open(Self.screenSettingsURL)
             } else {
@@ -216,10 +209,11 @@ public struct TasksFeature: Sendable {
             await send(.captureFailed(noAccess: true))
             return
           }
-          // Nothing of Vortex shows yet, so the app in front is still the one the user was in.
-          async let source = frontWindow.current()
+          // The app in front and what is open in it first: nothing of Vortex shows yet, so it is still the one the
+          // user was in, and a browser's one-time Automation prompt is answered before the screen is taken.
+          let source = await frontWindow.current()
           let screenshot = try await screenCapture.captureScreenUnderPointer()
-          await send(.captureTaken(screenshot, await source))
+          await send(.captureTaken(screenshot, source))
         } catch: { error, send in
           logger.error("Taking the screen failed: \(error, privacy: .public)")
           await send(.captureFailed(noAccess: false))
@@ -242,13 +236,17 @@ public struct TasksFeature: Sendable {
         state.isStartingCapture = false
         guard noAccess else { return .none }
         state.hasScreenAccess = false
-        state.hasAskedForScreenAccess = true
+        state.$settings.withLock { $0.askedForScreenRecording = true }
         let title = String(localized: "Vortex can't see the screen", bundle: .module)
         let body = String(
           localized: "Allow it in System Settings › Privacy & Security › Screen Recording, then open Vortex again.",
           bundle: .module
         )
-        return .run { _ in await notifications.post(Self.noAccessNotificationID, title, body, []) }
+        return .run { _ in
+          // Vortex may not have asked to notify yet: the timer asks on its first run.
+          guard await notifications.requestAuthorization() else { return }
+          await notifications.post(Self.noAccessNotificationID, title, body, [])
+        }
 
       case let .capture(.delegate(.save(draft))):
         state.capture = nil
@@ -275,63 +273,55 @@ public struct TasksFeature: Sendable {
         return .none
 
       case .backTapped:
+        guard let id = state.openTaskID else { return .none }
         state.openTaskID = nil
-        return .none
+        return commitTitle(id, &state)
 
       case let .titleChanged(id, title):
-        guard var task = state.tasks[id: id] else { return .none }
-        task.title = title
-        state.tasks[id: id] = task
-        // Written once typing pauses, so the writes never overtake one another.
-        return .run { [task] _ in
-          try await clock.sleep(for: .milliseconds(400))
-          try await database.write { db in try task.update(db) }
-        } catch: { error, _ in
-          logger.error("Saving a task failed: \(error, privacy: .public)")
-        }
-        .cancellable(id: CancelID.titleSave(id), cancelInFlight: true)
+        guard state.tasks[id: id] != nil else { return .none }
+        state.tasks[id: id]?.title = title
+        // Written once typing pauses, so the writes never overtake one another; an emptied title is saved as "Task 13".
+        let saved = state.tasks[id: id]?.displayTitle ?? title
+        return update(id, "title", saved, after: .milliseconds(400))
+          .cancellable(id: CancelID.titleSave(id), cancelInFlight: true)
 
       case let .titleCommitted(id):
-        guard var task = state.tasks[id: id] else { return .none }
-        // An emptied title goes back to "Task 13".
-        if task.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-          task.title = TaskItem.defaultTitle(number: task.number)
-          state.tasks[id: id] = task
-        }
-        return .merge(.cancel(id: CancelID.titleSave(id)), write(task))
+        return commitTitle(id, &state)
 
       case let .priorityChanged(id, priority):
-        guard var task = state.tasks[id: id], task.priority != priority else { return .none }
-        task.priority = priority
-        state.tasks[id: id] = task
-        return write(task)
+        guard let task = state.tasks[id: id], task.priority != priority else { return .none }
+        state.tasks[id: id]?.priority = priority
+        return update(id, "priority", priority.rawValue)
 
       case let .doneTapped(id):
-        guard var task = state.tasks[id: id] else { return .none }
-        task.completedAt = task.isDone ? nil : now
-        state.tasks[id: id] = task
-        guard task.isDone else {
+        guard let task = state.tasks[id: id] else { return .none }
+        let completedAt = task.isDone ? nil : now
+        state.tasks[id: id]?.completedAt = completedAt
+        guard completedAt != nil else {
           if state.undoableID == id { state.undoableID = nil }
-          return write(task)
+          return update(id, "completedAt", completedAt)
         }
         // A done task leaves the active list; the list comes back, with a moment to take it back.
         state.undoableID = id
-        if state.openTaskID == id { state.openTaskID = nil }
-        return .merge(
-          write(task),
+        var effects = [update(id, "completedAt", completedAt)]
+        if state.openTaskID == id {
+          state.openTaskID = nil
+          effects.append(commitTitle(id, &state))
+        }
+        effects.append(
           .run { send in
             try await clock.sleep(for: Self.undoTime)
             await send(.undoExpired)
           }
           .cancellable(id: CancelID.undo, cancelInFlight: true)
         )
+        return .merge(effects)
 
       case .undoTapped:
-        guard let id = state.undoableID, var task = state.tasks[id: id] else { return .none }
-        task.completedAt = nil
-        state.tasks[id: id] = task
+        guard let id = state.undoableID, state.tasks[id: id] != nil else { return .none }
+        state.tasks[id: id]?.completedAt = nil
         state.undoableID = nil
-        return .merge(.cancel(id: CancelID.undo), write(task))
+        return .merge(.cancel(id: CancelID.undo), update(id, "completedAt", nil as Date?))
 
       case .undoExpired:
         state.undoableID = nil
@@ -341,12 +331,7 @@ public struct TasksFeature: Sendable {
         guard let task = state.tasks.remove(id: id) else { return .none }
         if state.openTaskID == id { state.openTaskID = nil }
         if state.undoableID == id { state.undoableID = nil }
-        return .run { _ in
-          _ = try await database.write { db in try task.delete(db) }
-          await files.remove(task.folderURL)
-        } catch: { error, _ in
-          logger.error("Deleting a task failed: \(error, privacy: .public)")
-        }
+        return .merge(.cancel(id: CancelID.titleSave(id)), delete([task]))
 
       case let .openSourceTapped(id):
         guard let source = state.tasks[id: id]?.source else { return .none }
@@ -489,11 +474,47 @@ public struct TasksFeature: Sendable {
     )
   }
 
-  private func write(_ task: TaskItem) -> Effect<Action> {
+  /// Writes one change: only its own column, so it never overwrites another change written meanwhile, such as the
+  /// recognized text or the done mark.
+  private func update(
+    _ id: TaskItem.ID,
+    _ column: String,
+    _ value: (any DatabaseValueConvertible & Sendable)?,
+    after delay: Duration? = nil
+  ) -> Effect<Action> {
     .run { _ in
-      try await database.write { db in try task.update(db) }
+      if let delay { try await clock.sleep(for: delay) }
+      try await database.write { db in
+        try db.execute(
+          sql: "UPDATE \(TaskItem.databaseTableName) SET \(column) = ? WHERE id = ?",
+          arguments: [value, id.uuidString]
+        )
+      }
     } catch: { error, _ in
       logger.error("Saving a task failed: \(error, privacy: .public)")
+    }
+  }
+
+  /// Leaving the title: an emptied one is "Task 13" again, and it is saved now rather than after the pause.
+  private func commitTitle(_ id: TaskItem.ID, _ state: inout State) -> Effect<Action> {
+    guard let task = state.tasks[id: id] else { return .none }
+    state.tasks[id: id]?.title = task.displayTitle
+    return .merge(.cancel(id: CancelID.titleSave(id)), update(id, "title", task.displayTitle))
+  }
+
+  /// Rows first, then the pictures.
+  private func delete(_ tasks: [TaskItem]) -> Effect<Action> {
+    .run { _ in
+      try await database.write { db in
+        for task in tasks {
+          _ = try task.delete(db)
+        }
+      }
+      for task in tasks {
+        await files.remove(task.folderURL)
+      }
+    } catch: { error, _ in
+      logger.error("Deleting tasks failed: \(error, privacy: .public)")
     }
   }
 
@@ -505,18 +526,7 @@ public struct TasksFeature: Sendable {
     for task in old {
       state.tasks.remove(id: task.id)
     }
-    return .run { _ in
-      try await database.write { db in
-        for task in old {
-          _ = try task.delete(db)
-        }
-      }
-      for task in old {
-        await files.remove(task.folderURL)
-      }
-    } catch: { error, _ in
-      logger.error("Deleting old tasks failed: \(error, privacy: .public)")
-    }
+    return delete(Array(old))
   }
 }
 

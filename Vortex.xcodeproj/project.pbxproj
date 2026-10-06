@@ -10,9 +10,11 @@
 		BAA1CBE9865ABC964A732499 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D333C57DF64394ECC7341A50 /* AppDelegate.swift */; };
 		C994DC9C50F79818EF9FF7E7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C80B0DB8C2376DE1C7C01F /* main.swift */; };
 		D811EC96E993713014C4D64E /* VortexShell in Frameworks */ = {isa = PBXBuildFile; productRef = 619B1D86983F65929201911C /* VortexShell */; };
+		DD6434C2467BB29E815C7109 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 08D820EFEBD8985D1741A7E5 /* InfoPlist.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		08D820EFEBD8985D1741A7E5 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		22BC3AEFE278CAB1429A2B0E /* Vortex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vortex.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		66BC97C8411DEA204D599C3D /* Packages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Packages; path = Packages; sourceTree = SOURCE_ROOT; };
 		D333C57DF64394ECC7341A50 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -56,9 +58,18 @@
 			path = Packages;
 			sourceTree = "<group>";
 		};
+		C6237923FCF5756C2AB4F0D1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				08D820EFEBD8985D1741A7E5 /* InfoPlist.xcstrings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		E692AEE1F55A7855730DB7EA /* App */ = {
 			isa = PBXGroup;
 			children = (
+				C6237923FCF5756C2AB4F0D1 /* Resources */,
 				E6CF27645AA0C850C4C42B27 /* Sources */,
 			);
 			path = App;
@@ -82,6 +93,7 @@
 			buildPhases = (
 				515E87981F9A3BFF58AA4B65 /* Rule: no network outside Secrets */,
 				E51A05B1913ABB1FAA6EBB24 /* Sources */,
+				4F6440388F4C27DC21DF2BDF /* Resources */,
 				CB542D0FFDA709EBEE26B977 /* Frameworks */,
 			);
 			buildRules = (
@@ -117,6 +129,7 @@
 			knownRegions = (
 				Base,
 				en,
+				uk,
 			);
 			mainGroup = 0CB66F5437BD95E4ADEBBA49;
 			minimizedProjectReferenceProxies = 1;
@@ -132,6 +145,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4F6440388F4C27DC21DF2BDF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD6434C2467BB29E815C7109 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		515E87981F9A3BFF58AA4B65 /* Rule: no network outside Secrets */ = {

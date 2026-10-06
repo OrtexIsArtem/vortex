@@ -16,12 +16,7 @@ func testScreenshot() -> Screenshot {
   )!
   context.setFillColor(CGColor(gray: 1, alpha: 1))
   context.fill(CGRect(x: 0, y: 0, width: 80, height: 40))
-  return Screenshot(
-    image: ScreenImage(cgImage: context.makeImage()!, scale: 2),
-    screenFrame: CGRect(x: 0, y: 0, width: 40, height: 20),
-    notch: nil,
-    displayID: 1
-  )
+  return Screenshot(image: ScreenImage(cgImage: context.makeImage()!, scale: 2), notch: nil, displayID: 1)
 }
 
 let telegram = FrontWindow(app: AppInfo(bundleID: "ru.keepcoder.Telegram", name: "Telegram"), windowTitle: "mobile-team")
@@ -71,6 +66,7 @@ struct TasksFeatureTests {
       $0.frontWindowClient.current = { telegram }
       $0.textRecognitionClient.recognize = { image in image.size.width < 40 ? "Fix the pay button\nsecond line" : "whole screen #mobile-team" }
       $0.hotkeyClient.presses = { [shortcut] _ in shortcut.stream }
+      $0.notificationClient.requestAuthorization = { true }
       $0.notificationClient.post = { [posted] id, _, _, _ in posted.withValue { $0.append(id) } }
     }
     store.exhaustivity = .off
@@ -165,7 +161,7 @@ struct TasksFeatureTests {
   }
 
   @Test
-  func withoutScreenRecordingItAsksAndSaysHowToAllowIt() async {
+  func withoutScreenRecordingTheFirstCaptureAsksAndLaterOnesOpenSystemSettings() async {
     hasAccess.setValue(false)
     let store = makeStore()
     await store.send(.start)
@@ -174,24 +170,33 @@ struct TasksFeatureTests {
     #expect(store.state.capture == nil)
     #expect(store.state.hasScreenAccess == false)
     #expect(accessRequests.value == 1)
-    await store.finish(timeout: .seconds(1))
-    #expect(posted.value == [TasksFeature.noAccessNotificationID])
+    #expect(opened.value.isEmpty)
+    // The system's prompt shows once ever; this is kept for the next launches too.
+    #expect(store.state.settings.askedForScreenRecording)
+    await store.send(.captureRequested)
+    await store.receive(\.captureFailed)
+    #expect(accessRequests.value == 1)
+    #expect(opened.value == [TasksFeature.screenSettingsURL.absoluteString])
     await store.send(.stop)
+    await store.finish()
+    #expect(posted.value == [TasksFeature.noAccessNotificationID, TasksFeature.noAccessNotificationID])
   }
 
   @Test
-  func aSecondPressWhileCapturingDoesNothing() async throws {
-    let store = makeStore()
+  func aPressWhileCapturingDoesNothing() async {
+    var starting = TasksFeature.State()
+    starting.isEnabled = true
+    starting.isStartingCapture = true
+    let store = makeStore(starting)
+    // While the screen is being taken.
+    await store.send(.captureRequested).finish()
+    #expect(screenshots.value == 0)
+    // While the frozen screen shows.
     await store.send(.start)
-    await store.send(.captureRequested)
-    // While the screen is being taken, and while the frozen screen shows.
-    await store.send(.captureRequested)
-    try await Task.sleep(for: .milliseconds(100))
-    await store.send(.captureRequested)
-    try await Task.sleep(for: .milliseconds(100))
-    #expect(screenshots.value == 1)
+    await store.send(.captureTaken(testScreenshot(), telegram))
+    await store.send(.captureRequested).finish()
+    #expect(screenshots.value == 0)
     #expect(store.state.capture != nil)
-    #expect(store.state.isStartingCapture == false)
     await store.send(.stop)
   }
 
@@ -203,8 +208,7 @@ struct TasksFeatureTests {
     await captureTask(store)
     await captureTask(store)
     let second = try #require(store.state.tasks.first { $0.number == 2 })
-    await store.send(.deleteTapped(second.id))
-    try await Task.sleep(for: .milliseconds(50))
+    await store.send(.deleteTapped(second.id)).finish()
     shortcut.continuation.yield()
     await store.receive(\.captureTaken)
     #expect(store.state.capture?.number == 3)
@@ -287,9 +291,8 @@ struct TasksFeatureTests {
     let task = try #require(store.state.tasks.first)
     await store.send(.doneTapped(task.id))
     now.withValue { $0 += TimeInterval(TasksFeature.keptDays * 86_400 + 60) }
-    await store.send(.tabShown)
+    await store.send(.tabShown).finish()
     #expect(store.state.tasks.isEmpty)
-    try await Task.sleep(for: .milliseconds(50))
     #expect(removed.value.contains(task.folderURL))
     #expect(try await database.read { db in try TaskItem.fetchAllReadable(db) }.isEmpty)
     await store.send(.stop)
@@ -302,9 +305,8 @@ struct TasksFeatureTests {
     await store.receive(\.loaded)
     await captureTask(store)
     let task = try #require(store.state.tasks.first)
-    await store.send(.openSourceTapped(task.id))
-    await store.send(.screenTapped(task.id))
-    try await Task.sleep(for: .milliseconds(50))
+    await store.send(.openSourceTapped(task.id)).finish()
+    await store.send(.screenTapped(task.id)).finish()
     #expect(opened.value == ["ru.keepcoder.Telegram", "screen.heic"])
     await store.send(.stop)
   }
@@ -317,12 +319,48 @@ struct TasksFeatureTests {
     await captureTask(store)
     let task = try #require(store.state.tasks.first)
     await store.send(.titleChanged(task.id, ""))
-    await store.send(.titleCommitted(task.id))
+    await store.send(.titleCommitted(task.id)).finish()
     #expect(store.state.tasks[id: task.id]?.title == TaskItem.defaultTitle(number: 1))
-    await store.send(.priorityChanged(task.id, .high))
-    try await Task.sleep(for: .milliseconds(50))
+    await store.send(.priorityChanged(task.id, .high)).finish()
     let saved = try await database.read { db in try TaskItem.fetchAllReadable(db) }
     #expect(saved.first?.priority == .high)
+    #expect(saved.first?.title == TaskItem.defaultTitle(number: 1))
+    await store.send(.stop)
+  }
+
+  @Test
+  func aTitleSavedAfterThePauseNeverUndoesOtherChangesMadeMeanwhile() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    let typing = await store.send(.titleChanged(task.id, "Pay button"))
+    await store.send(.priorityChanged(task.id, .high)).finish()
+    await store.send(.doneTapped(task.id))
+    await clock.advance(by: .milliseconds(400))
+    await typing.finish()
+    let saved = try #require(try await database.read { db in try TaskItem.fetchAllReadable(db) }.first)
+    #expect(saved.title == "Pay button")
+    #expect(saved.priority == .high)
+    #expect(saved.isDone)
+    #expect(saved.text == task.text)
+    await store.send(.stop)
+  }
+
+  @Test
+  func leavingTheCardWithAnEmptiedTitleSavesTheDefault() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store, title: "Pay button")
+    let task = try #require(store.state.tasks.first)
+    await store.send(.taskTapped(task.id))
+    await store.send(.titleChanged(task.id, "  "))
+    #expect(store.state.tasks[id: task.id]?.displayTitle == TaskItem.defaultTitle(number: 1))
+    await store.send(.backTapped).finish()
+    #expect(store.state.tasks[id: task.id]?.title == TaskItem.defaultTitle(number: 1))
+    let saved = try await database.read { db in try TaskItem.fetchAllReadable(db) }
     #expect(saved.first?.title == TaskItem.defaultTitle(number: 1))
     await store.send(.stop)
   }

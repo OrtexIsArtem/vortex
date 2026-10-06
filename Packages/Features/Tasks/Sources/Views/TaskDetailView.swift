@@ -64,8 +64,11 @@ struct TaskDetailView: View {
       Button {
         store.send(.screenTapped(task.id))
       } label: {
-        TaskPicture(url: task.cropURL)
-          .frame(width: size.width, height: size.height)
+        // At its own proportions, so the thumbnail fills it without cutting anything off.
+        FileThumbnail(url: task.cropURL, size: size) {
+          VortexColor.thumbnail
+        }
+        .frame(width: size.width, height: size.height)
           // A small radius: the framed text often reaches the very corners.
           .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
           .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(VortexColor.line))
@@ -96,16 +99,8 @@ struct TaskDetailView: View {
         if !isFocused { store.send(.titleCommitted(task.id)) }
       }
 
-      SegmentedPicker(
-        selection: Binding(get: { task.priority }, set: { store.send(.priorityChanged(task.id, $0)) }),
-        options: [TaskItem.Priority.low, .medium, .high]
-      ) { priority in
-        HStack(spacing: 5) {
-          PriorityBars(priority: priority)
-          priority.name
-        }
-      }
-      .font(.system(size: 12))
+      PriorityPicker(selection: Binding(get: { task.priority }, set: { store.send(.priorityChanged(task.id, $0)) }))
+        .font(.system(size: 12))
 
       VStack(alignment: .leading, spacing: 4) {
         SourceLine(source: task.source, date: task.createdAt)
@@ -146,27 +141,5 @@ struct TaskDetailView: View {
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-  }
-}
-
-/// A task's picture at its own proportions, read in the background.
-struct TaskPicture: View {
-  let url: URL
-  @State private var image: NSImage?
-
-  var body: some View {
-    Group {
-      if let image {
-        Image(nsImage: image)
-          .resizable()
-          .interpolation(.high)
-          .aspectRatio(contentMode: .fit)
-      } else {
-        VortexColor.thumbnail
-      }
-    }
-    .task(id: url) {
-      image = await Task.detached(priority: .userInitiated) { [url] in NSImage(contentsOf: url) }.value
-    }
   }
 }

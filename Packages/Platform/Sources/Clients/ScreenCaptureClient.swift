@@ -64,20 +64,27 @@ public struct ScreenImage: @unchecked Sendable, Equatable {
 /// A whole display as it looked at one moment.
 public struct Screenshot: Equatable, Sendable {
   public var image: ScreenImage
-  /// The display, in AppKit screen coordinates.
-  public var screenFrame: CGRect
   /// The hardware notch, in points from the display's top left corner; nil without one.
   public var notch: CGRect?
   /// How much of the bottom the Dock takes, in points.
   public var bottomInset: CGFloat
   public var displayID: CGDirectDisplayID
 
-  public init(image: ScreenImage, screenFrame: CGRect, notch: CGRect?, bottomInset: CGFloat = 0, displayID: CGDirectDisplayID) {
+  public init(image: ScreenImage, notch: CGRect?, bottomInset: CGFloat = 0, displayID: CGDirectDisplayID) {
     self.image = image
-    self.screenFrame = screenFrame
     self.notch = notch
     self.bottomInset = bottomInset
     self.displayID = displayID
+  }
+
+  /// A picture file shown as if it were the main display now, for scripted tests of a capture; nil when it can't be
+  /// read.
+  @MainActor
+  public static func mainDisplay(showing url: URL) -> Screenshot? {
+    guard let screen = NSScreen.main, let image = ScreenImage(contentsOf: url, scale: screen.backingScaleFactor) else {
+      return nil
+    }
+    return Screenshot(image: image, notch: screen.notchInPoints, bottomInset: screen.dockHeight, displayID: screen.displayNumber)
   }
 }
 
@@ -101,12 +108,11 @@ extension ScreenCaptureClient: DependencyKey {
     hasAccess: { CGPreflightScreenCaptureAccess() },
     requestAccess: { CGRequestScreenCaptureAccess() },
     captureScreenUnderPointer: {
-      let target = await MainActor.run { () -> (id: CGDirectDisplayID, frame: CGRect, scale: CGFloat, notch: CGRect?, dock: CGFloat)? in
+      let target = await MainActor.run { () -> (id: CGDirectDisplayID, scale: CGFloat, notch: CGRect?, dock: CGFloat)? in
         let pointer = NSEvent.mouseLocation
         guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main
         else { return nil }
-        let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
-        return (id, screen.frame, screen.backingScaleFactor, screen.notchInPoints, screen.visibleFrame.minY - screen.frame.minY)
+        return (screen.displayNumber, screen.backingScaleFactor, screen.notchInPoints, screen.dockHeight)
       }
       guard let target else { throw ScreenCaptureError.noDisplay }
       let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -123,7 +129,6 @@ extension ScreenCaptureClient: DependencyKey {
       let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
       return Screenshot(
         image: ScreenImage(cgImage: image, scale: target.scale),
-        screenFrame: target.frame,
         notch: target.notch,
         bottomInset: target.dock,
         displayID: target.id
@@ -142,6 +147,16 @@ extension DependencyValues {
 }
 
 extension NSScreen {
+  /// The number Core Graphics and ScreenCaptureKit know the display by.
+  var displayNumber: CGDirectDisplayID {
+    (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
+  }
+
+  /// How much of the bottom the Dock takes, in points; 0 when it is hidden or at a side.
+  var dockHeight: CGFloat {
+    visibleFrame.minY - frame.minY
+  }
+
   /// The hardware notch, in points from the screen's top left corner; nil when there is none.
   var notchInPoints: CGRect? {
     guard safeAreaInsets.top > 0, let left = auxiliaryTopLeftArea?.width, let right = auxiliaryTopRightArea?.width else {
