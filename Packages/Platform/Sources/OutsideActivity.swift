@@ -1,6 +1,7 @@
 import Observation
 
-/// Something of Vortex's in use outside its window: a drag out of it, Quick Look, the folder picker.
+/// Something of Vortex's in use outside its window: a drag out of it, Quick Look, the folder picker, a picture over the
+/// whole display (`ScreenOverlay.showKeepingFront`).
 /// The shell keeps the window open while any of it lasts.
 @MainActor
 @Observable

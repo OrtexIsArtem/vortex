@@ -436,6 +436,16 @@
         }
       }
     },
+    "The whole screen" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Весь екран"
+          }
+        }
+      }
+    },
     "The whole screen is saved too" : {
       "localizations" : {
         "uk" : {

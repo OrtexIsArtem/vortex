@@ -32,6 +32,12 @@ public struct TaskFilter: Equatable, Sendable {
   public init() {}
 }
 
+/// A task's whole screen while it is shown over the display; `image` is nil until its picture is read.
+struct TaskScreen: Equatable {
+  let taskID: TaskItem.ID
+  var image: ScreenImage?
+}
+
 /// Tasks taken from the screen: a shortcut freezes it, a frame picks the part that matters, Return saves it with the
 /// app, window title and page it came from. The list filters and searches them, also by the text on their pictures,
 /// which is recognized in the background.
@@ -58,6 +64,8 @@ public struct TasksFeature: Sendable {
     var openTaskID: TaskItem.ID?
     /// The task just marked done, while that can still be taken back.
     var undoableID: TaskItem.ID?
+    /// A task's whole screen, shown over the display.
+    var screen: TaskScreen?
     /// The capture under way, from the frozen screen until it is saved or cancelled.
     var capture: CaptureFeature.State?
     /// The shortcut was pressed and the screen is being taken: another press waits for it.
@@ -136,8 +144,11 @@ public struct TasksFeature: Sendable {
     case undoExpired
     case deleteTapped(TaskItem.ID)
     case openSourceTapped(TaskItem.ID)
-    /// The whole screen of the task, in Quick Look.
+    /// The whole screen of the task, over the display, with the framed part marked; again closes it.
     case screenTapped(TaskItem.ID)
+    case screenLoaded(TaskItem.ID, ScreenImage?)
+    /// Esc, Space, Return or a click on the whole screen, or another app coming to the front.
+    case screenClosed
     case filterChanged(TaskFilter)
     case queryChanged(String)
     /// The tab became visible: the window opened on it, or the user switched to it.
@@ -155,7 +166,6 @@ public struct TasksFeature: Sendable {
   @Dependency(\.frontWindowClient) var frontWindow
   @Dependency(\.hotkeyClient) var hotkeys
   @Dependency(\.notificationClient) var notifications
-  @Dependency(\.quickLookClient) var quickLook
   @Dependency(\.screenCaptureClient) var screenCapture
   @Dependency(\.textRecognitionClient) var textRecognition
   @Dependency(\.uuid) var uuid
@@ -165,6 +175,7 @@ public struct TasksFeature: Sendable {
     case shortcut
     case startCapture
     case undo
+    case screen
     case titleSave(TaskItem.ID)
   }
 
@@ -181,7 +192,13 @@ public struct TasksFeature: Sendable {
         state.isEnabled = false
         state.capture = nil
         state.isStartingCapture = false
-        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.shortcut), .cancel(id: CancelID.startCapture))
+        state.screen = nil
+        return .merge(
+          .cancel(id: CancelID.load),
+          .cancel(id: CancelID.shortcut),
+          .cancel(id: CancelID.startCapture),
+          .cancel(id: CancelID.screen)
+        )
 
       case let .loaded(tasks, lastNumber):
         state.tasks = IdentifiedArray(tasks, uniquingIDsWith: { first, _ in first })
@@ -198,6 +215,8 @@ public struct TasksFeature: Sendable {
       case .captureRequested:
         guard state.isEnabled, state.capture == nil, !state.isStartingCapture else { return .none }
         state.isStartingCapture = true
+        // A whole screen shown now would lie under the frozen one.
+        state.screen = nil
         return .run { [hasAsked = state.settings.askedForScreenRecording] send in
           guard screenCapture.hasAccess() else {
             // The system asks once ever; after that only System Settings can allow it, so it opens there.
@@ -331,6 +350,7 @@ public struct TasksFeature: Sendable {
         guard let task = state.tasks.remove(id: id) else { return .none }
         if state.openTaskID == id { state.openTaskID = nil }
         if state.undoableID == id { state.undoableID = nil }
+        if state.screen?.taskID == id { state.screen = nil }
         return .merge(.cancel(id: CancelID.titleSave(id)), delete([task]))
 
       case let .openSourceTapped(id):
@@ -345,8 +365,36 @@ public struct TasksFeature: Sendable {
         }
 
       case let .screenTapped(id):
+        // It would lie under the frozen screen.
+        guard state.capture == nil, !state.isStartingCapture else { return .none }
+        if let screen = state.screen, screen.taskID == id {
+          // The second click of a double click, while the picture is read, leaves it coming.
+          guard screen.image != nil else { return .none }
+          state.screen = nil
+          return .cancel(id: CancelID.screen)
+        }
         guard let task = state.tasks[id: id] else { return .none }
-        return .run { _ in await quickLook.toggle([task.screenURL]) }
+        state.screen = TaskScreen(taskID: id)
+        return .run { send in
+          // Read and decoded here, off the main thread, so it shows at once and whole.
+          let data = try? await files.read(task.screenURL)
+          await send(.screenLoaded(id, data.flatMap { ScreenImage(decoding: $0) }))
+        }
+        .cancellable(id: CancelID.screen, cancelInFlight: true)
+
+      case let .screenLoaded(id, image):
+        guard state.screen?.taskID == id else { return .none }
+        guard let image else {
+          logger.error("The whole screen of a task could not be read")
+          state.screen = nil
+          return .none
+        }
+        state.screen?.image = image
+        return .none
+
+      case .screenClosed:
+        state.screen = nil
+        return .cancel(id: CancelID.screen)
 
       case let .filterChanged(filter):
         state.filter = filter
@@ -425,6 +473,10 @@ public struct TasksFeature: Sendable {
         source: draft.source,
         cropWidth: part.size.width,
         cropHeight: part.size.height,
+        cropX: draft.frame.minX,
+        cropY: draft.frame.minY,
+        screenWidth: draft.screenshot.image.size.width,
+        screenHeight: draft.screenshot.image.size.height,
         text: nil
       )
       // Pictures first: a row without them would show an empty task.
@@ -525,6 +577,7 @@ public struct TasksFeature: Sendable {
     guard !old.isEmpty else { return .none }
     for task in old {
       state.tasks.remove(id: task.id)
+      if state.screen?.taskID == task.id { state.screen = nil }
     }
     return delete(Array(old))
   }

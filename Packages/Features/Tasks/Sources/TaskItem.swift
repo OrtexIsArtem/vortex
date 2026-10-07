@@ -26,10 +26,22 @@ public struct TaskItem: Identifiable, Equatable, Sendable {
   /// The framed part's size in points, to lay it out before the picture loads.
   public var cropWidth: Double
   public var cropHeight: Double
+  /// Where the framed part was on the screen, and the screen's size, in points, to mark the part on the whole screen;
+  /// nil for tasks saved before they were kept.
+  public var cropX: Double?
+  public var cropY: Double?
+  public var screenWidth: Double?
+  public var screenHeight: Double?
   /// The text recognized on both pictures, for search; nil until recognition has run.
   public var text: String?
 
   public var isDone: Bool { completedAt != nil }
+
+  /// Where the framed part lies on the whole screen, in fractions of its width and height; nil when not known.
+  var cropArea: CGRect? {
+    guard let cropX, let cropY, let screenWidth, let screenHeight, screenWidth > 0, screenHeight > 0 else { return nil }
+    return CGRect(x: cropX / screenWidth, y: cropY / screenHeight, width: cropWidth / screenWidth, height: cropHeight / screenHeight)
+  }
 
   /// The title as shown and saved: an emptied one is "Task 13" again.
   var displayTitle: String {
@@ -82,6 +94,15 @@ extension TaskItem: Codable, FetchableRecord, PersistableRecord {
       try db.create(table: counterTable) { table in
         table.primaryKey("id", .integer).check { $0 == 1 }
         table.column("lastNumber", .integer).notNull()
+      }
+    }
+    migrator.registerMigration("tasks.v2") { db in
+      // Where the framed part was on the screen; empty for the tasks saved before.
+      try db.alter(table: databaseTableName) { table in
+        table.add(column: "cropX", .double)
+        table.add(column: "cropY", .double)
+        table.add(column: "screenWidth", .double)
+        table.add(column: "screenHeight", .double)
       }
     }
     return migrator

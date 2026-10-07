@@ -108,8 +108,9 @@ private struct AreaPointer: ViewModifier {
 }
 
 /// A thin line around the frame, marks at its corners and its size under it.
-private struct FrameOutline: View {
+struct FrameOutline: View {
   let frame: CGRect
+  var showsSize = true
 
   var body: some View {
     ZStack(alignment: .topLeading) {
@@ -121,14 +122,16 @@ private struct FrameOutline: View {
         .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .square))
         .frame(width: frame.width, height: frame.height)
         .offset(x: frame.minX, y: frame.minY)
-      Text(verbatim: "\(Int(frame.width.rounded())) × \(Int(frame.height.rounded()))")
-        .font(.system(size: 11, weight: .medium).monospacedDigit())
-        .foregroundStyle(Color.white)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(Capsule().fill(Color.black.opacity(0.7)))
-        .fixedSize()
-        .offset(x: frame.minX, y: frame.maxY + 6)
+      if showsSize {
+        Text(verbatim: "\(Int(frame.width.rounded())) × \(Int(frame.height.rounded()))")
+          .font(.system(size: 11, weight: .medium).monospacedDigit())
+          .foregroundStyle(Color.white)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 3)
+          .background(Capsule().fill(Color.black.opacity(0.7)))
+          .fixedSize()
+          .offset(x: frame.minX, y: frame.maxY + 6)
+      }
     }
     .allowsHitTesting(false)
   }
@@ -171,7 +174,7 @@ private struct Hint: View {
 }
 
 /// The notch, grown a little to the sides like its ears: what is going on, and that Esc leaves.
-private struct NotchPill: View {
+struct NotchPill: View {
   let notch: CGRect?
   let screenWidth: CGFloat
   let label: Text

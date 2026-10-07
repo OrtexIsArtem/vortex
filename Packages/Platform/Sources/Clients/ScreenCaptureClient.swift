@@ -1,5 +1,6 @@
 import AppKit
 import ComposableArchitecture
+import CoreImage
 import ImageIO
 import ScreenCaptureKit
 import UniformTypeIdentifiers
@@ -22,6 +23,20 @@ public struct ScreenImage: @unchecked Sendable, Equatable {
     else { return nil }
     self.init(cgImage: image, scale: scale)
   }
+
+  /// The contents of an image file, decoded here, on the calling thread, so drawing it never waits for that; nil when
+  /// it can't be read. Core Image decodes HEIC on the hardware decoder: a whole screen in about 20 ms rather than 140.
+  public init?(decoding data: Data, scale: CGFloat = 1) {
+    guard let image = CIImage(data: data, options: [.applyOrientationProperty: true]) else { return nil }
+    let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    guard let decoded = Self.decoder.createCGImage(image, from: image.extent, format: .BGRA8, colorSpace: space) else {
+      return nil
+    }
+    self.init(cgImage: decoded, scale: scale)
+  }
+
+  /// Made on first use, which takes a moment; Core Image contexts are safe to use from any thread.
+  private static let decoder = CIContext(options: [.cacheIntermediates: false])
 
   public static func == (lhs: ScreenImage, rhs: ScreenImage) -> Bool {
     lhs.cgImage === rhs.cgImage && lhs.scale == rhs.scale

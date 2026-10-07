@@ -1,10 +1,10 @@
 # Data
 
-Tables are created by the feature's migrator (`tasks.v1`) before its first query.
+Tables are created by the feature's migrator (`tasks.v1`, `tasks.v2`) before its first query.
 
 | What | Where | How long |
 | --- | --- | --- |
-| A task: number, title, priority, when taken and done, source (app, window title, page address), the part's size, recognized text | table `tasks_task`, one row per task | until deleted, or 30 days after it was done |
+| A task: number, title, priority, when taken and done, source (app, window title, page address), the part's size and place on the screen, the screen's size, recognized text | table `tasks_task`, one row per task | until deleted, or 30 days after it was done |
 | The last number given | table `tasks_counter` | always |
 | The framed part, PNG | DataFolder/Tasks/<id>/crop.png | with its task |
 | The whole screen, HEIC | DataFolder/Tasks/<id>/screen.heic | with its task |
@@ -15,4 +15,6 @@ Tables are created by the feature's migrator (`tasks.v1`) before its first query
 - The pictures are written before the row, so a row always has them; at launch, picture folders without a row are deleted.
 - Rows this version can't read (written by a newer Vortex) are skipped and kept.
 - Recognized text is empty until recognition has run; empty text means none was found.
+- The part's place and the screen's size are in points; tasks saved before `tasks.v2` have none, and the whole screen shows them undimmed.
+- The whole screen is saved as taken; the dimming around the part is only drawn when it is shown.
 - A change in the card writes only its own column (title, priority, done), never the whole row.

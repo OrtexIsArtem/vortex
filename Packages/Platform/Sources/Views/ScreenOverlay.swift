@@ -1,21 +1,32 @@
 import AppKit
 import SwiftUI
+import VortexCore
 
 /// A window over all of one display, above everything, the menu bar and the notch included: the frozen screen while a
-/// task is captured. Esc and Return that no field takes go to `onEscape` and `onReturn`.
+/// task is captured, or the whole screen of a task. The content finds the display's notch in `\.notchCutout`.
 ///
-/// Vortex comes to the front with it, so the pointer and the keyboard work from the start; `close` gives the front
-/// back to the app the user was in, with its keyboard focus.
+/// `show` brings Vortex to the front with it, so the pointer and the keyboard work from the start; `close` gives the
+/// front back to the app the user was in, with its keyboard focus. Esc and Return that no field takes go to
+/// `onEscape` and `onReturn`.
 ///
-/// An app coming to the front calls `onInterrupted` rather than staying hidden under it, also one that came between
-/// the moment the screen was taken and `show`: a prompt of the system (Screen Recording's periodic confirmation, a
-/// browser's Automation), or the app picked with ⌘Tab.
+/// `showKeepingFront` leaves the app in front as it is: the window takes the keyboard without bringing Vortex to the
+/// front, `close` fades it out and gives the keyboard back to the window of Vortex's that had it (unless another app
+/// came to the front meanwhile), and the shell keeps its window open meanwhile. Esc, Return and Space go to
+/// `onDismiss`.
+///
+/// An app coming to the front calls `onInterrupted` (`onDismiss`) rather than staying hidden under it, also one that
+/// came between the moment the screen was taken and `show`: a prompt of the system (Screen Recording's periodic
+/// confirmation, a browser's Automation), or the app picked with ⌘Tab.
 @MainActor
 public final class ScreenOverlay {
   private var panel: OverlayPanel?
   private var activations: (any NSObjectProtocol)?
   /// The app the user was in, which gets the front back.
   private var coveredApp: NSRunningApplication?
+  /// Shown by `showKeepingFront`, which holds the shell's window open until `close`.
+  private var keepsFront = false
+  /// The window of Vortex's that had the keyboard before `showKeepingFront`, which gets it back.
+  private weak var keyWindowBefore: NSWindow?
 
   public init() {}
 
@@ -38,15 +49,47 @@ public final class ScreenOverlay {
       return
     }
     guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
+    stopKeepingFront()
+    present(content, on: screen, onEscape: onEscape, onReturn: onReturn, onSpace: nil, onInterrupted: onInterrupted)
+    coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
+    NSApp.activate()
+  }
+
+  /// Over the display under the pointer, leaving the app in front where it is.
+  public func showKeepingFront(_ content: some View, onDismiss: @escaping @MainActor () -> Void) {
+    let pointer = NSEvent.mouseLocation
+    guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main
+    else { return }
+    // Shown the other way: that ends first, with the front given back.
+    if isShown, !keepsFront { close() }
+    if !keepsFront {
+      keepsFront = true
+      // Never an overlay itself, such as one still fading out.
+      keyWindowBefore = NSApp.keyWindow.flatMap { $0 is OverlayPanel ? nil : $0 }
+      OutsideActivity.shared.begin()
+    }
+    coveredApp = nil
+    present(content, on: screen, onEscape: onDismiss, onReturn: onDismiss, onSpace: onDismiss, onInterrupted: onDismiss)
+  }
+
+  private func present(
+    _ content: some View,
+    on screen: NSScreen,
+    onEscape: @escaping @MainActor () -> Void,
+    onReturn: @escaping @MainActor () -> Void,
+    onSpace: (@MainActor () -> Void)?,
+    onInterrupted: @escaping @MainActor () -> Void
+  ) {
     let panel = self.panel ?? OverlayPanel()
     panel.onEscape = onEscape
     panel.onReturn = onReturn
-    panel.contentView = NSHostingView(rootView: AnyView(content))
+    panel.onSpace = onSpace
+    panel.contentView = NSHostingView(rootView: AnyView(content.environment(\.notchCutout, screen.notchInPoints)))
     panel.setFrame(screen.frame, display: true)
-    panel.makeKeyAndOrderFront(nil)
+    // In front of everything and with the keyboard also while Vortex is not the app in front.
+    panel.orderFrontRegardless()
+    panel.makeKey()
     self.panel = panel
-    coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
-    NSApp.activate()
     stopWatchingActivations()
     activations = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification,
@@ -56,8 +99,9 @@ public final class ScreenOverlay {
       let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
       guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
       MainActor.assumeIsolated {
-        // Once: another app coming meanwhile changes nothing.
+        // Once: another app coming meanwhile changes nothing. The keyboard stays with the app that came.
         self?.stopWatchingActivations()
+        self?.keyWindowBefore = nil
         onInterrupted()
       }
     }
@@ -82,13 +126,40 @@ public final class ScreenOverlay {
     target?.activate(from: .current)
   }
 
+  /// The shell's window may close again, and the window that had the keyboard gets it back.
+  private func stopKeepingFront() {
+    guard keepsFront else { return }
+    keepsFront = false
+    OutsideActivity.shared.end()
+    if let window = keyWindowBefore, window.isVisible { window.makeKey() }
+    keyWindowBefore = nil
+  }
+
   public func close() {
     stopWatchingActivations()
+    // The content's pointer, such as a crosshair, would stay until the app under it sets one.
+    NSCursor.arrow.set()
+    if keepsFront, let panel {
+      // Fades, so the screen behind comes back gently, and takes no clicks meanwhile. It is let go once the fade's time
+      // is up rather than when the fade reports its end, which with the screen locked may not come.
+      panel.ignoresMouseEvents = true
+      NSAnimationContext.runAnimationGroup { context in
+        context.duration = 0.15
+        panel.animator().alphaValue = 0
+      }
+      Task { @MainActor in
+        try? await Task.sleep(for: .milliseconds(150))
+        panel.orderOut(nil)
+        panel.contentView = nil
+      }
+      self.panel = nil
+      stopKeepingFront()
+      return
+    }
     panel?.orderOut(nil)
     panel?.contentView = nil
     panel = nil
-    // The content's pointer, such as a crosshair, would stay until the app under it sets one.
-    NSCursor.arrow.set()
+    stopKeepingFront()
     // Still in front, so nothing else took it meanwhile: the app the user was in gets it back.
     if NSApp.isActive {
       Self.giveFront(to: coveredApp)
@@ -100,6 +171,8 @@ public final class ScreenOverlay {
 private final class OverlayPanel: NSPanel {
   var onEscape: @MainActor () -> Void = {}
   var onReturn: @MainActor () -> Void = {}
+  /// Space, when it is taken; otherwise it goes on as any other key.
+  var onSpace: (@MainActor () -> Void)?
 
   init() {
     super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -134,6 +207,8 @@ private final class OverlayPanel: NSPanel {
     // Return and the keypad's Enter.
     if event.keyCode == 36 || event.keyCode == 76 {
       onReturn()
+    } else if event.keyCode == 49, let onSpace {
+      onSpace()
     } else {
       super.keyDown(with: event)
     }

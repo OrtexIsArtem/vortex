@@ -53,7 +53,10 @@ struct TasksFeatureTests {
       $0.fileClient.contents = { _ in [] }
       $0.fileClient.open = { [opened] url in opened.withValue { $0.append(url.absoluteString) } }
       $0.appsClient.open = { [opened] id, url in opened.withValue { $0.append(id + (url.map { " " + $0.absoluteString } ?? "")) } }
-      $0.quickLookClient.toggle = { [opened] urls in opened.withValue { $0 += urls.map(\.lastPathComponent) } }
+      $0.fileClient.read = { [written] url in
+        guard let data = written.value[url] else { throw CocoaError(.fileNoSuchFile) }
+        return data
+      }
       $0.screenCaptureClient.hasAccess = { [hasAccess] in hasAccess.value }
       $0.screenCaptureClient.requestAccess = { [accessRequests] in
         accessRequests.withValue { $0 += 1 }
@@ -306,8 +309,102 @@ struct TasksFeatureTests {
     await captureTask(store)
     let task = try #require(store.state.tasks.first)
     await store.send(.openSourceTapped(task.id)).finish()
-    await store.send(.screenTapped(task.id)).finish()
-    #expect(opened.value == ["ru.keepcoder.Telegram", "screen.heic"])
+    #expect(opened.value == ["ru.keepcoder.Telegram"])
+    await store.send(.stop)
+  }
+
+  @Test
+  func theWholeScreenShowsWithTheFramedPartAndClosesAgain() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    // A frame of 20 × 10 at 2, 2 on a screen of 40 × 20 points.
+    #expect(task.cropArea == CGRect(x: 0.05, y: 0.1, width: 0.5, height: 0.5))
+    await store.send(.screenTapped(task.id))
+    await store.receive(\.screenLoaded)
+    #expect(store.state.screen?.image?.cgImage.width == 80)
+    await store.send(.screenClosed)
+    #expect(store.state.screen == nil)
+    // A second time closes it, and so does the shortcut, before the screen freezes.
+    await store.send(.screenTapped(task.id))
+    await store.send(.screenTapped(task.id))
+    #expect(store.state.screen == nil)
+    await store.send(.screenTapped(task.id))
+    await store.receive(\.screenLoaded)
+    shortcut.continuation.yield()
+    await store.receive(\.captureRequested)
+    #expect(store.state.screen == nil)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aDoubleClickStillShowsTheWholeScreenAndACaptureKeepsItAway() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    // The second click comes while the picture is read.
+    let reading = AsyncStream.makeStream(of: Void.self)
+    store.dependencies.fileClient.read = { [written] url in
+      for await _ in reading.stream { break }
+      guard let data = written.value[url] else { throw CocoaError(.fileNoSuchFile) }
+      return data
+    }
+    await store.send(.screenTapped(task.id))
+    await store.send(.screenTapped(task.id))
+    reading.continuation.yield()
+    await store.receive(\.screenLoaded)
+    #expect(store.state.screen?.image != nil)
+    await store.send(.screenClosed)
+    // Neither while the screen is taken nor while it is frozen.
+    let taking = AsyncStream.makeStream(of: Void.self)
+    store.dependencies.screenCaptureClient.captureScreenUnderPointer = {
+      for await _ in taking.stream { break }
+      return testScreenshot()
+    }
+    shortcut.continuation.yield()
+    await store.receive(\.captureRequested)
+    await store.send(.screenTapped(task.id))
+    #expect(store.state.screen == nil)
+    taking.continuation.yield()
+    await store.receive(\.captureTaken)
+    await store.send(.screenTapped(task.id))
+    #expect(store.state.screen == nil)
+    await store.send(.capture(.cancelTapped))
+    await store.send(.stop)
+  }
+
+  @Test
+  func aWholeScreenShownGoesWithItsTaskAfterThirtyDays() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    await store.send(.doneTapped(task.id))
+    await store.send(.screenTapped(task.id))
+    await store.receive(\.screenLoaded)
+    now.withValue { $0 += TimeInterval(TasksFeature.keptDays * 86_400 + 60) }
+    await store.send(.tabShown).finish()
+    #expect(store.state.tasks.isEmpty)
+    #expect(store.state.screen == nil)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aWholeScreenThatCanNotBeReadDoesNotShow() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    written.withValue { $0[task.screenURL] = nil }
+    await store.send(.screenTapped(task.id))
+    await store.receive(\.screenLoaded)
+    #expect(store.state.screen == nil)
     await store.send(.stop)
   }
 

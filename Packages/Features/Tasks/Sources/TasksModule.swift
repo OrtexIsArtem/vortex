@@ -16,6 +16,7 @@ public enum TasksModule: FeatureModule {
   }
 
   private static var overlay: CaptureOverlay?
+  private static var screenOverlay: TaskScreenOverlay?
 
   public static func makeTab() -> AnyView {
     AnyView(TasksView(store: store))
@@ -28,6 +29,7 @@ public enum TasksModule: FeatureModule {
   public static func setEnabled(_ isEnabled: Bool) {
     if overlay == nil {
       overlay = CaptureOverlay(store: store)
+      screenOverlay = TaskScreenOverlay(store: store)
       #if DEBUG
         listenForDebugCommands()
       #endif
@@ -69,8 +71,9 @@ public enum TasksModule: FeatureModule {
         store.send(.capture(.saveTapped))
       }
       on("taskCancel") { _ in store.send(.capture(.cancelTapped)) }
-      // `…taskOpen`, `…taskDone` (userInfo `number`), `…taskBack`, `…taskQuery` (`text`), `…taskFilter` (`status`
-      // active|done, `period` today|yesterday|week|all, `priority` all|low|medium|high).
+      // `…taskOpen`, `…taskDone`, `…taskScreen` (shows the whole screen, or closes it), `…taskDelete` (userInfo
+      // `number`), `…taskBack`, `…taskQuery` (`text`), `…taskFilter` (`status` active|done, `period`
+      // today|yesterday|week|all, `priority` all|low|medium|high).
       func task(_ info: [String: String]) -> TaskItem.ID? {
         store.tasks.first { "\($0.number)" == info["number"] }?.id
       }
@@ -79,6 +82,7 @@ public enum TasksModule: FeatureModule {
       on("taskBack") { _ in store.send(.backTapped) }
       on("taskScreen") { info in if let id = task(info) { store.send(.screenTapped(id)) } }
       on("taskSource") { info in if let id = task(info) { store.send(.openSourceTapped(id)) } }
+      on("taskDelete") { info in if let id = task(info) { store.send(.deleteTapped(id)) } }
       // `…taskState` writes what the feature holds to the file at userInfo `path`, as JSON.
       on("taskState") { info in
         guard let path = info["path"] else { return }
@@ -90,6 +94,9 @@ public enum TasksModule: FeatureModule {
           "isFramed": store.capture?.isFramed ?? false,
           "suggestion": store.capture?.suggestion ?? "",
           "openTask": store.openTask?.number ?? 0,
+          "shownScreen": store.screen.flatMap { store.tasks[id: $0.taskID]?.number } ?? 0,
+          "keyWindow": NSApp.keyWindow.map { String(describing: type(of: $0)) } ?? "",
+          "frontApp": NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "",
           "tasks": store.tasks.map { ["number": $0.number, "title": $0.title, "done": $0.isDone, "text": $0.text ?? "<none>"] },
         ]
         try? JSONSerialization.data(withJSONObject: state, options: [.prettyPrinted, .sortedKeys])
