@@ -24,6 +24,7 @@
 - A row shows the done mark, the picture, title, source, priority and time («14:21», «Учора», «6 жовт.»), kept current past midnight.
 - The done mark finishes a task in one click: it leaves the active list and «Задачу виконано · Скасувати» shows for 5 s under the list; in Done it brings the task back.
 - A click on the done mark only marks the task; anywhere else on the row opens it.
+- Marked done in the list, the row crumples into a paper ball that flies into «Виконані», which bumps as it lands; the task leaves the list once the row has crumpled. With Reduce Motion it just leaves.
 - Empty: «Задач ще немає» with how to start; «Активних задач немає», «Виконаних задач ще немає», or «Нічого не знайдено» for a search or narrowed filters.
 
 ## The card

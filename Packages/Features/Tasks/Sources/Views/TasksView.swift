@@ -8,6 +8,13 @@ public struct TasksView: View {
   @Bindable var store: StoreOf<TasksFeature>
   @Environment(\.notchCutout) private var cutout
   @Environment(\.isWindowOpen) private var isWindowOpen
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  /// Rows marked done on their way into «Виконані».
+  @State private var flights: [DoneFlight] = []
+  /// The middle of «Виконані», where they land.
+  @State private var doneTarget: CGPoint?
+  /// Counts the landings, so «Виконані» bumps at each.
+  @State private var landings = 0
 
   public init(store: StoreOf<TasksFeature>) {
     self.store = store
@@ -21,10 +28,10 @@ public struct TasksView: View {
         TaskDetailView(task: task, store: store)
           .transition(.opacity)
       } else {
-        TaskFilters(store: store)
+        TaskFilters(store: store, landings: landings) { doneTarget = $0 }
           .padding(.horizontal, 10)
           .padding(.bottom, 10)
-        TaskList(store: store)
+        TaskList(store: store, onDone: throwToDone)
       }
       // Under the list rather than over it: laid over the scrolling list, the toast never got the click.
       if store.undoableID != nil {
@@ -34,11 +41,25 @@ public struct TasksView: View {
           .transition(.move(edge: .bottom).combined(with: .opacity))
       }
     }
+    .coordinateSpace(.named(DoneFlight.coordinateSpace))
+    .overlay {
+      DoneFlights(flights: flights) { flight in
+        flights.removeAll { $0.id == flight.id }
+        landings += 1
+      }
+    }
     .animation(.snappy(duration: 0.22), value: store.undoableID)
     .animation(.snappy(duration: 0.2), value: store.openTaskID)
     .task(id: isWindowOpen) {
       if isWindowOpen { store.send(.tabShown) }
     }
+  }
+
+  /// A row marked done crumples and flies into «Виконані», unless motion is reduced; false when it doesn't.
+  private func throwToDone(_ task: TaskItem, row: CGRect) -> Bool {
+    guard !reduceMotion, let doneTarget, row.width > 0 else { return false }
+    flights.append(DoneFlight(task: task, row: row, target: doneTarget))
+    return true
   }
 
   /// The title left of the notch; search and New right of it.
@@ -117,16 +138,32 @@ private struct SearchField: View {
 /// Status, priority and period, one row.
 private struct TaskFilters: View {
   let store: StoreOf<TasksFeature>
+  /// Each new value bumps «Виконані»: a task marked done has just landed in it.
+  let landings: Int
+  /// Where «Виконані» is, in the tab's coordinate space.
+  let onDoneTarget: (CGPoint) -> Void
 
   var body: some View {
     HStack(spacing: 8) {
       SegmentedPicker(selection: binding(\.status), options: TaskFilter.Status.allCases) { status in
         switch status {
-        case .active: Text("Active", bundle: .module)
-        case .done: Text("Done", bundle: .module)
+        case .active:
+          Text("Active", bundle: .module)
+        case .done:
+          Text("Done", bundle: .module)
+            .keyframeAnimator(initialValue: 1.0, trigger: landings) { content, scale in
+              content.scaleEffect(scale)
+            } keyframes: { _ in
+              CubicKeyframe(1.22, duration: 0.1)
+              SpringKeyframe(1, duration: 0.4, spring: .bouncy)
+            }
         }
       }
       .frame(width: 150)
+      // Two equal segments: «Виконані» is the right one.
+      .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneFlight.coordinateSpace)) } action: { frame in
+        onDoneTarget(CGPoint(x: frame.minX + frame.width * 0.75, y: frame.midY))
+      }
       SegmentedPicker(
         selection: binding(\.priority),
         options: [nil, TaskItem.Priority.high, .medium, .low]
@@ -166,6 +203,7 @@ private struct TaskFilters: View {
 
 private struct TaskList: View {
   let store: StoreOf<TasksFeature>
+  let onDone: (TaskItem, _ row: CGRect) -> Bool
 
   var body: some View {
     // Today and Yesterday move on at midnight, also while the list stays on screen.
@@ -192,7 +230,7 @@ private struct TaskList: View {
         ScrollView {
           LazyVStack(spacing: 2) {
             ForEach(tasks) { task in
-              TaskRow(task: task, now: now, store: store)
+              TaskRow(task: task, now: now, store: store, onDone: onDone)
             }
           }
           .padding(.horizontal, 6)
@@ -239,7 +277,13 @@ private struct TaskRow: View {
   let task: TaskItem
   let now: Date
   let store: StoreOf<TasksFeature>
+  /// The task is being marked done: its row, in the tab's coordinate space, takes off for «Виконані»; false when it
+  /// stays put (motion reduced).
+  let onDone: (TaskItem, _ row: CGRect) -> Bool
   @State private var isHovered = false
+  @State private var frame = CGRect.zero
+  /// Crumpling over the list: the row keeps its place, unseen, until the task leaves the list.
+  @State private var isThrown = false
 
   var body: some View {
     Button {
@@ -279,10 +323,23 @@ private struct TaskRow: View {
     .buttonStyle(.plain)
     // A button of its own over the row: a click on it marks the task and never opens it.
     .overlay(alignment: .leading) {
-      DoneMark(isDone: task.isDone) { store.send(.doneTapped(task.id)) }
-        .padding(.leading, 10)
+      DoneMark(isDone: task.isDone) {
+        guard !isThrown else { return }
+        guard !task.isDone, onDone(task, frame) else {
+          store.send(.doneTapped(task.id))
+          return
+        }
+        isThrown = true
+        Task {
+          try? await Task.sleep(for: DoneFlight.crumple)
+          store.send(.doneTapped(task.id))
+        }
+      }
+      .padding(.leading, 10)
     }
+    .opacity(isThrown ? 0 : 1)
     .onHover { isHovered = $0 }
+    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneFlight.coordinateSpace)) } action: { frame = $0 }
   }
 }
 
