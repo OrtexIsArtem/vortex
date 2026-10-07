@@ -9,10 +9,11 @@ import VortexCore
 /// front back to the app the user was in, with its keyboard focus. Esc and Return that no field takes go to
 /// `onEscape` and `onReturn`.
 ///
-/// `showKeepingFront` leaves the app in front as it is: the window takes the keyboard without bringing Vortex to the
-/// front, `close` fades it out and gives the keyboard back to the window of Vortex's that had it (unless another app
-/// came to the front meanwhile), and the shell keeps its window open meanwhile. Esc, Return and Space go to
-/// `onDismiss`.
+/// `showKeepingFront` leaves the app in front and the keyboard as they are, and the shell keeps its window open
+/// meanwhile: the window never takes the keyboard, so nothing hands it on when the window goes, and while it shows,
+/// keys pressed in Vortex's window close it (Esc, Return, Space) or go nowhere. So it needs a window of Vortex's with
+/// the keyboard: without one it does not show, and once none has it any more it calls `onDismiss`. Clicks reach its
+/// buttons only, as in any window without the keyboard; `close` fades it out.
 ///
 /// An app coming to the front calls `onInterrupted` (`onDismiss`) rather than staying hidden under it, also one that
 /// came between the moment the screen was taken and `show`: a prompt of the system (Screen Recording's periodic
@@ -25,8 +26,10 @@ public final class ScreenOverlay {
   private var coveredApp: NSRunningApplication?
   /// Shown by `showKeepingFront`, which holds the shell's window open until `close`.
   private var keepsFront = false
-  /// The window of Vortex's that had the keyboard before `showKeepingFront`, which gets it back.
-  private weak var keyWindowBefore: NSWindow?
+  /// Shown by `showKeepingFront`: takes the keys pressed in Vortex's windows.
+  private var keyMonitor: Any?
+  /// Shown by `showKeepingFront`: Vortex's windows losing the keyboard.
+  private var keyResignations: (any NSObjectProtocol)?
 
   public init() {}
 
@@ -50,7 +53,7 @@ public final class ScreenOverlay {
     }
     guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
     stopKeepingFront()
-    present(content, on: screen, onEscape: onEscape, onReturn: onReturn, onSpace: nil, onInterrupted: onInterrupted)
+    present(content, on: screen, takesKeyboard: true, onEscape: onEscape, onReturn: onReturn, onInterrupted: onInterrupted)
     coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
     NSApp.activate()
   }
@@ -60,35 +63,57 @@ public final class ScreenOverlay {
     let pointer = NSEvent.mouseLocation
     guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main
     else { return }
+    // Its keys come through the window of Vortex's that has the keyboard; with none, such as when the window closed
+    // while the content was made, no key could close it.
+    guard NSApp.keyWindow.map({ !($0 is OverlayPanel) }) == true else {
+      Task { @MainActor in onDismiss() }
+      return
+    }
     // Shown the other way: that ends first, with the front given back.
     if isShown, !keepsFront { close() }
     if !keepsFront {
       keepsFront = true
-      // Never an overlay itself, such as one still fading out.
-      keyWindowBefore = NSApp.keyWindow.flatMap { $0 is OverlayPanel ? nil : $0 }
       OutsideActivity.shared.begin()
     }
     coveredApp = nil
-    present(content, on: screen, onEscape: onDismiss, onReturn: onDismiss, onSpace: onDismiss, onInterrupted: onDismiss)
+    present(content, on: screen, takesKeyboard: false, onEscape: onDismiss, onReturn: onDismiss, onInterrupted: onDismiss)
+    stopMonitoringKeys()
+    keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+      // Esc, Return, the keypad's Enter and Space.
+      if [53, 36, 76, 49].contains(event.keyCode) {
+        MainActor.assumeIsolated { onDismiss() }
+      }
+      return nil
+    }
+    keyResignations = NotificationCenter.default.addObserver(
+      forName: NSWindow.didResignKeyNotification,
+      object: nil,
+      queue: .main
+    ) { _ in
+      // A turn later, once the keyboard has moved: to another window of Vortex's, nothing changes.
+      Task { @MainActor in
+        if NSApp.keyWindow == nil { onDismiss() }
+      }
+    }
   }
 
   private func present(
     _ content: some View,
     on screen: NSScreen,
+    takesKeyboard: Bool,
     onEscape: @escaping @MainActor () -> Void,
     onReturn: @escaping @MainActor () -> Void,
-    onSpace: (@MainActor () -> Void)?,
     onInterrupted: @escaping @MainActor () -> Void
   ) {
     let panel = self.panel ?? OverlayPanel()
+    panel.takesKeyboard = takesKeyboard
     panel.onEscape = onEscape
     panel.onReturn = onReturn
-    panel.onSpace = onSpace
     panel.contentView = NSHostingView(rootView: AnyView(content.environment(\.notchCutout, screen.notchInPoints)))
     panel.setFrame(screen.frame, display: true)
-    // In front of everything and with the keyboard also while Vortex is not the app in front.
+    // In front of everything also while Vortex is not the app in front.
     panel.orderFrontRegardless()
-    panel.makeKey()
+    if takesKeyboard { panel.makeKey() }
     self.panel = panel
     stopWatchingActivations()
     activations = NSWorkspace.shared.notificationCenter.addObserver(
@@ -99,9 +124,8 @@ public final class ScreenOverlay {
       let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
       guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
       MainActor.assumeIsolated {
-        // Once: another app coming meanwhile changes nothing. The keyboard stays with the app that came.
+        // Once: another app coming meanwhile changes nothing.
         self?.stopWatchingActivations()
-        self?.keyWindowBefore = nil
         onInterrupted()
       }
     }
@@ -120,19 +144,25 @@ public final class ScreenOverlay {
     activations = nil
   }
 
+  private func stopMonitoringKeys() {
+    if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+    keyMonitor = nil
+    if let keyResignations { NotificationCenter.default.removeObserver(keyResignations) }
+    keyResignations = nil
+  }
+
   /// To `app`, or, when it is gone or unknown, to the app whose window is in front.
   private static func giveFront(to app: NSRunningApplication?) {
     let target = app.flatMap { $0.isTerminated ? nil : $0 } ?? NSRunningApplication.behindVortex()
     target?.activate(from: .current)
   }
 
-  /// The shell's window may close again, and the window that had the keyboard gets it back.
+  /// The keys go where they went before, and the shell's window may close again.
   private func stopKeepingFront() {
+    stopMonitoringKeys()
     guard keepsFront else { return }
     keepsFront = false
     OutsideActivity.shared.end()
-    if let window = keyWindowBefore, window.isVisible { window.makeKey() }
-    keyWindowBefore = nil
   }
 
   public func close() {
@@ -171,8 +201,8 @@ public final class ScreenOverlay {
 private final class OverlayPanel: NSPanel {
   var onEscape: @MainActor () -> Void = {}
   var onReturn: @MainActor () -> Void = {}
-  /// Space, when it is taken; otherwise it goes on as any other key.
-  var onSpace: (@MainActor () -> Void)?
+  /// Whether it may become the window with the keyboard.
+  var takesKeyboard = true
 
   init() {
     super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -188,7 +218,7 @@ private final class OverlayPanel: NSPanel {
     acceptsMouseMovedEvents = true
   }
 
-  override var canBecomeKey: Bool { true }
+  override var canBecomeKey: Bool { takesKeyboard }
   override var canBecomeMain: Bool { false }
 
   override func cancelOperation(_ sender: Any?) {
@@ -207,8 +237,6 @@ private final class OverlayPanel: NSPanel {
     // Return and the keypad's Enter.
     if event.keyCode == 36 || event.keyCode == 76 {
       onReturn()
-    } else if event.keyCode == 49, let onSpace {
-      onSpace()
     } else {
       super.keyDown(with: event)
     }

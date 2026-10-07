@@ -30,7 +30,9 @@
 ## The card
 - A click on a row opens its card in the tab; «‹ Задачі» goes back.
 - The picture shows whole; a click shows the whole screen over the display under the pointer, fitted to it: the framed part as it was, the rest dimmed as while framing, an outline closing in on the part; the notch shows «Задача N · Esc».
-- A click, Esc, Space or Return closes the whole screen, and so does another app coming to the front or the capture shortcut; the app in front stays in front, and the Vortex window stays open under it, with its keyboard focus back unless another app came to the front.
+- The whole screen fades in already dimmed, so it never flashes undimmed first; only the outline moves.
+- A click, Esc, Space or Return closes the whole screen, and so does another app coming to the front, the capture shortcut, or the Vortex window closing or losing the keyboard; the app in front stays in front, and the Vortex window stays open under it and keeps the keyboard all along (other keys do nothing meanwhile); an app that came to the front keeps it.
+- With the Vortex window closed by the time the picture is read, the whole screen does not show.
 - Clicks close it only from 0.35 s after it shows, so a double click on the picture leaves it open; it can't be opened during a capture.
 - Tasks saved before the place of the part was kept (before 7 Oct 2026) show the whole screen without the dimming.
 - Title and priority change in place; the title is saved once typing pauses, and an emptied one is «Задача N» again when leaving it.

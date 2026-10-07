@@ -2,8 +2,8 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// A task's whole screen over the display: the framed part stays as it was, the rest dims and an outline closes in on
-/// the part, so the eye finds it at once. Only drawn over the picture, so it costs nothing to save. Always dark, like
+/// A task's whole screen over the display: the framed part as it was, the rest dimmed, and an outline closing in on the
+/// part, so the eye finds it at once. Only drawn over the picture, so it costs nothing to save. Always dark, like
 /// the capture; a click anywhere closes it.
 struct TaskScreenView: View {
   let image: ScreenImage
@@ -19,6 +19,30 @@ struct TaskScreenView: View {
   @State private var takesClicks = false
 
   var body: some View {
+    // A button rather than a tap gesture: the window never has the keyboard, and there the first click reaches buttons
+    // only.
+    Button {
+      if takesClicks { onClose() }
+    } label: {
+      picture
+    }
+    .buttonStyle(AsDrawn())
+    .ignoresSafeArea()
+    .environment(\.colorScheme, .dark)
+    .task {
+      try? await Task.sleep(for: .milliseconds(350))
+      takesClicks = true
+    }
+    .onAppear {
+      withAnimation(.easeOut(duration: 0.15)) { isShown = true }
+      withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.86).delay(0.1)) {
+        isMarked = true
+      }
+    }
+    .accessibilityLabel(Text("The whole screen", bundle: .module))
+  }
+
+  private var picture: some View {
     GeometryReader { proxy in
       let bounds = CGRect(origin: .zero, size: proxy.size)
       let picture = Self.fitted(image.size, in: bounds)
@@ -40,9 +64,9 @@ struct TaskScreenView: View {
             path.addRect(bounds)
             path.addRect(part)
           }
-          // As dim as the screen was while the frame was drawn.
+          // As dim as the screen was while the frame was drawn, from the first frame: dimmed a moment later, the screen
+          // flashed bright first.
           .fill(Color.black.opacity(0.45), style: FillStyle(eoFill: true))
-          .opacity(isMarked ? 1 : 0)
           FrameOutline(frame: isMarked || reduceMotion ? part : part.insetBy(dx: -24, dy: -24), showsSize: false)
             .opacity(isMarked ? 1 : 0)
         }
@@ -50,26 +74,14 @@ struct TaskScreenView: View {
       }
       .opacity(isShown ? 1 : 0)
     }
-    .ignoresSafeArea()
-    .environment(\.colorScheme, .dark)
     .contentShape(Rectangle())
-    .onTapGesture {
-      if takesClicks { onClose() }
+  }
+
+  /// The picture as it is, pressed or not.
+  private struct AsDrawn: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+      configuration.label
     }
-    .task {
-      try? await Task.sleep(for: .milliseconds(350))
-      takesClicks = true
-    }
-    .onAppear {
-      withAnimation(.easeOut(duration: 0.15)) { isShown = true }
-      withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.86).delay(0.1)) {
-        isMarked = true
-      }
-    }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text("The whole screen", bundle: .module))
-    .accessibilityAddTraits(.isButton)
-    .accessibilityAction { onClose() }
   }
 
   /// `size` scaled to fit in `bounds`, in its middle.
