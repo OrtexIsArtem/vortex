@@ -2,13 +2,14 @@
 
 ## Getting things on the shelf
 - Drop files, folders, images, links or text on the tab; files dragged to the notch open the window on this tab.
+- A file always lands as the file, also a text or picture file from Finder, never as its contents.
 - Files dropped on the menu bar icon, opened with Vortex or sent with `vortex shelf add <files>` land on the shelf without opening the window.
 - Those files get a dot until the user leaves the tab, and the notch flashes: a glow that spreads past its edges,
   blinking twice. Its color follows the number of new files: color 1 for the first, color 2 for the second… then white.
 - Looking at the shelf (leaving its tab) starts the count over; files dropped on the tab do not flash.
 - Only a look counts: the window opening on another tab, for example from another feature's ear, keeps the dots and the count.
 - Files and folders are kept by reference; images without a file are saved as PNG copies.
-- Files from Vortex's own data folder (a clipboard image) are copied, since they could go away with their owner.
+- Files from Vortex's own data folder (a clipboard image) are copied, since they could go away with their owner; so are files from temporary folders (a screenshot dragged from its floating thumbnail), which go once the drag is over.
 - Such a file dropped again moves its copy to the front instead of being copied again; copies are matched by file name.
 - The same file, folder, text or link moves to the front instead of being added again; images without a file are added each time.
 - Whatever arrives before the shelf has loaded waits and is added right after, so the saved shelf is never overwritten.

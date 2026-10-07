@@ -312,20 +312,27 @@ public struct ClipboardFeature: Sendable {
     url.standardizedFileURL.path.hasPrefix(DataFolder.url.standardizedFileURL.path + "/")
   }
 
-  /// What a drop that may hold Vortex's own files copies, as `copiedContent(of:)` decides it. A reference to an own file
-  /// would not last, so an own PNG counts as the image it is (an image row dragged back reads as the very image it came
-  /// from) and any other own file is left out. Files from elsewhere win, and then no own file is read; otherwise own
-  /// PNGs are read in drop order, only until one of them is what the drop copies.
+  /// Whether a dropped file goes away soon: one of Vortex's own with its owner, a temporary one (a screenshot dragged
+  /// from its thumbnail) once the drag is over.
+  static func isFleeting(_ url: URL) -> Bool {
+    isOwnFile(url) || DroppedItem.isTemporary(url)
+  }
+
+  /// What a drop that may hold fleeting files (Vortex's own, temporary ones) copies, as `copiedContent(of:)` decides it.
+  /// A reference to such a file would not last, so a fleeting PNG counts as the image it is (an image row dragged back
+  /// reads as the very image it came from, a screenshot from its thumbnail as the screenshot) and any other fleeting file
+  /// is left out. Lasting files win, and then no fleeting file is read; otherwise fleeting PNGs are read in drop order,
+  /// only until one of them is what the drop copies.
   static func copiedContent(of items: [DroppedItem], files: FileClient) async -> PasteboardContent? {
     let others = items.filter { item in
-      if case let .file(url) = item { !isOwnFile(url) } else { true }
+      if case let .file(url) = item { !isFleeting(url) } else { true }
     }
     if others.contains(where: { if case .file = $0 { true } else { false } }) {
       return copiedContent(of: others)
     }
     for item in items {
       if case let .file(url) = item {
-        // One of Vortex's own: files from elsewhere are handled above.
+        // A fleeting one: lasting files are handled above.
         guard url.pathExtension.lowercased() == "png", let png = try? await files.read(url) else { continue }
         return .image(png)
       }

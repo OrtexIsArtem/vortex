@@ -523,6 +523,17 @@ struct ClipboardFeatureTests {
   }
 
   @Test
+  func aTemporaryPNGIsCopiedAsAnImageAndOtherTemporaryFilesAreLeftOut() async {
+    // A screenshot dragged from its floating thumbnail: macOS deletes the file once the drag is over.
+    let screenshot = URL(fileURLWithPath: "/var/folders/ab/cd/T/TemporaryItems/NSIRD_screencaptureui_1/Screenshot.png")
+    let notes = URL(fileURLWithPath: "/var/folders/ab/cd/T/TemporaryItems/NSIRD_mail_1/notes.txt")
+    var files = FileClient()
+    files.read = { url in Data(url.lastPathComponent.utf8) }
+    #expect(await ClipboardFeature.copiedContent(of: [.file(screenshot)], files: files) == .image(Data("Screenshot.png".utf8)))
+    #expect(await ClipboardFeature.copiedContent(of: [.file(notes)], files: files) == nil)
+  }
+
+  @Test
   func ownPNGsAreReadOnlyUntilOneIsCopiedAndNotAtAllNextToFilesFromElsewhere() async {
     let shelf = DataFolder.url.appending(path: "Shelf")
     let (a, b, c) = (shelf.appending(path: "A/a.png"), shelf.appending(path: "B/b.png"), shelf.appending(path: "C/c.png"))

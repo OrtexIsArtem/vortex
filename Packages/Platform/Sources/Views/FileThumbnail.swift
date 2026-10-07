@@ -20,9 +20,15 @@ public struct FileThumbnail<Placeholder: View>: View {
   public var body: some View {
     Group {
       if let thumbnail {
-        Image(nsImage: thumbnail)
-          .resizable()
-          .aspectRatio(contentMode: .fill)
+        // Fills the space it is given without asking for more: a picture wider than its frame is cut at the sides
+        // instead of widening the frame over its neighbours.
+        Color.clear
+          .overlay {
+            Image(nsImage: thumbnail)
+              .resizable()
+              .aspectRatio(contentMode: .fill)
+          }
+          .clipped()
       } else {
         placeholder
       }

@@ -106,6 +106,9 @@ public struct SegmentedPicker<Value: Hashable, Label: View>: View {
         } label: {
           label(option)
             .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
+            // One line: the heavier type of the chosen option would otherwise wrap a long label.
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             .foregroundStyle(isSelected ? VortexColor.primaryText : VortexColor.secondaryText)
             .frame(maxWidth: .infinity, minHeight: 28)
             .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? VortexColor.track : .clear))

@@ -29,6 +29,6 @@
 - Secrets never drag out of Home: dropped on the shelf, one would be saved to disk.
 - Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy. Files dropped together are copied together.
 - So a clipboard row dragged to the shelf lands on the shelf, and a shelf file dragged to the clipboard is copied.
-- Dropping something the history already holds copies that item again, with its own marks, so a secret stays one; Vortex's own files are copied as their image, never as a reference (a PNG becomes the image, any other is ignored).
+- Dropping something the history already holds copies that item again, with its own marks, so a secret stays one; Vortex's own files and temporary ones (a screenshot dragged from its floating thumbnail) are copied as their image, never as a reference (a PNG becomes the image, any other is ignored); any other file, also a text or picture file from Finder, is copied as the file.
 - Of several images dropped together (shelf tiles), only the first is copied.
 - A drop before the history has been read (right after launch) is ignored.

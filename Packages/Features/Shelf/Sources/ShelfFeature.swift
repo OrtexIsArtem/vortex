@@ -403,12 +403,13 @@ public struct ShelfFeature: Sendable {
       case let .file(url):
         let url = url.standardizedFileURL
         if isKnown({ $0.fileURL == url }) { continue }
-        guard url.path.hasPrefix(DataFolder.url.standardizedFileURL.path + "/") else {
+        guard url.path.hasPrefix(DataFolder.url.standardizedFileURL.path + "/") || DroppedItem.isTemporary(url) else {
           content = .file(url)
           break
         }
-        // A file of Vortex's own, such as a clipboard image, goes away with its owner: the shelf keeps a copy. The copy
-        // keeps only the name, so the same file dropped again finds its copy by it, unless that copy's file is gone.
+        // A file of Vortex's own, such as a clipboard image, goes away with its owner, and a temporary one, such as a
+        // screenshot dragged from its thumbnail, once the drag is over: the shelf keeps a copy. The copy keeps only the
+        // name, so the same file dropped again finds its copy by it, unless that copy's file is gone.
         let copy = ShelfItem.Content.copy(fileName: url.lastPathComponent)
         if isKnown({ $0.content == copy && !state.unavailable.contains($0.id) }) { continue }
         guard copiedNames.insert(url.lastPathComponent).inserted else { continue }

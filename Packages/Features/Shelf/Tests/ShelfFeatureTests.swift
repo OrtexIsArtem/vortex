@@ -236,6 +236,22 @@ struct ShelfFeatureTests {
   }
 
   @Test
+  func aTemporaryFileIsKeptAsACopyUnderItsName() async {
+    let store = makeStore()
+    await start(store)
+    // A screenshot dragged from its floating thumbnail: macOS deletes the file once the drag is over.
+    let screenshot = URL(
+      fileURLWithPath: "/var/folders/ab/cd/T/TemporaryItems/NSIRD_screencaptureui_1/Screenshot 2026-10-07 at 12.39.05.png"
+    )
+    await store.send(.dropped([.file(screenshot)]))
+    await store.receive(\.copySaved)
+    #expect(store.state.items.first?.content == .copy(fileName: "Screenshot 2026-10-07 at 12.39.05.png"))
+    #expect(copied.value == [store.state.items.first?.fileURL])
+    await store.send(.stop)
+    await store.finish()
+  }
+
+  @Test
   func aFileOfVortexsOwnDroppedAgainMovesItsCopyToTheFront() async {
     let store = makeStore()
     await start(store)

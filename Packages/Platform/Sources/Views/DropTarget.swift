@@ -9,6 +9,15 @@ public enum DroppedItem: Equatable, Sendable {
   case image(Data, fileExtension: String)
   case link(URL)
   case text(String)
+
+  /// Whether a dropped file lies where it goes away soon after the drop: a temporary or cache folder, like the
+  /// screenshot dragged from its floating thumbnail, which macOS deletes once the drag is over. What keeps such a file
+  /// keeps a copy.
+  public static func isTemporary(_ url: URL) -> Bool {
+    // Both spellings: /var is a link to /private/var, and resolving links drops /private again for files that exist.
+    let path = url.standardizedFileURL.path
+    return path.hasPrefix("/var/folders/") || path.hasPrefix("/private/var/folders/") || path.contains("/TemporaryItems/")
+  }
 }
 
 extension View {
@@ -18,7 +27,28 @@ extension View {
     isTargeted: Binding<Bool>? = nil,
     perform: @escaping @MainActor ([DroppedItem]) -> Void
   ) -> some View {
-    onDrop(of: DropReader.types, isTargeted: isTargeted) { providers in
+    onDrop(of: DropReader.types, delegate: DropReader.Delegate(isTargeted: isTargeted, perform: perform))
+  }
+}
+
+@MainActor
+enum DropReader {
+  static let types: [UTType] = [.fileURL, .image, .url, .plainText]
+
+  /// Files are asked for first: offered every type at once, SwiftUI hands a text or picture file over as its contents
+  /// (a .txt as text, a .png as an image without its file), never as the file.
+  struct Delegate: DropDelegate {
+    let isTargeted: Binding<Bool>?
+    let perform: @MainActor ([DroppedItem]) -> Void
+
+    func dropEntered(info: DropInfo) { isTargeted?.wrappedValue = true }
+    func dropExited(info: DropInfo) { isTargeted?.wrappedValue = false }
+
+    func performDrop(info: DropInfo) -> Bool {
+      isTargeted?.wrappedValue = false
+      let providers = info.hasItemsConforming(to: [.fileURL])
+        ? info.itemProviders(for: [.fileURL])
+        : info.itemProviders(for: [.image, .url, .plainText])
       Task { @MainActor in
         let items = await DropReader.items(from: providers)
         if !items.isEmpty { perform(items) }
@@ -26,11 +56,6 @@ extension View {
       return true
     }
   }
-}
-
-@MainActor
-enum DropReader {
-  static let types: [UTType] = [.fileURL, .image, .url, .plainText]
 
   static func items(from providers: [NSItemProvider]) async -> [DroppedItem] {
     var items: [DroppedItem] = []

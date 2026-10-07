@@ -45,20 +45,35 @@ struct WindowChromeView: View {
       }
       .overlay(alignment: .top) {
         if let notch {
-          UnevenRoundedRectangle(
-            bottomLeadingRadius: VortexMetrics.notchCornerRadius,
-            bottomTrailingRadius: VortexMetrics.notchCornerRadius
-          )
-          .fill(VortexColor.notch)
-          .frame(width: notch.width, height: notch.height)
-          .contentShape(Rectangle())
-          .onTapGesture { model.onNotchTapped() }
+          // A button rather than a tap gesture: in a window opened by hover, which has no keyboard focus yet, the first
+          // click reaches buttons only.
+          Button {
+            model.onNotchTapped()
+          } label: {
+            UnevenRoundedRectangle(
+              bottomLeadingRadius: VortexMetrics.notchCornerRadius,
+              bottomTrailingRadius: VortexMetrics.notchCornerRadius
+            )
+            .fill(VortexColor.notch)
+            .frame(width: notch.width, height: notch.height)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(NotchButtonStyle())
+          // Under the hardware notch a focus ring can't be seen: Tab skips it.
+          .focusable(false)
           .accessibilityHidden(true)
         }
       }
       // Out of the notch the shape itself animates; otherwise (and with Reduce Motion) the window fades.
       .scaleEffect(notch == nil && !isExpanded && !reduceMotion ? 0.96 : 1, anchor: .top)
       .opacity(isExpanded || (notch != nil && !reduceMotion) ? 1 : 0)
+  }
+}
+
+/// The notch stays black while it is pressed.
+private struct NotchButtonStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
   }
 }
 
