@@ -36,12 +36,18 @@ public struct TasksView: View {
           .padding(.bottom, 10)
         TaskList(store: store, thrown: thrown, onDone: throwToDone)
       }
-      // Under the list rather than over it: laid over the scrolling list, the toast never got the click.
-      if store.undoableID != nil {
-        UndoToast { store.send(.undoTapped) }
+      // Under the list rather than over it: laid over the scrolling list, the toast never got the click. In «Виконані»
+      // the place holds «Очистити список», which the toast takes once it is pressed.
+      if let undoable = store.undoable {
+        UndoToast(undoable: undoable) { store.send(.undoTapped, animation: .snappy(duration: 0.22)) }
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
           .transition(.move(edge: .bottom).combined(with: .opacity))
+      } else if store.openTask == nil, store.filter.status == .done, store.state.showsAny(now: .now, calendar: .current) {
+        ClearListButton { store.send(.clearDoneTapped, animation: .snappy(duration: 0.22)) }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .transition(.opacity)
       }
     }
     .coordinateSpace(.named(DoneFlight.coordinateSpace))
@@ -52,7 +58,7 @@ public struct TasksView: View {
         landings += 1
       }
     }
-    .animation(.snappy(duration: 0.22), value: store.undoableID)
+    .animation(.snappy(duration: 0.22), value: store.undoable)
     .animation(.snappy(duration: 0.2), value: store.openTaskID)
     .task(id: isWindowOpen) {
       if isWindowOpen { store.send(.tabShown) }
@@ -325,6 +331,8 @@ private struct TaskRow: View {
           .font(.system(size: 11.5))
           .foregroundStyle(VortexColor.tertiaryText)
           .frame(minWidth: 44, alignment: .trailing)
+          // The bin takes its place.
+          .opacity(isHovered ? 0 : 1)
       }
       .padding(.horizontal, 10)
       .padding(.vertical, 7)
@@ -346,6 +354,26 @@ private struct TaskRow: View {
         }
       }
       .padding(.leading, 10)
+    }
+    .overlay(alignment: .trailing) {
+      if isHovered, !isThrown {
+        Button {
+          store.send(.deleteTapped(task.id), animation: .snappy(duration: 0.22))
+        } label: {
+          Image(systemName: "trash")
+            .font(.system(size: 12))
+            .frame(width: 30, height: 30)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(VortexColor.secondaryText)
+        .help(Text("Delete the task", bundle: .module))
+        .accessibilityLabel(Text("Delete the task", bundle: .module))
+        .padding(.trailing, 10)
+      }
+    }
+    .accessibilityAction(named: Text("Delete the task", bundle: .module)) {
+      store.send(.deleteTapped(task.id), animation: .snappy(duration: 0.22))
     }
     // Hidden only while it is still active (crumpling, or fading out of the list): in «Виконані» it shows at once.
     .opacity(isThrown && !task.isDone ? 0 : 1)
@@ -381,13 +409,31 @@ struct DoneMark: View {
   }
 }
 
-/// "Task done · Undo" for a few seconds after a task is marked done.
+/// «Очистити список» under the done tasks: deletes the ones the list shows.
+private struct ClearListButton: View {
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 6) {
+        Image(systemName: "trash")
+          .font(.system(size: 11))
+        Text("Clear the list", bundle: .module)
+      }
+    }
+    .buttonStyle(QuietCapsuleButtonStyle(height: 34, fontSize: 12.5))
+    .help(Text("Delete the done tasks shown", bundle: .module))
+  }
+}
+
+/// "Task done · Undo" for a few seconds after a task is marked done, "Task deleted · Undo" after it is deleted.
 private struct UndoToast: View {
+  let undoable: TasksFeature.Undoable
   let undo: () -> Void
 
   var body: some View {
     HStack(spacing: 14) {
-      Text("Task done", bundle: .module)
+      message
         .foregroundStyle(VortexColor.secondaryText)
       Button(action: undo) {
         Text("Undo", bundle: .module)
@@ -400,7 +446,16 @@ private struct UndoToast: View {
     .padding(.horizontal, 16)
     .frame(height: 34)
     .background(Capsule().fill(VortexColor.raised))
-    .overlay(Capsule().strokeBorder(VortexColor.line))
+    // Only drawn: laid over «Скасувати», the outline took its clicks.
+    .overlay(Capsule().strokeBorder(VortexColor.line).allowsHitTesting(false))
     .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+  }
+
+  private var message: Text {
+    switch undoable {
+    case .done: Text("Task done", bundle: .module)
+    case let .deleted(tasks) where tasks.count == 1: Text("Task deleted", bundle: .module)
+    case .deleted: Text("Done tasks deleted", bundle: .module)
+    }
   }
 }

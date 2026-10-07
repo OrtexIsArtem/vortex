@@ -23,6 +23,9 @@
 - Search finds every word of the query in the title, the recognized text, the app, the window title or the page address, ignoring case.
 - A row shows the done mark, the picture, title, source, priority and time («14:21», «Учора», «6 жовт.»), kept current past midnight.
 - The done mark finishes a task in one click: it leaves the active list and «Задачу виконано · Скасувати» shows for 5 s under the list; in Done it brings the task back.
+- Hovering a row shows a bin in place of its time: a click deletes the task, and «Задачу видалено · Скасувати» shows for 5 s under the list.
+- In «Виконані», «Очистити список» under the list (while it has tasks) deletes the done tasks the list shows, all of them unless filters or search narrow it; «Виконані задачі видалено · Скасувати» («Задачу видалено» for one) takes its place for 5 s.
+- Only the last change can be taken back: a new one makes the one before it final.
 - A click on the done mark only marks the task; anywhere else on the row opens it.
 - Marked done in the list, the row crumples into a paper ball that flies into «Виконані», which bumps as it lands; the task leaves the list once the row has crumpled. With Reduce Motion it just leaves.
 - Empty: «Задач ще немає» with how to start; «Активних задач немає», «Виконаних задач ще немає», or «Нічого не знайдено» for a search or narrowed filters.
@@ -38,7 +41,7 @@
 - Title and priority change in place; the title is saved once typing pauses, and an emptied one is «Задача N» again when leaving it.
 - Each change saves only itself, so a title saved after the pause never undoes a priority or done mark set meanwhile.
 - «Відкрити джерело» opens the page in the browser it came from, or brings the app to the front.
-- Готово finishes the task and goes back to the list; the bin deletes it with its pictures.
+- Готово finishes the task and goes back to the list; the bin deletes it and goes back to the list, where it can be taken back for 5 s.
 
 ## Permissions
 - Without Screen Recording the first attempt ever shows the system's prompt; later ones, also after a relaunch, open System Settings at Screen Recording; a notification says how to allow it.

@@ -81,12 +81,32 @@
         }
       }
     },
+    "Clear the list" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистити список"
+          }
+        }
+      }
+    },
     "Click to see the whole screen" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клацніть, щоб побачити весь екран"
+          }
+        }
+      }
+    },
+    "Delete the done tasks shown" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видалити показані виконані задачі"
           }
         }
       }
@@ -118,6 +138,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Виконані задачі видаляються разом зі знімками через 30 днів."
+          }
+        }
+      }
+    },
+    "Done tasks deleted" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виконані задачі видалено"
           }
         }
       }
@@ -411,6 +441,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Задача %lld"
+          }
+        }
+      }
+    },
+    "Task deleted" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачу видалено"
           }
         }
       }

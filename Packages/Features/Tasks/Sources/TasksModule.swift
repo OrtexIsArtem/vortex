@@ -83,6 +83,9 @@ public enum TasksModule: FeatureModule {
       on("taskScreen") { info in if let id = task(info) { store.send(.screenTapped(id)) } }
       on("taskSource") { info in if let id = task(info) { store.send(.openSourceTapped(id)) } }
       on("taskDelete") { info in if let id = task(info) { store.send(.deleteTapped(id)) } }
+      // `…taskClearDone` presses «Очистити список» in «Виконані», `…taskUndo` the toast's «Скасувати».
+      on("taskClearDone") { _ in store.send(.clearDoneTapped) }
+      on("taskUndo") { _ in store.send(.undoTapped) }
       // `…taskState` writes what the feature holds to the file at userInfo `path`, as JSON.
       on("taskState") { info in
         guard let path = info["path"] else { return }
@@ -95,6 +98,12 @@ public enum TasksModule: FeatureModule {
           "suggestion": store.capture?.suggestion ?? "",
           "openTask": store.openTask?.number ?? 0,
           "shownScreen": store.screen.flatMap { store.tasks[id: $0.taskID]?.number } ?? 0,
+          "undoable": store.undoable.map { undoable -> String in
+            switch undoable {
+            case let .done(id): "done \(store.tasks[id: id]?.number ?? 0)"
+            case let .deleted(tasks): "deleted " + tasks.map { "\($0.number)" }.joined(separator: ",")
+            }
+          } ?? "",
           "keyWindow": NSApp.keyWindow.map { String(describing: type(of: $0)) } ?? "",
           "frontApp": NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "",
           "tasks": store.tasks.map { ["number": $0.number, "title": $0.title, "done": $0.isDone, "text": $0.text ?? "<none>"] },

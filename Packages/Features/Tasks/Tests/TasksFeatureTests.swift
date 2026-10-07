@@ -76,6 +76,18 @@ struct TasksFeatureTests {
     return store
   }
 
+  /// Effects write in their own time: waits a little for what they do.
+  func eventually(_ condition: @escaping @Sendable () async throws -> Bool) async throws {
+    for _ in 0..<100 where !(try await condition()) {
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    #expect(try await condition())
+  }
+
+  func savedIDs() async throws -> [TaskItem.ID] {
+    try await database.read { db in try TaskItem.fetchAllReadable(db) }.map(\.id).sorted { $0.uuidString < $1.uuidString }
+  }
+
   /// Presses the shortcut, frames a part and saves it, the way a user does in three actions.
   func captureTask(_ store: TestStoreOf<TasksFeature>, title: String? = nil, priority: TaskItem.Priority = .low) async {
     shortcut.continuation.yield()
@@ -211,7 +223,7 @@ struct TasksFeatureTests {
     await captureTask(store)
     await captureTask(store)
     let second = try #require(store.state.tasks.first { $0.number == 2 })
-    await store.send(.deleteTapped(second.id)).finish()
+    await store.send(.deleteTapped(second.id))
     shortcut.continuation.yield()
     await store.receive(\.captureTaken)
     #expect(store.state.capture?.number == 3)
@@ -227,18 +239,99 @@ struct TasksFeatureTests {
     let task = try #require(store.state.tasks.first)
     await store.send(.doneTapped(task.id))
     #expect(store.state.tasks[id: task.id]?.isDone == true)
-    #expect(store.state.undoableID == task.id)
+    #expect(store.state.undoable == .done(task.id))
     #expect(store.state.visibleTasks(now: now.value, calendar: .current).isEmpty)
     await store.send(.undoTapped)
     #expect(store.state.tasks[id: task.id]?.isDone == false)
     await store.send(.doneTapped(task.id))
     await clock.advance(by: TasksFeature.undoTime)
     await store.receive(\.undoExpired)
-    #expect(store.state.undoableID == nil)
+    #expect(store.state.undoable == nil)
     var filter = TaskFilter()
     filter.status = .done
     await store.send(.filterChanged(filter))
     #expect(store.state.visibleTasks(now: now.value, calendar: .current).map(\.id) == [task.id])
+    await store.send(.stop)
+  }
+
+  @Test
+  func aDeletedTaskCanBeTakenBackForAMomentThenItsPicturesGo() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    await store.send(.deleteTapped(task.id))
+    #expect(store.state.tasks.isEmpty)
+    #expect(store.state.undoable == .deleted([task]))
+    try await eventually { try await self.savedIDs().isEmpty }
+    #expect(!removed.value.contains(task.folderURL))
+    await store.send(.undoTapped)
+    #expect(store.state.tasks.map(\.id) == [task.id])
+    try await eventually { try await self.savedIDs() == [task.id] }
+    #expect(try await database.read { db in try TaskItem.fetchAllReadable(db) } == [task])
+    // Once it can't be taken back, the pictures go too.
+    await store.send(.deleteTapped(task.id))
+    await clock.advance(by: TasksFeature.undoTime)
+    await store.receive(\.undoExpired)
+    #expect(store.state.undoable == nil)
+    try await eventually { [removed] in removed.value.contains(task.folderURL) }
+    #expect(try await savedIDs().isEmpty)
+    await store.send(.stop)
+  }
+
+  @Test
+  func textRecognizedWhileATaskIsDeletedComesBackWithIt() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    let task = try #require(store.state.tasks.first)
+    await store.send(.deleteTapped(task.id))
+    await store.send(.textRecognized(task.id, "read late"))
+    await store.send(.undoTapped)
+    #expect(store.state.tasks[id: task.id]?.text == "read late")
+    try await eventually {
+      try await self.database.read { db in try TaskItem.fetchAllReadable(db) }.map(\.text) == ["read late"]
+    }
+    await store.send(.stop)
+  }
+
+  @Test
+  func clearingDoneDeletesTheDoneTasksTheListShowsAndTheLastClearCanBeTakenBack() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store, priority: .high)
+    await captureTask(store, priority: .low)
+    await captureTask(store)
+    let high = try #require(store.state.tasks.first { $0.number == 1 })
+    let low = try #require(store.state.tasks.first { $0.number == 2 })
+    let active = try #require(store.state.tasks.first { $0.number == 3 })
+    await store.send(.doneTapped(high.id))
+    await store.send(.doneTapped(low.id))
+    // The active list has nothing to clear.
+    await store.send(.clearDoneTapped)
+    #expect(store.state.tasks.count == 3)
+    var filter = TaskFilter()
+    filter.status = .done
+    filter.priority = .high
+    await store.send(.filterChanged(filter))
+    await store.send(.clearDoneTapped)
+    #expect(store.state.tasks.map(\.number).sorted() == [2, 3])
+    filter.priority = nil
+    await store.send(.filterChanged(filter))
+    await store.send(.clearDoneTapped)
+    #expect(store.state.tasks.map(\.id) == [active.id])
+    #expect(!store.state.showsAny(now: now.value, calendar: .current))
+    try await eventually { try await self.savedIDs() == [active.id] }
+    // The clear before the last is final, pictures and all; the last one comes back.
+    try await eventually { [removed] in removed.value.contains(high.folderURL) }
+    #expect(!removed.value.contains(low.folderURL))
+    await store.send(.undoTapped)
+    #expect(store.state.tasks.map(\.number).sorted() == [2, 3])
+    #expect(store.state.showsAny(now: now.value, calendar: .current))
+    try await eventually { try await self.savedIDs() == [low.id, active.id].sorted { $0.uuidString < $1.uuidString } }
     await store.send(.stop)
   }
 

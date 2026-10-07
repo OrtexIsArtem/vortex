@@ -46,10 +46,17 @@ public struct TasksFeature: Sendable {
   public static let id: FeatureID = "tasks"
   /// Done tasks are deleted with their pictures this many days after they were done.
   static let keptDays = 30
-  /// How long marking a task done can be taken back.
+  /// How long marking a task done or deleting can be taken back.
   static let undoTime: Duration = .seconds(5)
   static let noAccessNotificationID = "tasks.noAccess"
   static let screenSettingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
+
+  /// The last change, which can be taken back for `undoTime`; a new one makes it final.
+  enum Undoable: Equatable {
+    case done(TaskItem.ID)
+    /// Their rows are gone; their pictures go once it can't be taken back.
+    case deleted([TaskItem])
+  }
 
   @ObservableState
   public struct State: Equatable {
@@ -62,8 +69,8 @@ public struct TasksFeature: Sendable {
     var query = ""
     /// The task open in the tab; nil shows the list.
     var openTaskID: TaskItem.ID?
-    /// The task just marked done, while that can still be taken back.
-    var undoableID: TaskItem.ID?
+    /// The last change, while it can still be taken back.
+    var undoable: Undoable?
     /// A task's whole screen, shown over the display.
     var screen: TaskScreen?
     /// The capture under way, from the frozen screen until it is saved or cancelled.
@@ -83,16 +90,24 @@ public struct TasksFeature: Sendable {
     func visibleTasks(now: Date, calendar: Calendar) -> [TaskItem] {
       let words = query.split(whereSeparator: \.isWhitespace)
       return tasks
-        .filter { task in
-          (filter.status == .done) == task.isDone
-            && (filter.priority.map { $0 == task.priority } ?? true)
-            && Self.isIn(filter.period, task.createdAt, now: now, calendar: calendar)
-            && Self.matches(task, words)
-        }
+        .filter { shows($0, words: words, now: now, calendar: calendar) }
         .sorted { lhs, rhs in
           if filter.status == .done { return (lhs.completedAt ?? .distantPast) > (rhs.completedAt ?? .distantPast) }
           return lhs.priority != rhs.priority ? lhs.priority > rhs.priority : lhs.createdAt > rhs.createdAt
         }
+    }
+
+    /// Whether the list shows any task, without sorting them.
+    func showsAny(now: Date, calendar: Calendar) -> Bool {
+      let words = query.split(whereSeparator: \.isWhitespace)
+      return tasks.contains { shows($0, words: words, now: now, calendar: calendar) }
+    }
+
+    private func shows(_ task: TaskItem, words: [Substring], now: Date, calendar: Calendar) -> Bool {
+      (filter.status == .done) == task.isDone
+        && (filter.priority.map { $0 == task.priority } ?? true)
+        && Self.isIn(filter.period, task.createdAt, now: now, calendar: calendar)
+        && Self.matches(task, words)
     }
 
     static func isIn(_ period: TaskFilter.Period, _ date: Date, now: Date, calendar: Calendar) -> Bool {
@@ -142,7 +157,10 @@ public struct TasksFeature: Sendable {
     case doneTapped(TaskItem.ID)
     case undoTapped
     case undoExpired
+    /// The bin on a row or in the card.
     case deleteTapped(TaskItem.ID)
+    /// «Очистити список» in «Виконані»: deletes the done tasks the list shows.
+    case clearDoneTapped
     case openSourceTapped(TaskItem.ID)
     /// The whole screen of the task, over the display, with the framed part marked; again closes it.
     case screenTapped(TaskItem.ID)
@@ -175,6 +193,8 @@ public struct TasksFeature: Sendable {
     case shortcut
     case startCapture
     case undo
+    /// The rows of the tasks just deleted, so taking them back never runs before they are gone.
+    case deletion([TaskItem.ID])
     case screen
     case titleSave(TaskItem.ID)
   }
@@ -285,6 +305,11 @@ public struct TasksFeature: Sendable {
 
       case let .textRecognized(id, text):
         state.tasks[id: id]?.text = text
+        // Deleted meanwhile: it comes back with its text.
+        if case var .deleted(tasks) = state.undoable, let index = tasks.firstIndex(where: { $0.id == id }) {
+          tasks[index].text = text
+          state.undoable = .deleted(tasks)
+        }
         return .none
 
       case let .taskTapped(id):
@@ -317,41 +342,48 @@ public struct TasksFeature: Sendable {
         let completedAt = task.isDone ? nil : now
         state.tasks[id: id]?.completedAt = completedAt
         guard completedAt != nil else {
-          if state.undoableID == id { state.undoableID = nil }
+          if state.undoable == .done(id) { state.undoable = nil }
           return update(id, "completedAt", completedAt)
         }
         // A done task leaves the active list; the list comes back, with a moment to take it back.
-        state.undoableID = id
-        var effects = [update(id, "completedAt", completedAt)]
+        var effects = [settleUndoable(&state), update(id, "completedAt", completedAt)]
+        state.undoable = .done(id)
         if state.openTaskID == id {
           state.openTaskID = nil
           effects.append(commitTitle(id, &state))
         }
-        effects.append(
-          .run { send in
-            try await clock.sleep(for: Self.undoTime)
-            await send(.undoExpired)
-          }
-          .cancellable(id: CancelID.undo, cancelInFlight: true)
-        )
+        effects.append(undoTimer())
         return .merge(effects)
 
       case .undoTapped:
-        guard let id = state.undoableID, state.tasks[id: id] != nil else { return .none }
-        state.tasks[id: id]?.completedAt = nil
-        state.undoableID = nil
-        return .merge(.cancel(id: CancelID.undo), update(id, "completedAt", nil as Date?))
+        switch state.undoable {
+        case let .done(id):
+          guard state.tasks[id: id] != nil else { return .none }
+          state.tasks[id: id]?.completedAt = nil
+          state.undoable = nil
+          return .merge(.cancel(id: CancelID.undo), update(id, "completedAt", nil as Date?))
+        case let .deleted(tasks):
+          state.undoable = nil
+          for task in tasks {
+            state.tasks[id: task.id] = task
+          }
+          return .merge(.cancel(id: CancelID.undo), .cancel(id: CancelID.deletion(tasks.map(\.id))), restore(tasks))
+        case nil:
+          return .none
+        }
 
       case .undoExpired:
-        state.undoableID = nil
-        return .none
+        return settleUndoable(&state)
 
       case let .deleteTapped(id):
-        guard let task = state.tasks.remove(id: id) else { return .none }
-        if state.openTaskID == id { state.openTaskID = nil }
-        if state.undoableID == id { state.undoableID = nil }
-        if state.screen?.taskID == id { state.screen = nil }
-        return .merge(.cancel(id: CancelID.titleSave(id)), delete([task]))
+        guard let task = state.tasks[id: id] else { return .none }
+        return delete([task], &state)
+
+      case .clearDoneTapped:
+        guard state.filter.status == .done else { return .none }
+        let tasks = state.visibleTasks(now: now, calendar: calendar)
+        guard !tasks.isEmpty else { return .none }
+        return delete(tasks, &state)
 
       case let .openSourceTapped(id):
         guard let source = state.tasks[id: id]?.source else { return .none }
@@ -554,8 +586,74 @@ public struct TasksFeature: Sendable {
     return .merge(.cancel(id: CancelID.titleSave(id)), update(id, "title", task.displayTitle))
   }
 
-  /// Rows first, then the pictures.
-  private func delete(_ tasks: [TaskItem]) -> Effect<Action> {
+  /// Deletes the tasks with a moment to take it back: their rows go now, so they stay gone if Vortex quits meanwhile
+  /// (the pictures of rows that are gone are deleted at launch), their pictures once it can't be taken back.
+  private func delete(_ tasks: [TaskItem], _ state: inout State) -> Effect<Action> {
+    var effects = [settleUndoable(&state)]
+    var deleted: [TaskItem] = []
+    for var task in tasks {
+      state.tasks.remove(id: task.id)
+      if state.openTaskID == task.id { state.openTaskID = nil }
+      if state.screen?.taskID == task.id { state.screen = nil }
+      // An emptied title comes back as «Задача N», as on leaving the card.
+      task.title = task.displayTitle
+      deleted.append(task)
+      effects.append(.cancel(id: CancelID.titleSave(task.id)))
+    }
+    state.undoable = .deleted(deleted)
+    effects.append(deleteRows(deleted).cancellable(id: CancelID.deletion(deleted.map(\.id))))
+    effects.append(undoTimer())
+    return .merge(effects)
+  }
+
+  /// The change waiting to be taken back can't be any more: deleted tasks lose their pictures.
+  private func settleUndoable(_ state: inout State) -> Effect<Action> {
+    defer { state.undoable = nil }
+    guard case let .deleted(tasks) = state.undoable else { return .none }
+    return .run { _ in
+      for task in tasks {
+        await files.remove(task.folderURL)
+      }
+    }
+  }
+
+  private func undoTimer() -> Effect<Action> {
+    .run { send in
+      try await clock.sleep(for: Self.undoTime)
+      await send(.undoExpired)
+    }
+    .cancellable(id: CancelID.undo, cancelInFlight: true)
+  }
+
+  private func deleteRows(_ tasks: [TaskItem]) -> Effect<Action> {
+    .run { _ in
+      try await database.write { db in
+        for task in tasks {
+          _ = try task.delete(db)
+        }
+      }
+    } catch: { error, _ in
+      // Taken back before the rows went: they stay.
+      guard !(error is CancellationError) else { return }
+      logger.error("Deleting tasks failed: \(error, privacy: .public)")
+    }
+  }
+
+  /// Deleted tasks taken back: their rows again, as they were.
+  private func restore(_ tasks: [TaskItem]) -> Effect<Action> {
+    .run { _ in
+      try await database.write { db in
+        for task in tasks {
+          try task.insert(db, onConflict: .replace)
+        }
+      }
+    } catch: { error, _ in
+      logger.error("Taking deleted tasks back failed: \(error, privacy: .public)")
+    }
+  }
+
+  /// For good, rows first, then the pictures.
+  private func deleteForGood(_ tasks: [TaskItem]) -> Effect<Action> {
     .run { _ in
       try await database.write { db in
         for task in tasks {
@@ -579,7 +677,7 @@ public struct TasksFeature: Sendable {
       state.tasks.remove(id: task.id)
       if state.screen?.taskID == task.id { state.screen = nil }
     }
-    return delete(Array(old))
+    return deleteForGood(Array(old))
   }
 }
 

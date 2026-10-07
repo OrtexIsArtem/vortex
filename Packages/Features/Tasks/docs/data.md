@@ -13,6 +13,7 @@ Tables are created by the feature's migrator (`tasks.v1`, `tasks.v2`) before its
 - Numbers are never given twice: the next is one more than the highest ever given, also after that task is deleted.
 - If another Vortex took the number a capture showed, it saves with the next one, and an untouched «Задача N» title follows.
 - The pictures are written before the row, so a row always has them; at launch, picture folders without a row are deleted.
+- A deleted task's row goes at once, its pictures once the deletion can't be taken back (5 s, or the next change that can be); taken back, the row is written again as it was. If Vortex quits meanwhile, the deletion stands.
 - Rows this version can't read (written by a newer Vortex) are skipped and kept.
 - Recognized text is empty until recognition has run; empty text means none was found.
 - The part's place and the screen's size are in points; tasks saved before `tasks.v2` have none, and the whole screen shows them undimmed.
