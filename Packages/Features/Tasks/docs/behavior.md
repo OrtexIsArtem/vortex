@@ -22,7 +22,8 @@
 - Active tasks: high priority first, newest first within a priority; done tasks: the last done first.
 - Search finds every word of the query in the title, the recognized text, the app, the window title or the page address, ignoring case.
 - A row shows the done mark, the picture, title, source, priority and time («14:21», «Учора», «6 жовт.»), kept current past midnight.
-- The done mark finishes a task in one click: it leaves the active list and «Задачу виконано · Скасувати» shows for 5 s; in Done it brings the task back.
+- The done mark finishes a task in one click: it leaves the active list and «Задачу виконано · Скасувати» shows for 5 s under the list; in Done it brings the task back.
+- A click on the done mark only marks the task; anywhere else on the row opens it.
 - Empty: «Задач ще немає» with how to start; «Активних задач немає», «Виконаних задач ще немає», or «Нічого не знайдено» for a search or narrowed filters.
 
 ## The card

@@ -26,11 +26,11 @@ public struct TasksView: View {
           .padding(.bottom, 10)
         TaskList(store: store)
       }
-    }
-    .overlay(alignment: .bottom) {
+      // Under the list rather than over it: laid over the scrolling list, the toast never got the click.
       if store.undoableID != nil {
         UndoToast { store.send(.undoTapped) }
-          .padding(.bottom, 14)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
           .transition(.move(edge: .bottom).combined(with: .opacity))
       }
     }
@@ -242,38 +242,47 @@ private struct TaskRow: View {
   @State private var isHovered = false
 
   var body: some View {
-    HStack(spacing: 12) {
-      DoneMark(isDone: task.isDone) { store.send(.doneTapped(task.id)) }
-      FileThumbnail(url: task.cropURL, size: CGSize(width: 64, height: 44)) {
-        VortexColor.thumbnail
+    Button {
+      store.send(.taskTapped(task.id))
+    } label: {
+      HStack(spacing: 12) {
+        // Room for the done mark, which lies over the row.
+        Color.clear
+          .frame(width: 30, height: 30)
+        FileThumbnail(url: task.cropURL, size: CGSize(width: 64, height: 44)) {
+          VortexColor.thumbnail
+        }
+        .frame(width: 64, height: 44)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        VStack(alignment: .leading, spacing: 3) {
+          Text(verbatim: task.displayTitle)
+            .font(.system(size: 13, weight: .medium))
+            .lineLimit(1)
+            .strikethrough(task.isDone, color: VortexColor.tertiaryText)
+            .foregroundStyle(task.isDone ? VortexColor.secondaryText : VortexColor.primaryText)
+          SourceLine(source: task.source, date: nil)
+        }
+        Spacer(minLength: 8)
+        PriorityBars(priority: task.priority)
+          .foregroundStyle(task.priority == .high ? VortexColor.primaryText : VortexColor.secondaryText)
+          .help(task.priority.name)
+        TaskDate(date: task.createdAt, now: now)
+          .font(.system(size: 11.5))
+          .foregroundStyle(VortexColor.tertiaryText)
+          .frame(minWidth: 44, alignment: .trailing)
       }
-      .frame(width: 64, height: 44)
-      .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-      VStack(alignment: .leading, spacing: 3) {
-        Text(verbatim: task.displayTitle)
-          .font(.system(size: 13, weight: .medium))
-          .lineLimit(1)
-          .strikethrough(task.isDone, color: VortexColor.tertiaryText)
-          .foregroundStyle(task.isDone ? VortexColor.secondaryText : VortexColor.primaryText)
-        SourceLine(source: task.source, date: nil)
-      }
-      Spacer(minLength: 8)
-      PriorityBars(priority: task.priority)
-        .foregroundStyle(task.priority == .high ? VortexColor.primaryText : VortexColor.secondaryText)
-        .help(task.priority.name)
-      TaskDate(date: task.createdAt, now: now)
-        .font(.system(size: 11.5))
-        .foregroundStyle(VortexColor.tertiaryText)
-        .frame(minWidth: 44, alignment: .trailing)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 7)
+      .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(isHovered ? VortexColor.raised : .clear))
+      .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 7)
-    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(isHovered ? VortexColor.raised : .clear))
-    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .buttonStyle(.plain)
+    // A button of its own over the row: a click on it marks the task and never opens it.
+    .overlay(alignment: .leading) {
+      DoneMark(isDone: task.isDone) { store.send(.doneTapped(task.id)) }
+        .padding(.leading, 10)
+    }
     .onHover { isHovered = $0 }
-    .onTapGesture { store.send(.taskTapped(task.id)) }
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(.isButton)
   }
 }
 
