@@ -1,5 +1,6 @@
 import FeatureClipboard
 import FeatureHome
+import FeatureSecrets
 import FeatureShelf
 import FeatureTasks
 import FeatureTimer
@@ -17,6 +18,7 @@ public enum FeatureRegistry {
     TasksModule.self,
     ClipboardModule.self,
     ShelfModule.self,
+    SecretsModule.self,
   ]
 
   public static func module(for id: FeatureID) -> (any FeatureModule.Type)? {
