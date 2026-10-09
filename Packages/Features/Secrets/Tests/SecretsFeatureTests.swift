@@ -280,6 +280,7 @@ struct SecretsFeatureTests {
     await store.receive(\.server.cancelled)
     #expect(store.state.uses.first?.outcome == .cancelled)
     #expect(store.state.uses.first?.exitCode == nil)
+    #expect(store.state.keys.first?.lastUsedAt == nil)
 
     // Running: it is stopped, and the log still says what ran with the key.
     let running = call(.run, ["command": "psql \"{{prod-db}}\" -c 'delete from bookings'"], id: 2)
@@ -292,7 +293,36 @@ struct SecretsFeatureTests {
     #expect(store.state.running.isEmpty)
     #expect(store.state.uses.map(\.outcome) == [.cancelled, .cancelled])
     #expect(store.state.uses.first?.command == "psql \"{{prod-db}}\" -c 'delete from bookings'")
+    #expect(store.state.keys.first?.lastUsedAt == now.value)
+    try await eventually { [replies] in replies.value.filter { $0 == MCPToolResult(text: "Cancelled.", isError: true) }.count == 2 }
     try await eventually { [database] in try await database.read { db in try KeyUse.latest(db) }.count == 2 }
+    // A command whose cancelling came too late still ends: it is logged once.
+    await store.send(.used(KeyUse(id: UUID(), at: now.value, keys: ["prod-db"], client: "Claude Code", command: "x", outcome: .ran, exitCode: 0)))
+    #expect(store.state.uses.count == 2)
+    await store.send(.stop)
+  }
+
+  @Test
+  func theNotificationShowsTheNewestRequestEvenWhenTheFirstWasSlowToPost() async throws {
+    let store = makeStore()
+    // The first post waits, as the system's does for the notification permission or the buttons.
+    store.dependencies.notificationClient.post = { [posted, clock] id, title, _, _ in
+      try? await clock.sleep(for: .seconds(1))
+      guard !Task.isCancelled else { return }
+      posted.withValue { $0.append("\(id): \(title)") }
+    }
+    await start(store)
+    await addKey(store)
+    await addKey(store, name: "github")
+    events.continuation.yield(.call(call(.run, ["command": "psql \"{{prod-db}}\""], id: 1)))
+    await store.receive(\.server.call)
+    events.continuation.yield(.call(call(.run, ["command": "gh api user -H \"Authorization: Bearer {{github}}\""], id: 2)))
+    await store.receive(\.server.call)
+    await clock.advance(by: .seconds(1))
+    try await eventually { [posted] in !posted.value.isEmpty }
+    // Its buttons answer the request it shows.
+    #expect(posted.value == ["secrets.approval: Claude Code → github"])
+    #expect(store.state.notifiedApproval == store.state.approvals.last?.id)
     await store.send(.stop)
   }
 

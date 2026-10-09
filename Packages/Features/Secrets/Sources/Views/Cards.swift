@@ -5,6 +5,8 @@ import VortexCore
 /// Claude asking to use keys: who, which keys, the command and where it runs; «Відхилити» and «Дозволити».
 struct ApprovalCard: View {
   let approval: Approval
+  /// How tall the command may get before it scrolls.
+  let commandHeight: CGFloat
   let deny: () -> Void
   let allow: () -> Void
 
@@ -24,10 +26,10 @@ struct ApprovalCard: View {
         Text("\(approval.call.client) wants to use \(Text(verbatim: approval.names.joined(separator: ", ")).bold())", bundle: .module)
           .font(.system(size: 13))
       }
-      // All of it, as the answer is about the command: as tall as it is, up to about ten lines, then it scrolls, so the
+      // All of it, as the answer is about the command: as tall as it is, up to `commandHeight`, then it scrolls, so the
       // buttons stay where they are.
       ScrollView { command }
-        .frame(maxHeight: 150)
+        .frame(maxHeight: commandHeight)
         .fixedSize(horizontal: false, vertical: true)
       .padding(.horizontal, 10)
       .padding(.vertical, 7)

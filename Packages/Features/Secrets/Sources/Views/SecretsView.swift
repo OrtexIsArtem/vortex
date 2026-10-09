@@ -12,15 +12,25 @@ struct SecretsView: View {
     VStack(alignment: .leading, spacing: 0) {
       header
         .frame(height: VortexMetrics.headerHeight)
-      ForEach(store.approvals) { approval in
-        ApprovalCard(approval: approval) { store.send(.denyTapped(approval.id)) } allow: {
-          store.send(.approveTapped(approval.id))
+      if !store.approvals.isEmpty {
+        // As tall as the requests, up to the whole tab: more than fit scroll, each command kept to a few lines while
+        // another waits too, so every answer stays in reach. The list below gets what is left.
+        ScrollView {
+          VStack(spacing: 10) {
+            ForEach(store.approvals) { approval in
+              ApprovalCard(approval: approval, commandHeight: store.approvals.count > 1 ? 64 : 150) {
+                store.send(.denyTapped(approval.id))
+              } allow: {
+                store.send(.approveTapped(approval.id))
+              }
+              .transition(.move(edge: .top).combined(with: .opacity))
+            }
+          }
+          .padding(.horizontal, 12)
+          .padding(.bottom, 10)
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 10)
-        // Room first for what waits for an answer; the list below scrolls.
-        .layoutPriority(1)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .frame(maxHeight: VortexMetrics.windowSize.height - VortexMetrics.headerHeight)
+        .fixedSize(horizontal: false, vertical: true)
       }
       if let draft = store.draft {
         KeyFormView(draft: draft, store: store)

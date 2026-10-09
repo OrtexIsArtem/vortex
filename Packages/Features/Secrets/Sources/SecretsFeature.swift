@@ -190,6 +190,9 @@ struct SecretsFeature: Sendable {
     case undo
     case reveal
     case answer(Approval.ID)
+    /// Posting or removing the notification: the newest wins, so it never shows a request other than the one its
+    /// buttons answer.
+    case notification
     case run(MCPCall.ID)
     case deletion(SecretKey.ID)
   }
@@ -379,6 +382,8 @@ struct SecretsFeature: Sendable {
         }
 
       case let .used(use):
+        // Not when it is logged already: Claude gave it up before the command got going.
+        guard state.running.contains(where: { $0.value.id == use.id }) else { return .none }
         state.running = state.running.filter { $0.value.id != use.id }
         return record(use, &state)
 
@@ -578,10 +583,7 @@ struct SecretsFeature: Sendable {
     state.approvals = []
     state.notifiedApproval = nil
     syncIndicator(&state)
-    return .merge(
-      waiting.map { .cancel(id: CancelID.answer($0)) }
-        + [.run { _ in await notifications.remove(Self.approvalNotificationID) }]
-    )
+    return .merge(waiting.map { .cancel(id: CancelID.answer($0)) } + [removeNotification()])
   }
 
   private func serverEvent(_ event: MCPEvent, _ state: inout State) -> Effect<Action> {
@@ -609,14 +611,18 @@ struct SecretsFeature: Sendable {
           + [renotify(&state)]
       )
     case let .cancelled(call):
-      // Waiting for «Дозволити»: the request goes; running: the command stops and answers with what it printed. The
-      // log keeps either.
+      // Waiting for «Дозволити»: the request goes; running: the command stops. Either way Claude gets «Cancelled.» and
+      // the log keeps it; a command that ran counts as a use of its keys.
       if let approval = state.approvals.first(where: { $0.call.id == call }) {
         return turnDown(approval.id, outcome: .cancelled, &state)
       }
       guard var use = state.running.removeValue(forKey: call) else { return .cancel(id: CancelID.run(call)) }
       use.outcome = .cancelled
-      return .merge(.cancel(id: CancelID.run(call)), record(use, &state))
+      return .merge(
+        .cancel(id: CancelID.run(call)),
+        .run { _ in await server.reply(call, MCPToolResult(text: "Cancelled.", isError: true)) },
+        record(use, ranWithKeys: true, &state)
+      )
     case let .call(call):
       switch call.tool {
       case .keys: return reply(call, keyList(state), isError: false)
@@ -691,6 +697,12 @@ struct SecretsFeature: Sendable {
       guard await notifications.requestAuthorization() else { return }
       await notifications.post(Self.approvalNotificationID, title, body, buttons)
     }
+    .cancellable(id: CancelID.notification, cancelInFlight: true)
+  }
+
+  private func removeNotification() -> Effect<Action> {
+    .run { _ in await notifications.remove(Self.approvalNotificationID) }
+      .cancellable(id: CancelID.notification, cancelInFlight: true)
   }
 
   /// One request answered: the notification moves to the next one still waiting, if any.
@@ -702,7 +714,7 @@ struct SecretsFeature: Sendable {
     state.notifiedApproval = nil
     guard let next = state.approvals.first else {
       syncIndicator(&state)
-      return .run { _ in await notifications.remove(Self.approvalNotificationID) }
+      return removeNotification()
     }
     return notify(next, &state)
   }
@@ -773,11 +785,11 @@ struct SecretsFeature: Sendable {
   }
 
   /// Into the log, newest first; a use that ran marks its keys as used.
-  private func record(_ use: KeyUse, _ state: inout State) -> Effect<Action> {
+  private func record(_ use: KeyUse, ranWithKeys: Bool? = nil, _ state: inout State) -> Effect<Action> {
     state.uses.insert(use, at: 0)
     if state.uses.count > KeyUse.shown { state.uses.removeLast(state.uses.count - KeyUse.shown) }
     var used: [SecretKey.ID] = []
-    if use.outcome == .ran || use.outcome == .timedOut {
+    if ranWithKeys ?? (use.outcome == .ran || use.outcome == .timedOut) {
       for name in use.keys {
         guard let key = state.keys.first(where: { $0.name == name }) else { continue }
         state.keys[id: key.id]?.lastUsedAt = use.at
