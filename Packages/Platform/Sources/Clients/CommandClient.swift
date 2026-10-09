@@ -60,8 +60,11 @@ enum Spawn {
     timeout: Duration
   ) async throws -> CommandClient.Output {
     let shell = loginShell
+    let terminal = await TerminalEnvironment.shared.value(shell: shell)
+    // Asking the shell takes a moment; a call given up meanwhile starts nothing.
+    try Task.checkCancellation()
     let output: CommandClient.Output
-    if let terminal = await TerminalEnvironment.shared.value(shell: shell) {
+    if let terminal {
       output = try await spawn([shell, "-c", command], in: directory, environment: terminal.merging(extra) { $1 }, timeout: timeout)
     } else {
       // The shell didn't say what a terminal gets: its login profile sets the PATH and the rest.
@@ -72,20 +75,21 @@ enum Spawn {
     return output
   }
 
-  /// Runs `words` (the program, then its arguments) with exactly `environment`.
+  /// Runs `words` (the program, then its arguments) with exactly `environment`. With `capturing` false what it prints
+  /// goes nowhere, so nothing it leaves running can keep this waiting for the end of its output.
   static func spawn(
     _ words: [String],
     in directory: URL?,
     environment: [String: String],
-    timeout: Duration
+    timeout: Duration,
+    capturing: Bool = true
   ) async throws -> CommandClient.Output {
-    let output = try PipeEnds()
-    let errors: PipeEnds
+    let output = capturing ? try PipeEnds() : nil
+    let errors: PipeEnds?
     do {
-      errors = try PipeEnds()
+      errors = capturing ? try PipeEnds() : nil
     } catch {
-      close(output.read)
-      close(output.write)
+      output?.closeBoth()
       throw error
     }
 
@@ -93,18 +97,23 @@ enum Spawn {
     posix_spawn_file_actions_init(&actions)
     defer { posix_spawn_file_actions_destroy(&actions) }
     posix_spawn_file_actions_addopen(&actions, 0, "/dev/null", O_RDONLY, 0)
-    posix_spawn_file_actions_adddup2(&actions, output.write, 1)
-    posix_spawn_file_actions_adddup2(&actions, errors.write, 2)
+    if let output, let errors {
+      posix_spawn_file_actions_adddup2(&actions, output.write, 1)
+      posix_spawn_file_actions_adddup2(&actions, errors.write, 2)
+    } else {
+      posix_spawn_file_actions_addopen(&actions, 1, "/dev/null", O_WRONLY, 0)
+      posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0)
+    }
     posix_spawn_file_actions_addchdir_np(&actions, (directory ?? FileManager.default.homeDirectoryForCurrentUser).path)
 
     var attributes: posix_spawnattr_t?
     posix_spawnattr_init(&attributes)
     defer { posix_spawnattr_destroy(&attributes) }
-    // A process group of its own, to stop it with everything it starts; signals as a terminal's command gets them; no
-    // other descriptor of Vortex's.
-    let flags = POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_CLOEXEC_DEFAULT
+    // A session of its own, without a terminal: its process group stops it with everything it starts, and an
+    // interactive shell never waits for a terminal Vortex was started from. Signals as a terminal's command gets them;
+    // no other descriptor of Vortex's.
+    let flags = POSIX_SPAWN_SETSID | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_CLOEXEC_DEFAULT
     posix_spawnattr_setflags(&attributes, Int16(flags))
-    posix_spawnattr_setpgroup(&attributes, 0)
     var defaults = sigset_t()
     sigfillset(&defaults)
     sigdelset(&defaults, SIGKILL)
@@ -121,11 +130,9 @@ enum Spawn {
 
     var pid: pid_t = 0
     let spawned = posix_spawn(&pid, words[0], &actions, &attributes, arguments, variables)
-    close(output.write)
-    close(errors.write)
+    for pipe in [output, errors].compactMap(\.self) { close(pipe.write) }
     guard spawned == 0 else {
-      close(output.read)
-      close(errors.read)
+      for pipe in [output, errors].compactMap(\.self) { close(pipe.read) }
       throw POSIXError(POSIXErrorCode(rawValue: spawned) ?? .EIO)
     }
 
@@ -141,8 +148,8 @@ enum Spawn {
     defer { deadline.cancel() }
 
     return await withTaskCancellationHandler {
-      async let stdout = drain(output.read)
-      async let stderr = drain(errors.read)
+      async let stdout = drain(output?.read)
+      async let stderr = drain(errors?.read)
       let status = await exitStatus(of: pid)
       // What it left running would hold the outputs open.
       killpg(group, SIGKILL)
@@ -185,9 +192,10 @@ enum Spawn {
   }
 
   /// Everything written to `descriptor` until it closes, up to `CommandClient.outputLimit`; read on a thread of its
-  /// own, as it blocks.
-  static func drain(_ descriptor: Int32) async -> Data {
-    await withCheckedContinuation { continuation in
+  /// own, as it blocks. Nothing without one.
+  static func drain(_ descriptor: Int32?) async -> Data {
+    guard let descriptor else { return Data() }
+    return await withCheckedContinuation { continuation in
       DispatchQueue.global(qos: .userInitiated).async {
         var data = Data()
         var buffer = [UInt8](repeating: 0, count: 64 * 1024)
@@ -218,18 +226,21 @@ enum Spawn {
 
 /// The environment the user's terminal gives a command: their shell started as a terminal window starts it, login and
 /// interactive, so what `.zshrc` adds (nvm's node, `~/.local/bin`) is there too. Asked once, as that takes a moment;
-/// again after a command wasn't found.
+/// again once a startup file changes or a command wasn't found.
 actor TerminalEnvironment {
   static let shared = TerminalEnvironment()
-  private static let marker = "__VORTEX_ENVIRONMENT__"
 
   private var answer: Task<[String: String]?, Never>?
+  /// The last change to the startup files when the shell was asked.
+  private var askedAfter: Date?
 
-  /// Nil when the shell doesn't answer in time; then it isn't asked again until `forget()`.
+  /// Nil when the shell doesn't answer in time; then it isn't asked again until a startup file changes or `forget()`.
   func value(shell: String) async -> [String: String]? {
-    if let answer { return await answer.value }
+    let changed = Self.startupFilesChanged()
+    if let answer, changed == askedAfter { return await answer.value }
     let task = Task { await Self.ask(shell: shell, base: Spawn.environment(shell: shell, adding: [:])) }
     answer = task
+    askedAfter = changed
     return await task.value
   }
 
@@ -237,31 +248,51 @@ actor TerminalEnvironment {
     answer = nil
   }
 
-  /// What `shell`, started with `base` the way a terminal starts it, exports; whatever its startup files print is
-  /// skipped. Nil when it fails or takes longer than `timeout`.
+  /// When a file a shell reads as it starts last changed in the home folder.
+  static func startupFilesChanged() -> Date? {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let names = [".zshenv", ".zprofile", ".zshrc", ".zlogin", ".bash_profile", ".bashrc", ".profile", ".config/fish/config.fish"]
+    return names.compactMap { name in
+      try? FileManager.default.attributesOfItem(atPath: home.appending(path: name).path)[.modificationDate] as? Date
+    }.max()
+  }
+
+  /// What `shell`, started with `base` the way a terminal starts it, exports. It writes that to a file and prints
+  /// nowhere, so what its startup files print or leave running doesn't matter. Nil when it fails or takes longer than
+  /// `timeout`.
   static func ask(shell: String, base: [String: String], timeout: Duration = .seconds(10)) async -> [String: String]? {
-    let words = [shell, "-l", "-i", "-c", "/usr/bin/printf %s \(marker); /usr/bin/env -0"]
-    guard let output = try? await Spawn.spawn(words, in: nil, environment: base, timeout: timeout),
+    let file = FileManager.default.temporaryDirectory.appending(path: "vortex-environment-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: file) }
+    var environment = base
+    // A terminal's: startup files often stop early for a dumb one, before nvm and the rest.
+    environment["TERM"] = "xterm-256color"
+    let words = [shell, "-l", "-i", "-c", "/usr/bin/env -0 > '\(file.path)'"]
+    guard let output = try? await Spawn.spawn(words, in: nil, environment: environment, timeout: timeout, capturing: false),
           !output.timedOut, output.exitCode == 0,
-          let start = output.stdout.range(of: Data(marker.utf8))?.upperBound
+          let data = try? Data(contentsOf: file)
     else { return nil }
-    var environment: [String: String] = [:]
-    for entry in output.stdout[start...].split(separator: 0) {
+    var answer: [String: String] = [:]
+    for entry in data.split(separator: 0) {
       let text = String(decoding: entry, as: UTF8.self)
       guard let equals = text.firstIndex(of: "=") else { continue }
-      environment[String(text[..<equals])] = String(text[text.index(after: equals)...])
+      answer[String(text[..<equals])] = String(text[text.index(after: equals)...])
     }
     // The shell's own bookkeeping; the command's shell sets these itself.
-    for name in ["PWD", "OLDPWD", "SHLVL", "_"] { environment[name] = nil }
+    for name in ["PWD", "OLDPWD", "SHLVL", "_"] { answer[name] = nil }
     // No colors, no pagers.
-    environment["TERM"] = "dumb"
-    return environment["PATH"] == nil ? nil : environment
+    answer["TERM"] = "dumb"
+    return answer["PATH"] == nil ? nil : answer
   }
 }
 
 private struct PipeEnds {
   let read: Int32
   let write: Int32
+
+  func closeBoth() {
+    close(read)
+    close(write)
+  }
 
   init() throws {
     var descriptors: [Int32] = [0, 0]

@@ -63,7 +63,8 @@ struct CommandClientTests {
   func theTerminalsEnvironmentHasWhatZshrcAdds() async throws {
     let home = try home([
       ".zprofile": "export FROM_ZPROFILE=yes\n",
-      ".zshrc": "echo 'Welcome back'\nexport PATH=\"/opt/vortex-test/bin:$PATH\"\nexport FROM_ZSHRC=yes\n",
+      // Emacs's guard, common in .zshrc: it would stop here for a dumb terminal.
+      ".zshrc": "[[ $TERM == dumb ]] && return\necho 'Welcome back'\nexport PATH=\"/opt/vortex-test/bin:$PATH\"\nexport FROM_ZSHRC=yes\n",
     ])
     defer { try? FileManager.default.removeItem(at: home) }
     let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
@@ -83,6 +84,18 @@ struct CommandClientTests {
     let start = ContinuousClock.now
     #expect(await TerminalEnvironment.ask(shell: "/bin/zsh", base: base, timeout: .milliseconds(500)) == nil)
     #expect(ContinuousClock.now - start < .seconds(10))
+  }
+
+  @Test
+  func whatTheStartupFilesLeaveRunningDoesNotHoldItUp() async throws {
+    // A process of another session keeps whatever it was given, which killing the shell's group doesn't reach.
+    let home = try home([".zshrc": "/usr/bin/perl -e 'use POSIX; setsid(); sleep 3' &\nexport FROM_ZSHRC=yes\n"])
+    defer { try? FileManager.default.removeItem(at: home) }
+    let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
+    let start = ContinuousClock.now
+    let environment = await TerminalEnvironment.ask(shell: "/bin/zsh", base: base)
+    #expect(environment?["FROM_ZSHRC"] == "yes")
+    #expect(ContinuousClock.now - start < .seconds(2))
   }
 
   @Test
