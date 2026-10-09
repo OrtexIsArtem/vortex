@@ -15,7 +15,7 @@
 - Claude gets two tools: `keys` lists names, kinds, notes and expiry, never values; `run` runs a shell command with {{name}} where a value goes.
 - The command runs in the user's shell with the environment their terminal has, `.zshrc` included (only the login profile if the shell doesn't answer in 10 s), in the folder Claude gives (else the home folder), with no input; it is stopped after 60 s unless Claude asks for up to 180, with everything it started.
 - A value goes in as a shell variable, so it is never part of the command's text; the output comes back with every value replaced by {{name}}, also as tools print it by accident: URL-encoded the usual ways, in base64, escaped in JSON, and a connection URL's password alone or as an HTTP Basic header. A part of a value, or one encoded on purpose, is not caught.
-- A command not found (exit code 127) comes back with a hint for Claude, and the next command asks the shell for the environment again.
+- A command not found (exit code 127) comes back with a hint for Claude, and the next command asks the shell for the environment again, as it does after a startup file changes.
 - While a command runs, other programs of the user can see a value: in the tool's arguments (`psql "{{db}}"`) and in the environment of tools not from Apple. The approval stops programs that use the MCP token, not ones watching processes.
 - A name Claude writes that no key has gets an error listing the keys there are.
 - The first use of a key in a Claude session waits for «Дозволити»: the notch shows a key and the name and flashes, a notification has «Дозволити» and «Відхилити», the tab shows the request with the command and the folder.
