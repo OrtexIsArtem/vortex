@@ -4,12 +4,14 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-# Web views and link previews load pages too.
-pattern='URLSession|URLRequest|NWConnection|NWListener|NWBrowser|NWPathMonitor|import Network|CFSocket|CFStream|WebSocket|AsyncImage|LinkPresentation|LPMetadataProvider|WebKit|WKWebView'
+# Lines of Swift matching $1 outside Secrets, comments left out.
+search() {
+  grep -rEn "$1" --include='*.swift' --exclude-dir=.build --exclude-dir=.swiftpm --exclude-dir=Secrets \
+    App Packages Tools 2>/dev/null | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//' || true
+}
 
-matches=$(grep -rEn "$pattern" --include='*.swift' \
-  --exclude-dir=.build --exclude-dir=.swiftpm --exclude-dir=Secrets \
-  App Packages Tools 2>/dev/null || true)
+# Web views and link previews load pages too.
+matches=$(search 'URLSession|URLRequest|NWConnection|NWListener|NWBrowser|NWPathMonitor|import Network|CFSocket|CFStream|WebSocket|AsyncImage|LinkPresentation|LPMetadataProvider|WebKit|WKWebView')
 
 if [ -n "$matches" ]; then
   echo "error: network APIs are allowed only in Packages/Features/Secrets:" >&2
@@ -19,10 +21,8 @@ fi
 
 # A command can reach the network (curl), so processes start only in the two Platform clients made for it, and
 # commands run only in Secrets.
-processes=$(grep -rEn 'Process\(|NSTask|posix_spawn|commandClient' --include='*.swift' \
-  --exclude-dir=.build --exclude-dir=.swiftpm --exclude-dir=Secrets \
-  --exclude=CommandClient.swift --exclude=SystemClient.swift \
-  App Packages Tools 2>/dev/null || true)
+processes=$(search '(^|[^A-Za-z0-9_])(Process(\(|\.run)|NSTask|posix_spawn|commandClient|CommandClient([^A-Za-z0-9_]|$))' |
+  grep -vE '^Packages/Platform/(Sources/Clients/(CommandClient|SystemClient)|Tests/CommandClientTests)\.swift:' || true)
 
 if [ -n "$processes" ]; then
   echo "error: processes start only in Platform's CommandClient and SystemClient, and commands run only in Packages/Features/Secrets:" >&2

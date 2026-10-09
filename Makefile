@@ -19,7 +19,9 @@ check: ## No network APIs outside Secrets
 	./scripts/check-no-network.sh
 
 hooks: ## Run the check and the package tests before every push
-	ln -sf ../../scripts/pre-push .git/hooks/pre-push
+	rm -f "$$(git rev-parse --git-path hooks)/pre-push"
+	printf '#!/bin/sh\nexec "$$(git rev-parse --show-toplevel)/scripts/pre-push" "$$@"\n' > "$$(git rev-parse --git-path hooks)/pre-push"
+	chmod +x "$$(git rev-parse --git-path hooks)/pre-push"
 
 install-cli: ## Link the vortex command into BINDIR (default /opt/homebrew/bin)
 	ln -sf "$(CURDIR)/Tools/CLI/vortex" "$(BINDIR)/vortex"
