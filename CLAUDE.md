@@ -11,9 +11,10 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 
 ## Commands
 - `make project` — regenerate Vortex.xcodeproj from project.yml
-- `make build` — compile the app without signing (for checks)
+- `make build` — compile the app without signing (for checks), into build/ so it never replaces the signed app Xcode runs
 - `make test` — run package tests
 - `make check` — no-network rule (also runs as a build phase)
+- `make hooks` — run `make check` and the package tests before every push
 - `make open` — regenerate and open in Xcode
 - `make install-cli` — link the `vortex` command (Tools/CLI) into /opt/homebrew/bin
 - `scripts/strings.py <Localizable.xcstrings> <entries.json>` — add keys with their uk translations to a String Catalog

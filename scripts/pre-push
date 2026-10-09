@@ -1,0 +1,6 @@
+#!/bin/sh
+# Before every push: the no-network check and the package tests. Installed by `make hooks`.
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+./scripts/check-no-network.sh
+swift test --package-path Packages --quiet
