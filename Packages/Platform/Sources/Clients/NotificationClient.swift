@@ -18,7 +18,8 @@ public struct NotificationClient: Sendable {
 
   /// Asks the user, the first time only, whether Vortex may show notifications; returns the answer.
   public var requestAuthorization: @Sendable () async -> Bool = { false }
-  /// Shows a notification now, without a sound. A notification with the same `id` is replaced.
+  /// Shows a notification now, without a sound. A notification with the same `id` is replaced. Cancelled before it is
+  /// shown, it isn't.
   public var post: @Sendable (_ id: String, _ title: String, _ body: String, _ buttons: [Button]) async -> Void
   /// Takes the notification with `id` out of Notification Center, if it is still there.
   public var remove: @Sendable (_ id: String) async -> Void
@@ -88,6 +89,8 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
       }
       content.categoryIdentifier = category
     }
+    // Waiting for the categories or the permission, it may have been given up for a newer notification.
+    guard !Task.isCancelled else { return }
     try? await center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
   }
 
