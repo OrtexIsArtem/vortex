@@ -38,8 +38,8 @@ public enum SecretsModule: FeatureModule {
     /// Lets scripts drive keys in a debug build, through distributed notifications:
     /// `io.github.ortexisartem.vortex.debug.secretsAdd` saves a key (userInfo `name`, `value`, optional `note`),
     /// `…secretsDelete` deletes one (userInfo `name`), `…secretsCopyConnect` copies the connect command,
-    /// `…secretsApprove` and `…secretsDeny` answer the first waiting request, `…secretsState` writes what the feature
-    /// holds to the file at userInfo `path`, as JSON, never a value.
+    /// `…secretsDeny` refuses the first waiting request, `…secretsState` writes what the feature holds to the file at
+    /// userInfo `path`, as JSON, never a value. Nothing approves a request: only a person does, in every build.
     private static func listenForDebugCommands() {
       let center = DistributedNotificationCenter.default()
       func on(_ name: String, _ handle: @escaping @MainActor ([String: String]) -> Void) {
@@ -57,9 +57,6 @@ public enum SecretsModule: FeatureModule {
         if let key = store.keys.first(where: { $0.name == info["name"] }) { store.send(.deleteTapped(key.id)) }
       }
       on("secretsCopyConnect") { _ in store.send(.copyConnectCommandTapped) }
-      on("secretsApprove") { _ in
-        if let id = store.approvals.first?.id { store.send(.approveTapped(id)) }
-      }
       on("secretsDeny") { _ in
         if let id = store.approvals.first?.id { store.send(.denyTapped(id)) }
       }
