@@ -65,6 +65,7 @@ public struct ClipboardFeature: Sendable {
   @Dependency(\.appsClient) var apps
   @Dependency(\.continuousClock) var clock
   @Dependency(\.database) var database
+  @Dependency(\.databaseIsOnDisk) var databaseIsOnDisk
   @Dependency(\.date.now) var now
   @Dependency(\.fileClient) var files
   @Dependency(\.pasteboardClient) var pasteboard
@@ -84,15 +85,15 @@ public struct ClipboardFeature: Sendable {
       switch action {
       case .start:
         guard !state.isLoaded else { return watch() }
-        return .run { [files] send in
+        return .run { [files, databaseIsOnDisk] send in
           try await database.migrate(ClipboardItem.migrator)
           let (items, savedIDs) = try await database.read { db in
             (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))
           }
           // Image folders whose rows are gone, after a crash or a failed save. Before watching starts,
-          // so a new image is never taken for one of them. Not on an empty history: it may be a database that
-          // didn't open, and the pictures are then all that is left.
-          if !savedIDs.isEmpty {
+          // so a new image is never taken for one of them. Not while the database is only in memory: its file didn't
+          // open, and the pictures are then all that is left.
+          if databaseIsOnDisk {
             for folder in await files.contents(ClipboardItem.imagesFolder) where !savedIDs.contains(folder.lastPathComponent) {
               await files.remove(folder)
             }

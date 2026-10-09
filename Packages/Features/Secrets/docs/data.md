@@ -11,7 +11,7 @@ Tables are created by the feature's migrator (`secrets.v1`) before its first que
 | Port, whether Claude Code connected once | DataFolder/secrets.json | always |
 
 - Values never reach the database, the log or a file; a command's text holds placeholders, the output is cleaned before Claude or the log gets it.
-- The value is saved before the row; at launch, values without a row are deleted (Vortex stopped between them, or while a deletion could still be taken back), unless there are no keys at all: that may be a database that didn't open.
+- The value is saved before the row; at launch, values without a row are deleted (Vortex stopped between them, or while a deletion could still be taken back), unless the database is only in memory because its file didn't open.
 - A deleted key's row goes at once, its value once the deletion can't be taken back (5 s, or the next change).
 - Rows this version can't read (written by a newer Vortex) are skipped and kept, their values too.
 - Sessions and what was allowed in them live only in memory; past 50 sessions the least recently used one is let go (Claude Code never ends its own).

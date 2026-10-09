@@ -171,6 +171,7 @@ struct SecretsFeature: Sendable {
   @Dependency(\.continuousClock) var clock
   @Dependency(\.commandClient) var commands
   @Dependency(\.database) var database
+  @Dependency(\.databaseIsOnDisk) var databaseIsOnDisk
   @Dependency(\.date.now) var now
   @Dependency(\.keychainClient) var keychain
   @Dependency(\.notificationClient) var notifications
@@ -505,7 +506,7 @@ struct SecretsFeature: Sendable {
   }
 
   private func load() -> Effect<Action> {
-    .run { send in
+    .run { [databaseIsOnDisk] send in
       try await database.migrate(SecretKey.migrator)
       let oldest = calendar.date(byAdding: .day, value: -KeyUse.keptDays, to: now) ?? now
       let (keys, uses, rowIDs) = try await database.write { db in
@@ -517,9 +518,9 @@ struct SecretsFeature: Sendable {
         )
       }
       // Values whose key is gone: Vortex stopped between saving a value and its row, or while a deletion could still
-      // be taken back. Not when there are no keys: that may be a database that didn't open, and the keychain then
-      // holds the only copy of every value.
-      if !rowIDs.isEmpty {
+      // be taken back. Not while the database is only in memory: its file didn't open, and the keychain then holds the
+      // only copy of every value.
+      if databaseIsOnDisk {
         for account in await keychain.accounts(Self.keychainService) where !rowIDs.contains(account) {
           await keychain.delete(Self.keychainService, account)
         }

@@ -645,9 +645,10 @@ struct ClipboardFeatureTests {
   }
 
   @Test
-  func anEmptyHistoryRemovesNoImageFolder() async throws {
-    // An empty history may be a database that didn't open: the pictures are then all that is left.
+  func aDatabaseOnlyInMemoryRemovesNoImageFolder() async throws {
+    // Its file didn't open: the pictures are then all that is left.
     let store = makeStore()
+    store.dependencies.databaseIsOnDisk = false
     store.dependencies.fileClient.contents = { _ in [ClipboardItem.imagesFolder.appending(path: "UNREAD")] }
     await start(store)
     await store.send(.stop)

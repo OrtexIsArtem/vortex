@@ -124,6 +124,7 @@ public struct ShelfFeature: Sendable {
 
   @Dependency(\.continuousClock) var clock
   @Dependency(\.database) var database
+  @Dependency(\.databaseIsOnDisk) var databaseIsOnDisk
   @Dependency(\.date.now) var now
   @Dependency(\.fileClient) var files
   @Dependency(\.quickLookClient) var quickLook
@@ -146,14 +147,14 @@ public struct ShelfFeature: Sendable {
       case .start:
         state.isRunning = true
         guard state.isLoaded else {
-          return .run { [files] send in
+          return .run { [files, databaseIsOnDisk] send in
             try await database.migrate(ShelfItem.migrator)
             let (items, savedIDs) = try await database.read { db in
               (try ShelfItem.fetchAllReadable(db), try ShelfItem.savedIDs(db))
             }
-            // Copies whose rows are gone, after a crash or a failed save; before anything new is added. Not on an
-            // empty shelf: it may be a database that didn't open, and the copies are then all that is left.
-            if !savedIDs.isEmpty {
+            // Copies whose rows are gone, after a crash or a failed save; before anything new is added. Not while the
+            // database is only in memory: its file didn't open, and the copies are then all that is left.
+            if databaseIsOnDisk {
               for folder in await files.contents(ShelfItem.copiesFolder) where !savedIDs.contains(folder.lastPathComponent) {
                 await files.remove(folder)
               }

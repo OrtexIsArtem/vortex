@@ -122,9 +122,22 @@ struct TasksFeatureTests {
   }
 
   @Test
-  func noTasksMeansNoPictureFolderIsRemoved() async {
-    // No tasks may be a database that didn't open: the pictures are then all that is left.
+  func theLastDeletedTasksPicturesGoAtTheNextStart() async {
+    // Vortex quit while the deletion could still be taken back: no task is left, only its pictures.
+    let orphan = TaskItem.folder.appending(path: "DELETED", directoryHint: .isDirectory)
     let store = makeStore()
+    store.dependencies.fileClient.contents = { _ in [orphan] }
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await store.send(.stop)
+    #expect(removed.value == [orphan])
+  }
+
+  @Test
+  func aDatabaseOnlyInMemoryRemovesNoPictureFolder() async {
+    // Its file didn't open: the pictures are then all that is left.
+    let store = makeStore()
+    store.dependencies.databaseIsOnDisk = false
     store.dependencies.fileClient.contents = { _ in [TaskItem.folder.appending(path: "UNREAD", directoryHint: .isDirectory)] }
     await store.send(.start)
     await store.receive(\.loaded)

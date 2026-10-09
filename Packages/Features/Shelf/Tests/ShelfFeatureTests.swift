@@ -604,9 +604,10 @@ struct ShelfFeatureTests {
   }
 
   @Test
-  func anEmptyShelfRemovesNoCopy() async {
-    // An empty shelf may be a database that didn't open: the copies are then all that is left.
+  func aDatabaseOnlyInMemoryRemovesNoCopy() async {
+    // Its file didn't open: the copies are then all that is left.
     let store = makeStore()
+    store.dependencies.databaseIsOnDisk = false
     store.dependencies.fileClient.contents = { _ in [ShelfItem.copiesFolder.appending(path: "UNREAD")] }
     await start(store)
     await store.send(.stop)

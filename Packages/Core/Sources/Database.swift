@@ -49,20 +49,35 @@ extension DependencyValues {
     get { self[DatabaseKey.self] }
     set { self[DatabaseKey.self] = newValue }
   }
+
+  /// Whether `database` is the file. False when the file couldn't be opened and features work in an empty database in
+  /// memory until the next launch: they must not then remove files or values that have no row, as the rows are only
+  /// out of reach. Tests get true.
+  public var databaseIsOnDisk: Bool {
+    get { self[DatabaseIsOnDiskKey.self] }
+    set { self[DatabaseIsOnDiskKey.self] = newValue }
+  }
 }
 
 private enum DatabaseKey: DependencyKey {
-  static let liveValue: any DatabaseWriter = {
+  static let liveValue: any DatabaseWriter = opened.writer
+  static var testValue: any DatabaseWriter { VortexDatabase.inMemory() }
+
+  /// The file, opened once per launch, or an empty database in memory when it can't be.
+  static let opened: (writer: any DatabaseWriter, isOnDisk: Bool) = {
     let url = DataFolder.url.appending(path: "vortex.sqlite")
     do {
-      return try VortexDatabase.open(at: url)
+      return (try VortexDatabase.open(at: url), true)
     } catch {
       // A broken file must not stop the app: features keep working in memory until the next launch.
       Logger(subsystem: "io.github.ortexisartem.vortex", category: "database")
         .error("Could not open \(url.path, privacy: .public): \(error, privacy: .public)")
-      return VortexDatabase.inMemory()
+      return (VortexDatabase.inMemory(), false)
     }
   }()
+}
 
-  static var testValue: any DatabaseWriter { VortexDatabase.inMemory() }
+private enum DatabaseIsOnDiskKey: DependencyKey {
+  static let liveValue = DatabaseKey.opened.isOnDisk
+  static let testValue = true
 }

@@ -108,11 +108,24 @@ struct SecretsFeatureTests {
   }
 
   @Test
-  func noKeysMeansNoValueIsRemoved() async {
-    // No keys may be a database that didn't open: the keychain then holds the only copy of every value.
+  func theLastDeletedKeysValueGoesAtTheNextStart() async {
+    // Vortex quit while the deletion could still be taken back: no key is left, only its value.
+    let account = "\(SecretsFeature.keychainService)/DELETED"
+    keychain.withValue { $0[account] = value }
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    #expect(keychain.value[account] == nil)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aDatabaseOnlyInMemoryRemovesNoValue() async {
+    // Its file didn't open: the keychain then holds the only copy of every value.
     let account = "\(SecretsFeature.keychainService)/UNREAD"
     keychain.withValue { $0[account] = value }
     let store = makeStore()
+    store.dependencies.databaseIsOnDisk = false
     await store.send(.start)
     await store.receive(\.loaded)
     #expect(keychain.value[account] == value)

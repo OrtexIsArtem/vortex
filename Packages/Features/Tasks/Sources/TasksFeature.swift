@@ -179,6 +179,7 @@ public struct TasksFeature: Sendable {
   @Dependency(\.calendar) var calendar
   @Dependency(\.continuousClock) var clock
   @Dependency(\.database) var database
+  @Dependency(\.databaseIsOnDisk) var databaseIsOnDisk
   @Dependency(\.date.now) var now
   @Dependency(\.fileClient) var files
   @Dependency(\.frontWindowClient) var frontWindow
@@ -463,7 +464,7 @@ public struct TasksFeature: Sendable {
   }
 
   private func load() -> Effect<Action> {
-    .run { send in
+    .run { [databaseIsOnDisk] send in
       try await database.migrate(TaskItem.migrator)
       let (tasks, lastNumber, savedIDs) = try await database.read { db in
         (
@@ -472,9 +473,10 @@ public struct TasksFeature: Sendable {
           try String.fetchSet(db, sql: "SELECT id FROM \(TaskItem.databaseTableName)")
         )
       }
-      // Picture folders whose row is gone: Vortex stopped between writing the pictures and saving the row. Not when
-      // there are no tasks: that may be a database that didn't open, and the pictures are then all that is left.
-      if !savedIDs.isEmpty {
+      // Picture folders whose row is gone: Vortex stopped between writing the pictures and saving the row, or while a
+      // deletion could still be taken back. Not while the database is only in memory: its file didn't open, and the
+      // pictures are then all that is left.
+      if databaseIsOnDisk {
         for folder in await files.contents(TaskItem.folder) where !savedIDs.contains(folder.lastPathComponent) {
           await files.remove(folder)
         }
