@@ -24,12 +24,11 @@ struct ApprovalCard: View {
         Text("\(approval.call.client) wants to use \(Text(verbatim: approval.names.joined(separator: ", ")).bold())", bundle: .module)
           .font(.system(size: 13))
       }
-      // All of it, as the answer is about the command: past a few lines it scrolls, so the buttons stay where they are.
-      ViewThatFits(in: .vertical) {
-        command
-        ScrollView { command }
-      }
-      .frame(maxHeight: 150)
+      // All of it, as the answer is about the command: as tall as it is, up to about ten lines, then it scrolls, so the
+      // buttons stay where they are.
+      ScrollView { command }
+        .frame(maxHeight: 150)
+        .fixedSize(horizontal: false, vertical: true)
       .padding(.horizontal, 10)
       .padding(.vertical, 7)
       .frame(maxWidth: .infinity, alignment: .leading)

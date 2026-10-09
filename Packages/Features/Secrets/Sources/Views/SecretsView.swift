@@ -18,6 +18,8 @@ struct SecretsView: View {
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
+        // Room first for what waits for an answer; the list below scrolls.
+        .layoutPriority(1)
         .transition(.move(edge: .top).combined(with: .opacity))
       }
       if let draft = store.draft {
