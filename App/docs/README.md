@@ -1,6 +1,6 @@
 # App
 
-Entry point only: main.swift starts AppKit with AppDelegate, which creates `ShellController` from VortexShell, starts it, hands it files opened with Vortex (`vortex shelf add`, `open -a Vortex`) and asks it to save settings when the app quits. No Dock icon (LSUIElement). Target settings (bundle id, signing, Info.plist keys, the en/uk localizations) live in project.yml.
+Entry point only: main.swift starts AppKit with AppDelegate, which creates `ShellController` from VortexShell, starts it, hands it files opened with Vortex (`vortex shelf add`, `open -a Vortex`) and asks it to save settings when the app quits. A Vortex started while another runs (a build from Xcode next to one opened before) asks the other to quit, which saves its settings, and stops it after 2 s if it is still there: one instance owns the data, the notch and the MCP port. No Dock icon (LSUIElement). Target settings (bundle id, signing, Info.plist keys, the en/uk localizations) live in project.yml.
 
 Debug builds can be driven by scripts without touching the pointer, through distributed notifications:
 - `io.github.ortexisartem.vortex.debug.toggle` — open or close the window, as the shortcut does;
