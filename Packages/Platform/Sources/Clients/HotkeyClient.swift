@@ -29,7 +29,8 @@ extension HotkeyClient: DependencyKey {
     presses: { hotkey in
       AsyncStream { continuation in
         let listener = Task { @MainActor in
-          for await _ in KeyboardShortcuts.events(.keyUp, for: hotkey.shortcutName) {
+          // On the press, not the release, so nothing waits for the keys to come up; a held key doesn't repeat.
+          for await _ in KeyboardShortcuts.events(.keyDown, for: hotkey.shortcutName) {
             continuation.yield()
           }
           continuation.finish()
