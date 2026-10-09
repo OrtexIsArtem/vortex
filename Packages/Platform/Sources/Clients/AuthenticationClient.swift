@@ -15,7 +15,11 @@ extension AuthenticationClient: DependencyKey {
       let context = LAContext()
       var error: NSError?
       guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return false }
-      return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
+      // The system's prompt is another app's window: a click on it, such as on «Use Password…», must not close Vortex's.
+      await MainActor.run { OutsideActivity.shared.begin() }
+      let confirmed = (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
+      await MainActor.run { OutsideActivity.shared.end() }
+      return confirmed
     }
   )
 

@@ -20,6 +20,8 @@ public struct NotificationClient: Sendable {
   public var requestAuthorization: @Sendable () async -> Bool = { false }
   /// Shows a notification now, without a sound. A notification with the same `id` is replaced.
   public var post: @Sendable (_ id: String, _ title: String, _ body: String, _ buttons: [Button]) async -> Void
+  /// Takes the notification with `id` out of Notification Center, if it is still there.
+  public var remove: @Sendable (_ id: String) async -> Void
   /// The ids of the buttons the user presses on Vortex notifications from now on.
   public var buttonPresses: @Sendable () async -> AsyncStream<String> = { .finished }
 }
@@ -30,6 +32,7 @@ extension NotificationClient: DependencyKey {
     post: { id, title, body, buttons in
       await Notifications.shared.post(id: id, title: title, body: body, buttons: buttons)
     },
+    remove: { id in await Notifications.shared.remove(id: id) },
     buttonPresses: { await Notifications.shared.buttonPresses() }
   )
 
@@ -56,6 +59,11 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     let center = UNUserNotificationCenter.current()
     if center.delegate !== self { center.delegate = self }
     return center
+  }
+
+  func remove(id: String) {
+    center.removeDeliveredNotifications(withIdentifiers: [id])
+    center.removePendingNotificationRequests(withIdentifiers: [id])
   }
 
   func requestAuthorization() async -> Bool {
