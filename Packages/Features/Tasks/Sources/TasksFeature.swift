@@ -472,9 +472,12 @@ public struct TasksFeature: Sendable {
           try String.fetchSet(db, sql: "SELECT id FROM \(TaskItem.databaseTableName)")
         )
       }
-      // Picture folders whose row is gone: Vortex stopped between writing the pictures and saving the row.
-      for folder in await files.contents(TaskItem.folder) where !savedIDs.contains(folder.lastPathComponent) {
-        await files.remove(folder)
+      // Picture folders whose row is gone: Vortex stopped between writing the pictures and saving the row. Not when
+      // there are no tasks: that may be a database that didn't open, and the pictures are then all that is left.
+      if !savedIDs.isEmpty {
+        for folder in await files.contents(TaskItem.folder) where !savedIDs.contains(folder.lastPathComponent) {
+          await files.remove(folder)
+        }
       }
       await send(.loaded(tasks: tasks, lastNumber: lastNumber))
     } catch: { error, send in

@@ -586,13 +586,31 @@ struct ShelfFeatureTests {
   }
 
   @Test
-  func copiesWithoutARowAreRemovedAtStart() async {
+  func copiesWithoutARowAreRemovedAtStart() async throws {
+    try ShelfItem.migrator.migrate(database)
+    try await database.write { db in
+      try db.execute(sql: """
+        INSERT INTO shelf_item (id, content, addedAt, isPinned, position)
+        VALUES ('KEPT', '{"future":{}}', '2026-10-04 10:00:00.000', 1, 0)
+        """)
+    }
     let orphan = ShelfItem.copiesFolder.appending(path: "ORPHAN")
     let store = makeStore()
-    store.dependencies.fileClient.contents = { _ in [orphan] }
+    store.dependencies.fileClient.contents = { _ in [ShelfItem.copiesFolder.appending(path: "KEPT"), orphan] }
     await start(store)
     await store.send(.stop)
     await store.finish()
     #expect(removed.value == [orphan])
+  }
+
+  @Test
+  func anEmptyShelfRemovesNoCopy() async {
+    // An empty shelf may be a database that didn't open: the copies are then all that is left.
+    let store = makeStore()
+    store.dependencies.fileClient.contents = { _ in [ShelfItem.copiesFolder.appending(path: "UNREAD")] }
+    await start(store)
+    await store.send(.stop)
+    await store.finish()
+    #expect(removed.value.isEmpty)
   }
 }

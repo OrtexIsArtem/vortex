@@ -517,9 +517,12 @@ struct SecretsFeature: Sendable {
         )
       }
       // Values whose key is gone: Vortex stopped between saving a value and its row, or while a deletion could still
-      // be taken back.
-      for account in await keychain.accounts(Self.keychainService) where !rowIDs.contains(account) {
-        await keychain.delete(Self.keychainService, account)
+      // be taken back. Not when there are no keys: that may be a database that didn't open, and the keychain then
+      // holds the only copy of every value.
+      if !rowIDs.isEmpty {
+        for account in await keychain.accounts(Self.keychainService) where !rowIDs.contains(account) {
+          await keychain.delete(Self.keychainService, account)
+        }
       }
       await send(.loaded(keys: keys, uses: uses))
     } catch: { error, send in

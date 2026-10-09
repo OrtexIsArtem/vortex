@@ -90,9 +90,12 @@ public struct ClipboardFeature: Sendable {
             (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))
           }
           // Image folders whose rows are gone, after a crash or a failed save. Before watching starts,
-          // so a new image is never taken for one of them.
-          for folder in await files.contents(ClipboardItem.imagesFolder) where !savedIDs.contains(folder.lastPathComponent) {
-            await files.remove(folder)
+          // so a new image is never taken for one of them. Not on an empty history: it may be a database that
+          // didn't open, and the pictures are then all that is left.
+          if !savedIDs.isEmpty {
+            for folder in await files.contents(ClipboardItem.imagesFolder) where !savedIDs.contains(folder.lastPathComponent) {
+              await files.remove(folder)
+            }
           }
           await send(.loaded(items))
         } catch: { error, send in

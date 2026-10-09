@@ -629,12 +629,29 @@ struct ClipboardFeatureTests {
 
   @Test
   func imageFoldersWithoutARowAreRemovedAtStart() async throws {
+    try ClipboardItem.migrator.migrate(database)
+    try await database.write { db in
+      try db.execute(sql: """
+        INSERT INTO clipboard_item (id, content, copiedAt, isPinned, isConcealed, fingerprint)
+        VALUES ('KEPT', '{"future":{}}', '2026-10-04 10:00:00.000', 1, 0, 'x')
+        """)
+    }
     let orphan = ClipboardItem.imagesFolder.appending(path: "ORPHAN")
     let store = makeStore()
-    store.dependencies.fileClient.contents = { _ in [orphan] }
+    store.dependencies.fileClient.contents = { _ in [ClipboardItem.imagesFolder.appending(path: "KEPT"), orphan] }
     await start(store)
     await store.send(.stop)
     #expect(removedFiles.value == [orphan])
+  }
+
+  @Test
+  func anEmptyHistoryRemovesNoImageFolder() async throws {
+    // An empty history may be a database that didn't open: the pictures are then all that is left.
+    let store = makeStore()
+    store.dependencies.fileClient.contents = { _ in [ClipboardItem.imagesFolder.appending(path: "UNREAD")] }
+    await start(store)
+    await store.send(.stop)
+    #expect(removedFiles.value.isEmpty)
   }
 
   @Test

@@ -104,6 +104,35 @@ struct TasksFeatureTests {
   }
 
   @Test
+  func pictureFoldersWithoutATaskAreRemovedAtStart() async throws {
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await captureTask(store)
+    await store.send(.stop)
+    let task = try #require(store.state.tasks.first)
+    let orphan = TaskItem.folder.appending(path: "ORPHAN", directoryHint: .isDirectory)
+
+    let relaunched = makeStore()
+    relaunched.dependencies.fileClient.contents = { _ in [task.folderURL, orphan] }
+    await relaunched.send(.start)
+    await relaunched.receive(\.loaded)
+    await relaunched.send(.stop)
+    #expect(removed.value == [orphan])
+  }
+
+  @Test
+  func noTasksMeansNoPictureFolderIsRemoved() async {
+    // No tasks may be a database that didn't open: the pictures are then all that is left.
+    let store = makeStore()
+    store.dependencies.fileClient.contents = { _ in [TaskItem.folder.appending(path: "UNREAD", directoryHint: .isDirectory)] }
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await store.send(.stop)
+    #expect(removed.value.isEmpty)
+  }
+
+  @Test
   func theShortcutFreezesTheScreenAndReturnSavesTheTaskWithItsSourceAndText() async throws {
     let store = makeStore()
     await store.send(.start)

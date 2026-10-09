@@ -90,6 +90,36 @@ struct SecretsFeatureTests {
   }
 
   @Test
+  func valuesWithoutAKeyAreRemovedAtStart() async throws {
+    let store = makeStore()
+    await start(store)
+    await addKey(store)
+    let key = try #require(store.state.keys.first)
+    await store.send(.stop)
+    let orphan = "\(SecretsFeature.keychainService)/ORPHAN"
+    keychain.withValue { $0[orphan] = "left by a crash" }
+
+    let relaunched = makeStore()
+    await relaunched.send(.start)
+    await relaunched.receive(\.loaded)
+    #expect(keychain.value[orphan] == nil)
+    #expect(keychain.value["\(SecretsFeature.keychainService)/\(key.id.uuidString)"] == value)
+    await relaunched.send(.stop)
+  }
+
+  @Test
+  func noKeysMeansNoValueIsRemoved() async {
+    // No keys may be a database that didn't open: the keychain then holds the only copy of every value.
+    let account = "\(SecretsFeature.keychainService)/UNREAD"
+    keychain.withValue { $0[account] = value }
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    #expect(keychain.value[account] == value)
+    await store.send(.stop)
+  }
+
+  @Test
   func aKeysValueGoesToTheKeychainAndOnlyWhatItIsToTheDatabase() async throws {
     let store = makeStore()
     await start(store)

@@ -151,9 +151,12 @@ public struct ShelfFeature: Sendable {
             let (items, savedIDs) = try await database.read { db in
               (try ShelfItem.fetchAllReadable(db), try ShelfItem.savedIDs(db))
             }
-            // Copies whose rows are gone, after a crash or a failed save; before anything new is added.
-            for folder in await files.contents(ShelfItem.copiesFolder) where !savedIDs.contains(folder.lastPathComponent) {
-              await files.remove(folder)
+            // Copies whose rows are gone, after a crash or a failed save; before anything new is added. Not on an
+            // empty shelf: it may be a database that didn't open, and the copies are then all that is left.
+            if !savedIDs.isEmpty {
+              for folder in await files.contents(ShelfItem.copiesFolder) where !savedIDs.contains(folder.lastPathComponent) {
+                await files.remove(folder)
+              }
             }
             await send(.loaded(items))
           } catch: { error, send in
