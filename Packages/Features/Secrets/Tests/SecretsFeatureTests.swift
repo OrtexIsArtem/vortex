@@ -17,6 +17,8 @@ struct SecretsFeatureTests {
   let ran = LockIsolated<[(command: String, environment: [String: String], folder: String?)]>([])
   let replies = LockIsolated<[MCPToolResult]>([])
   let posted = LockIsolated<[String]>([])
+  let bodies = LockIsolated<[String]>([])
+  let removedNotifications = LockIsolated<[String]>([])
   let copied = LockIsolated<[(text: String, concealed: Bool)]>([])
   let events = AsyncStream.makeStream(of: MCPEvent.self)
   let session = MCPSession(id: "s1", client: "Claude Code")
@@ -50,7 +52,11 @@ struct SecretsFeatureTests {
       $0.mcpServer.serve = { [events] _, _ in events.stream }
       $0.mcpServer.reply = { [replies] _, result in replies.withValue { $0.append(result) } }
       $0.notificationClient.requestAuthorization = { true }
-      $0.notificationClient.post = { [posted] id, title, _, _ in posted.withValue { $0.append("\(id): \(title)") } }
+      $0.notificationClient.post = { [posted, bodies] id, title, body, _ in
+        posted.withValue { $0.append("\(id): \(title)") }
+        bodies.withValue { $0.append(body) }
+      }
+      $0.notificationClient.remove = { [removedNotifications] id in removedNotifications.withValue { $0.append(id) } }
       $0.notificationClient.buttonPresses = { AsyncStream { _ in } }
       $0.pasteboardClient.write = { [copied] content, concealed, _ in
         if case let .text(text) = content { copied.withValue { $0.append((text, concealed)) } }
@@ -254,6 +260,56 @@ struct SecretsFeatureTests {
     try await eventually { [replies] in replies.value.contains(MCPToolResult(text: "Cancelled.", isError: true)) }
     try await eventually { [posted] in posted.value.last == "secrets.approval: Claude Code → prod-db" }
     #expect(store.state.indicators[SecretsFeature.id]?.trailing == [.text("prod-db")])
+    await store.send(.stop)
+  }
+
+  @Test
+  func whatClaudeGivesUpIsLoggedAsCancelled() async throws {
+    let store = makeStore()
+    store.dependencies.commandClient.run = { [clock] _, _, _, _ in
+      try await clock.sleep(for: .seconds(30))
+      return CommandClient.Output(exitCode: 0)
+    }
+    await start(store)
+    await addKey(store)
+    // Waiting for «Дозволити»: it never ran.
+    let waiting = call(.run, ["command": "psql \"{{prod-db}}\""], id: 1)
+    events.continuation.yield(.call(waiting))
+    await store.receive(\.server.call)
+    events.continuation.yield(.cancelled(waiting.id))
+    await store.receive(\.server.cancelled)
+    #expect(store.state.uses.first?.outcome == .cancelled)
+    #expect(store.state.uses.first?.exitCode == nil)
+
+    // Running: it is stopped, and the log still says what ran with the key.
+    let running = call(.run, ["command": "psql \"{{prod-db}}\" -c 'delete from bookings'"], id: 2)
+    events.continuation.yield(.call(running))
+    await store.receive(\.server.call)
+    await store.send(.approveTapped(try #require(store.state.approvals.first?.id)))
+    #expect(store.state.running[running.id] != nil)
+    events.continuation.yield(.cancelled(running.id))
+    await store.receive(\.server.cancelled)
+    #expect(store.state.running.isEmpty)
+    #expect(store.state.uses.map(\.outcome) == [.cancelled, .cancelled])
+    #expect(store.state.uses.first?.command == "psql \"{{prod-db}}\" -c 'delete from bookings'")
+    try await eventually { [database] in try await database.read { db in try KeyUse.latest(db) }.count == 2 }
+    await store.send(.stop)
+  }
+
+  @Test
+  func theNotificationShowsTheStartOfTheCommandAndGoesOnceNothingWaits() async throws {
+    let store = makeStore()
+    await start(store)
+    await addKey(store)
+    let command = "psql \"{{prod-db}}\" -c \"" + String(repeating: "select 1; ", count: 40) + "\""
+    events.continuation.yield(.call(call(.run, ["command": .string(command)], id: 1)))
+    await store.receive(\.server.call)
+    try await eventually { [bodies] in bodies.value.count == 1 }
+    #expect(bodies.value.first?.count == 240)
+    #expect(bodies.value.first?.hasSuffix("…") == true)
+    #expect(removedNotifications.value.isEmpty)
+    await store.send(.denyTapped(try #require(store.state.approvals.first?.id)))
+    try await eventually { [removedNotifications] in removedNotifications.value == ["secrets.approval"] }
     await store.send(.stop)
   }
 

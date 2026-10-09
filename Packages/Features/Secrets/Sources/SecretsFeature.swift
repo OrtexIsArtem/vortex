@@ -97,6 +97,8 @@ struct SecretsFeature: Sendable {
     var approvals: IdentifiedArrayOf<Approval> = []
     /// The approval the notification shows, which its buttons answer.
     var notifiedApproval: Approval.ID?
+    /// Commands running now, by call: the log keeps one Claude gives up as cancelled.
+    var running: [MCPCall.ID: KeyUse] = [:]
     var server = ServerStatus.off
     var token: String?
     /// Grows with every approval asked for, so each one flashes the notch anew.
@@ -377,6 +379,7 @@ struct SecretsFeature: Sendable {
         }
 
       case let .used(use):
+        state.running = state.running.filter { $0.value.id != use.id }
         return record(use, &state)
 
       case .copyConnectCommandTapped:
@@ -575,7 +578,10 @@ struct SecretsFeature: Sendable {
     state.approvals = []
     state.notifiedApproval = nil
     syncIndicator(&state)
-    return .merge(waiting.map { .cancel(id: CancelID.answer($0)) })
+    return .merge(
+      waiting.map { .cancel(id: CancelID.answer($0)) }
+        + [.run { _ in await notifications.remove(Self.approvalNotificationID) }]
+    )
   }
 
   private func serverEvent(_ event: MCPEvent, _ state: inout State) -> Effect<Action> {
@@ -603,16 +609,14 @@ struct SecretsFeature: Sendable {
           + [renotify(&state)]
       )
     case let .cancelled(call):
-      // Waiting for «Дозволити»: the request goes; running: the command stops and answers with what it printed.
-      guard let approval = state.approvals.first(where: { $0.call.id == call }) else {
-        return .cancel(id: CancelID.run(call))
+      // Waiting for «Дозволити»: the request goes; running: the command stops and answers with what it printed. The
+      // log keeps either.
+      if let approval = state.approvals.first(where: { $0.call.id == call }) {
+        return turnDown(approval.id, outcome: .cancelled, &state)
       }
-      state.approvals.remove(id: approval.id)
-      return .merge(
-        .cancel(id: CancelID.answer(approval.id)),
-        reply(approval.call, "Cancelled.", isError: true),
-        renotify(&state)
-      )
+      guard var use = state.running.removeValue(forKey: call) else { return .cancel(id: CancelID.run(call)) }
+      use.outcome = .cancelled
+      return .merge(.cancel(id: CancelID.run(call)), record(use, &state))
     case let .call(call):
       switch call.tool {
       case .keys: return reply(call, keyList(state), isError: false)
@@ -655,7 +659,7 @@ struct SecretsFeature: Sendable {
     guard asked.isEmpty else {
       return ask(call, names: asked.compactMap { state.key(named: $0, at: now)?.name }, command: command, &state)
     }
-    return execute(call, prepared, command: command, state)
+    return execute(call, prepared, command: command, &state)
   }
 
   private func ask(_ call: MCPCall, names: [String], command: String, _ state: inout State) -> Effect<Action> {
@@ -677,7 +681,8 @@ struct SecretsFeature: Sendable {
     state.notifiedApproval = approval.id
     syncIndicator(&state)
     let title = "\(approval.call.client) → \(approval.names.joined(separator: ", "))"
-    let body = String(approval.command.prefix(240))
+    // Its start; the tab shows all of it.
+    let body = approval.command.count > 240 ? approval.command.prefix(239) + "…" : approval.command
     let buttons = [
       NotificationClient.Button(id: Self.allowButtonID, title: String(localized: "Allow", bundle: .module)),
       NotificationClient.Button(id: Self.denyButtonID, title: String(localized: "Deny", bundle: .module)),
@@ -697,7 +702,7 @@ struct SecretsFeature: Sendable {
     state.notifiedApproval = nil
     guard let next = state.approvals.first else {
       syncIndicator(&state)
-      return .none
+      return .run { _ in await notifications.remove(Self.approvalNotificationID) }
     }
     return notify(next, &state)
   }
@@ -706,9 +711,11 @@ struct SecretsFeature: Sendable {
     guard let approval = state.approvals.remove(id: id) else { return .none }
     let next = renotify(&state)
     let names = approval.names.map { "{{\($0)}}" }.joined(separator: ", ")
-    let text = outcome == .denied
-      ? "The user did not allow \(names). Ask them before trying again."
-      : "Nobody allowed \(names) in time; the user may be away."
+    let text = switch outcome {
+    case .denied: "The user did not allow \(names). Ask them before trying again."
+    case .unanswered: "Nobody allowed \(names) in time; the user may be away."
+    default: "Cancelled."
+    }
     let use = KeyUse(
       id: uuid(),
       at: now,
@@ -721,7 +728,7 @@ struct SecretsFeature: Sendable {
     return .merge(.cancel(id: CancelID.answer(id)), next, reply(approval.call, text, isError: true), record(use, &state))
   }
 
-  private func execute(_ call: MCPCall, _ prepared: KeyCommand, command: String, _ state: State) -> Effect<Action> {
+  private func execute(_ call: MCPCall, _ prepared: KeyCommand, command: String, _ state: inout State) -> Effect<Action> {
     let keys = prepared.names.compactMap { state.key(named: $0, at: now) }
     let folder = call.arguments["cwd"]?.string.map { URL(fileURLWithPath: $0, isDirectory: true) }
     let timeout = min(max(call.arguments["timeout"]?.int ?? Self.defaultTimeout, Self.timeouts.lowerBound), Self.timeouts.upperBound)
@@ -734,6 +741,7 @@ struct SecretsFeature: Sendable {
       outcome: .failed,
       exitCode: nil
     )
+    state.running[call.id] = use
     return .run { send in
       var byName: [String: String] = [:]
       for key in keys {

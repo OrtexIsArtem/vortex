@@ -57,6 +57,8 @@ public struct KeyUse: Identifiable, Equatable, Sendable {
     case unanswered
     /// It could not run, such as when the shell would not start.
     case failed
+    /// Claude gave it up: waiting for «Дозволити» it never ran; running, it was stopped.
+    case cancelled
   }
 
   public var id: UUID

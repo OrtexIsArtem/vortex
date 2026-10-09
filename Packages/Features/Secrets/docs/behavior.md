@@ -18,12 +18,13 @@
 - A command not found (exit code 127) comes back with a hint for Claude, and the next command asks the shell for the environment again, as it does after a startup file changes.
 - While a command runs, other programs of the user can see a value: in the tool's arguments (`psql "{{db}}"`) and in the environment of tools not from Apple. The approval stops programs that use the MCP token, not ones watching processes.
 - A name Claude writes that no key has gets an error listing the keys there are.
-- The first use of a key in a Claude session waits for «Дозволити»: the notch shows a key and the name and flashes, a notification has «Дозволити» and «Відхилити», the tab shows the request with the command and the folder.
+- The first use of a key in a Claude session waits for «Дозволити»: the notch shows a key and the name and flashes, a notification has «Дозволити» and «Відхилити», the tab shows the request with the whole command, scrolling past a few lines, and the folder; the notification shows the start of the command.
 - Allowed, the key works for the rest of that session without asking; «Відхилити», or no answer in 90 s, gives Claude an error that says so. Waiting and running stay under the 5 minutes Claude Code waits for an answer.
-- Claude giving a request up (Esc, or closing its connection) takes it away from the notch and the tab; a command it gave up is stopped.
-- After Vortex restarts, Claude Code's session goes on as a new one: its keys are asked for again, and it needs no reconnecting.
+- Claude giving a request up (Esc, or closing its connection) takes it away from the notch and the tab; a command it gave up is stopped. The log keeps either as cancelled.
+- Once no request waits, its notification goes from Notification Center.
+- After Vortex restarts, Claude Code's session goes on as a new one: its keys are asked for again, and it needs no reconnecting. It is named Claude Code, as its own name went with the old one.
 - Vortex does not decide what Claude may do with a key: Claude is told to ask the user before changing data.
 - Turning the feature off, or a new port, ends every session and the requests waiting in them.
 
 ## Log
-- The clock button shows the log: when, which keys, who, the command as Claude wrote it (never a value) and how it ended: exit code, out of time, denied, not answered, could not run.
+- The clock button shows the log: when, which keys, who, the command as Claude wrote it (never a value) and how it ended: exit code, out of time, denied, not answered, could not run, cancelled.

@@ -61,7 +61,7 @@ struct MCPServerTests {
     #expect(await server.handle(post(list)).status == 400)
     // Claude Code keeps using a session Vortex no longer knows, such as after a restart: it goes on as a new one.
     #expect(await server.handle(post(list, session: "from-before")).status == 200)
-    #expect(await iterator.next() == .sessionStarted(MCPSession(id: "from-before", client: "Claude")))
+    #expect(await iterator.next() == .sessionStarted(MCPSession(id: "from-before", client: "Claude Code")))
     let tools = try json(await server.handle(post(list, session: session)))["result"]?["tools"]
     guard case let .array(items)? = tools else {
       Issue.record("No tools")
@@ -74,6 +74,17 @@ struct MCPServerTests {
     #expect(await server.handle(end).status == 200)
     #expect(await iterator.next() == .sessionEnded(session))
     #expect(await server.handle(end).status == 404)
+  }
+
+  @Test
+  func aRequestOfRevision20260728GetsWhatAnOlderServerAnswers() async throws {
+    // A client of that revision tries it first, with no session, and goes back to `initialize` on a 400 that holds
+    // none of the revision's own error codes (-32020 to -32022).
+    let (server, _) = makeServer()
+    let discover: JSONValue = ["jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": [:]]
+    let response = await server.handle(post(discover, headers: ["mcp-protocol-version": "2026-07-28", "mcp-method": "server/discover"]))
+    #expect(response.status == 400)
+    #expect(try json(response)["error"]?["code"] == -32600)
   }
 
   @Test

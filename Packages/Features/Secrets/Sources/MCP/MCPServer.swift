@@ -289,8 +289,9 @@ actor MCPServer {
     guard let sessionHeader, Self.isSessionID(sessionHeader) else {
       return .json(MCPProtocol.error(id: id, code: -32600, message: "Missing Mcp-Session-Id"), status: 400)
     }
-    // Unknown, such as from before Vortex restarted: a new session, whose keys are asked for again.
-    let session = sessions[sessionHeader] ?? start(MCPSession(id: sessionHeader, client: MCPProtocol.clientTitle(nil)))
+    // Unknown, such as from before Vortex restarted: a new session, whose keys are asked for again. Its own name went
+    // with the old one: it is named after the client the connect command is for.
+    let session = sessions[sessionHeader] ?? start(MCPSession(id: sessionHeader, client: MCPProtocol.clientTitle("claude-code")))
     lastSeen[session.id] = .now
     switch method {
     case "ping":

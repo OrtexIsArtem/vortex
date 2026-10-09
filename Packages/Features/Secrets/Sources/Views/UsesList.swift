@@ -69,6 +69,7 @@ private struct UseRow: View {
     case .denied: "hand.raised"
     case .unanswered: "questionmark"
     case .failed: "xmark"
+    case .cancelled: "stop"
     }
   }
 
@@ -79,6 +80,7 @@ private struct UseRow: View {
     case .denied: Text("\(use.client), denied", bundle: .module)
     case .unanswered: Text("\(use.client), not answered", bundle: .module)
     case .failed: Text("\(use.client), could not run", bundle: .module)
+    case .cancelled: Text("\(use.client), cancelled", bundle: .module)
     }
   }
 }

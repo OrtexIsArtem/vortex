@@ -8,6 +8,14 @@ struct ApprovalCard: View {
   let deny: () -> Void
   let allow: () -> Void
 
+  private var command: some View {
+    Text(verbatim: approval.command)
+      .font(.system(size: 11.5, design: .monospaced))
+      .foregroundStyle(VortexColor.secondaryText)
+      .textSelection(.enabled)
+      .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(spacing: 8) {
@@ -16,15 +24,16 @@ struct ApprovalCard: View {
         Text("\(approval.call.client) wants to use \(Text(verbatim: approval.names.joined(separator: ", ")).bold())", bundle: .module)
           .font(.system(size: 13))
       }
-      Text(verbatim: approval.command)
-        .font(.system(size: 11.5, design: .monospaced))
-        .foregroundStyle(VortexColor.secondaryText)
-        .lineLimit(4)
-        .textSelection(.enabled)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
+      // All of it, as the answer is about the command: past a few lines it scrolls, so the buttons stay where they are.
+      ViewThatFits(in: .vertical) {
+        command
+        ScrollView { command }
+      }
+      .frame(maxHeight: 150)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 7)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
       HStack(spacing: 8) {
         Group {
           if let folder = approval.folder {
