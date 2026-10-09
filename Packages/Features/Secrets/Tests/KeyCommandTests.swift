@@ -77,6 +77,14 @@ struct KeyCommandTests {
   }
 
   @Test
+  func aCommandNotFoundComesWithAHint() {
+    let output = CommandClient.Output(exitCode: 127, stderr: Data("zsh: command not found: psql\n".utf8))
+    let report = KeyCommand.report(output, values: [:], timeout: 60)
+    #expect(report.hasPrefix("exit code 127\n(a command was not found"))
+    #expect(report.contains("command not found: psql"))
+  }
+
+  @Test
   func longOutputKeepsItsStartAndItsEnd() {
     let text = String(repeating: "a", count: 60) + String(repeating: "z", count: 40)
     let cut = KeyCommand.cut(text, to: 40)

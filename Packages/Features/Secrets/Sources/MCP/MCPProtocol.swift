@@ -79,7 +79,7 @@ enum MCPProtocol {
         "name": "run",
         "title": "Run a command with keys",
         "description": """
-          Runs a shell command in the user's login shell, with their terminal's PATH (psql, mysql, mongosh, redis-cli, \
+          Runs a shell command in the user's shell, with the environment their terminal has (psql, mysql, mongosh, redis-cli, \
           curl, gh, aws…), with stored keys put in where {{key-name}} is written. A value goes in as a shell variable: \
           write the placeholder inside double quotes, never single ones, e.g. psql "{{prod-db}}" -c 'select count(*) \
           from users' or curl -H "Authorization: Bearer {{github}}" https://api.github.com/user. The output comes back \

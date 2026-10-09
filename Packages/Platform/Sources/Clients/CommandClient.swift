@@ -2,7 +2,8 @@ import ComposableArchitecture
 import Darwin
 import Foundation
 
-/// Commands run in the user's login shell, as their terminal runs them: with the PATH and settings of their profile.
+/// Commands run in the user's shell as their terminal runs them: with the environment a terminal window gets, `.zshrc`
+/// included.
 @DependencyClient
 public struct CommandClient: Sendable {
   public struct Output: Equatable, Sendable {
@@ -51,7 +52,7 @@ extension DependencyValues {
   }
 }
 
-private enum Spawn {
+enum Spawn {
   static func run(
     _ command: String,
     in directory: URL?,
@@ -59,6 +60,25 @@ private enum Spawn {
     timeout: Duration
   ) async throws -> CommandClient.Output {
     let shell = loginShell
+    let output: CommandClient.Output
+    if let terminal = await TerminalEnvironment.shared.value(shell: shell) {
+      output = try await spawn([shell, "-c", command], in: directory, environment: terminal.merging(extra) { $1 }, timeout: timeout)
+    } else {
+      // The shell didn't say what a terminal gets: its login profile sets the PATH and the rest.
+      output = try await spawn([shell, "-l", "-c", command], in: directory, environment: environment(shell: shell, adding: extra), timeout: timeout)
+    }
+    // A command not found may be a tool installed since: the next command asks the shell again.
+    if output.exitCode == 127, !output.timedOut { await TerminalEnvironment.shared.forget() }
+    return output
+  }
+
+  /// Runs `words` (the program, then its arguments) with exactly `environment`.
+  static func spawn(
+    _ words: [String],
+    in directory: URL?,
+    environment: [String: String],
+    timeout: Duration
+  ) async throws -> CommandClient.Output {
     let output = try PipeEnds()
     let errors: PipeEnds
     do {
@@ -94,14 +114,13 @@ private enum Spawn {
     sigemptyset(&mask)
     posix_spawnattr_setsigmask(&attributes, &mask)
 
-    let words: [String] = [shell, "-l", "-c", command]
     let arguments: [UnsafeMutablePointer<CChar>?] = words.map { strdup($0) } + [nil]
-    let pairs = environment(shell: shell, adding: extra).map { "\($0.key)=\($0.value)" }
+    let pairs = environment.map { "\($0.key)=\($0.value)" }
     let variables: [UnsafeMutablePointer<CChar>?] = pairs.map { strdup($0) } + [nil]
     defer { (arguments + variables).forEach { free($0) } }
 
     var pid: pid_t = 0
-    let spawned = posix_spawn(&pid, shell, &actions, &attributes, arguments, variables)
+    let spawned = posix_spawn(&pid, words[0], &actions, &attributes, arguments, variables)
     close(output.write)
     close(errors.write)
     guard spawned == 0 else {
@@ -148,7 +167,7 @@ private enum Spawn {
     return "/bin/zsh"
   }
 
-  /// Only what a login shell starts from: its profile sets the PATH and the rest, as in the user's terminal.
+  /// Only what a login shell starts from: its profile sets the PATH and the rest.
   static func environment(shell: String, adding extra: [String: String]) -> [String: String] {
     let own = ProcessInfo.processInfo.environment
     var environment: [String: String] = [
@@ -194,6 +213,49 @@ private enum Spawn {
         continuation.resume(returning: status)
       }
     }
+  }
+}
+
+/// The environment the user's terminal gives a command: their shell started as a terminal window starts it, login and
+/// interactive, so what `.zshrc` adds (nvm's node, `~/.local/bin`) is there too. Asked once, as that takes a moment;
+/// again after a command wasn't found.
+actor TerminalEnvironment {
+  static let shared = TerminalEnvironment()
+  private static let marker = "__VORTEX_ENVIRONMENT__"
+
+  private var answer: Task<[String: String]?, Never>?
+
+  /// Nil when the shell doesn't answer in time; then it isn't asked again until `forget()`.
+  func value(shell: String) async -> [String: String]? {
+    if let answer { return await answer.value }
+    let task = Task { await Self.ask(shell: shell, base: Spawn.environment(shell: shell, adding: [:])) }
+    answer = task
+    return await task.value
+  }
+
+  func forget() {
+    answer = nil
+  }
+
+  /// What `shell`, started with `base` the way a terminal starts it, exports; whatever its startup files print is
+  /// skipped. Nil when it fails or takes longer than `timeout`.
+  static func ask(shell: String, base: [String: String], timeout: Duration = .seconds(10)) async -> [String: String]? {
+    let words = [shell, "-l", "-i", "-c", "/usr/bin/printf %s \(marker); /usr/bin/env -0"]
+    guard let output = try? await Spawn.spawn(words, in: nil, environment: base, timeout: timeout),
+          !output.timedOut, output.exitCode == 0,
+          let start = output.stdout.range(of: Data(marker.utf8))?.upperBound
+    else { return nil }
+    var environment: [String: String] = [:]
+    for entry in output.stdout[start...].split(separator: 0) {
+      let text = String(decoding: entry, as: UTF8.self)
+      guard let equals = text.firstIndex(of: "=") else { continue }
+      environment[String(text[..<equals])] = String(text[text.index(after: equals)...])
+    }
+    // The shell's own bookkeeping; the command's shell sets these itself.
+    for name in ["PWD", "OLDPWD", "SHLVL", "_"] { environment[name] = nil }
+    // No colors, no pagers.
+    environment["TERM"] = "dumb"
+    return environment["PATH"] == nil ? nil : environment
   }
 }
 

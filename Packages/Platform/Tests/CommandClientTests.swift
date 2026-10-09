@@ -49,6 +49,42 @@ struct CommandClientTests {
     #expect(ContinuousClock.now - start < .seconds(10))
   }
 
+  /// A home folder with these startup files, for the shell to read instead of the user's.
+  func home(_ files: [String: String]) throws -> URL {
+    let home = FileManager.default.temporaryDirectory.appending(path: "vortex-home-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+    for (name, text) in files {
+      try text.write(to: home.appending(path: name), atomically: true, encoding: .utf8)
+    }
+    return home
+  }
+
+  @Test
+  func theTerminalsEnvironmentHasWhatZshrcAdds() async throws {
+    let home = try home([
+      ".zprofile": "export FROM_ZPROFILE=yes\n",
+      ".zshrc": "echo 'Welcome back'\nexport PATH=\"/opt/vortex-test/bin:$PATH\"\nexport FROM_ZSHRC=yes\n",
+    ])
+    defer { try? FileManager.default.removeItem(at: home) }
+    let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
+    let environment = try #require(await TerminalEnvironment.ask(shell: "/bin/zsh", base: base))
+    #expect(environment["PATH"]?.hasPrefix("/opt/vortex-test/bin:") == true)
+    #expect(environment["FROM_ZSHRC"] == "yes")
+    #expect(environment["FROM_ZPROFILE"] == "yes")
+    #expect(environment["TERM"] == "dumb")
+    #expect(environment["PWD"] == nil)
+  }
+
+  @Test
+  func aShellThatDoesNotAnswerInTimeGivesNoEnvironment() async throws {
+    let home = try home([".zshrc": "sleep 30\n"])
+    defer { try? FileManager.default.removeItem(at: home) }
+    let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
+    let start = ContinuousClock.now
+    #expect(await TerminalEnvironment.ask(shell: "/bin/zsh", base: base, timeout: .milliseconds(500)) == nil)
+    #expect(ContinuousClock.now - start < .seconds(10))
+  }
+
   @Test
   func itGetsNoInputAndNoneOfVortexsEnvironment() async throws {
     setenv("VORTEX_LEAK_CHECK", "leaked", 1)

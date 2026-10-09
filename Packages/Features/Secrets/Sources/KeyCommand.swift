@@ -98,6 +98,9 @@ struct KeyCommand: Equatable, Sendable {
     let stdout = cut(masked(text(output.stdout), values: values), to: limit)
     let stderr = cut(masked(text(output.stderr), values: values), to: limit)
     var parts = [output.timedOut ? "stopped after \(timeout) s, its time limit" : "exit code \(output.exitCode)"]
+    if output.exitCode == 127, !output.timedOut {
+      parts.append("(a command was not found in the user's terminal environment: ask them where it is installed, or use its full path)")
+    }
     if !stdout.isEmpty { parts.append(stdout) }
     if !stderr.isEmpty { parts.append("--- stderr ---\n" + stderr) }
     if stdout.isEmpty, stderr.isEmpty { parts.append("(no output)") }
