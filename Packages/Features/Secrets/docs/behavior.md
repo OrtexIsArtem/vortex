@@ -1,7 +1,7 @@
 # Behavior
 
 ## Keys
-- «+» opens the form: the value first (pasted, hidden), the name Claude writes as {{name}}, a note for Claude and how long the key lives: 1 hour, until the end of the day, or for good (the default).
+- «+» opens the form: the value first (pasted, hidden; the eye shows it, to check what was pasted), the name Claude writes as {{name}}, a note for Claude and how long the key lives: 1 hour, until the end of the day, or for good (the default).
 - What the key is shows as soon as it is pasted, told by how the value starts: PostgreSQL, MySQL, MongoDB, Redis, GitHub, Anthropic, OpenAI, Slack, AWS, Stripe, JWT, private key, link, or a token or password.
 - A name left empty is the kind's («postgres», «github»…), numbered when taken; a name has Latin letters, digits, dots, dashes and underscores, no spaces, and is unique in any case.
 - A row shows the kind, how long the key lives («безстроково», «до 18:40») and when Claude last used it, and the note.

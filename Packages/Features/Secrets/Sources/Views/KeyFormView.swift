@@ -7,6 +7,8 @@ struct KeyFormView: View {
   let draft: KeyDraft
   let store: StoreOf<SecretsFeature>
   @FocusState private var focus: Field?
+  /// The value in plain text, to check what was pasted.
+  @State private var showsValue = false
 
   private enum Field {
     case value
@@ -21,11 +23,31 @@ struct KeyFormView: View {
         .padding(.bottom, 14)
 
       row(Text("Value", bundle: .module)) {
-        SecureField(text: binding(\.value)) {
-          Text("Token, password or connection URL", bundle: .module)
+        HStack(spacing: 6) {
+          Group {
+            if showsValue {
+              TextField(text: binding(\.value)) { valuePrompt }
+                .font(.system(size: 12.5, design: .monospaced))
+            } else {
+              SecureField(text: binding(\.value)) { valuePrompt }
+            }
+          }
+          .focused($focus, equals: .value)
+          .onSubmit { focus = .name }
+          Button {
+            showsValue.toggle()
+            focus = .value
+          } label: {
+            Image(systemName: showsValue ? "eye.slash" : "eye")
+              .font(.system(size: 12))
+              .frame(width: 28, height: 28)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .foregroundStyle(VortexColor.secondaryText)
+          .help(showsValue ? Text("Hide the value", bundle: .module) : Text("Show the value", bundle: .module))
+          .accessibilityLabel(showsValue ? Text("Hide the value", bundle: .module) : Text("Show the value", bundle: .module))
         }
-        .focused($focus, equals: .value)
-        .onSubmit { focus = .name }
       } caption: {
         if !draft.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
           Text("Looks like: \(draft.kind.title)", bundle: .module)
@@ -111,6 +133,10 @@ struct KeyFormView: View {
         try? await Task.sleep(for: .milliseconds(30))
       }
     }
+  }
+
+  private var valuePrompt: Text {
+    Text("Token, password or connection URL", bundle: .module)
   }
 
   private func row<Field: View, Caption: View>(
