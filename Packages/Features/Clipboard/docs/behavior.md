@@ -24,8 +24,8 @@
 - Revealed secrets hide again every time the tab is shown.
 
 ## On Home
-- The clipboard sits in the dock as one-line rows: an icon for the kind and the start of the item; secrets stay dots.
-- A click copies the item again; a row drags out; right-click has Copy, Pin and Delete.
+- The clipboard sits in the dock as one-line rows: a tiny picture for an image, an icon for any other kind, then the start of the item; secrets stay dots.
+- A click copies the item again and shows a check in place of the icon, or over the picture; a row drags out; right-click has Copy, Pin and Delete.
 - Secrets never drag out of Home: dropped on the shelf, one would be saved to disk.
 - Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy. Files dropped together are copied together.
 - So a clipboard row dragged to the shelf lands on the shelf, and a shelf file dragged to the clipboard is copied.

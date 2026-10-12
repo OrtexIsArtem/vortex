@@ -25,7 +25,7 @@ struct ClipboardHomeWidget: View {
           LazyVStack(spacing: 0) {
             ForEach(Array(store.items.enumerated()), id: \.element.id) { index, item in
               if index > 0 {
-                Hairline().padding(.leading, 24)
+                Hairline().padding(.leading, ClipboardRow.textInset)
               }
               ClipboardRow(
                 item: item,
@@ -64,19 +64,24 @@ struct ClipboardHomeWidget: View {
   }
 }
 
-/// One item of the history in one line: an icon for its kind and the start of it. Secrets stay dots.
+/// One item of the history in one line: a tiny picture of an image, an icon for any other kind, and the start of it.
+/// Secrets stay dots.
 private struct ClipboardRow: View {
   let item: ClipboardItem
   let isUnavailable: Bool
   let isJustCopied: Bool
   let send: @MainActor (ClipboardFeature.Action) -> Void
 
+  /// The column of the picture or the icon, as wide as a picture in every row, so all the text starts at one place.
+  static let leadingWidth: CGFloat = 22
+  static let spacing: CGFloat = 10
+  /// Where the text starts; the hairlines between rows start there too.
+  static let textInset = leadingWidth + spacing
+
   var body: some View {
-    HStack(spacing: 10) {
-      Image(systemName: isJustCopied ? "checkmark" : symbol)
-        .font(.system(size: 12))
-        .foregroundStyle(VortexColor.tertiaryText)
-        .frame(width: 14)
+    HStack(spacing: Self.spacing) {
+      leading
+        .frame(width: Self.leadingWidth)
       preview
         .lineLimit(1)
         .truncationMode(.tail)
@@ -115,6 +120,40 @@ private struct ClipboardRow: View {
     .accessibilityHint(Text("Copies it again", bundle: .module))
     .accessibilityAddTraits(.isButton)
     .accessibilityAction { send(.itemTapped(item.id)) }
+  }
+
+  /// The picture of an image; for anything else, or until the picture is made, the icon of its kind. After a click the
+  /// check stands in for the icon, or over the picture.
+  @ViewBuilder private var leading: some View {
+    if !item.isConcealed, let url = item.imageURL {
+      // Quick Look fits the picture inside the size asked and the tile crops it to a square: twice the tile keeps a
+      // picture up to twice as wide as tall sharp.
+      FileThumbnail(url: url, size: CGSize(width: Self.leadingWidth * 2, height: Self.leadingWidth * 2)) {
+        icon("photo")
+      }
+      .frame(width: Self.leadingWidth, height: Self.leadingWidth)
+      .background(VortexColor.thumbnail)
+      .overlay {
+        if isJustCopied {
+          ZStack {
+            Color.black.opacity(0.5)
+            Image(systemName: "checkmark")
+              .font(.system(size: 11, weight: .semibold))
+              .foregroundStyle(.white)
+          }
+          .transition(.opacity)
+        }
+      }
+      .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+    } else {
+      icon(isJustCopied ? "checkmark" : symbol)
+    }
+  }
+
+  private func icon(_ name: String) -> some View {
+    Image(systemName: name)
+      .font(.system(size: 12))
+      .foregroundStyle(VortexColor.tertiaryText)
   }
 
   private var symbol: String {
