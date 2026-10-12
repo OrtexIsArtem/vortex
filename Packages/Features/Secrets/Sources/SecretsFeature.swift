@@ -152,6 +152,8 @@ struct SecretsFeature: Sendable {
     case revealed(SecretKey.ID, String)
     case hideTapped
     case copyValueTapped
+    /// Copies «name (Vortex)»: enough for Claude, which learns the keys from Vortex.
+    case copyNameTapped(SecretKey.ID)
     case deleteTapped(SecretKey.ID)
     case undoTapped
     case undoExpired
@@ -298,6 +300,11 @@ struct SecretsFeature: Sendable {
         guard let value = state.revealed?.value else { return .none }
         // Marked concealed: clipboard histories, Vortex's own too, leave it out.
         return .run { _ in await pasteboard.write(.text(value), true, nil) }
+
+      case let .copyNameTapped(id):
+        guard let key = state.keys[id: id] else { return .none }
+        let text = "\(key.name) (Vortex)"
+        return .run { _ in await pasteboard.write(.text(text), false, nil) }
 
       case let .deleteTapped(id):
         guard let key = state.keys.remove(id: id) else { return .none }

@@ -5,7 +5,7 @@
 - What the key is shows as soon as it is pasted, told by how the value starts: PostgreSQL, MySQL, MongoDB, Redis, GitHub, Anthropic, OpenAI, Slack, AWS, Stripe, JWT, private key, link, or a token or password.
 - A name left empty is the kind's («postgres», «github»…), numbered when taken; a name has Latin letters, digits, dots, dashes and underscores, no spaces, and is unique in any case.
 - A row shows the kind, how long the key lives («безстроково», «до 18:40») and when Claude last used it, and the note.
-- On hover: the eye shows the value under the row for 20 s, with «Копіювати», until the window closes; the bin deletes the key.
+- On hover: «Копіювати ім'я» copies «name (Vortex)», enough for Claude, which learns the keys from Vortex; the eye shows the value under the row for 20 s, with «Копіювати», until the window closes; the bin deletes the key.
 - Showing a value asks for no Touch ID: on an unlocked Mac it could be had through Claude anyway. What keeps it safe is that Claude never gets it and asks first in each session.
 - A copied value and the connect command are marked concealed, so clipboard histories, Vortex's own too, leave them out.
 - Deleting shows «Ключ видалено · Скасувати» for 5 s; a new change makes the deletion final.

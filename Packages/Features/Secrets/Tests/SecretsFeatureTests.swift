@@ -419,6 +419,18 @@ struct SecretsFeatureTests {
   }
 
   @Test
+  func copyingTheNameGivesWhatToSayToClaude() async throws {
+    let store = makeStore()
+    await start(store)
+    await addKey(store)
+    await store.send(.copyNameTapped(try #require(store.state.keys.first?.id)))
+    try await eventually { [copied] in copied.value.count == 1 }
+    #expect(copied.value.first?.text == "prod-db (Vortex)")
+    #expect(copied.value.first?.concealed == false)
+    await store.send(.stop)
+  }
+
+  @Test
   func theConnectCommandIsCopiedConcealed() async throws {
     let store = makeStore()
     await start(store)

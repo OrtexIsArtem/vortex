@@ -1,7 +1,8 @@
 import SwiftUI
 import VortexCore
 
-/// One key: what it is, its name, how long it lives and when Claude used it; on hover, showing the value and the bin.
+/// One key: what it is, its name, how long it lives and when Claude used it; on hover, copying its name, showing the
+/// value and the bin.
 struct KeyRow: View {
   let key: SecretKey
   /// The value, while the user asked to see it.
@@ -9,6 +10,7 @@ struct KeyRow: View {
   let now: Date
   let send: (SecretsFeature.Action) -> Void
   @State private var isHovered = false
+  @State private var copied = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -34,6 +36,7 @@ struct KeyRow: View {
     .onHover { isHovered = $0 }
     .animation(.easeOut(duration: 0.12), value: isHovered)
     .accessibilityElement(children: .combine)
+    .accessibilityAction(named: Text("Copy the name", bundle: .module)) { send(.copyNameTapped(key.id)) }
     .accessibilityAction(named: Text("Show the value", bundle: .module)) { send(.revealTapped(key.id)) }
     .accessibilityAction(named: Text("Delete the key", bundle: .module)) { send(.deleteTapped(key.id)) }
   }
@@ -84,6 +87,19 @@ struct KeyRow: View {
 
   private var tools: some View {
     HStack(spacing: 4) {
+      Button {
+        send(.copyNameTapped(key.id))
+        copied = true
+        Task {
+          try? await Task.sleep(for: .seconds(1.5))
+          copied = false
+        }
+      } label: {
+        Text(copied ? "Copied" : "Copy the name", bundle: .module)
+          .frame(minWidth: 96)
+      }
+      .buttonStyle(QuietCapsuleButtonStyle(height: 28, fontSize: 11.5))
+      .help(Text("Copies «\(key.name) (Vortex)»: say it to Claude, and it takes the key from Vortex", bundle: .module))
       ToolButton(symbol: revealed == nil ? "eye" : "eye.slash", label: Text("Show the value", bundle: .module)) {
         send(.revealTapped(key.id))
       }
