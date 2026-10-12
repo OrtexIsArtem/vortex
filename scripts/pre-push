@@ -3,4 +3,6 @@
 set -eu
 cd "$(git rev-parse --show-toplevel)"
 ./scripts/check-no-network.sh
+# In a linked worktree git hands the hook GIT_DIR and the like, which would send SwiftPM's own git to this repository.
+unset $(git rev-parse --local-env-vars)
 swift test --package-path Packages --quiet

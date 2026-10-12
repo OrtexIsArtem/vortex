@@ -11,9 +11,9 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 
 ## Commands
 - `make project` — regenerate Vortex.xcodeproj from project.yml
-- `make build` — compile the app without signing (for checks), into build/ so it never replaces the signed app Xcode runs
+- `make build` — compile the app without signing (for checks), into build/ and as `io.github.ortexisartem.vortex.check`, so it never replaces or stands in for the signed app Xcode runs
 - `make test` — run package tests
-- `make check` — no-network rule (also runs as a build phase)
+- `make check` — no network APIs outside Secrets, no processes outside Platform's CommandClient and SystemClient (also runs as a build phase)
 - `make hooks` — run `make check` and the package tests before every push
 - `make open` — regenerate and open in Xcode
 - `make install-cli` — link the `vortex` command (Tools/CLI) into /opt/homebrew/bin
@@ -34,7 +34,7 @@ Product spec: docs/spec.ru.md (Russian). Plan and progress: docs/plan.md. Module
 
 ## Working rules
 - One task = one feature. Don't touch other modules.
-- Network code only in Features/Secrets; `make check` fails the build otherwise.
+- Network code only in Features/Secrets, and processes start only in Platform's CommandClient and SystemClient; `make check` fails the build otherwise.
 - After every change: build and run the tests of the module you touched.
 - Nothing heavy on the main thread: OCR, database and previews run in the background. Track the cursor near the notch with system events, never by polling.
 - Library versions are pinned in Package.resolved. Update them only when explicitly asked.
