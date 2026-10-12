@@ -32,11 +32,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
       .filter { $0.processIdentifier != getpid() }
     guard !others.isEmpty else { return }
+    // Two started at about the same moment would stop each other and leave none: the later one stays, so this one
+    // steps aside for a newer one, before it has anything to save.
+    let mine = startTime(of: getpid())
+    if others.contains(where: { startTime(of: $0.processIdentifier) > mine }) { exit(0) }
     for app in others { app.terminate() }
     if !waitUntilGone(others, seconds: 2) {
       for app in others { app.forceTerminate() }
       _ = waitUntilGone(others, seconds: 1)
     }
+  }
+
+  /// When a process started, with its pid to settle a tie; the earliest there is when the system doesn't say.
+  private func startTime(of pid: pid_t) -> (Int, Int, pid_t) {
+    var info = kinfo_proc()
+    var size = MemoryLayout<kinfo_proc>.stride
+    var request: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+    guard sysctl(&request, 4, &info, &size, nil, 0) == 0, size > 0 else { return (0, 0, pid) }
+    let time = info.kp_proc.p_starttime
+    return (time.tv_sec, Int(time.tv_usec), pid)
   }
 
   /// Whether the apps are gone before the time is up. Asks the system about the processes themselves:
