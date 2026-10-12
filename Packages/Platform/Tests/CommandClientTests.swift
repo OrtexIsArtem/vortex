@@ -3,7 +3,7 @@ import Testing
 
 @testable import VortexPlatform
 
-/// Runs real commands in the login shell, as the app does.
+/// Runs real commands in the user's shell, as the app does.
 struct CommandClientTests {
   let client = CommandClient.liveValue
 
@@ -96,6 +96,36 @@ struct CommandClientTests {
     let environment = await TerminalEnvironment.ask(shell: "/bin/zsh", base: base)
     #expect(environment?["FROM_ZSHRC"] == "yes")
     #expect(ContinuousClock.now - start < .seconds(2))
+  }
+
+  @Test
+  func editingAStartupFileThroughALinkOrRemovingOneChangesTheStamp() throws {
+    let home = try home([".zprofile": "export A=1\n"])
+    defer { try? FileManager.default.removeItem(at: home) }
+    // A dotfile manager keeps the real file elsewhere and links it in.
+    let dotfiles = home.appending(path: "dotfiles/zshrc")
+    try FileManager.default.createDirectory(at: dotfiles.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try "export B=1\n".write(to: dotfiles, atomically: true, encoding: .utf8)
+    try FileManager.default.createSymbolicLink(at: home.appending(path: ".zshrc"), withDestinationURL: dotfiles)
+    let past = Date(timeIntervalSinceNow: -3600)
+    for url in [dotfiles, home.appending(path: ".zprofile")] {
+      try FileManager.default.setAttributes([.modificationDate: past], ofItemAtPath: url.path)
+    }
+    let first = TerminalEnvironment.stamp(home: home, zdotdir: nil)
+
+    try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: dotfiles.path)
+    let edited = TerminalEnvironment.stamp(home: home, zdotdir: nil)
+    #expect(edited != first)
+
+    try FileManager.default.removeItem(at: home.appending(path: ".zprofile"))
+    #expect(TerminalEnvironment.stamp(home: home, zdotdir: nil) != edited)
+  }
+
+  @Test
+  func aCommandNotFoundIsTheShellsCode127() {
+    #expect(CommandClient.Output(exitCode: 127).isCommandNotFound)
+    #expect(!CommandClient.Output(exitCode: 127, timedOut: true).isCommandNotFound)
+    #expect(!CommandClient.Output(exitCode: 1).isCommandNotFound)
   }
 
   @Test

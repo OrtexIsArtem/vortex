@@ -13,6 +13,9 @@ public struct CommandClient: Sendable {
     /// Stopped because its time was up; `exitCode` is then the signal's.
     public var timedOut: Bool
 
+    /// The shell couldn't find a command it was told to run.
+    public var isCommandNotFound: Bool { exitCode == 127 && !timedOut }
+
     public init(exitCode: Int32, stdout: Data = Data(), stderr: Data = Data(), timedOut: Bool = false) {
       self.exitCode = exitCode
       self.stdout = stdout
@@ -52,7 +55,7 @@ extension DependencyValues {
   }
 }
 
-enum Spawn {
+private enum Spawn {
   static func run(
     _ command: String,
     in directory: URL?,
@@ -63,15 +66,11 @@ enum Spawn {
     let terminal = await TerminalEnvironment.shared.value(shell: shell)
     // Asking the shell takes a moment; a call given up meanwhile starts nothing.
     try Task.checkCancellation()
-    let output: CommandClient.Output
-    if let terminal {
-      output = try await spawn([shell, "-c", command], in: directory, environment: terminal.merging(extra) { $1 }, timeout: timeout)
-    } else {
-      // The shell didn't say what a terminal gets: its login profile sets the PATH and the rest.
-      output = try await spawn([shell, "-l", "-c", command], in: directory, environment: environment(shell: shell, adding: extra), timeout: timeout)
-    }
-    // A command not found may be a tool installed since: the next command asks the shell again.
-    if output.exitCode == 127, !output.timedOut { await TerminalEnvironment.shared.forget() }
+    // With what a terminal gets, the command needs nothing more; without it, the login profile sets the PATH and the
+    // rest.
+    let (flags, base) = terminal.map { (["-c"], $0) } ?? (["-l", "-c"], environment(shell: shell))
+    let output = try await spawn([shell] + flags + [command], in: directory, environment: base.merging(extra) { $1 }, timeout: timeout)
+    if output.isCommandNotFound { await TerminalEnvironment.shared.commandNotFound() }
     return output
   }
 
@@ -138,6 +137,8 @@ enum Spawn {
 
     let timedOut = Flag()
     let group = pid
+    RunningGroups.shared.insert(group)
+    defer { RunningGroups.shared.remove(group) }
     let deadline = Task {
       try await Task.sleep(for: timeout)
       timedOut.set()
@@ -175,7 +176,7 @@ enum Spawn {
   }
 
   /// Only what a login shell starts from: its profile sets the PATH and the rest.
-  static func environment(shell: String, adding extra: [String: String]) -> [String: String] {
+  static func environment(shell: String) -> [String: String] {
     let own = ProcessInfo.processInfo.environment
     var environment: [String: String] = [
       "HOME": own["HOME"] ?? NSHomeDirectory(),
@@ -188,7 +189,7 @@ enum Spawn {
     for name in ["USER", "LOGNAME", "TMPDIR", "SSH_AUTH_SOCK", "__CF_USER_TEXT_ENCODING"] {
       environment[name] = own[name]
     }
-    return environment.merging(extra) { $1 }
+    return environment
   }
 
   /// Everything written to `descriptor` until it closes, up to `CommandClient.outputLimit`; read on a thread of its
@@ -225,36 +226,63 @@ enum Spawn {
 }
 
 /// The environment the user's terminal gives a command: their shell started as a terminal window starts it, login and
-/// interactive, so what `.zshrc` adds (nvm's node, `~/.local/bin`) is there too. Asked once, as that takes a moment;
-/// again once a startup file changes or a command wasn't found.
+/// interactive, so what `.zshrc` exports (nvm's node, `~/.local/bin`) is there too; aliases, functions and options are
+/// not. Asked once, as that takes a moment; again once a startup file changes, after `freshness`, or after a command
+/// wasn't found.
 actor TerminalEnvironment {
   static let shared = TerminalEnvironment()
+  /// How long an answer serves, for what no file date shows: files `.zshrc` sources, values worked out as it starts.
+  static let freshness: TimeInterval = 600
 
   private var answer: Task<[String: String]?, Never>?
-  /// The last change to the startup files when the shell was asked.
-  private var askedAfter: Date?
+  private var askedShell: String?
+  private var askedAt = Date.distantPast
+  private var stamp: [String: Date] = [:]
+  /// Where the last answer said zsh keeps its startup files, when not in the home folder.
+  private var zdotdir: String?
 
-  /// Nil when the shell doesn't answer in time; then it isn't asked again until a startup file changes or `forget()`.
+  /// Nil when the shell doesn't answer in time; then it isn't asked again until a startup file changes or a while has
+  /// passed.
   func value(shell: String) async -> [String: String]? {
-    let changed = Self.startupFilesChanged()
-    if let answer, changed == askedAfter { return await answer.value }
-    let task = Task { await Self.ask(shell: shell, base: Spawn.environment(shell: shell, adding: [:])) }
+    let current = Self.stamp(zdotdir: zdotdir)
+    if let answer, shell == askedShell, current == stamp, Date.now.timeIntervalSince(askedAt) < Self.freshness {
+      return await answer.value
+    }
+    let task = Task { await Self.ask(shell: shell, base: Spawn.environment(shell: shell)) }
     answer = task
-    askedAfter = changed
-    return await task.value
+    askedShell = shell
+    askedAt = .now
+    stamp = current
+    let value = await task.value
+    if answer == task, let found = value?["ZDOTDIR"], found != zdotdir {
+      zdotdir = found
+      stamp = Self.stamp(zdotdir: found)
+    }
+    return value
   }
 
-  func forget() {
-    answer = nil
+  /// A command wasn't found, maybe a tool installed since: the next command asks the shell again. Not when it was asked
+  /// a moment ago, or didn't answer in time, which would only make every command wait for it again.
+  func commandNotFound() async {
+    guard let answer, Date.now.timeIntervalSince(askedAt) > 30, await answer.value != nil else { return }
+    if self.answer == answer { self.answer = nil }
   }
 
-  /// When a file a shell reads as it starts last changed in the home folder.
-  static func startupFilesChanged() -> Date? {
-    let home = FileManager.default.homeDirectoryForCurrentUser
+  /// The dates of the files a shell reads as it starts, by path: a link's own and its file's, so an edit through a link
+  /// (dotfile managers) shows, and so does a file that appears or goes.
+  static func stamp(home: URL = FileManager.default.homeDirectoryForCurrentUser, zdotdir: String?) -> [String: Date] {
+    var folders = [home]
+    if let zdotdir, !zdotdir.isEmpty { folders.append(URL(fileURLWithPath: zdotdir, isDirectory: true)) }
     let names = [".zshenv", ".zprofile", ".zshrc", ".zlogin", ".bash_profile", ".bashrc", ".profile", ".config/fish/config.fish"]
-    return names.compactMap { name in
-      try? FileManager.default.attributesOfItem(atPath: home.appending(path: name).path)[.modificationDate] as? Date
-    }.max()
+    var dates: [String: Date] = [:]
+    for file in folders.flatMap({ folder in names.map { folder.appending(path: $0) } }) {
+      for url in Set([file, file.resolvingSymlinksInPath()]) {
+        if let date = try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date {
+          dates[url.path] = date
+        }
+      }
+    }
+    return dates
   }
 
   /// What `shell`, started with `base` the way a terminal starts it, exports. It writes that to a file and prints
@@ -282,6 +310,30 @@ actor TerminalEnvironment {
     // No colors, no pagers.
     answer["TERM"] = "dumb"
     return answer["PATH"] == nil ? nil : answer
+  }
+}
+
+/// The process groups of the commands running now, stopped when Vortex exits: in sessions of their own, they would go on
+/// without the time limit Vortex keeps.
+private final class RunningGroups: @unchecked Sendable {
+  static let shared = RunningGroups()
+  private let lock = NSLock()
+  private var groups: Set<pid_t> = []
+
+  private init() {
+    atexit { RunningGroups.shared.stopAll() }
+  }
+
+  func insert(_ group: pid_t) {
+    _ = lock.withLock { groups.insert(group) }
+  }
+
+  func remove(_ group: pid_t) {
+    _ = lock.withLock { groups.remove(group) }
+  }
+
+  private func stopAll() {
+    for group in lock.withLock({ groups }) { killpg(group, SIGKILL) }
   }
 }
 
