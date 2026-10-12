@@ -21,11 +21,9 @@
 - A name Claude writes that no key has gets an error listing the keys there are.
 - The first use of a key in a Claude session waits for «Дозволити»: the notch shows a key and the name and flashes, a notification has «Дозволити» and «Відхилити», the tab shows the request with the whole command, scrolling past a few lines, and the folder; the notification shows the start of the command.
 - Allowed, the key works for the rest of that session without asking; «Відхилити», or no answer in 90 s, gives Claude an error that says so. Waiting and running stay under the 5 minutes Claude Code waits for an answer.
-- Claude giving a request up (Esc, or closing its connection) takes it away from the notch and the tab; a command it gave up is stopped. The log keeps either as cancelled.
+- Claude giving a request up (Esc, or closing its connection) takes it away from the notch and the tab; a command it gave up is stopped. Either way Claude gets «Cancelled.».
 - Once no request waits, its notification goes from Notification Center.
 - After Vortex restarts, Claude Code's session goes on as a new one: its keys are asked for again, and it needs no reconnecting. It is named Claude Code, as its own name went with the old one.
 - Vortex does not decide what Claude may do with a key: Claude is told to ask the user before changing data.
 - Turning the feature off, or a new port, ends every session and the requests waiting in them.
-
-## Log
-- The clock button shows the log: when, which keys, who, the command as Claude wrote it (never a value) and how it ended: exit code, out of time, denied, not answered, could not run, cancelled.
+- Vortex keeps no log of uses: Claude Code shows every command in its own history, and a key shows when it was last handed to a command.

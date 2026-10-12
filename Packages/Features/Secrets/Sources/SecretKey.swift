@@ -45,37 +45,9 @@ public enum KeyLifetime: CaseIterable, Equatable, Sendable {
   }
 }
 
-/// One use of keys by Claude, or a use the user turned down: kept for the log.
-public struct KeyUse: Identifiable, Equatable, Sendable {
-  public enum Outcome: String, Codable, Sendable {
-    /// The command ran; `exitCode` says how it ended.
-    case ran
-    /// It ran out of time and was stopped.
-    case timedOut
-    case denied
-    /// Nobody answered «Дозволити» in time.
-    case unanswered
-    /// It could not run, such as when the shell would not start.
-    case failed
-    /// Claude gave it up: waiting for «Дозволити» it never ran; running, it was stopped.
-    case cancelled
-  }
-
-  public var id: UUID
-  public var at: Date
-  /// By name.
-  public var keys: [String]
-  /// Who asked, such as Claude Code.
-  public var client: String
-  /// As Claude wrote it: with {{name}} where values go, never the values.
-  public var command: String
-  public var outcome: Outcome
-  public var exitCode: Int?
-}
-
 // MARK: - Database
 
-/// Keys in `secrets_key`, uses in `secrets_use`; values never reach the database.
+/// Keys in `secrets_key`; values never reach the database.
 extension SecretKey: Codable, FetchableRecord, PersistableRecord {
   public static let databaseTableName = "secrets_key"
 
@@ -95,7 +67,7 @@ extension SecretKey: Codable, FetchableRecord, PersistableRecord {
         table.column("expiresAt", .datetime)
         table.column("lastUsedAt", .datetime)
       }
-      try db.create(table: KeyUse.databaseTableName) { table in
+      try db.create(table: "secrets_use") { table in
         table.primaryKey("id", .text)
         table.column("at", .datetime).notNull().indexed()
         // JSON array of names.
@@ -106,28 +78,15 @@ extension SecretKey: Codable, FetchableRecord, PersistableRecord {
         table.column("exitCode", .integer)
       }
     }
+    // The log of uses is gone: Claude Code shows every command in its own history.
+    migrator.registerMigration("secrets.v2") { db in
+      try db.drop(table: "secrets_use")
+    }
     return migrator
   }
 
   /// Every saved key; rows this version can't read (written by a newer Vortex) are skipped.
   static func fetchAllReadable(_ db: Database) throws -> [SecretKey] {
     try Row.fetchAll(db, sql: "SELECT * FROM \(databaseTableName) ORDER BY name").compactMap { try? SecretKey(row: $0) }
-  }
-}
-
-extension KeyUse: Codable, FetchableRecord, PersistableRecord {
-  public static let databaseTableName = "secrets_use"
-  /// Uses older than this are deleted.
-  static let keptDays = 30
-  /// The log shows the latest ones.
-  static let shown = 200
-
-  public static func databaseUUIDEncodingStrategy(for column: String) -> DatabaseUUIDEncodingStrategy {
-    .uppercaseString
-  }
-
-  static func latest(_ db: Database) throws -> [KeyUse] {
-    try Row.fetchAll(db, sql: "SELECT * FROM \(databaseTableName) ORDER BY at DESC LIMIT \(shown)")
-      .compactMap { try? KeyUse(row: $0) }
   }
 }

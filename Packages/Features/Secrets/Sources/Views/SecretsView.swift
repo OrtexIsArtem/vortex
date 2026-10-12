@@ -36,9 +36,6 @@ struct SecretsView: View {
       if let draft = store.draft {
         KeyFormView(draft: draft, store: store)
           .transition(.opacity)
-      } else if store.showsLog {
-        UsesList(uses: store.uses)
-          .transition(.opacity)
       } else {
         KeysList(store: store)
           .transition(.opacity)
@@ -58,29 +55,15 @@ struct SecretsView: View {
       if !isOpen, store.revealed != nil { store.send(.hideTapped) }
     }
     .animation(.snappy(duration: 0.2), value: store.draft == nil)
-    .animation(.snappy(duration: 0.2), value: store.showsLog)
   }
 
-  /// The title left of the notch; the log and New right of it.
+  /// The title left of the notch; New right of it.
   @ViewBuilder
   private var header: some View {
     let title = Text("Keys", bundle: .module)
       .font(.system(size: 13, weight: .semibold))
       .padding(.leading, 10)
     let tools = HStack(spacing: 6) {
-      Button {
-        store.send(.logToggled, animation: .snappy(duration: 0.2))
-      } label: {
-        Image(systemName: "clock.arrow.circlepath")
-          .font(.system(size: 12.5, weight: .medium))
-          .foregroundStyle(store.showsLog ? VortexColor.onAccent : VortexColor.primaryText)
-          .frame(width: 30, height: 30)
-          .background(Circle().fill(store.showsLog ? VortexColor.accent : VortexColor.raised))
-          .contentShape(Circle())
-      }
-      .buttonStyle(.plain)
-      .help(Text("Log", bundle: .module))
-      .accessibilityLabel(Text("Log", bundle: .module))
       Button {
         store.send(.addTapped, animation: .snappy(duration: 0.2))
       } label: {

@@ -82,11 +82,8 @@ struct SecretsFeature: Sendable {
   @ObservableState
   struct State: Equatable {
     var keys: IdentifiedArrayOf<SecretKey> = []
-    /// The latest uses, newest first.
-    var uses: [KeyUse] = []
     var isLoaded = false
     var isEnabled = false
-    var showsLog = false
     /// The form for a new key, while it is open.
     var draft: KeyDraft?
     var revealed: RevealedValue?
@@ -97,8 +94,6 @@ struct SecretsFeature: Sendable {
     var approvals: IdentifiedArrayOf<Approval> = []
     /// The approval the notification shows, which its buttons answer.
     var notifiedApproval: Approval.ID?
-    /// Commands running now, by call: the log keeps one Claude gives up as cancelled.
-    var running: [MCPCall.ID: KeyUse] = [:]
     var server = ServerStatus.off
     var token: String?
     /// Grows with every approval asked for, so each one flashes the notch anew.
@@ -138,9 +133,8 @@ struct SecretsFeature: Sendable {
   enum Action: Equatable, Sendable {
     case start
     case stop
-    case loaded(keys: [SecretKey], uses: [KeyUse])
+    case loaded(keys: [SecretKey])
     case loadFailed
-    case logToggled
     case addTapped
     case draftChanged(KeyDraft)
     case saveTapped
@@ -164,7 +158,6 @@ struct SecretsFeature: Sendable {
     case denyTapped(Approval.ID)
     case approvalUnanswered(Approval.ID)
     case notificationButtonPressed(String)
-    case used(KeyUse)
     case copyConnectCommandTapped
     case portChanged(Int)
   }
@@ -221,9 +214,8 @@ struct SecretsFeature: Sendable {
           .cancel(id: CancelID.expiry)
         )
 
-      case let .loaded(keys, uses):
+      case let .loaded(keys):
         state.keys = IdentifiedArray(keys.sorted(by: Self.byName)) { first, _ in first }
-        state.uses = uses
         state.isLoaded = true
         // Only now: a call coming in sooner would find no keys.
         return .merge(expire(&state), startServing(state))
@@ -232,14 +224,8 @@ struct SecretsFeature: Sendable {
         state.isLoaded = true
         return startServing(state)
 
-      case .logToggled:
-        state.showsLog.toggle()
-        if state.showsLog { state.draft = nil }
-        return .none
-
       case .addTapped:
         state.draft = KeyDraft()
-        state.showsLog = false
         return .none
 
       case let .draftChanged(draft):
@@ -366,10 +352,10 @@ struct SecretsFeature: Sendable {
         return .merge(.cancel(id: CancelID.answer(id)), next, run(approval.call, &state))
 
       case let .denyTapped(id):
-        return turnDown(id, outcome: .denied, &state)
+        return turnDown(id, because: .denied, &state)
 
       case let .approvalUnanswered(id):
-        return turnDown(id, outcome: .unanswered, &state)
+        return turnDown(id, because: .unanswered, &state)
 
       case let .notificationButtonPressed(button):
         guard let id = state.notifiedApproval, state.approvals[id: id] != nil else { return .none }
@@ -378,12 +364,6 @@ struct SecretsFeature: Sendable {
         case Self.denyButtonID: return .send(.denyTapped(id))
         default: return .none
         }
-
-      case let .used(use):
-        // Not when it is logged already: Claude gave it up before the command got going.
-        guard state.running.contains(where: { $0.value.id == use.id }) else { return .none }
-        state.running = state.running.filter { $0.value.id != use.id }
-        return record(use, &state)
 
       case .copyConnectCommandTapped:
         guard let command = state.connectCommand else { return .none }
@@ -509,14 +489,8 @@ struct SecretsFeature: Sendable {
   private func load() -> Effect<Action> {
     .run { [databaseIsOnDisk] send in
       try await database.migrate(SecretKey.migrator)
-      let oldest = calendar.date(byAdding: .day, value: -KeyUse.keptDays, to: now) ?? now
-      let (keys, uses, rowIDs) = try await database.write { db in
-        try db.execute(sql: "DELETE FROM \(KeyUse.databaseTableName) WHERE at < ?", arguments: [oldest])
-        return (
-          try SecretKey.fetchAllReadable(db),
-          try KeyUse.latest(db),
-          try String.fetchSet(db, sql: "SELECT id FROM \(SecretKey.databaseTableName)")
-        )
+      let (keys, rowIDs) = try await database.read { db in
+        (try SecretKey.fetchAllReadable(db), try String.fetchSet(db, sql: "SELECT id FROM \(SecretKey.databaseTableName)"))
       }
       // Values whose key is gone: Vortex stopped between saving a value and its row, or while a deletion could still
       // be taken back. Not while the database is only in memory: its file didn't open, and the keychain then holds the
@@ -526,7 +500,7 @@ struct SecretsFeature: Sendable {
           await keychain.delete(Self.keychainService, account)
         }
       }
-      await send(.loaded(keys: keys, uses: uses))
+      await send(.loaded(keys: keys))
     } catch: { error, send in
       logger.error("Loading the keys failed: \(error, privacy: .public)")
       await send(.loadFailed)
@@ -604,17 +578,14 @@ struct SecretsFeature: Sendable {
           + [renotify(&state)]
       )
     case let .cancelled(call):
-      // Waiting for «Дозволити»: the request goes; running: the command stops. Either way Claude gets «Cancelled.» and
-      // the log keeps it; a command that ran counts as a use of its keys.
+      // Waiting for «Дозволити»: the request goes; running: the command stops. Either way Claude gets «Cancelled.», also
+      // when it gives a call up before its command got going.
       if let approval = state.approvals.first(where: { $0.call.id == call }) {
-        return turnDown(approval.id, outcome: .cancelled, &state)
+        return turnDown(approval.id, because: .cancelled, &state)
       }
-      guard var use = state.running.removeValue(forKey: call) else { return .cancel(id: CancelID.run(call)) }
-      use.outcome = .cancelled
       return .merge(
         .cancel(id: CancelID.run(call)),
-        .run { _ in await server.reply(call, MCPToolResult(text: "Cancelled.", isError: true)) },
-        record(use, ranWithKeys: true, &state)
+        .run { _ in await server.reply(call, MCPToolResult(text: "Cancelled.", isError: true)) }
       )
     case let .call(call):
       switch call.tool {
@@ -658,7 +629,7 @@ struct SecretsFeature: Sendable {
     guard asked.isEmpty else {
       return ask(call, names: asked.compactMap { state.key(named: $0, at: now)?.name }, command: command, &state)
     }
-    return execute(call, prepared, command: command, &state)
+    return execute(call, prepared, &state)
   }
 
   private func ask(_ call: MCPCall, names: [String], command: String, _ state: inout State) -> Effect<Action> {
@@ -712,95 +683,70 @@ struct SecretsFeature: Sendable {
     return notify(next, &state)
   }
 
-  private func turnDown(_ id: Approval.ID, outcome: KeyUse.Outcome, _ state: inout State) -> Effect<Action> {
+  private enum Refusal {
+    case denied
+    case unanswered
+    case cancelled
+  }
+
+  private func turnDown(_ id: Approval.ID, because refusal: Refusal, _ state: inout State) -> Effect<Action> {
     guard let approval = state.approvals.remove(id: id) else { return .none }
     let next = renotify(&state)
     let names = approval.names.map { "{{\($0)}}" }.joined(separator: ", ")
-    let text = switch outcome {
+    let text = switch refusal {
     case .denied: "The user did not allow \(names). Ask them before trying again."
     case .unanswered: "Nobody allowed \(names) in time; the user may be away."
-    default: "Cancelled."
+    case .cancelled: "Cancelled."
     }
-    let use = KeyUse(
-      id: uuid(),
-      at: now,
-      keys: approval.names,
-      client: approval.call.client,
-      command: approval.command,
-      outcome: outcome,
-      exitCode: nil
-    )
-    return .merge(.cancel(id: CancelID.answer(id)), next, reply(approval.call, text, isError: true), record(use, &state))
+    return .merge(.cancel(id: CancelID.answer(id)), next, reply(approval.call, text, isError: true))
   }
 
-  private func execute(_ call: MCPCall, _ prepared: KeyCommand, command: String, _ state: inout State) -> Effect<Action> {
+  private func execute(_ call: MCPCall, _ prepared: KeyCommand, _ state: inout State) -> Effect<Action> {
     let keys = prepared.names.compactMap { state.key(named: $0, at: now) }
     let folder = call.arguments["cwd"]?.string.map { URL(fileURLWithPath: $0, isDirectory: true) }
     let timeout = min(max(call.arguments["timeout"]?.int ?? Self.defaultTimeout, Self.timeouts.lowerBound), Self.timeouts.upperBound)
-    let use = KeyUse(
-      id: uuid(),
-      at: now,
-      keys: keys.map(\.name),
-      client: call.client,
-      command: command,
-      outcome: .failed,
-      exitCode: nil
-    )
-    state.running[call.id] = use
-    return .run { send in
-      var byName: [String: String] = [:]
-      for key in keys {
-        guard let value = try await keychain.read(Self.keychainService, key.id.uuidString) else {
-          let text = "The value of {{\(key.name)}} is gone from the keychain; the user has to add the key again."
-          await server.reply(call.id, MCPToolResult(text: text, isError: true))
-          await send(.used(use))
-          return
+    // Handed to a command, a key counts as used, however the command ends.
+    let usedAt = now
+    for key in keys { state.keys[id: key.id]?.lastUsedAt = usedAt }
+    return .merge(
+      markUsed(keys.map(\.id), at: usedAt),
+      .run { _ in
+        var byName: [String: String] = [:]
+        for key in keys {
+          guard let value = try await keychain.read(Self.keychainService, key.id.uuidString) else {
+            let text = "The value of {{\(key.name)}} is gone from the keychain; the user has to add the key again."
+            await server.reply(call.id, MCPToolResult(text: text, isError: true))
+            return
+          }
+          byName[key.name] = value
         }
-        byName[key.name] = value
+        let values = Dictionary(byName.map { ($0.key.lowercased(), $0.value) }) { first, _ in first }
+        let output = try await commands.run(prepared.shellCommand, folder, prepared.environment(values: values), .seconds(timeout))
+        let report = KeyCommand.report(output, values: byName, timeout: timeout)
+        await server.reply(call.id, MCPToolResult(text: report, isError: output.exitCode != 0))
+      } catch: { error, _ in
+        await server.reply(call.id, MCPToolResult(text: "Vortex could not run the command: \(error)", isError: true))
       }
-      let values = Dictionary(byName.map { ($0.key.lowercased(), $0.value) }) { first, _ in first }
-      let output = try await commands.run(prepared.shellCommand, folder, prepared.environment(values: values), .seconds(timeout))
-      let report = KeyCommand.report(output, values: byName, timeout: timeout)
-      await server.reply(call.id, MCPToolResult(text: report, isError: output.exitCode != 0))
-      var ran = use
-      ran.outcome = output.timedOut ? .timedOut : .ran
-      ran.exitCode = Int(output.exitCode)
-      await send(.used(ran))
-    } catch: { error, send in
-      await server.reply(call.id, MCPToolResult(text: "Vortex could not run the command: \(error)", isError: true))
-      await send(.used(use))
-    }
-    .cancellable(id: CancelID.run(call.id))
+      .cancellable(id: CancelID.run(call.id))
+    )
   }
 
   private func reply(_ call: MCPCall, _ text: String, isError: Bool) -> Effect<Action> {
     .run { _ in await server.reply(call.id, MCPToolResult(text: text, isError: isError)) }
   }
 
-  /// Into the log, newest first; a use that ran marks its keys as used.
-  private func record(_ use: KeyUse, ranWithKeys: Bool? = nil, _ state: inout State) -> Effect<Action> {
-    state.uses.insert(use, at: 0)
-    if state.uses.count > KeyUse.shown { state.uses.removeLast(state.uses.count - KeyUse.shown) }
-    var used: [SecretKey.ID] = []
-    if ranWithKeys ?? (use.outcome == .ran || use.outcome == .timedOut) {
-      for name in use.keys {
-        guard let key = state.keys.first(where: { $0.name == name }) else { continue }
-        state.keys[id: key.id]?.lastUsedAt = use.at
-        used.append(key.id)
-      }
-    }
-    return .run { [used] _ in
+  private func markUsed(_ ids: [SecretKey.ID], at usedAt: Date) -> Effect<Action> {
+    .run { _ in
       try await database.write { db in
-        try use.insert(db)
-        for id in used {
+        for id in ids {
           try db.execute(
             sql: "UPDATE \(SecretKey.databaseTableName) SET lastUsedAt = ? WHERE id = ?",
-            arguments: [use.at, id.uuidString]
+            arguments: [usedAt, id.uuidString]
           )
         }
       }
     } catch: { error, _ in
-      logger.error("Logging a key use failed: \(error, privacy: .public)")
+      logger.error("Marking keys used failed: \(error, privacy: .public)")
     }
   }
 

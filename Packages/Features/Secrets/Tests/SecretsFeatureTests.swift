@@ -192,30 +192,26 @@ struct SecretsFeatureTests {
     try await eventually { [posted] in posted.value == ["secrets.approval: Claude Code → prod-db"] }
 
     await store.send(.approveTapped(approval.id))
-    await store.receive(\.used)
+    try await eventually { [replies] in replies.value.count == 1 }
     #expect(ran.value.first?.command == #"psql "${VORTEX_KEY_1}" -c 'select 1'"#)
     #expect(ran.value.first?.environment == ["VORTEX_KEY_1": value])
     #expect(ran.value.first?.folder == "/tmp")
     #expect(replies.value.first == MCPToolResult(text: "exit code 0\nconnected with {{prod-db}}\n", isError: false))
     #expect(store.state.indicators[SecretsFeature.id] == nil)
-    #expect(store.state.uses.first?.outcome == .ran)
-    #expect(store.state.uses.first?.command == #"psql "{{prod-db}}" -c 'select 1'"#)
     #expect(store.state.keys.first?.lastUsedAt == now.value)
+    try await eventually { [database] in try await database.read { db in try SecretKey.fetchAllReadable(db) }.first?.lastUsedAt != nil }
 
     // The same session runs it again without asking.
     events.continuation.yield(.call(call(.run, ["command": "echo {{PROD-DB}}"], id: 2)))
     await store.receive(\.server.call)
-    await store.receive(\.used)
+    try await eventually { [replies] in replies.value.count == 2 }
     #expect(store.state.approvals.isEmpty)
     #expect(ran.value.count == 2)
-    let logged = try await database.read { db in try KeyUse.latest(db) }
-    #expect(logged.count == 2)
-    #expect(!logged.contains { $0.command.contains("hunter2secret") })
     await store.send(.stop)
   }
 
   @Test
-  func aDeniedOrUnansweredRequestGetsAnErrorAndIsLogged() async throws {
+  func aDeniedOrUnansweredRequestGetsAnError() async throws {
     let store = makeStore()
     await start(store)
     await addKey(store)
@@ -225,14 +221,13 @@ struct SecretsFeatureTests {
     try await eventually { [replies] in replies.value.count == 1 }
     #expect(replies.value.first?.isError == true)
     #expect(replies.value.first?.text.contains("did not allow {{prod-db}}") == true)
-    #expect(store.state.uses.first?.outcome == .denied)
 
     events.continuation.yield(.call(call(.run, ["command": "psql \"{{prod-db}}\""], id: 2)))
     await store.receive(\.server.call)
     await clock.advance(by: SecretsFeature.answerTime)
     await store.receive(\.approvalUnanswered)
     #expect(store.state.approvals.isEmpty)
-    #expect(store.state.uses.first?.outcome == .unanswered)
+    try await eventually { [replies] in replies.value.last?.text.contains("Nobody allowed {{prod-db}} in time") == true }
     #expect(ran.value.isEmpty)
     await store.send(.stop)
   }
@@ -263,7 +258,7 @@ struct SecretsFeatureTests {
   }
 
   @Test
-  func whatClaudeGivesUpIsLoggedAsCancelled() async throws {
+  func whatClaudeGivesUpIsAnsweredCancelledAndStops() async throws {
     let store = makeStore()
     store.dependencies.commandClient.run = { [clock] _, _, _, _ in
       try await clock.sleep(for: .seconds(30))
@@ -277,27 +272,37 @@ struct SecretsFeatureTests {
     await store.receive(\.server.call)
     events.continuation.yield(.cancelled(waiting.id))
     await store.receive(\.server.cancelled)
-    #expect(store.state.uses.first?.outcome == .cancelled)
-    #expect(store.state.uses.first?.exitCode == nil)
+    #expect(store.state.approvals.isEmpty)
     #expect(store.state.keys.first?.lastUsedAt == nil)
 
-    // Running: it is stopped, and the log still says what ran with the key.
+    // Running: it is stopped; the key was handed to it, so it counts as used.
     let running = call(.run, ["command": "psql \"{{prod-db}}\" -c 'delete from bookings'"], id: 2)
     events.continuation.yield(.call(running))
     await store.receive(\.server.call)
     await store.send(.approveTapped(try #require(store.state.approvals.first?.id)))
-    #expect(store.state.running[running.id] != nil)
+    #expect(store.state.keys.first?.lastUsedAt == now.value)
     events.continuation.yield(.cancelled(running.id))
     await store.receive(\.server.cancelled)
-    #expect(store.state.running.isEmpty)
-    #expect(store.state.uses.map(\.outcome) == [.cancelled, .cancelled])
-    #expect(store.state.uses.first?.command == "psql \"{{prod-db}}\" -c 'delete from bookings'")
-    #expect(store.state.keys.first?.lastUsedAt == now.value)
     try await eventually { [replies] in replies.value.filter { $0 == MCPToolResult(text: "Cancelled.", isError: true) }.count == 2 }
-    try await eventually { [database] in try await database.read { db in try KeyUse.latest(db) }.count == 2 }
-    // A command whose cancelling came too late still ends: it is logged once.
-    await store.send(.used(KeyUse(id: UUID(), at: now.value, keys: ["prod-db"], client: "Claude Code", command: "x", outcome: .ran, exitCode: 0)))
-    #expect(store.state.uses.count == 2)
+    // Stopped: the command's own answer never comes.
+    await clock.advance(by: .seconds(30))
+    #expect(replies.value.count == 2)
+    await store.send(.stop)
+  }
+
+  @Test
+  func theLogOfUsesFromBeforeIsGone() async throws {
+    // A database from before keeps no log: Claude Code shows every command in its own history.
+    try await database.write { db in
+      try db.execute(sql: "CREATE TABLE grdb_migrations (identifier TEXT NOT NULL PRIMARY KEY)")
+      try db.execute(sql: "INSERT INTO grdb_migrations VALUES ('secrets.v1')")
+      try db.execute(sql: "CREATE TABLE secrets_key (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, kind TEXT NOT NULL, note TEXT NOT NULL, createdAt DATETIME NOT NULL, expiresAt DATETIME, lastUsedAt DATETIME)")
+      try db.execute(sql: "CREATE TABLE secrets_use (id TEXT PRIMARY KEY, at DATETIME NOT NULL)")
+    }
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
+    #expect(try await database.read { db in try db.tableExists("secrets_use") } == false)
     await store.send(.stop)
   }
 

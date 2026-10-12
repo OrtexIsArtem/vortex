@@ -73,7 +73,6 @@ public enum SecretsModule: FeatureModule {
           "sessions": store.sessions.count,
           "approvals": store.approvals.map { ["names": $0.names, "command": $0.command] },
           "keys": store.keys.map { ["name": $0.name, "kind": $0.kind.rawValue, "expires": $0.expiresAt?.description ?? ""] },
-          "uses": store.uses.prefix(10).map { ["keys": $0.keys, "outcome": $0.outcome.rawValue, "exit": $0.exitCode ?? -1] },
           "hasToken": store.token != nil,
         ]
         try? JSONSerialization.data(withJSONObject: state, options: [.prettyPrinted, .sortedKeys])
