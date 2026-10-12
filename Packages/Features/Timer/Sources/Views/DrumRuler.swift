@@ -107,8 +107,8 @@ private struct DragStart {
 struct DrumStyle {
   /// Between ticks under the mark; a drag turns the drum a minute per this many points, so it follows the pointer.
   var spacing: CGFloat
-  /// Two fingers on the trackpad turn it a minute per this many points: a little more than `spacing`, so it is not
-  /// too quick.
+  /// Two fingers on the trackpad turn it a minute per this many points: well over `spacing`, as macOS counts more
+  /// points the quicker the fingers go, so a small swipe turns it a few minutes rather than flying past them.
   var scrollPoints: CGFloat
   var height: CGFloat
   var minorTick: CGFloat
@@ -121,11 +121,11 @@ struct DrumStyle {
   var showsNumbers: Bool
 
   static let home = DrumStyle(
-    spacing: 6, scrollPoints: 9, height: 34, minorTick: 7, majorTick: 12, baseline: 25, middle: 17, markTop: 4, markHeight: 23,
+    spacing: 6, scrollPoints: 16, height: 34, minorTick: 7, majorTick: 12, baseline: 25, middle: 17, markTop: 4, markHeight: 23,
     showsNumbers: false
   )
   static let tab = DrumStyle(
-    spacing: 9, scrollPoints: 13, height: 56, minorTick: 9, majorTick: 16, baseline: 32, middle: 22, markTop: 4, markHeight: 32,
+    spacing: 9, scrollPoints: 23, height: 56, minorTick: 9, majorTick: 16, baseline: 32, middle: 22, markTop: 4, markHeight: 32,
     showsNumbers: true
   )
 }
@@ -164,15 +164,16 @@ struct DrumGeometry {
 }
 
 /// Turns scrolls into whole minutes. The drum moves with the fingers, so a swipe to the left or up brings later minutes
-/// under the mark. A mouse wheel turns it a minute per notch; a trackpad, a minute per `points`, and half as far once
-/// the fingers lift and it coasts. What is left over towards the next minute is dropped when the fingers touch down
-/// again or turn back, so every swipe starts afresh.
+/// under the mark. A mouse wheel turns it a minute per notch; a trackpad, a minute per `points`, and a quarter as far
+/// once the fingers lift and it coasts: macOS coasts a quick swipe two or three times as far as the fingers went, so
+/// the coast, not the fingers, would carry most of it. What is left over towards the next minute is dropped when the
+/// fingers touch down again or turn back, so every swipe starts afresh.
 struct ScrollSteps {
   /// Points towards the next minute; positive adds time.
   private var remainder: CGFloat = 0
 
   mutating func minutes(for delta: ScrollDelta, points: CGFloat) -> Int {
-    let push = -(abs(delta.x) > abs(delta.y) ? delta.x : delta.y) * (delta.isMomentum ? 0.5 : 1)
+    let push = -(abs(delta.x) > abs(delta.y) ? delta.x : delta.y) * (delta.isMomentum ? 0.25 : 1)
     guard delta.isPrecise else {
       remainder = 0
       return push > 0 ? 1 : push < 0 ? -1 : 0

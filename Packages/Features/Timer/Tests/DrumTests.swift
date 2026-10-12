@@ -64,12 +64,12 @@ struct DrumTests {
   }
 
   @Test
-  func afterTheFingersLiftTheDrumCoastsHalfAsFar() {
+  func afterTheFingersLiftTheDrumCoastsAQuarterAsFar() {
     var steps = ScrollSteps()
     #expect(steps.minutes(for: ScrollDelta(x: -12, y: 0, isPrecise: true, beginsGesture: true), points: 6) == 2)
+    #expect(steps.minutes(for: ScrollDelta(x: -24, y: 0, isPrecise: true, isMomentum: true), points: 6) == 1)
+    #expect(steps.minutes(for: ScrollDelta(x: -12, y: 0, isPrecise: true, isMomentum: true), points: 6) == 0)
     #expect(steps.minutes(for: ScrollDelta(x: -12, y: 0, isPrecise: true, isMomentum: true), points: 6) == 1)
-    #expect(steps.minutes(for: ScrollDelta(x: -6, y: 0, isPrecise: true, isMomentum: true), points: 6) == 0)
-    #expect(steps.minutes(for: ScrollDelta(x: -6, y: 0, isPrecise: true, isMomentum: true), points: 6) == 1)
   }
 
   @Test
