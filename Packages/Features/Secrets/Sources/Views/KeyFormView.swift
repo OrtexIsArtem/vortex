@@ -7,8 +7,6 @@ struct KeyFormView: View {
   let draft: KeyDraft
   let store: StoreOf<SecretsFeature>
   @FocusState private var focus: Field?
-  /// The value in plain text, to check what was pasted.
-  @State private var showsValue = false
 
   private enum Field {
     case value
@@ -17,6 +15,26 @@ struct KeyFormView: View {
   }
 
   var body: some View {
+    // Scrolls when requests waiting above leave it little room, so Save stays in reach.
+    ScrollView {
+      fields
+        .textFieldStyle(.plain)
+        .font(.system(size: 13))
+        .padding(.horizontal, 22)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .task {
+      // The window may still be opening: asked again until the field has the keyboard.
+      for _ in 0..<10 where focus == nil && !Task.isCancelled {
+        focus = .value
+        try? await Task.sleep(for: .milliseconds(30))
+      }
+    }
+  }
+
+  private var fields: some View {
     VStack(alignment: .leading, spacing: 0) {
       Text("New key", bundle: .module)
         .font(.system(size: 17, weight: .semibold))
@@ -25,7 +43,7 @@ struct KeyFormView: View {
       row(Text("Value", bundle: .module)) {
         HStack(spacing: 6) {
           Group {
-            if showsValue {
+            if draft.showsValue {
               TextField(text: binding(\.value)) { valuePrompt }
                 .font(.system(size: 12.5, design: .monospaced))
             } else {
@@ -34,19 +52,16 @@ struct KeyFormView: View {
           }
           .focused($focus, equals: .value)
           .onSubmit { focus = .name }
-          Button {
-            showsValue.toggle()
-            focus = .value
-          } label: {
-            Image(systemName: showsValue ? "eye.slash" : "eye")
-              .font(.system(size: 12))
-              .frame(width: 28, height: 28)
-              .contentShape(Rectangle())
+          ToolButton(
+            symbol: draft.showsValue ? "eye.slash" : "eye",
+            label: draft.showsValue ? Text("Hide the value", bundle: .module) : Text("Show the value", bundle: .module)
+          ) {
+            var changed = store.draft ?? draft
+            changed.showsValue.toggle()
+            store.send(.draftChanged(changed))
+            // The field is a new one now: it takes the keyboard on the next turn, not in the same update.
+            Task { focus = .value }
           }
-          .buttonStyle(.plain)
-          .foregroundStyle(VortexColor.secondaryText)
-          .help(showsValue ? Text("Hide the value", bundle: .module) : Text("Show the value", bundle: .module))
-          .accessibilityLabel(showsValue ? Text("Hide the value", bundle: .module) : Text("Show the value", bundle: .module))
         }
       } caption: {
         if !draft.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -121,18 +136,6 @@ struct KeyFormView: View {
         .disabled(draft.isSaving)
       }
       .padding(.top, 6)
-    }
-    .textFieldStyle(.plain)
-    .font(.system(size: 13))
-    .padding(.horizontal, 22)
-    .padding(.bottom, 16)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .task {
-      // The window may still be opening: asked again until the field has the keyboard.
-      for _ in 0..<10 where focus == nil && !Task.isCancelled {
-        focus = .value
-        try? await Task.sleep(for: .milliseconds(30))
-      }
     }
   }
 

@@ -6,22 +6,13 @@ import VortexCore
 struct SecretsSettingsView: View {
   let store: StoreOf<SecretsFeature>
   @State private var port = ""
-  @State private var copied = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       SettingsRow(title: Text(verbatim: "Claude Code"), caption: status) {
-        Button {
+        CopyButton(Text("Copy the connect command", bundle: .module), style: .quietCapsule) {
           store.send(.copyConnectCommandTapped)
-          copied = true
-          Task {
-            try? await Task.sleep(for: .seconds(1.5))
-            copied = false
-          }
-        } label: {
-          Text(copied ? "Copied" : "Copy the connect command", bundle: .module)
         }
-        .buttonStyle(.quietCapsule)
         .disabled(store.connectCommand == nil)
       }
 
@@ -41,7 +32,7 @@ struct SecretsSettingsView: View {
         .onSubmit(applyPort)
       }
 
-      Text("Values stay in the keychain; Claude gets the output with them taken out. The log keeps 30 days.", bundle: .module)
+      Text("Values stay in the keychain; Claude gets the output with them taken out.", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.top, 12)

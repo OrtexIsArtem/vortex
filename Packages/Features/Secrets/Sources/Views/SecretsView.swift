@@ -3,7 +3,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The Keys tab: the log and New next to the notch; Claude's requests first, then the keys, the form or the log.
+/// The Keys tab: New next to the notch; Claude's requests first, then the keys or the form.
 struct SecretsView: View {
   @Bindable var store: StoreOf<SecretsFeature>
   @Environment(\.notchCutout) private var cutout
@@ -14,8 +14,9 @@ struct SecretsView: View {
       header
         .frame(height: VortexMetrics.headerHeight)
       if !store.approvals.isEmpty {
-        // As tall as the requests, up to the whole tab: more than fit scroll, each command kept to a few lines while
-        // another waits too, so every answer stays in reach. The list below gets what is left.
+        // As tall as the requests, up to the tab less room for the form or the undo toast: more than fit scroll, each
+        // command kept to a few lines while another waits too, so every answer stays in reach. The rest gets what is
+        // left.
         ScrollView {
           VStack(spacing: 10) {
             ForEach(store.approvals) { approval in
@@ -30,7 +31,7 @@ struct SecretsView: View {
           .padding(.horizontal, 12)
           .padding(.bottom, 10)
         }
-        .frame(maxHeight: VortexMetrics.windowSize.height - VortexMetrics.headerHeight)
+        .frame(maxHeight: VortexMetrics.windowSize.height - VortexMetrics.headerHeight - roomBelowRequests)
         .fixedSize(horizontal: false, vertical: true)
       }
       if let draft = store.draft {
@@ -50,11 +51,17 @@ struct SecretsView: View {
     }
     .animation(.snappy(duration: 0.22), value: store.approvals.map(\.id))
     .animation(.snappy(duration: 0.22), value: store.deleted)
-    // A value shown stays out of sight once the window closes.
+    // A value shown, here or in the form, stays out of sight once the window closes or another tab shows.
     .onChange(of: isWindowOpen) { _, isOpen in
-      if !isOpen, store.revealed != nil { store.send(.hideTapped) }
+      if !isOpen { store.send(.windowClosed) }
     }
+    .onDisappear { store.send(.windowClosed) }
     .animation(.snappy(duration: 0.2), value: store.draft == nil)
+  }
+
+  /// Room the requests leave for the form's Save or the undo toast.
+  private var roomBelowRequests: CGFloat {
+    (store.draft != nil ? 120 : 0) + (store.deleted != nil ? 58 : 0)
   }
 
   /// The title left of the notch; New right of it.

@@ -16,7 +16,7 @@ struct TimerFeatureTests {
   /// "notification id:button ids".
   let posted = LockIsolated<[String]>([])
   let authorizations = LockIsolated(0)
-  let buttons = AsyncStream.makeStream(of: String.self)
+  let buttons = AsyncStream.makeStream(of: NotificationClient.Press.self)
 
   func makeStore() -> TestStoreOf<TimerFeature> {
     let store = TestStore(initialState: TimerFeature.State()) {
@@ -134,7 +134,7 @@ struct TimerFeatureTests {
     await store.receive(\.tick)
     @Shared(.notchIndicators) var indicators
     #expect(indicators[TimerFeature.id]?.alarm == 1)
-    buttons.continuation.yield(TimerFeature.addFiveButtonID)
+    buttons.continuation.yield(NotificationClient.Press(notification: TimerFeature.doneNotificationID, button: TimerFeature.addFiveButtonID))
     await store.receive(\.notificationButtonPressed)
     #expect(indicators[TimerFeature.id]?.alarm == nil)
     await store.send(.stop)
@@ -230,7 +230,7 @@ struct TimerFeatureTests {
   func plusFiveOnTheNotificationStartsFiveMoreMinutes() async {
     let store = makeStore()
     await store.send(.start)
-    buttons.continuation.yield(TimerFeature.addFiveButtonID)
+    buttons.continuation.yield(NotificationClient.Press(notification: TimerFeature.doneNotificationID, button: TimerFeature.addFiveButtonID))
     await store.receive(\.notificationButtonPressed)
     #expect(store.state.run == TimerRun.started(minutes: 5, at: now.value))
     await store.send(.stop)
@@ -245,7 +245,7 @@ struct TimerFeatureTests {
     await pass(60)
     await store.send(.startTapped(minutes: 5))
     // Neither Start nor "+5 min" on a notification replaces the run going.
-    buttons.continuation.yield(TimerFeature.addFiveButtonID)
+    buttons.continuation.yield(NotificationClient.Press(notification: TimerFeature.doneNotificationID, button: TimerFeature.addFiveButtonID))
     await store.receive(\.notificationButtonPressed)
     #expect(store.state.run == TimerRun.started(minutes: 25, at: startedAt))
     await store.send(.stop)

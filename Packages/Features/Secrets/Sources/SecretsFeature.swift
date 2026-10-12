@@ -18,6 +18,8 @@ struct KeyDraft: Equatable, Sendable {
   var value = ""
   var note = ""
   var lifetime = KeyLifetime.forever
+  /// The value in plain text, to check what was pasted; hidden again when the window closes.
+  var showsValue = false
   /// Why it was not saved, shown under the fields.
   var problem: Problem?
   var isSaving = false
@@ -45,7 +47,7 @@ struct Approval: Identifiable, Equatable, Sendable {
 /// local MCP server: `keys` lists them, `run` runs a command with {{name}} where a value goes and gets the output back
 /// with the values taken out. The first use of a key in a session waits for «Дозволити», asked in the notch and in a
 /// notification. A key can live an hour, until the end of the day or for good; deleting one can be taken back for a
-/// moment. Every use is logged.
+/// moment. A key shows when a command last ran with it.
 @Reducer
 struct SecretsFeature: Sendable {
   static let id: FeatureID = "secrets"
@@ -62,7 +64,8 @@ struct SecretsFeature: Sendable {
   /// Seconds a command may run, unless Claude asks for other, within `timeouts`.
   static let defaultTimeout = 60
   static let timeouts = 1...180
-  static let approvalNotificationID = "secrets.approval"
+  /// Each request's notification is this, a dot and the request's id, so its buttons answer that request.
+  static let approvalNotificationPrefix = "secrets.approval"
   static let allowButtonID = "secrets.allow"
   static let denyButtonID = "secrets.deny"
 
@@ -92,8 +95,8 @@ struct SecretsFeature: Sendable {
     /// By MCP session id.
     var sessions: [String: Session] = [:]
     var approvals: IdentifiedArrayOf<Approval> = []
-    /// The approval the notification shows, which its buttons answer.
-    var notifiedApproval: Approval.ID?
+    /// Commands running now, with the keys handed to them: they stop with the feature, and count as used once they ran.
+    var running: [MCPCall.ID: [SecretKey.ID]] = [:]
     var server = ServerStatus.off
     var token: String?
     /// Grows with every approval asked for, so each one flashes the notch anew.
@@ -145,6 +148,8 @@ struct SecretsFeature: Sendable {
     case revealTapped(SecretKey.ID)
     case revealed(SecretKey.ID, String)
     case hideTapped
+    /// The window closed, or the tab went out of view: whatever value shows goes out of sight.
+    case windowClosed
     case copyValueTapped
     /// Copies «name (Vortex)»: enough for Claude, which learns the keys from Vortex.
     case copyNameTapped(SecretKey.ID)
@@ -157,7 +162,9 @@ struct SecretsFeature: Sendable {
     case approveTapped(Approval.ID)
     case denyTapped(Approval.ID)
     case approvalUnanswered(Approval.ID)
-    case notificationButtonPressed(String)
+    case notificationButtonPressed(NotificationClient.Press)
+    /// The command for a call ended; `ran` when it was started, not stopped before by a missing value or an error.
+    case commandEnded(MCPCall.ID, ran: Bool)
     case copyConnectCommandTapped
     case portChanged(Int)
   }
@@ -182,10 +189,10 @@ struct SecretsFeature: Sendable {
     case expiry
     case undo
     case reveal
+    case revealRead
     case answer(Approval.ID)
-    /// Posting or removing the notification: the newest wins, so it never shows a request other than the one its
-    /// buttons answer.
-    case notification
+    /// Posting or taking back a request's notification: taking it back stops a post still on its way.
+    case notification(Approval.ID)
     case run(MCPCall.ID)
     case deletion(SecretKey.ID)
   }
@@ -199,8 +206,9 @@ struct SecretsFeature: Sendable {
         guard !state.isEnabled else { return .none }
         state.isEnabled = true
         state.server = .starting
-        guard state.isLoaded else { return .merge(load(), listenToNotificationButtons()) }
-        return .merge(expire(&state), startServing(state), listenToNotificationButtons())
+        // Requests from before, such as a run Vortex quit in, are over: so are their notifications.
+        guard state.isLoaded else { return .merge(load(), listenToNotificationButtons(), forgetNotifications()) }
+        return .merge(expire(&state), startServing(state), listenToNotificationButtons(), forgetNotifications())
 
       case .stop:
         state.isEnabled = false
@@ -268,6 +276,7 @@ struct SecretsFeature: Sendable {
         } catch: { error, _ in
           logger.error("Reading a key failed: \(error, privacy: .public)")
         }
+        .cancellable(id: CancelID.revealRead, cancelInFlight: true)
 
       case let .revealed(id, value):
         guard state.keys[id: id] != nil else { return .none }
@@ -280,7 +289,12 @@ struct SecretsFeature: Sendable {
 
       case .hideTapped:
         state.revealed = nil
-        return .cancel(id: CancelID.reveal)
+        return .merge(.cancel(id: CancelID.reveal), .cancel(id: CancelID.revealRead))
+
+      case .windowClosed:
+        state.revealed = nil
+        state.draft?.showsValue = false
+        return .merge(.cancel(id: CancelID.reveal), .cancel(id: CancelID.revealRead))
 
       case .copyValueTapped:
         guard let value = state.revealed?.value else { return .none }
@@ -346,10 +360,11 @@ struct SecretsFeature: Sendable {
 
       case let .approveTapped(id):
         guard let approval = state.approvals.remove(id: id) else { return .none }
-        let next = renotify(&state)
-        guard state.sessions[approval.call.session] != nil else { return .merge(.cancel(id: CancelID.answer(id)), next) }
+        syncIndicator(&state)
+        let answered = Effect<Action>.merge(.cancel(id: CancelID.answer(id)), forgetNotification(id))
+        guard state.sessions[approval.call.session] != nil else { return answered }
         state.sessions[approval.call.session]?.allowed.formUnion(approval.names.map { $0.lowercased() })
-        return .merge(.cancel(id: CancelID.answer(id)), next, run(approval.call, &state))
+        return .merge(answered, run(approval.call, &state))
 
       case let .denyTapped(id):
         return turnDown(id, because: .denied, &state)
@@ -357,13 +372,22 @@ struct SecretsFeature: Sendable {
       case let .approvalUnanswered(id):
         return turnDown(id, because: .unanswered, &state)
 
-      case let .notificationButtonPressed(button):
-        guard let id = state.notifiedApproval, state.approvals[id: id] != nil else { return .none }
-        switch button {
+      case let .notificationButtonPressed(press):
+        // The request the notification shows, whatever came in since.
+        let prefix = Self.approvalNotificationPrefix + "."
+        guard press.notification.hasPrefix(prefix),
+              let id = UUID(uuidString: String(press.notification.dropFirst(prefix.count))),
+              state.approvals[id: id] != nil
+        else { return .none }
+        switch press.button {
         case Self.allowButtonID: return .send(.approveTapped(id))
         case Self.denyButtonID: return .send(.denyTapped(id))
         default: return .none
         }
+
+      case let .commandEnded(call, ran):
+        guard let used = state.running.removeValue(forKey: call), ran else { return .none }
+        return markUsed(used, &state)
 
       case .copyConnectCommandTapped:
         guard let command = state.connectCommand else { return .none }
@@ -543,14 +567,19 @@ struct SecretsFeature: Sendable {
     .cancellable(id: CancelID.server, cancelInFlight: true)
   }
 
-  /// A new server, or none: sessions and the calls waiting in them are over (the server answers those calls).
+  /// A new server, or none: sessions, the calls waiting in them and the commands running are over (the server answers
+  /// the calls).
   private func resetSessions(_ state: inout State) -> Effect<Action> {
     let waiting = state.approvals.map(\.id)
+    let running = Array(state.running.keys)
     state.sessions = [:]
     state.approvals = []
-    state.notifiedApproval = nil
     syncIndicator(&state)
-    return .merge(waiting.map { .cancel(id: CancelID.answer($0)) } + [removeNotification()])
+    return .merge(
+      waiting.map { .cancel(id: CancelID.answer($0)) }
+        + running.map { stopCommand($0, &state) }
+        + [forgetNotifications()]
+    )
   }
 
   private func serverEvent(_ event: MCPEvent, _ state: inout State) -> Effect<Action> {
@@ -573,9 +602,11 @@ struct SecretsFeature: Sendable {
       for approval in waiting {
         state.approvals.remove(id: approval.id)
       }
+      syncIndicator(&state)
       return .merge(
-        waiting.flatMap { [.cancel(id: CancelID.answer($0.id)), reply($0.call, "The session ended.", isError: true)] }
-          + [renotify(&state)]
+        waiting.flatMap {
+          [.cancel(id: CancelID.answer($0.id)), forgetNotification($0.id), reply($0.call, "The session ended.", isError: true)]
+        }
       )
     case let .cancelled(call):
       // Waiting for «Дозволити»: the request goes; running: the command stops. Either way Claude gets «Cancelled.», also
@@ -583,10 +614,7 @@ struct SecretsFeature: Sendable {
       if let approval = state.approvals.first(where: { $0.call.id == call }) {
         return turnDown(approval.id, because: .cancelled, &state)
       }
-      return .merge(
-        .cancel(id: CancelID.run(call)),
-        .run { _ in await server.reply(call, MCPToolResult(text: "Cancelled.", isError: true)) }
-      )
+      return stopCommand(call, &state)
     case let .call(call):
       switch call.tool {
       case .keys: return reply(call, keyList(state), isError: false)
@@ -636,8 +664,9 @@ struct SecretsFeature: Sendable {
     let approval = Approval(id: uuid(), call: call, names: names, command: command, folder: call.arguments["cwd"]?.string)
     state.approvals.append(approval)
     state.alarms += 1
+    syncIndicator(&state)
     return .merge(
-      notify(approval, &state),
+      notify(approval),
       .run { [id = approval.id] send in
         try await clock.sleep(for: Self.answerTime)
         await send(.approvalUnanswered(id))
@@ -646,10 +675,8 @@ struct SecretsFeature: Sendable {
     )
   }
 
-  /// The notification shows `approval`, and its buttons answer it.
-  private func notify(_ approval: Approval, _ state: inout State) -> Effect<Action> {
-    state.notifiedApproval = approval.id
-    syncIndicator(&state)
+  /// A notification of its own for `approval`, whose buttons answer it.
+  private func notify(_ approval: Approval) -> Effect<Action> {
     let title = "\(approval.call.client) → \(approval.names.joined(separator: ", "))"
     // Its start; the tab shows all of it.
     let body = approval.command.count > 240 ? approval.command.prefix(239) + "…" : approval.command
@@ -657,30 +684,29 @@ struct SecretsFeature: Sendable {
       NotificationClient.Button(id: Self.allowButtonID, title: String(localized: "Allow", bundle: .module)),
       NotificationClient.Button(id: Self.denyButtonID, title: String(localized: "Deny", bundle: .module)),
     ]
+    let id = Self.notificationID(approval.id)
     return .run { _ in
       guard await notifications.requestAuthorization() else { return }
-      await notifications.post(Self.approvalNotificationID, title, body, buttons)
+      await notifications.post(id, title, body, buttons)
     }
-    .cancellable(id: CancelID.notification, cancelInFlight: true)
+    .cancellable(id: CancelID.notification(approval.id), cancelInFlight: true)
   }
 
-  private func removeNotification() -> Effect<Action> {
-    .run { _ in await notifications.remove(Self.approvalNotificationID) }
-      .cancellable(id: CancelID.notification, cancelInFlight: true)
+  static func notificationID(_ approval: Approval.ID) -> String {
+    "\(approvalNotificationPrefix).\(approval.uuidString)"
   }
 
-  /// One request answered: the notification moves to the next one still waiting, if any.
-  private func renotify(_ state: inout State) -> Effect<Action> {
-    if let notified = state.notifiedApproval, state.approvals[id: notified] != nil {
-      syncIndicator(&state)
-      return .none
-    }
-    state.notifiedApproval = nil
-    guard let next = state.approvals.first else {
-      syncIndicator(&state)
-      return removeNotification()
-    }
-    return notify(next, &state)
+  /// A request answered or gone: its notification goes, also one still on its way.
+  private func forgetNotification(_ approval: Approval.ID) -> Effect<Action> {
+    .merge(
+      .cancel(id: CancelID.notification(approval)),
+      .run { _ in await notifications.remove(Self.notificationID(approval)) }
+    )
+  }
+
+  /// Every request's notification, this run's or a run's before.
+  private func forgetNotifications() -> Effect<Action> {
+    .run { _ in await notifications.remove(Self.approvalNotificationPrefix) }
   }
 
   private enum Refusal {
@@ -691,43 +717,54 @@ struct SecretsFeature: Sendable {
 
   private func turnDown(_ id: Approval.ID, because refusal: Refusal, _ state: inout State) -> Effect<Action> {
     guard let approval = state.approvals.remove(id: id) else { return .none }
-    let next = renotify(&state)
+    syncIndicator(&state)
     let names = approval.names.map { "{{\($0)}}" }.joined(separator: ", ")
     let text = switch refusal {
     case .denied: "The user did not allow \(names). Ask them before trying again."
     case .unanswered: "Nobody allowed \(names) in time; the user may be away."
     case .cancelled: "Cancelled."
     }
-    return .merge(.cancel(id: CancelID.answer(id)), next, reply(approval.call, text, isError: true))
+    return .merge(.cancel(id: CancelID.answer(id)), forgetNotification(id), reply(approval.call, text, isError: true))
   }
 
   private func execute(_ call: MCPCall, _ prepared: KeyCommand, _ state: inout State) -> Effect<Action> {
     let keys = prepared.names.compactMap { state.key(named: $0, at: now) }
     let folder = call.arguments["cwd"]?.string.map { URL(fileURLWithPath: $0, isDirectory: true) }
     let timeout = min(max(call.arguments["timeout"]?.int ?? Self.defaultTimeout, Self.timeouts.lowerBound), Self.timeouts.upperBound)
-    // Handed to a command, a key counts as used, however the command ends.
-    let usedAt = now
-    for key in keys { state.keys[id: key.id]?.lastUsedAt = usedAt }
-    return .merge(
-      markUsed(keys.map(\.id), at: usedAt),
-      .run { _ in
-        var byName: [String: String] = [:]
-        for key in keys {
-          guard let value = try await keychain.read(Self.keychainService, key.id.uuidString) else {
-            let text = "The value of {{\(key.name)}} is gone from the keychain; the user has to add the key again."
-            await server.reply(call.id, MCPToolResult(text: text, isError: true))
-            return
-          }
-          byName[key.name] = value
+    state.running[call.id] = keys.map(\.id)
+    return .run { send in
+      var byName: [String: String] = [:]
+      for key in keys {
+        guard let value = try await keychain.read(Self.keychainService, key.id.uuidString) else {
+          let text = "The value of {{\(key.name)}} is gone from the keychain; the user has to add the key again."
+          await server.reply(call.id, MCPToolResult(text: text, isError: true))
+          await send(.commandEnded(call.id, ran: false))
+          return
         }
-        let values = Dictionary(byName.map { ($0.key.lowercased(), $0.value) }) { first, _ in first }
-        let output = try await commands.run(prepared.shellCommand, folder, prepared.environment(values: values), .seconds(timeout))
-        let report = KeyCommand.report(output, values: byName, timeout: timeout)
-        await server.reply(call.id, MCPToolResult(text: report, isError: output.exitCode != 0))
-      } catch: { error, _ in
-        await server.reply(call.id, MCPToolResult(text: "Vortex could not run the command: \(error)", isError: true))
+        byName[key.name] = value
       }
-      .cancellable(id: CancelID.run(call.id))
+      let values = Dictionary(byName.map { ($0.key.lowercased(), $0.value) }) { first, _ in first }
+      let output = try await commands.run(prepared.shellCommand, folder, prepared.environment(values: values), .seconds(timeout))
+      // Given up meanwhile: Claude got «Cancelled.» and the keys count as used already.
+      guard !Task.isCancelled else { return }
+      await send(.commandEnded(call.id, ran: true))
+      let report = KeyCommand.report(output, values: byName, timeout: timeout)
+      await server.reply(call.id, MCPToolResult(text: report, isError: output.exitCode != 0))
+    } catch: { error, send in
+      await server.reply(call.id, MCPToolResult(text: "Vortex could not run the command: \(error)", isError: true))
+      await send(.commandEnded(call.id, ran: false))
+    }
+    .cancellable(id: CancelID.run(call.id))
+  }
+
+  /// A running command Claude gave up, or one the feature stops: it stops, Claude gets «Cancelled.», and its keys count
+  /// as used, as it ran with them.
+  private func stopCommand(_ call: MCPCall.ID, _ state: inout State) -> Effect<Action> {
+    let used = state.running.removeValue(forKey: call) ?? []
+    return .merge(
+      .cancel(id: CancelID.run(call)),
+      .run { _ in await server.reply(call, MCPToolResult(text: "Cancelled.", isError: true)) },
+      markUsed(used, &state)
     )
   }
 
@@ -735,8 +772,12 @@ struct SecretsFeature: Sendable {
     .run { _ in await server.reply(call.id, MCPToolResult(text: text, isError: isError)) }
   }
 
-  private func markUsed(_ ids: [SecretKey.ID], at usedAt: Date) -> Effect<Action> {
-    .run { _ in
+  /// The keys a command ran with: when, shown on their rows and kept.
+  private func markUsed(_ ids: [SecretKey.ID], _ state: inout State) -> Effect<Action> {
+    guard !ids.isEmpty else { return .none }
+    let usedAt = now
+    for id in ids { state.keys[id: id]?.lastUsedAt = usedAt }
+    return .run { _ in
       try await database.write { db in
         for id in ids {
           try db.execute(
@@ -758,8 +799,8 @@ struct SecretsFeature: Sendable {
 
   private func listenToNotificationButtons() -> Effect<Action> {
     .run { send in
-      for await button in await notifications.buttonPresses() {
-        await send(.notificationButtonPressed(button))
+      for await press in await notifications.buttonPresses() {
+        await send(.notificationButtonPressed(press))
       }
     }
     .cancellable(id: CancelID.buttons, cancelInFlight: true)

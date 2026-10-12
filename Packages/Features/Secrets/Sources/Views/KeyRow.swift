@@ -10,11 +10,12 @@ struct KeyRow: View {
   let now: Date
   let send: (SecretsFeature.Action) -> Void
   @State private var isHovered = false
-  @State private var copied = false
+  private static let iconSize: CGFloat = 32
+  private static let spacing: CGFloat = 12
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack(alignment: .top, spacing: 12) {
+      HStack(alignment: .top, spacing: Self.spacing) {
         info
         Spacer(minLength: 8)
         if isHovered {
@@ -26,7 +27,7 @@ struct KeyRow: View {
       if let revealed {
         RevealedValueView(value: revealed, send: send)
           .padding(.top, 8)
-          .padding(.leading, 44)
+          .padding(.leading, Self.iconSize + Self.spacing)
       }
     }
     .padding(.horizontal, 10)
@@ -37,17 +38,17 @@ struct KeyRow: View {
     .animation(.easeOut(duration: 0.12), value: isHovered)
     .accessibilityElement(children: .combine)
     .accessibilityAction(named: Text("Copy the name", bundle: .module)) { send(.copyNameTapped(key.id)) }
-    .accessibilityAction(named: Text("Show the value", bundle: .module)) { send(.revealTapped(key.id)) }
+    .accessibilityAction(named: eyeLabel) { send(.revealTapped(key.id)) }
     .accessibilityAction(named: Text("Delete the key", bundle: .module)) { send(.deleteTapped(key.id)) }
   }
 
   /// The kind's symbol, the name, the details and the note.
   private var info: some View {
-    HStack(alignment: .top, spacing: 12) {
+    HStack(alignment: .top, spacing: Self.spacing) {
       Image(systemName: key.kind.symbol)
         .font(.system(size: 13))
         .foregroundStyle(VortexColor.secondaryText)
-        .frame(width: 32, height: 32)
+        .frame(width: Self.iconSize, height: Self.iconSize)
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(VortexColor.raised))
       VStack(alignment: .leading, spacing: 3) {
         Text(verbatim: key.name)
@@ -85,22 +86,17 @@ struct KeyRow: View {
     return Text("until \(expiresAt.formatted(.dateTime.day().month(.abbreviated))), \(time)", bundle: .module)
   }
 
+  private var eyeLabel: Text {
+    revealed == nil ? Text("Show the value", bundle: .module) : Text("Hide the value", bundle: .module)
+  }
+
   private var tools: some View {
     HStack(spacing: 4) {
-      Button {
+      CopyButton(Text("Copy the name", bundle: .module), style: QuietCapsuleButtonStyle(height: 28, fontSize: 11.5), minWidth: 96) {
         send(.copyNameTapped(key.id))
-        copied = true
-        Task {
-          try? await Task.sleep(for: .seconds(1.5))
-          copied = false
-        }
-      } label: {
-        Text(copied ? "Copied" : "Copy the name", bundle: .module)
-          .frame(minWidth: 96)
       }
-      .buttonStyle(QuietCapsuleButtonStyle(height: 28, fontSize: 11.5))
       .help(Text("Copies «\(key.name) (Vortex)»: say it to Claude, and it takes the key from Vortex", bundle: .module))
-      ToolButton(symbol: revealed == nil ? "eye" : "eye.slash", label: Text("Show the value", bundle: .module)) {
+      ToolButton(symbol: revealed == nil ? "eye" : "eye.slash", label: eyeLabel) {
         send(.revealTapped(key.id))
       }
       ToolButton(symbol: "trash", label: Text("Delete the key", bundle: .module)) {
@@ -111,7 +107,7 @@ struct KeyRow: View {
 }
 
 /// A small round button with a symbol.
-private struct ToolButton: View {
+struct ToolButton: View {
   let symbol: String
   let label: Text
   let action: () -> Void

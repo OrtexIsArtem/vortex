@@ -9,13 +9,29 @@ struct ApprovalCard: View {
   let commandHeight: CGFloat
   let deny: () -> Void
   let allow: () -> Void
+  /// The command is taller than the box: the box fades out at the bottom and says it scrolls.
+  @State private var overflows = false
+
+  /// How much of a command a card lays out: laying out more holds up all of Vortex for seconds.
+  static let shownLines = 200
+  static let shownCharacters = 20_000
+
+  private var lines: [Substring] {
+    approval.command.split(separator: "\n", omittingEmptySubsequences: false)
+  }
+
+  private var isCut: Bool {
+    lines.count > Self.shownLines || approval.command.count > Self.shownCharacters
+  }
 
   private var command: some View {
-    Text(verbatim: approval.command)
+    let shown = isCut ? String(lines.prefix(Self.shownLines).joined(separator: "\n").prefix(Self.shownCharacters)) + "\n…" : approval.command
+    return Text(verbatim: shown)
       .font(.system(size: 11.5, design: .monospaced))
       .foregroundStyle(VortexColor.secondaryText)
       .textSelection(.enabled)
       .frame(maxWidth: .infinity, alignment: .leading)
+      .onGeometryChange(for: Bool.self) { $0.size.height > commandHeight + 1 } action: { overflows = $0 }
   }
 
   var body: some View {
@@ -31,10 +47,27 @@ struct ApprovalCard: View {
       ScrollView { command }
         .frame(maxHeight: commandHeight)
         .fixedSize(horizontal: false, vertical: true)
+        .overlay(alignment: .bottom) {
+          if overflows {
+            LinearGradient(colors: [VortexColor.raised.opacity(0), VortexColor.raised], startPoint: .top, endPoint: .bottom)
+              .frame(height: 16)
+              .allowsHitTesting(false)
+          }
+        }
       .padding(.horizontal, 10)
       .padding(.vertical, 7)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
+      // A tail out of view is part of what is allowed: it is never left unsaid.
+      if isCut {
+        Text("Only its start is shown: the command is very long (lines: \(lines.count))", bundle: .module)
+          .font(.system(size: 11.5))
+          .foregroundStyle(VortexColor.primaryText)
+      } else if overflows {
+        Text("Lines: \(lines.count) — scroll to read it all", bundle: .module)
+          .font(.system(size: 11.5))
+          .foregroundStyle(VortexColor.tertiaryText)
+      }
       HStack(spacing: 8) {
         Group {
           if let folder = approval.folder {
@@ -75,7 +108,6 @@ struct ApprovalCard: View {
 /// How to connect Claude Code, once for every project; or why the server is not running.
 struct ConnectCard: View {
   let store: StoreOf<SecretsFeature>
-  @State private var copied = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -103,18 +135,9 @@ struct ConnectCard: View {
               .padding(.vertical, 7)
               .frame(maxWidth: .infinity, alignment: .leading)
               .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
-            Button {
+            CopyButton(Text("Copy", bundle: .module), style: .primaryCapsule, minWidth: 64) {
               store.send(.copyConnectCommandTapped)
-              copied = true
-              Task {
-                try? await Task.sleep(for: .seconds(1.5))
-                copied = false
-              }
-            } label: {
-              Text(copied ? "Copied" : "Copy", bundle: .module)
-                .frame(minWidth: 64)
             }
-            .buttonStyle(.primaryCapsule)
           }
         }
       }

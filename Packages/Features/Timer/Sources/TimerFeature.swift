@@ -284,8 +284,8 @@ public struct TimerFeature: Sendable {
 
   private func listenToNotificationButtons() -> Effect<Action> {
     .run { send in
-      for await button in await notifications.buttonPresses() {
-        await send(.notificationButtonPressed(button))
+      for await press in await notifications.buttonPresses() where press.notification == Self.doneNotificationID {
+        await send(.notificationButtonPressed(press.button))
       }
     }
     .cancellable(id: CancelID.buttons, cancelInFlight: true)

@@ -5,6 +5,17 @@ import UserNotifications
 /// Notifications Vortex shows in Notification Center, with buttons.
 @DependencyClient
 public struct NotificationClient: Sendable {
+  /// A press on a button of a notification: which notification, by the id it was posted with, and which button.
+  public struct Press: Equatable, Sendable {
+    public var notification: String
+    public var button: String
+
+    public init(notification: String, button: String) {
+      self.notification = notification
+      self.button = button
+    }
+  }
+
   /// A button on a notification; `id` comes back from `buttonPresses` when the user presses it.
   public struct Button: Equatable, Sendable {
     public var id: String
@@ -21,10 +32,10 @@ public struct NotificationClient: Sendable {
   /// Shows a notification now, without a sound. A notification with the same `id` is replaced. Cancelled before it is
   /// shown, it isn't.
   public var post: @Sendable (_ id: String, _ title: String, _ body: String, _ buttons: [Button]) async -> Void
-  /// Takes the notification with `id` out of Notification Center, if it is still there.
-  public var remove: @Sendable (_ id: String) async -> Void
-  /// The ids of the buttons the user presses on Vortex notifications from now on.
-  public var buttonPresses: @Sendable () async -> AsyncStream<String> = { .finished }
+  /// Takes the notifications whose id starts with `prefix` out of Notification Center, shown or still on their way.
+  public var remove: @Sendable (_ prefix: String) async -> Void
+  /// The buttons the user presses on Vortex notifications from now on, with the notification each belongs to.
+  public var buttonPresses: @Sendable () async -> AsyncStream<Press> = { .finished }
 }
 
 extension NotificationClient: DependencyKey {
@@ -33,7 +44,7 @@ extension NotificationClient: DependencyKey {
     post: { id, title, body, buttons in
       await Notifications.shared.post(id: id, title: title, body: body, buttons: buttons)
     },
-    remove: { id in await Notifications.shared.remove(id: id) },
+    remove: { prefix in await Notifications.shared.remove(prefix: prefix) },
     buttonPresses: { await Notifications.shared.buttonPresses() }
   )
 
@@ -52,9 +63,11 @@ extension DependencyValues {
 @MainActor
 final class Notifications: NSObject, UNUserNotificationCenterDelegate {
   static let shared = Notifications()
-  private var listeners: [UUID: AsyncStream<String>.Continuation] = [:]
+  private var listeners: [UUID: AsyncStream<NotificationClient.Press>.Continuation] = [:]
   /// One category per set of buttons, registered on first use.
   private var categories: [String: UNNotificationCategory] = [:]
+  /// Registering is asynchronous: every post with a category's buttons waits for it, also one that starts meanwhile.
+  private var registrations: [String: Task<Void, Never>] = [:]
 
   private var center: UNUserNotificationCenter {
     let center = UNUserNotificationCenter.current()
@@ -62,9 +75,12 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     return center
   }
 
-  func remove(id: String) {
-    center.removeDeliveredNotifications(withIdentifiers: [id])
-    center.removePendingNotificationRequests(withIdentifiers: [id])
+  func remove(prefix: String) async {
+    let center = center
+    let delivered = await center.deliveredNotifications().map(\.request.identifier).filter { $0.hasPrefix(prefix) }
+    let pending = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(prefix) }
+    center.removeDeliveredNotifications(withIdentifiers: delivered)
+    center.removePendingNotificationRequests(withIdentifiers: pending)
   }
 
   func requestAuthorization() async -> Bool {
@@ -77,16 +93,18 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     content.body = body
     if !buttons.isEmpty {
       let category = "buttons:" + buttons.map(\.id).joined(separator: ",")
-      if categories[category] == nil {
+      if registrations[category] == nil {
         categories[category] = UNNotificationCategory(
           identifier: category,
           actions: buttons.map { UNNotificationAction(identifier: $0.id, title: $0.title, options: []) },
           intentIdentifiers: []
         )
+        let center = center
         center.setNotificationCategories(Set(categories.values))
-        // Registering categories is asynchronous: reading them back waits for it, so the first post has its buttons.
-        _ = await center.notificationCategories()
+        // Reading them back waits until they are registered, so the notification has its buttons.
+        registrations[category] = Task { _ = await center.notificationCategories() }
       }
+      await registrations[category]?.value
       content.categoryIdentifier = category
     }
     // Waiting for the categories or the permission, it may have been given up for a newer notification.
@@ -94,9 +112,9 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     try? await center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
   }
 
-  func buttonPresses() -> AsyncStream<String> {
+  func buttonPresses() -> AsyncStream<NotificationClient.Press> {
     _ = center
-    let (stream, continuation) = AsyncStream.makeStream(of: String.self)
+    let (stream, continuation) = AsyncStream.makeStream(of: NotificationClient.Press.self)
     let id = UUID()
     listeners[id] = continuation
     continuation.onTermination = { _ in
@@ -105,9 +123,9 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
     return stream
   }
 
-  private func pressed(_ button: String) {
+  private func pressed(_ press: NotificationClient.Press) {
     for listener in listeners.values {
-      listener.yield(button)
+      listener.yield(press)
     }
   }
 
@@ -124,6 +142,6 @@ final class Notifications: NSObject, UNUserNotificationCenterDelegate {
   ) async {
     let button = response.actionIdentifier
     guard button != UNNotificationDefaultActionIdentifier, button != UNNotificationDismissActionIdentifier else { return }
-    await pressed(button)
+    await pressed(NotificationClient.Press(notification: response.notification.request.identifier, button: button))
   }
 }

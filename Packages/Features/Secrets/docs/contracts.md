@@ -7,6 +7,6 @@
 - Debug builds: distributed notifications `…debug.secretsAdd`, `…secretsDeny`, `…secretsState` (see SecretsModule). None approves a request: «Дозволити» is pressed by a person, in every build.
 
 ## Uses
-- VortexCore: `FeatureModule`, `DataFolder`, `database`, `@Shared(.fileStorage)`, `@Shared(.notchIndicators)`, design system.
-- VortexPlatform: `KeychainClient` (values, token), `CommandClient` (the login shell), `PasteboardClient` (copies, concealed where secret), `NotificationClient` (the request with buttons).
+- VortexCore: `FeatureModule`, `DataFolder`, `database`, `databaseIsOnDisk`, `@Shared(.fileStorage)`, `@Shared(.notchIndicators)`, design system.
+- VortexPlatform: `KeychainClient` (values, token), `CommandClient` (the user's shell with the terminal's environment), `PasteboardClient` (copies, concealed where secret), `NotificationClient` (a notification per request, its presses by notification id, taken back by id prefix).
 - The network (Network.framework), allowed only in this module by `make check`, and only for the server on the loopback.

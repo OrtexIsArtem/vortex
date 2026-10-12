@@ -189,9 +189,10 @@ struct SecretsFeatureTests {
     #expect(approval.names == ["prod-db"])
     #expect(store.state.indicators[SecretsFeature.id]?.trailing == [.text("prod-db")])
     #expect(ran.value.isEmpty)
-    try await eventually { [posted] in posted.value == ["secrets.approval: Claude Code → prod-db"] }
+    try await eventually { [posted] in posted.value == ["\(SecretsFeature.notificationID(approval.id)): Claude Code → prod-db"] }
 
     await store.send(.approveTapped(approval.id))
+    await store.receive(\.commandEnded)
     try await eventually { [replies] in replies.value.count == 1 }
     #expect(ran.value.first?.command == #"psql "${VORTEX_KEY_1}" -c 'select 1'"#)
     #expect(ran.value.first?.environment == ["VORTEX_KEY_1": value])
@@ -204,6 +205,7 @@ struct SecretsFeatureTests {
     // The same session runs it again without asking.
     events.continuation.yield(.call(call(.run, ["command": "echo {{PROD-DB}}"], id: 2)))
     await store.receive(\.server.call)
+    await store.receive(\.commandEnded)
     try await eventually { [replies] in replies.value.count == 2 }
     #expect(store.state.approvals.isEmpty)
     #expect(ran.value.count == 2)
@@ -233,7 +235,7 @@ struct SecretsFeatureTests {
   }
 
   @Test
-  func aRequestClaudeGivesUpGoesAwayAndTheNotificationMovesToTheNextOne() async throws {
+  func eachRequestHasANotificationOfItsOwnAndOneGivenUpGoes() async throws {
     let store = makeStore()
     await start(store)
     await addKey(store)
@@ -245,15 +247,42 @@ struct SecretsFeatureTests {
     events.continuation.yield(.call(second))
     await store.receive(\.server.call)
     #expect(store.state.approvals.map(\.names) == [["prod-db"], ["github"]])
-    #expect(store.state.notifiedApproval == store.state.approvals.last?.id)
-    // Claude gives up the one the notification shows: it moves to the one still waiting.
+    let (waiting, givenUp) = (store.state.approvals[0].id, store.state.approvals[1].id)
+    try await eventually { [posted] in
+      Set(posted.value) == [
+        "\(SecretsFeature.notificationID(waiting)): Claude Code → prod-db",
+        "\(SecretsFeature.notificationID(givenUp)): Claude Code → github",
+      ]
+    }
     events.continuation.yield(.cancelled(second.id))
     await store.receive(\.server.cancelled)
     #expect(store.state.approvals.map(\.names) == [["prod-db"]])
-    #expect(store.state.notifiedApproval == store.state.approvals.first?.id)
     try await eventually { [replies] in replies.value.contains(MCPToolResult(text: "Cancelled.", isError: true)) }
-    try await eventually { [posted] in posted.value.last == "secrets.approval: Claude Code → prod-db" }
+    try await eventually { [removedNotifications] in removedNotifications.value.last == SecretsFeature.notificationID(givenUp) }
     #expect(store.state.indicators[SecretsFeature.id]?.trailing == [.text("prod-db")])
+    await store.send(.stop)
+  }
+
+  @Test
+  func aPressAnswersTheRequestItsNotificationShowsWhateverCameSince() async throws {
+    let store = makeStore()
+    await start(store)
+    await addKey(store)
+    await addKey(store, name: "github")
+    events.continuation.yield(.call(call(.run, ["command": "psql \"{{prod-db}}\""], id: 1)))
+    await store.receive(\.server.call)
+    let shown = try #require(store.state.approvals.first?.id)
+    // Another request comes in while the first one's notification is on screen.
+    events.continuation.yield(.call(call(.run, ["command": "gh api -X DELETE repos/x/y -H \"Authorization: Bearer {{github}}\""], id: 2)))
+    await store.receive(\.server.call)
+    await store.send(.notificationButtonPressed(NotificationClient.Press(notification: SecretsFeature.notificationID(shown), button: SecretsFeature.allowButtonID)))
+    await store.receive(\.approveTapped)
+    try await eventually { [ran] in ran.value.count == 1 }
+    #expect(ran.value.first?.command == #"psql "${VORTEX_KEY_1}""#)
+    #expect(store.state.approvals.map(\.names) == [["github"]])
+    // A notification left from a run before answers nothing.
+    await store.send(.notificationButtonPressed(NotificationClient.Press(notification: "secrets.approval", button: SecretsFeature.allowButtonID)))
+    #expect(store.state.approvals.map(\.names) == [["github"]])
     await store.send(.stop)
   }
 
@@ -275,14 +304,16 @@ struct SecretsFeatureTests {
     #expect(store.state.approvals.isEmpty)
     #expect(store.state.keys.first?.lastUsedAt == nil)
 
-    // Running: it is stopped; the key was handed to it, so it counts as used.
+    // Running: it is stopped, and as the key was handed to it, it counts as used.
     let running = call(.run, ["command": "psql \"{{prod-db}}\" -c 'delete from bookings'"], id: 2)
     events.continuation.yield(.call(running))
     await store.receive(\.server.call)
     await store.send(.approveTapped(try #require(store.state.approvals.first?.id)))
-    #expect(store.state.keys.first?.lastUsedAt == now.value)
+    #expect(store.state.running[running.id] != nil)
     events.continuation.yield(.cancelled(running.id))
     await store.receive(\.server.cancelled)
+    #expect(store.state.running.isEmpty)
+    #expect(store.state.keys.first?.lastUsedAt == now.value)
     try await eventually { [replies] in replies.value.filter { $0 == MCPToolResult(text: "Cancelled.", isError: true) }.count == 2 }
     // Stopped: the command's own answer never comes.
     await clock.advance(by: .seconds(30))
@@ -291,14 +322,63 @@ struct SecretsFeatureTests {
   }
 
   @Test
+  func turningKeysOffStopsACommandStillRunning() async throws {
+    let store = makeStore()
+    store.dependencies.commandClient.run = { [clock] _, _, _, _ in
+      try await clock.sleep(for: .seconds(30))
+      return CommandClient.Output(exitCode: 0)
+    }
+    await start(store)
+    await addKey(store)
+    let running = call(.run, ["command": "psql \"{{prod-db}}\" -c 'delete from bookings'"], id: 1)
+    events.continuation.yield(.call(running))
+    await store.receive(\.server.call)
+    await store.send(.approveTapped(try #require(store.state.approvals.first?.id)))
+    await store.send(.stop)
+    #expect(store.state.running.isEmpty)
+    try await eventually { [replies] in replies.value == [MCPToolResult(text: "Cancelled.", isError: true)] }
+    await clock.advance(by: .seconds(30))
+    #expect(replies.value.count == 1)
+  }
+
+  @Test
+  func aKeyCountsAsUsedOnlyOnceACommandRanWithIt() async throws {
+    let store = makeStore()
+    await start(store)
+    await addKey(store)
+    let key = try #require(store.state.keys.first)
+    // Its value is gone from the keychain: nothing runs.
+    keychain.withValue { $0["\(SecretsFeature.keychainService)/\(key.id.uuidString)"] = nil }
+    events.continuation.yield(.call(call(.run, ["command": "psql \"{{prod-db}}\""], id: 1)))
+    await store.receive(\.server.call)
+    await store.send(.approveTapped(try #require(store.state.approvals.first?.id)))
+    await store.receive(\.commandEnded)
+    #expect(store.state.keys.first?.lastUsedAt == nil)
+    #expect(store.state.running.isEmpty)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aValueShownGoesOutOfSightWhenTheWindowCloses() async throws {
+    let store = makeStore()
+    await start(store)
+    await addKey(store)
+    await store.send(.revealTapped(try #require(store.state.keys.first?.id)))
+    await store.receive(\.revealed)
+    await store.send(.addTapped)
+    await store.send(.draftChanged(KeyDraft(value: "s3cret", showsValue: true)))
+    await store.send(.windowClosed)
+    #expect(store.state.revealed == nil)
+    #expect(store.state.draft?.showsValue == false)
+    #expect(store.state.draft?.value == "s3cret")
+    await store.send(.stop)
+  }
+
+  @Test
   func theLogOfUsesFromBeforeIsGone() async throws {
     // A database from before keeps no log: Claude Code shows every command in its own history.
-    try await database.write { db in
-      try db.execute(sql: "CREATE TABLE grdb_migrations (identifier TEXT NOT NULL PRIMARY KEY)")
-      try db.execute(sql: "INSERT INTO grdb_migrations VALUES ('secrets.v1')")
-      try db.execute(sql: "CREATE TABLE secrets_key (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, kind TEXT NOT NULL, note TEXT NOT NULL, createdAt DATETIME NOT NULL, expiresAt DATETIME, lastUsedAt DATETIME)")
-      try db.execute(sql: "CREATE TABLE secrets_use (id TEXT PRIMARY KEY, at DATETIME NOT NULL)")
-    }
+    try SecretKey.migrator.migrate(database, upTo: "secrets.v1")
+    #expect(try await database.read { db in try db.tableExists("secrets_use") })
     let store = makeStore()
     await store.send(.start)
     await store.receive(\.loaded)
@@ -307,33 +387,11 @@ struct SecretsFeatureTests {
   }
 
   @Test
-  func theNotificationShowsTheNewestRequestEvenWhenTheFirstWasSlowToPost() async throws {
-    let store = makeStore()
-    // The first post waits, as the system's does for the notification permission or the buttons.
-    store.dependencies.notificationClient.post = { [posted, clock] id, title, _, _ in
-      try? await clock.sleep(for: .seconds(1))
-      guard !Task.isCancelled else { return }
-      posted.withValue { $0.append("\(id): \(title)") }
-    }
-    await start(store)
-    await addKey(store)
-    await addKey(store, name: "github")
-    events.continuation.yield(.call(call(.run, ["command": "psql \"{{prod-db}}\""], id: 1)))
-    await store.receive(\.server.call)
-    events.continuation.yield(.call(call(.run, ["command": "gh api user -H \"Authorization: Bearer {{github}}\""], id: 2)))
-    await store.receive(\.server.call)
-    await clock.advance(by: .seconds(1))
-    try await eventually { [posted] in !posted.value.isEmpty }
-    // Its buttons answer the request it shows.
-    #expect(posted.value == ["secrets.approval: Claude Code → github"])
-    #expect(store.state.notifiedApproval == store.state.approvals.last?.id)
-    await store.send(.stop)
-  }
-
-  @Test
-  func theNotificationShowsTheStartOfTheCommandAndGoesOnceNothingWaits() async throws {
+  func theNotificationShowsTheStartOfTheCommandAndGoesOnceAnswered() async throws {
     let store = makeStore()
     await start(store)
+    // Notifications of a run before go as the feature starts.
+    try await eventually { [removedNotifications] in removedNotifications.value == [SecretsFeature.approvalNotificationPrefix] }
     await addKey(store)
     let command = "psql \"{{prod-db}}\" -c \"" + String(repeating: "select 1; ", count: 40) + "\""
     events.continuation.yield(.call(call(.run, ["command": .string(command)], id: 1)))
@@ -341,9 +399,9 @@ struct SecretsFeatureTests {
     try await eventually { [bodies] in bodies.value.count == 1 }
     #expect(bodies.value.first?.count == 240)
     #expect(bodies.value.first?.hasSuffix("…") == true)
-    #expect(removedNotifications.value.isEmpty)
-    await store.send(.denyTapped(try #require(store.state.approvals.first?.id)))
-    try await eventually { [removedNotifications] in removedNotifications.value == ["secrets.approval"] }
+    let id = try #require(store.state.approvals.first?.id)
+    await store.send(.denyTapped(id))
+    try await eventually { [removedNotifications] in removedNotifications.value.last == SecretsFeature.notificationID(id) }
     await store.send(.stop)
   }
 
