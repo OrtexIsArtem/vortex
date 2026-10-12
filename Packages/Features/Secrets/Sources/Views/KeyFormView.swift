@@ -77,7 +77,8 @@ struct KeyFormView: View {
         EmptyView()
       }
 
-      row(Text("Lives", bundle: .module)) {
+      // The picker is a field of its own: framed again, its first and last options would stop short of its edges.
+      row(Text("Lives", bundle: .module), framed: false) {
         SegmentedPicker(selection: binding(\.lifetime), options: KeyLifetime.allCases) { lifetime in
           switch lifetime {
           case .hour: Text("1 hour", bundle: .module)
@@ -141,6 +142,7 @@ struct KeyFormView: View {
 
   private func row<Field: View, Caption: View>(
     _ title: Text,
+    framed: Bool = true,
     @ViewBuilder field: () -> Field,
     @ViewBuilder caption: () -> Caption
   ) -> some View {
@@ -150,10 +152,14 @@ struct KeyFormView: View {
         .foregroundStyle(VortexColor.tertiaryText)
         .frame(width: 70, alignment: .leading)
       VStack(alignment: .leading, spacing: 5) {
-        field()
-          .padding(.horizontal, 10)
-          .frame(height: 32)
-          .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
+        if framed {
+          field()
+            .padding(.horizontal, 10)
+            .frame(height: 32)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
+        } else {
+          field()
+        }
         caption()
           .font(.system(size: 11.5))
           .foregroundStyle(VortexColor.tertiaryText)
