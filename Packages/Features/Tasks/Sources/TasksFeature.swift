@@ -464,7 +464,8 @@ public struct TasksFeature: Sendable {
   }
 
   private func load() -> Effect<Action> {
-    .run { [databaseIsOnDisk] send in
+    // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
+    .run { send in
       try await database.migrate(TaskItem.migrator)
       let (tasks, lastNumber, savedIDs) = try await database.read { db in
         (

@@ -85,7 +85,8 @@ public struct ClipboardFeature: Sendable {
       switch action {
       case .start:
         guard !state.isLoaded else { return watch() }
-        return .run { [files, databaseIsOnDisk] send in
+        // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
+        return .run { [files] send in
           try await database.migrate(ClipboardItem.migrator)
           let (items, savedIDs) = try await database.read { db in
             (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))

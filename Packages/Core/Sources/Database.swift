@@ -19,7 +19,7 @@ public enum VortexDatabase {
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     var configuration = Configuration()
     configuration.label = "Vortex"
-    // A debug and a release Vortex may run side by side on the same file: wait for the other one's write.
+    // A Vortex taking over from one still quitting may open the file during its last write: wait for it.
     configuration.busyMode = .timeout(5)
     return try DatabasePool(path: url.path, configuration: configuration)
   }
@@ -52,7 +52,7 @@ extension DependencyValues {
 
   /// Whether `database` is the file. False when the file couldn't be opened and features work in an empty database in
   /// memory until the next launch: they must not then remove files or values that have no row, as the rows are only
-  /// out of reach. Tests get true.
+  /// out of reach. Reading it opens the database: read it in an effect, not on the main thread. Tests get true.
   public var databaseIsOnDisk: Bool {
     get { self[DatabaseIsOnDiskKey.self] }
     set { self[DatabaseIsOnDiskKey.self] = newValue }

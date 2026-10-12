@@ -147,7 +147,8 @@ public struct ShelfFeature: Sendable {
       case .start:
         state.isRunning = true
         guard state.isLoaded else {
-          return .run { [files, databaseIsOnDisk] send in
+          // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
+          return .run { [files] send in
             try await database.migrate(ShelfItem.migrator)
             let (items, savedIDs) = try await database.read { db in
               (try ShelfItem.fetchAllReadable(db), try ShelfItem.savedIDs(db))

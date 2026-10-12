@@ -511,7 +511,8 @@ struct SecretsFeature: Sendable {
   }
 
   private func load() -> Effect<Action> {
-    .run { [databaseIsOnDisk] send in
+    // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
+    .run { send in
       try await database.migrate(SecretKey.migrator)
       let (keys, rowIDs) = try await database.read { db in
         (try SecretKey.fetchAllReadable(db), try String.fetchSet(db, sql: "SELECT id FROM \(SecretKey.databaseTableName)"))
