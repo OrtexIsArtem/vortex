@@ -65,7 +65,8 @@ struct KeyCommand: Equatable, Sendable {
   }
 
   /// `secret` and the ways it gets written: URL-encoded (every sign, RFC 3986, query, password), base64 with and
-  /// without padding, escaped in JSON (plainly, with `\/`, and Go's way with `\u0026`, `\u003c`, `\u003e`).
+  /// without padding, escaped in JSON (plainly, with `\/`, and Go's way with `\u0026`, `\u003c`, `\u003e`), with line
+  /// breaks and tabs written `\n`, `\t` as JSON and zsh's «command not found» write them.
   static func encodings(of secret: String) -> Set<String> {
     var forms: Set<String> = [secret]
     let unreserved = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
@@ -75,7 +76,18 @@ struct KeyCommand: Equatable, Sendable {
     let base64 = Data(secret.utf8).base64EncodedString()
     forms.insert(base64)
     forms.insert(base64.trimmingCharacters(in: CharacterSet(charactersIn: "=")))
-    let json = secret.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+    var json = ""
+    for scalar in secret.unicodeScalars {
+      switch scalar {
+      case "\\": json += "\\\\"
+      case "\"": json += "\\\""
+      case "\n": json += "\\n"
+      case "\r": json += "\\r"
+      case "\t": json += "\\t"
+      case _ where scalar.value < 0x20: json += String(format: "\\u%04x", scalar.value)
+      default: json.unicodeScalars.append(scalar)
+      }
+    }
     let goJSON = json.replacingOccurrences(of: "&", with: "\\u0026")
       .replacingOccurrences(of: "<", with: "\\u003c")
       .replacingOccurrences(of: ">", with: "\\u003e")
@@ -98,7 +110,7 @@ struct KeyCommand: Equatable, Sendable {
     let stdout = cut(masked(text(output.stdout), values: values), to: limit)
     let stderr = cut(masked(text(output.stderr), values: values), to: limit)
     var parts = [output.timedOut ? "stopped after \(timeout) s, its time limit" : "exit code \(output.exitCode)"]
-    if output.exitCode == 127, !output.timedOut {
+    if output.isCommandNotFound {
       parts.append("(a command was not found in the user's terminal environment: ask them where it is installed, or use its full path)")
     }
     if !stdout.isEmpty { parts.append(stdout) }

@@ -56,6 +56,15 @@ struct KeyCommandTests {
   }
 
   @Test
+  func aValueOfSeveralLinesIsTakenOutAlsoAsZshPrintsAMissingCommand() {
+    let value = "-----BEGIN KEY-----\nAAAA1111\tBBBB\n-----END KEY-----"
+    // What `zsh -c '${VORTEX_KEY_1}'` writes when the value is run as a command.
+    let text = #"zsh:1: command not found: -----BEGIN KEY-----\nAAAA1111\tBBBB\n-----END KEY-----"#
+    #expect(KeyCommand.masked(text, values: ["deploy-key": value]) == "zsh:1: command not found: {{deploy-key}}")
+    #expect(KeyCommand.masked("raw: \(value)", values: ["deploy-key": value]) == "raw: {{deploy-key}}")
+  }
+
+  @Test
   func anOutputCutAtTheLimitLosesItsTailSoNoPieceOfAValueIsLeft() {
     let value = "s3cret-value-1234567890"
     let filler = Data(repeating: 46, count: CommandClient.outputLimit - 10)
