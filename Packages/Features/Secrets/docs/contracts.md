@@ -8,5 +8,5 @@
 
 ## Uses
 - VortexCore: `FeatureModule`, `DataFolder`, `database`, `@Shared(.fileStorage)`, `@Shared(.notchIndicators)`, design system.
-- VortexPlatform: `KeychainClient` (values, token), `AuthenticationClient` (Touch ID to show a value), `CommandClient` (the login shell), `PasteboardClient` (copies, concealed where secret), `NotificationClient` (the request with buttons).
+- VortexPlatform: `KeychainClient` (values, token), `CommandClient` (the login shell), `PasteboardClient` (copies, concealed where secret), `NotificationClient` (the request with buttons).
 - The network (Network.framework), allowed only in this module by `make check`, and only for the server on the loopback.

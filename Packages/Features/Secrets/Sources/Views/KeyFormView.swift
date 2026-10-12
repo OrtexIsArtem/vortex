@@ -30,7 +30,7 @@ struct KeyFormView: View {
         if !draft.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
           Text("Looks like: \(draft.kind.title)", bundle: .module)
         } else {
-          Text("Kept in the keychain; shown only after Touch ID.", bundle: .module)
+          Text("Kept in the keychain; Claude never sees it.", bundle: .module)
         }
       }
 

@@ -1,8 +1,7 @@
 import SwiftUI
 import VortexCore
 
-/// One key: what it is, its name, how long it lives and when Claude used it; on hover, «Для Claude», showing the value
-/// and the bin.
+/// One key: what it is, its name, how long it lives and when Claude used it; on hover, showing the value and the bin.
 struct KeyRow: View {
   let key: SecretKey
   /// The value, while the user asked to see it.
@@ -10,9 +9,37 @@ struct KeyRow: View {
   let now: Date
   let send: (SecretsFeature.Action) -> Void
   @State private var isHovered = false
-  @State private var copied = false
 
   var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(alignment: .top, spacing: 12) {
+        info
+        Spacer(minLength: 8)
+        if isHovered {
+          tools
+            .transition(.opacity)
+        }
+      }
+      // Under the row and as wide as it, so it stays put when the tools come and go.
+      if let revealed {
+        RevealedValueView(value: revealed, send: send)
+          .padding(.top, 8)
+          .padding(.leading, 44)
+      }
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 9)
+    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(isHovered ? VortexColor.raised.opacity(0.5) : .clear))
+    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .onHover { isHovered = $0 }
+    .animation(.easeOut(duration: 0.12), value: isHovered)
+    .accessibilityElement(children: .combine)
+    .accessibilityAction(named: Text("Show the value", bundle: .module)) { send(.revealTapped(key.id)) }
+    .accessibilityAction(named: Text("Delete the key", bundle: .module)) { send(.deleteTapped(key.id)) }
+  }
+
+  /// The kind's symbol, the name, the details and the note.
+  private var info: some View {
     HStack(alignment: .top, spacing: 12) {
       Image(systemName: key.kind.symbol)
         .font(.system(size: 13))
@@ -33,27 +60,8 @@ struct KeyRow: View {
             .foregroundStyle(VortexColor.secondaryText)
             .lineLimit(2)
         }
-        if let revealed {
-          RevealedValueView(value: revealed, send: send)
-            .padding(.top, 4)
-        }
-      }
-      Spacer(minLength: 8)
-      if isHovered {
-        tools
-          .transition(.opacity)
       }
     }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 9)
-    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(isHovered ? VortexColor.raised.opacity(0.5) : .clear))
-    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    .onHover { isHovered = $0 }
-    .animation(.easeOut(duration: 0.12), value: isHovered)
-    .accessibilityElement(children: .combine)
-    .accessibilityAction(named: Text("Copy for Claude", bundle: .module)) { send(.copyForClaudeTapped(key.id)) }
-    .accessibilityAction(named: Text("Show the value", bundle: .module)) { send(.revealTapped(key.id)) }
-    .accessibilityAction(named: Text("Delete the key", bundle: .module)) { send(.deleteTapped(key.id)) }
   }
 
   /// «PostgreSQL · until 18:40 · used 14:21».
@@ -76,19 +84,6 @@ struct KeyRow: View {
 
   private var tools: some View {
     HStack(spacing: 4) {
-      Button {
-        send(.copyForClaudeTapped(key.id))
-        copied = true
-        Task {
-          try? await Task.sleep(for: .seconds(1.5))
-          copied = false
-        }
-      } label: {
-        Text(copied ? "Copied" : "For Claude", bundle: .module)
-          .frame(minWidth: 70)
-      }
-      .buttonStyle(QuietCapsuleButtonStyle(height: 28, fontSize: 11.5))
-      .help(Text("Copies a phrase that tells Claude to use this key", bundle: .module))
       ToolButton(symbol: revealed == nil ? "eye" : "eye.slash", label: Text("Show the value", bundle: .module)) {
         send(.revealTapped(key.id))
       }
@@ -119,7 +114,7 @@ private struct ToolButton: View {
   }
 }
 
-/// The value, after Touch ID, with a button that copies it without leaving it in clipboard histories.
+/// The value, with a button that copies it without leaving it in clipboard histories.
 private struct RevealedValueView: View {
   let value: String
   let send: (SecretsFeature.Action) -> Void

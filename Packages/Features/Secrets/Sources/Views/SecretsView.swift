@@ -7,6 +7,7 @@ import VortexPlatform
 struct SecretsView: View {
   @Bindable var store: StoreOf<SecretsFeature>
   @Environment(\.notchCutout) private var cutout
+  @Environment(\.isWindowOpen) private var isWindowOpen
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -52,6 +53,10 @@ struct SecretsView: View {
     }
     .animation(.snappy(duration: 0.22), value: store.approvals.map(\.id))
     .animation(.snappy(duration: 0.22), value: store.deleted)
+    // A value shown stays out of sight once the window closes.
+    .onChange(of: isWindowOpen) { _, isOpen in
+      if !isOpen, store.revealed != nil { store.send(.hideTapped) }
+    }
     .animation(.snappy(duration: 0.2), value: store.draft == nil)
     .animation(.snappy(duration: 0.2), value: store.showsLog)
   }

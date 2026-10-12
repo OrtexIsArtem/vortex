@@ -147,12 +147,11 @@ struct SecretsFeature: Sendable {
     case cancelTapped
     case saved(SecretKey)
     case saveFailed
-    /// Shows the value after Touch ID, or hides it again.
+    /// Shows the value, or hides it again.
     case revealTapped(SecretKey.ID)
     case revealed(SecretKey.ID, String)
     case hideTapped
     case copyValueTapped
-    case copyForClaudeTapped(SecretKey.ID)
     case deleteTapped(SecretKey.ID)
     case undoTapped
     case undoExpired
@@ -168,7 +167,6 @@ struct SecretsFeature: Sendable {
     case portChanged(Int)
   }
 
-  @Dependency(\.authenticationClient) var authentication
   @Dependency(\.calendar) var calendar
   @Dependency(\.continuousClock) var clock
   @Dependency(\.commandClient) var commands
@@ -274,12 +272,10 @@ struct SecretsFeature: Sendable {
           state.revealed = nil
           return .cancel(id: CancelID.reveal)
         }
-        guard let key = state.keys[id: id] else { return .none }
-        let reason = String(localized: "show the value of \(key.name)", bundle: .module)
+        // No Touch ID: on an unlocked Mac the value could be had through Claude anyway, so it would only be in the way.
+        guard state.keys[id: id] != nil else { return .none }
         return .run { send in
-          guard await authentication.confirmOwner(reason),
-                let value = try await keychain.read(Self.keychainService, id.uuidString)
-          else { return }
+          guard let value = try await keychain.read(Self.keychainService, id.uuidString) else { return }
           await send(.revealed(id, value))
         } catch: { error, _ in
           logger.error("Reading a key failed: \(error, privacy: .public)")
@@ -302,11 +298,6 @@ struct SecretsFeature: Sendable {
         guard let value = state.revealed?.value else { return .none }
         // Marked concealed: clipboard histories, Vortex's own too, leave it out.
         return .run { _ in await pasteboard.write(.text(value), true, nil) }
-
-      case let .copyForClaudeTapped(id):
-        guard let key = state.keys[id: id] else { return .none }
-        let phrase = Self.phrase(for: key)
-        return .run { _ in await pasteboard.write(.text(phrase), false, nil) }
 
       case let .deleteTapped(id):
         guard let key = state.keys.remove(id: id) else { return .none }
@@ -401,11 +392,6 @@ struct SecretsFeature: Sendable {
         return .merge(reset, serve(state))
       }
     }
-  }
-
-  /// The phrase «Для Claude» copies.
-  static func phrase(for key: SecretKey) -> String {
-    String(localized: "Use the key {{\(key.name)}} from Vortex.", bundle: .module)
   }
 
   private static func byName(_ lhs: SecretKey, _ rhs: SecretKey) -> Bool {

@@ -43,7 +43,6 @@ struct SecretsFeatureTests {
       $0.keychainClient.accounts = { [keychain] service in
         keychain.value.keys.filter { $0.hasPrefix(service + "/") }.map { String($0.dropFirst(service.count + 1)) }
       }
-      $0.authenticationClient.confirmOwner = { _ in true }
       $0.commandClient.run = { [ran] command, folder, environment, _ in
         ran.withValue { $0.append((command, environment, folder?.path)) }
         // Prints the value, as a careless command might.
@@ -401,15 +400,30 @@ struct SecretsFeatureTests {
   }
 
   @Test
-  func forClaudeCopiesAPhraseAndTheConnectCommandIsCopiedConcealed() async throws {
+  func theEyeShowsTheValueWithoutAskingForAWhileAndItsCopyIsConcealed() async throws {
     let store = makeStore()
     await start(store)
     await addKey(store)
-    await store.send(.copyForClaudeTapped(try #require(store.state.keys.first?.id)))
+    let key = try #require(store.state.keys.first)
+    await store.send(.revealTapped(key.id))
+    await store.receive(\.revealed)
+    #expect(store.state.revealed?.value == value)
+    await store.send(.copyValueTapped)
+    try await eventually { [copied] in copied.value.count == 1 }
+    #expect(copied.value.first?.text == value)
+    #expect(copied.value.first?.concealed == true)
+    await clock.advance(by: SecretsFeature.revealTime)
+    await store.receive(\.hideTapped)
+    #expect(store.state.revealed == nil)
+    await store.send(.stop)
+  }
+
+  @Test
+  func theConnectCommandIsCopiedConcealed() async throws {
+    let store = makeStore()
+    await start(store)
     await store.send(.copyConnectCommandTapped)
-    try await eventually { [copied] in copied.value.count == 2 }
-    #expect(copied.value.first?.text.contains("{{prod-db}}") == true)
-    #expect(copied.value.first?.concealed == false)
+    try await eventually { [copied] in copied.value.count == 1 }
     #expect(copied.value.last?.text.hasPrefix("claude mcp remove --scope user vortex >/dev/null 2>&1; ") == true)
     #expect(copied.value.last?.text.contains("claude mcp add --transport http --scope user vortex http://127.0.0.1:47823/mcp") == true)
     #expect(copied.value.last?.concealed == true)

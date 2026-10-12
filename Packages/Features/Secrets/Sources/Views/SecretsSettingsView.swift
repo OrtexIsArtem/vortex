@@ -41,7 +41,7 @@ struct SecretsSettingsView: View {
         .onSubmit(applyPort)
       }
 
-      Text("Values stay in the keychain and show only after Touch ID; Claude gets the output with them taken out. The log keeps 30 days.", bundle: .module)
+      Text("Values stay in the keychain; Claude gets the output with them taken out. The log keeps 30 days.", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.top, 12)

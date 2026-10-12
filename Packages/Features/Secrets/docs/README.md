@@ -4,7 +4,7 @@ Keys Claude uses by name without ever seeing them: the value stays in the keycha
 
 | File | What it covers |
 | --- | --- |
-| behavior.md | adding a key, showing it, «Для Claude», deleting, expiry, Claude's requests, allowing them, the log |
+| behavior.md | adding a key, showing it, deleting, expiry, Claude's requests, allowing them, the log |
 | settings.md | the port, the connect command |
 | data.md | the tables, the keychain, the MCP token, how long things stay |
 | contracts.md | the module, the MCP server, the Platform clients it uses |
