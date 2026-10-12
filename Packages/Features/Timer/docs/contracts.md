@@ -15,3 +15,4 @@
   - `NotificationClient`: the notification with «+5 хв» and its button presses;
   - `ScrollDragArea`: scrolls, drags and clicks on the drum;
   - `ColorWell`.
+- SwiftUI `sensoryFeedback(.alignment)`: the drum's ticks; macOS plays them only to a finger on a Force Touch trackpad, with «Force Click and haptic feedback» on.

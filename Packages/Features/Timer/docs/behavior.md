@@ -10,6 +10,9 @@
 - ← → in the Timer tab turn it a minute; VoiceOver can adjust it too.
 - The drum stands at 5 minutes whenever it shows: it goes back there as the window opens, when its tab is shown again and when a run starts, whatever was set before.
 - On Home «+5» and «+10» turn it on by that much, up to 120.
+- Turned by hand, with two fingers or a drag, it ticks on the trackpad as each minute passes the mark, at most one tick per 50 ms; a click ticks once, as the drum lands.
+- Keys, «+5» «+10», going back to 5 and VoiceOver turn it without ticks; at either end, or while a run goes, it doesn't tick.
+- The ticks are felt only with a finger on a Force Touch trackpad, so not while the drum coasts, and only with macOS's «Force Click and haptic feedback» on.
 
 ## Starting
 - One timer at a time: Start (or Return in the Timer tab) starts a run of the minutes on the drum.

@@ -4,8 +4,9 @@ import VortexCore
 import VortexPlatform
 
 /// The time picker: a ruler wrapped around a drum under a fixed mark, a tick per minute and a longer one every five.
-/// Towards the edges the ticks crowd, shrink and fade as the drum turns away. Scroll it, drag it or click a tick. While a
-/// run goes it shows the time left, turning towards zero, and takes no input.
+/// Towards the edges the ticks crowd, shrink and fade as the drum turns away. Scroll it, drag it or click a tick: turned
+/// by hand, it ticks on the trackpad as the minutes pass the mark. While a run goes it shows the time left, turning
+/// towards zero, and takes no input.
 struct DrumRuler: View {
   let store: StoreOf<TimerFeature>
   /// The minutes to start. The view that shows the drum keeps them, and sets them back when it goes away.
@@ -13,6 +14,14 @@ struct DrumRuler: View {
   let style: DrumStyle
   @State private var scroll = ScrollSteps()
   @State private var drag: DragStart?
+  /// Each change is one tick felt on the trackpad.
+  @State private var ticks = 0
+  @State private var pacer = TickPacer()
+  /// The tick of a click, felt as the drum lands on the clicked minute.
+  @State private var landing: Task<Void, Never>?
+
+  /// How long the drum takes to turn to a new minute, in seconds.
+  private static let turnTime = 0.2
 
   var body: some View {
     Group {
@@ -23,7 +32,7 @@ struct DrumRuler: View {
         .accessibilityHidden(true)
       } else {
         DrumTicks(value: Double(minutes), last: TimerFeature.minuteRange.upperBound, style: style)
-          .animation(.snappy(duration: 0.2), value: minutes)
+          .animation(.snappy(duration: Self.turnTime), value: minutes)
           .overlay {
             GeometryReader { proxy in
               ScrollDragArea(help: String(localized: "Scroll, drag or click a tick", bundle: .module)) {
@@ -57,17 +66,21 @@ struct DrumRuler: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
+    // A tick: macOS plays it only to a finger on a Force Touch trackpad, with «Force Click and haptic feedback» on.
+    .sensoryFeedback(.alignment, trigger: ticks)
   }
 
   /// The minutes are read at each event: several can come before the view is drawn again.
   private func handle(_ event: ScrollDragEvent, width: CGFloat) {
     // Events already on their way when a run starts find the drum showing the time left.
     guard store.run == nil else { return }
+    // A new touch, swipe or click: the drum is no longer landing where the last click sent it.
+    landing?.cancel()
     let minutes = self.minutes
     switch event {
     case let .scrolled(delta):
       let steps = scroll.minutes(for: delta, points: style.scrollPoints)
-      if steps != 0 { turn(to: minutes + steps) }
+      if steps != 0 { turnByHand(to: minutes + steps) }
     case let .pressed(point):
       drag = DragStart(point: point, minutes: minutes)
     case let .dragged(point):
@@ -78,21 +91,39 @@ struct DrumRuler: View {
       }
       // The drum follows the pointer: dragging to the left brings later minutes under the mark.
       if start.moved {
-        turn(to: start.minutes + Int(((start.point.x - point.x) / style.spacing).rounded()))
+        turnByHand(to: start.minutes + Int(((start.point.x - point.x) / style.spacing).rounded()))
       }
     case let .released(point):
       defer { drag = nil }
       guard let start = drag, !start.moved else { return }
       // A click turns the tick under the pointer to the mark.
       let drum = DrumGeometry(width: width, spacing: style.spacing)
-      turn(to: drum.minute(atX: point.x, value: Double(start.minutes)))
+      if turn(to: drum.minute(atX: point.x, value: Double(start.minutes))) { tickOnLanding() }
     }
   }
 
-  /// Sets only a change, within the drum's range: a drag reports the same minute many times.
-  private func turn(to value: Int) {
+  /// Sets only a change, within the drum's range: a drag reports the same minute many times. Says if it turned.
+  @discardableResult
+  private func turn(to value: Int) -> Bool {
     let value = TimerFeature.clampedMinutes(value)
-    if value != minutes { minutes = value }
+    guard value != minutes else { return false }
+    minutes = value
+    return true
+  }
+
+  /// Turned by the fingers, the drum ticks as minutes pass the mark, paced so that a quick swipe doesn't buzz. At
+  /// its ends it doesn't turn, so it doesn't tick.
+  private func turnByHand(to value: Int) {
+    if turn(to: value), pacer.tick(at: .now) { ticks += 1 }
+  }
+
+  /// A click ticks once, as the drum lands: at the click itself the tick would merge with the trackpad's own.
+  private func tickOnLanding() {
+    landing = Task {
+      try? await Task.sleep(for: .seconds(Self.turnTime))
+      guard !Task.isCancelled, store.run == nil else { return }
+      ticks += 1
+    }
   }
 }
 
@@ -185,6 +216,19 @@ struct ScrollSteps {
     let steps = (remainder / points).rounded(.towardZero)
     remainder -= steps * points
     return Int(steps)
+  }
+}
+
+/// Paces the ticks felt on the trackpad: a minute passing the mark ticks, but no sooner than `gap` after the last tick,
+/// so a quick swipe ticks a few times instead of buzzing.
+struct TickPacer {
+  static let gap: Duration = .milliseconds(50)
+  private var last: ContinuousClock.Instant?
+
+  mutating func tick(at now: ContinuousClock.Instant) -> Bool {
+    if let last, now - last < Self.gap { return false }
+    last = now
+    return true
   }
 }
 

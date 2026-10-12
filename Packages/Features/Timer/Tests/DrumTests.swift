@@ -83,4 +83,18 @@ struct DrumTests {
     #expect(turn(2) == -1)
     #expect(turn(0) == 0)
   }
+
+  @Test
+  func minutesPassingQuicklyTickNoMoreThanOncePerGap() {
+    var pacer = TickPacer()
+    let start = ContinuousClock.now
+    let gap = TickPacer.gap
+    func ticks(after time: Duration) -> Bool { pacer.tick(at: start + time) }
+    #expect(ticks(after: .zero))
+    #expect(!ticks(after: gap / 2))
+    #expect(ticks(after: gap))
+    // The gap counts from the last tick felt, not from a minute that passed without one.
+    #expect(!ticks(after: gap * 3 / 2))
+    #expect(ticks(after: gap * 2))
+  }
 }
