@@ -4,6 +4,7 @@ import VortexCore
 /// Home, variant B «Вуха»: a widget in the row next to the notch, the middle, and a dock at the bottom.
 struct HomeView: View {
   @Environment(\.homeWidgets) private var widgets
+  @Environment(\.keyboardCleaning) private var keyboardCleaning
 
   var body: some View {
     let layout = HomeLayout(widgets)
@@ -34,19 +35,27 @@ struct HomeView: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         if !layout.dock.isEmpty {
-          Dock(widgets: layout.dock, height: layout.dockHeight)
+          Dock(widgets: layout.dock, height: layout.dockHeight, keyboardCleaning: keyboardCleaning)
             .padding(.top, layout.main.isEmpty ? 4 : 0)
         }
+      }
+    }
+    .overlay(alignment: .bottomTrailing) {
+      // Without a dock the button keeps to its side, at the bottom, where nothing else is.
+      if layout.dock.isEmpty, let keyboardCleaning {
+        KeyboardCleaningButton(action: keyboardCleaning).padding(12)
       }
     }
   }
 }
 
-/// The panel at the bottom: widgets side by side, hairlines between them.
+/// The panel at the bottom: widgets side by side, hairlines between them, and in the top right corner, at the end of
+/// the widgets' title row, the button that locks the keyboard for cleaning.
 private struct Dock: View {
   let widgets: [HomeWidget]
   /// The height of the rounded panel itself, its margins not counted; nil fills the room that is left.
   let height: CGFloat?
+  let keyboardCleaning: (@MainActor () -> Void)?
 
   var body: some View {
     HStack(alignment: .top, spacing: 16) {
@@ -64,9 +73,37 @@ private struct Dock: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .frame(height: height)
     .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(VortexColor.dock))
+    .overlay(alignment: .topTrailing) {
+      if let keyboardCleaning {
+        KeyboardCleaningButton(action: keyboardCleaning)
+          .padding(.top, 8)
+          .padding(.trailing, 10)
+      }
+    }
     .padding(.leading, 4)
     .padding(.trailing, 12)
     .padding(.bottom, 12)
+  }
+}
+
+/// A quiet keyboard on the dock, which lights up under the pointer.
+private struct KeyboardCleaningButton: View {
+  let action: @MainActor () -> Void
+  @State private var isHovered = false
+
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: "keyboard")
+        .font(.system(size: 13))
+        .foregroundStyle(isHovered ? VortexColor.primaryText : VortexColor.tertiaryText)
+        .frame(width: 30, height: 30)
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isHovered ? VortexColor.track : .clear))
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .onHover { isHovered = $0 }
+    .help(Text("Lock the keyboard for cleaning", bundle: .module))
+    .accessibilityLabel(Text("Lock the keyboard for cleaning", bundle: .module))
   }
 }
 

@@ -89,6 +89,10 @@ final class WindowController: NSObject {
   /// Whether some feature takes files, so files may be dropped on the menu bar icon.
   private var acceptsFiles = false
   private var outsideClickMonitor: Any?
+  /// Drops every key Vortex receives while keyboard cleaning holds the keyboard; nil otherwise.
+  private var keyboardHoldMonitor: Any?
+  /// The app that was in front when keyboard cleaning brought Vortex there; it gets the front back after.
+  private var appBeforeKeyboardHold: NSRunningApplication?
   private var screenObserver: NSObjectProtocol?
   /// Incremented on every present and dismiss, so a finished animation never acts on a newer one.
   private var generation = 0
@@ -181,6 +185,31 @@ final class WindowController: NSObject {
       guard let self, self.generation == current else { return }
       panel.orderOut(nil)
       self.resetNotchHover()
+    }
+  }
+
+  // MARK: - Keyboard cleaning
+
+  /// While held, Vortex is the app in front, its window has the keyboard and every key that reaches Vortex is dropped.
+  /// So a key that passes the lock's tap — while some app has secure input on, or for the moment macOS turns the tap
+  /// off — goes nowhere rather than into the app the user was in. Let go, that app gets the front and the keys back,
+  /// unless the user went to another app meanwhile.
+  func holdKeyboard(_ isHeld: Bool) {
+    if isHeld {
+      guard keyboardHoldMonitor == nil else { return }
+      if let front = NSWorkspace.shared.frontmostApplication, front != .current {
+        appBeforeKeyboardHold = front
+      }
+      keyboardHoldMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { _ in nil }
+      NSApp.activate()
+      mainPanel?.makeKey()
+    } else if let monitor = keyboardHoldMonitor {
+      NSEvent.removeMonitor(monitor)
+      keyboardHoldMonitor = nil
+      if NSApp.isActive, let app = appBeforeKeyboardHold, !app.isTerminated {
+        app.activate(from: .current)
+      }
+      appBeforeKeyboardHold = nil
     }
   }
 

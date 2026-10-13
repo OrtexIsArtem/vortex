@@ -23,6 +23,16 @@
         }
       }
     },
+    "All keys are locked" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усі клавіші заблоковано"
+          }
+        }
+      }
+    },
     "Allow Vortex in System Settings › General › Login Items." : {
       "localizations" : {
         "uk" : {
@@ -132,6 +142,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Наведіть курсор на виріз, щоб відкрити Vortex."
+          }
+        }
+      }
+    },
+    "Keyboard cleaning mode" : {
+      "comment" : "Title of the screen that covers the window while every key is locked for cleaning",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Режим очищення клавіатури"
           }
         }
       }
@@ -370,6 +391,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тема"
+          }
+        }
+      }
+    },
+    "Turn the keyboard back on" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увімкнути клавіатуру"
           }
         }
       }

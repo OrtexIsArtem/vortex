@@ -12,6 +12,17 @@
         }
       }
     },
+    "Lock the keyboard for cleaning" : {
+      "comment" : "Tooltip of the keyboard button in the corner of Home's dock",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокувати клавіатуру для очищення"
+          }
+        }
+      }
+    },
     "Widgets of enabled features appear here" : {
       "localizations" : {
         "uk" : {

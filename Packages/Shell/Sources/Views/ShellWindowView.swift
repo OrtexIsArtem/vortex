@@ -3,17 +3,27 @@ import FeatureRegistry
 import SwiftUI
 import VortexCore
 
-/// Everything inside the window: the sidebar and the selected tab.
+/// Everything inside the window: the sidebar and the selected tab, or keyboard cleaning's screen over them.
 struct ShellWindowView: View {
   let store: StoreOf<ShellFeature>
   @Environment(\.notchCutout) private var notchCutout
 
   var body: some View {
-    HStack(spacing: 0) {
-      SidebarView(store: store)
-      TabContent(store: store)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .environment(\.notchCutout, notchCutout?.offsetBy(dx: -VortexMetrics.sidebarWidth, dy: 0))
+    let isCovered = store.keyboardCleaning.isLocked
+    ZStack {
+      HStack(spacing: 0) {
+        SidebarView(store: store)
+        TabContent(store: store)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+          .environment(\.notchCutout, notchCutout?.offsetBy(dx: -VortexMetrics.sidebarWidth, dy: 0))
+      }
+      // Under keyboard cleaning's screen the tabs stay mounted, out of sight and reach.
+      .opacity(isCovered ? 0 : 1)
+      .allowsHitTesting(!isCovered)
+      .accessibilityHidden(isCovered)
+      if isCovered {
+        KeyboardCleaningView(store: store.scope(state: \.keyboardCleaning, action: \.keyboardCleaning))
+      }
     }
     .frame(width: VortexMetrics.windowSize.width, height: VortexMetrics.windowSize.height)
     .font(.system(size: 13))
@@ -38,6 +48,7 @@ private struct TabContent: View {
       }
     }
     .environment(\.homeWidgets, homeWidgets)
+    .environment(\.keyboardCleaning) { store.send(.keyboardCleaning(.startTapped)) }
   }
 
   /// Widgets of the enabled features, in sidebar order: Home lays them out.

@@ -28,4 +28,7 @@ public struct HomeWidget: Identifiable {
 extension EnvironmentValues {
   /// Widgets of the enabled features, in sidebar order, for Home.
   @Entry public var homeWidgets: [HomeWidget] = []
+  /// Turns on keyboard cleaning, which the shell runs: every key held back, the window kept open on its lock screen
+  /// until the user turns the keyboard back on. Nil where nobody offers it, and Home shows no button for it.
+  @Entry public var keyboardCleaning: (@MainActor () -> Void)? = nil
 }

@@ -5,7 +5,7 @@ Shared ground for the shell and all features. Depends on The Composable Architec
 | File | What it covers |
 | --- | --- |
 | FeatureModule.swift | the contract every feature implements: id, title, symbol, tab, settings, taking files, starting and stopping, Home widget |
-| HomeWidget.swift | `HomeSlot` and `HomeWidget`: a feature's part of Home; the environment value `homeWidgets` |
+| HomeWidget.swift | `HomeSlot` and `HomeWidget`: a feature's part of Home; the environment values `homeWidgets` and `keyboardCleaning`, the shell's action behind Home's keyboard button (nil: no button) |
 | NotchIndicator.swift | indicators for the closed notch, how they fill the ears and which feature owns each ear, colored flashes, alarms that flash until seen, and the shared key `notchIndicators` |
 | Database.swift | `DataFolder` (~/Library/Application Support/Vortex), the one SQLite database `@Dependency(\.database)`, `migrate(_:)`, and `@Dependency(\.databaseIsOnDisk)`: false when the file didn't open and features work in memory |
 | AppPreferences.swift | theme and language values |

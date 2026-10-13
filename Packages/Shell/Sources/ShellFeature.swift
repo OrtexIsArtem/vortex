@@ -31,6 +31,8 @@ struct ShellFeature {
     var isPointerInsideWindow = false
     /// Something of Vortex's is in use outside the window (a drag, Quick Look, the folder picker); it stays open meanwhile.
     var isHeldOpen = false
+    /// Keyboard cleaning, which covers the window and keeps it open while the keys are locked.
+    var keyboardCleaning = KeyboardCleaningFeature.State()
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
     var launchAtLogin: LaunchAtLoginStatus = .disabled
@@ -141,6 +143,7 @@ struct ShellFeature {
     case menuSettingsTapped
     case restartButtonTapped
     case quitButtonTapped
+    case keyboardCleaning(KeyboardCleaningFeature.Action)
   }
 
   @Dependency(\.continuousClock) var clock
@@ -160,9 +163,19 @@ struct ShellFeature {
   var body: some ReducerOf<Self> {
     CombineReducers {
       BindingReducer()
+      Scope(state: \.keyboardCleaning, action: \.keyboardCleaning) {
+        KeyboardCleaningFeature()
+      }
       Reduce { state, action in
         switch action {
         case .binding:
+          return .none
+
+        case .keyboardCleaning(.stopTapped):
+          // The keyboard is back on: the window closes, and the keys go back to the app the user was in.
+          return close(&state)
+
+        case .keyboardCleaning:
           return .none
 
         case .task:
@@ -374,8 +387,9 @@ struct ShellFeature {
 
     case let .screensChanged(everyScreenHasNotch):
       state.everyScreenHasNotch = everyScreenHasNotch
-      // An open window was placed for the old screen layout.
-      return state.isOpen ? close(&state) : .none
+      guard let reason = state.openReason else { return .none }
+      // A window kept open for keyboard cleaning moves to the new screens; any other was placed for the old ones.
+      return state.keyboardCleaning.isLocked ? .run { _ in await window.present(reason) } : close(&state)
     }
   }
 
@@ -400,6 +414,8 @@ struct ShellFeature {
   }
 
   private func close(_ state: inout State) -> Effect<Action> {
+    // Keyboard cleaning keeps the window open until the user turns the keyboard back on.
+    guard !state.keyboardCleaning.isLocked else { return .none }
     state.openReason = nil
     state.isPointerInsideWindow = false
     return .merge(

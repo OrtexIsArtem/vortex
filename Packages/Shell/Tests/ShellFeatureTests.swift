@@ -352,6 +352,47 @@ struct ShellFeatureTests {
     await store.receive(\.pointerLeaveDelayElapsed) { $0.openReason = nil }
   }
 
+  // MARK: - Keyboard cleaning
+
+  @Test
+  func keyboardCleaningKeepsTheWindowOpenUntilTheKeyboardIsBackOnThenClosesIt() async {
+    let holds = LockIsolated<[Bool]>([])
+    let locks = LockIsolated<[Bool]>([])
+    let store = makeStore()
+    store.dependencies.keyboardLockClient.hasAccess = { true }
+    store.dependencies.keyboardLockClient.lock = { locks.withValue { $0.append(true) }; return true }
+    store.dependencies.keyboardLockClient.unlock = { locks.withValue { $0.append(false) } }
+    store.dependencies.windowClient.holdKeyboard = { isHeld in holds.withValue { $0.append(isHeld) } }
+    await openByHover(store)
+    await store.send(.keyboardCleaning(.startTapped)) { $0.keyboardCleaning.isLocked = true }
+
+    // Nothing the window would usually close on closes it; new screens move it there.
+    await store.send(.window(.pointerInsideWindowChanged(isInside: true))) { $0.isPointerInsideWindow = true }
+    await store.send(.window(.pointerInsideWindowChanged(isInside: false))) { $0.isPointerInsideWindow = false }
+    await clock.advance(by: .seconds(3))
+    await store.receive(\.pointerLeaveDelayElapsed)
+    await store.send(.window(.clickedOutside))
+    await store.send(.window(.escapePressed))
+    await store.send(.window(.menuBarIconClicked))
+    await store.send(.openHotkeyPressed)
+    await store.send(.window(.screensChanged(everyScreenHasNotch: true)))
+    await store.finish()
+    #expect(dismissals.value == 0)
+    #expect(presented.value == [.hover, .hover])
+    #expect(locks.value == [true])
+    #expect(holds.value == [true])
+
+    // Back on: the keys go back to the app the user was in, and the window closes.
+    await store.send(.keyboardCleaning(.stopTapped)) {
+      $0.keyboardCleaning.isLocked = false
+      $0.openReason = nil
+    }
+    await store.finish()
+    #expect(locks.value == [true, false])
+    #expect(holds.value == [true, false])
+    #expect(dismissals.value == 1)
+  }
+
   // MARK: - Files dragged to the notch
 
   @Test

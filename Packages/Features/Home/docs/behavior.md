@@ -6,3 +6,4 @@
 - The dock is 160 pt high while the middle has widgets; otherwise it fills the height under the header.
 - A turned-off feature's widget is gone; with no widgets at all, a quiet hint shows.
 - The layout is fixed: widgets are not moved or resized by the user.
+- A quiet keyboard button in the dock's top right corner, at the end of the widgets' title row, locks the keyboard for cleaning (the shell runs it); without a dock it sits at Home's bottom right. No button while the shell doesn't offer it.

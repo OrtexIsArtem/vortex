@@ -5,7 +5,7 @@ features hand it widgets.
 
 | File | What it covers |
 | --- | --- |
-| behavior.md | where widgets go and how the dock sizes |
+| behavior.md | where widgets go and how the dock sizes; the keyboard button |
 | settings.md | none |
 | data.md | none |
-| contracts.md | `homeWidgets` from the shell, `HomeWidget` and `HomeSlot` from Core |
+| contracts.md | `homeWidgets` and `keyboardCleaning` from the shell, `HomeWidget` and `HomeSlot` from Core |

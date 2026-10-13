@@ -31,6 +31,14 @@
 - While something is dragged out of the window, Quick Look shows its files or the folder picker is open, the window stays open; afterwards the usual rules apply.
 - After the window closes under the pointer, hovering the notch counts again only once the pointer has left it.
 
+## Keyboard cleaning
+- Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. Mouse and trackpad keep working. The window then shows only «Режим очищення клавіатури», «Усі клавіші заблоковано» and «Увімкнути клавіатуру».
+- While the keys are locked, nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut. New displays move it there.
+- Vortex comes to the front with the lock and drops any key that still reaches it.
+- «Увімкнути клавіатуру» lets the keys go at once and closes the window; the app that was in front gets the front and the keys back.
+- Without Accessibility the button asks for it instead: the system's prompt the first time, and Privacy & Security › Accessibility opens. Turn Vortex on there and press the button again.
+- macOS never lets an app lock the Touch ID (power) button or Caps Lock: Caps Lock may stay on after cleaning. If Vortex quits or crashes, the keys come back.
+
 ## Sidebar and features
 - The sidebar shows enabled features in the user's order, with Settings at the bottom.
 - Dropping a feature's icon or settings row onto another moves it to that place; other drags are refused.
