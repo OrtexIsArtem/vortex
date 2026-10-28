@@ -247,6 +247,35 @@
         needsRestartForLanguage = state.needsRestartForLanguage
         settings = state.settings
       }
+
+      private enum CodingKeys: String, CodingKey {
+        case isOpen, openReason, selectedTab, settingsSection, sidebar, fileFeature, keyboardLocked, screens
+        case everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen, launchAtLogin, language
+        case needsRestartForLanguage, settings
+      }
+
+      /// Every key, `null` for what is absent, so a reader never has to tell a missing key from a closed window.
+      func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(isOpen, forKey: .isOpen)
+        try container.encode(openReason, forKey: .openReason)
+        try container.encode(selectedTab, forKey: .selectedTab)
+        try container.encode(settingsSection, forKey: .settingsSection)
+        try container.encode(sidebar, forKey: .sidebar)
+        try container.encode(fileFeature, forKey: .fileFeature)
+        try container.encode(keyboardLocked, forKey: .keyboardLocked)
+        try container.encode(screens, forKey: .screens)
+        try container.encode(everyScreenHasNotch, forKey: .everyScreenHasNotch)
+        try container.encode(menuBarIcon, forKey: .menuBarIcon)
+        try container.encode(ears, forKey: .ears)
+        try container.encode(hoveredEar, forKey: .hoveredEar)
+        try container.encode(pointerInWindow, forKey: .pointerInWindow)
+        try container.encode(heldOpen, forKey: .heldOpen)
+        try container.encode(launchAtLogin, forKey: .launchAtLogin)
+        try container.encode(language, forKey: .language)
+        try container.encode(needsRestartForLanguage, forKey: .needsRestartForLanguage)
+        try container.encode(settings, forKey: .settings)
+      }
     }
   }
 #endif
