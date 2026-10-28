@@ -27,10 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   /// A Vortex started while another runs, such as a build run from Xcode next to one opened before it, takes over: two
   /// would overwrite each other's data and both show in the notch, and the older one would keep the MCP port. The
   /// others are asked to quit, which saves their settings, and stopped if they are still there after 2 s; this one
-  /// reads the settings after that.
+  /// reads the settings after that. A QA run (`--qa <name>`) has data of its own: it takes over only from the same run
+  /// and plain Vortex only from plain Vortex.
   private func quitOtherInstances() {
     let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
-      .filter { $0.processIdentifier != getpid() }
+      .filter { $0.processIdentifier != getpid() && isSameKind($0) }
     guard !others.isEmpty else { return }
     // Two started at about the same moment would stop each other and leave none: the later one stays, so this one
     // steps aside for a newer one, before it has anything to save.
@@ -41,6 +42,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       for app in others { app.forceTerminate() }
       _ = waitUntilGone(others, seconds: 1)
     }
+  }
+
+  /// The same QA run, or both plain Vortex.
+  private func isSameKind(_ app: NSRunningApplication) -> Bool {
+    #if DEBUG
+      ShellController.isSameQARun(pid: app.processIdentifier)
+    #else
+      true
+    #endif
   }
 
   /// When a process started, with its pid to settle a tie; the earliest there is when the system doesn't say.

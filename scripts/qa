@@ -1,0 +1,225 @@
+#!/bin/bash
+# QA mode: a debug build of Vortex next to the user's own, isolated from it and driven by commands
+# (App/docs/README.md).
+#
+#   scripts/qa build                               make build, then copy the app to build/qa/<run>/ (build/qa/latest)
+#   scripts/qa start <name> [args…]                start the run <name> from that copy; waits until it listens
+#   scripts/qa cmd <name> <command> [word|k=v…]    send a command, print the reply
+#   scripts/qa stop <name>                         quit the run
+#   scripts/qa kill <name>                         stop it at once, as a force quit: nothing is saved
+#   scripts/qa reset <name>                        delete the run's data folder, only inside "Vortex QA"
+#   scripts/qa list                                the runs and whether they run
+#
+# Exit codes: 0 done, 1 an error reply or a refusal, 2 a timeout, 64 bad usage.
+# QA_TIMEOUT bounds every wait (seconds, default 15); QA_APP=<path to Vortex.app> starts another make build copy.
+set -euo pipefail
+
+repo=$(cd "$(dirname "$0")/.." && pwd -P)
+support="$HOME/Library/Application Support"
+root="$support/Vortex QA"
+timeout=${QA_TIMEOUT:-15}
+bundle_id="io.github.ortexisartem.vortex.check"
+channel_prefix="io.github.ortexisartem.vortex.qa."
+
+# Posts a distributed notification: the name, then key=value or bare words (a word becomes word="").
+read -r -d '' post_js <<'JS' || true
+ObjC.import('Foundation');
+function run(argv) {
+  var info = $.NSMutableDictionary.alloc.init;
+  for (var i = 1; i < argv.length; i++) {
+    var eq = argv[i].indexOf('=');
+    var key = eq < 0 ? argv[i] : argv[i].substring(0, eq);
+    var value = eq < 0 ? '' : argv[i].substring(eq + 1);
+    info.setObjectForKey($(value), $(key));
+  }
+  $.NSDistributedNotificationCenter.defaultCenter.postNotificationNameObjectUserInfoDeliverImmediately($(argv[0]), $(), info, true);
+}
+JS
+
+die() {
+  local code=$1
+  shift
+  echo "qa: $*" >&2
+  exit "$code"
+}
+
+usage() {
+  sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//' >&2
+  exit 64
+}
+
+# 1–16 letters, digits or dashes, as the app takes them; never something that looks like a QA option.
+use_name() {
+  name=${1:-}
+  [[ "$name" =~ ^[A-Za-z0-9-]{1,16}$ && "$name" != --qa* ]] || die 64 "a QA name is 1-16 letters, digits or dashes, not '$name'"
+  folder="$root/$name"
+}
+
+# Waits until the command succeeds, at most QA_TIMEOUT seconds.
+wait_for() {
+  local what=$1
+  shift
+  local deadline=$((SECONDS + timeout))
+  until "$@"; do
+    [ "$SECONDS" -lt "$deadline" ] || die 2 "timed out after ${timeout}s waiting for $what"
+    sleep 0.1
+  done
+}
+
+# The run's process id, when it runs: from its ready marker, and only if that process is this run of Vortex.
+running_pid() {
+  local marker="$folder/.qa/ready.json" pid
+  [ -f "$marker" ] || return 1
+  pid=$(plutil -extract pid raw -o - "$marker" 2>/dev/null) || return 1
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  ps -p "$pid" -o command= 2>/dev/null | grep -qE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)" || return 1
+  echo "$pid"
+}
+
+is_new_run() {
+  local pid
+  pid=$(running_pid) && [ "$pid" != "$1" ]
+}
+
+is_gone() {
+  ! kill -0 "$1" 2>/dev/null
+}
+
+# Only a copy made by make build: a Debug build under a bundle id of its own, with QA mode in it. Anything else would
+# start as plain Vortex, with the user's data and services.
+check_app() {
+  local id
+  id=$(plutil -extract CFBundleIdentifier raw -o - "$1/Contents/Info.plist" 2>/dev/null || true)
+  [ "$id" = "$bundle_id" ] || die 1 "$1 is not a make build copy (bundle id '$id'): QA runs only those"
+  grep -rqF "$channel_prefix" "$1/Contents/MacOS" || die 1 "$1 has no QA mode: build this branch with scripts/qa build"
+}
+
+# Sends a command and prints the reply; the reply's ok decides the exit code.
+send() {
+  local command=$1
+  shift
+  for word in "$@"; do
+    case "$word" in
+      command=* | reply=*) die 64 "command= and reply= are taken by the script" ;;
+    esac
+  done
+  local pid
+  pid=$(running_pid) || die 1 "the run $name is not running: scripts/qa start $name"
+  local replies="$folder/.qa/replies"
+  mkdir -p "$replies"
+  local reply
+  reply="$replies/$(uuidgen).json"
+  osascript -l JavaScript -e "$post_js" "$channel_prefix$name" "command=$command" "reply=$reply" "$@" >/dev/null
+  wait_for "the reply to $command" test -f "$reply"
+  cat "$reply"
+  echo
+  local ok
+  ok=$(plutil -extract ok raw -o - "$reply" 2>/dev/null || echo false)
+  rm -f "$reply"
+  [ "$ok" = true ] || exit 1
+  case "$command" in
+    relaunch) wait_for "the run $name to start again" is_new_run "$pid" ;;
+    quit) wait_for "the run $name to quit" is_gone "$pid" ;;
+  esac
+}
+
+cmd_build() {
+  (cd "$repo" && make build)
+  local product="$repo/build/DerivedData/Build/Products/Debug/Vortex.app"
+  check_app "$product"
+  local run
+  run=$(date +%Y%m%d-%H%M%S)
+  mkdir -p "$repo/build/qa/$run"
+  ditto "$product" "$repo/build/qa/$run/Vortex.app"
+  ln -sfn "$run" "$repo/build/qa/latest"
+  # The three newest copies stay; runs started from older ones keep running.
+  find "$repo/build/qa" -mindepth 1 -maxdepth 1 -type d -name '2*' | sort -r | tail -n +4 | while read -r old; do
+    rm -rf -- "$old"
+  done
+  echo "$repo/build/qa/$run/Vortex.app"
+}
+
+cmd_start() {
+  use_name "${1:-}"
+  shift
+  local app=${QA_APP:-"$repo/build/qa/latest/Vortex.app"}
+  [ -d "$app" ] || die 1 "no copy at $app: run scripts/qa build"
+  # The real path, so a newer build never changes the app under the run.
+  app=$(cd "$app" && pwd -P)
+  check_app "$app"
+  if pid=$(running_pid); then
+    die 1 "the run $name runs already (pid $pid)"
+  fi
+  rm -f "$folder/.qa/ready.json"
+  # In the background (-g), as a new process of its own through LaunchServices (-n).
+  open -n -g -a "$app" --args --qa "$name" "$@"
+  wait_for "the run $name to start" running_pid >/dev/null
+  echo "started $name: pid $(running_pid), data in $folder"
+}
+
+cmd_stop() {
+  use_name "${1:-}"
+  local pid
+  if ! pid=$(running_pid); then
+    echo "the run $name is not running"
+    return
+  fi
+  send quit >/dev/null
+  echo "stopped $name"
+}
+
+cmd_kill() {
+  use_name "${1:-}"
+  local pid
+  pid=$(running_pid) || die 1 "the run $name is not running"
+  kill -9 "$pid"
+  wait_for "the run $name to end" is_gone "$pid"
+  echo "killed $name (pid $pid)"
+}
+
+cmd_reset() {
+  use_name "${1:-}"
+  if running_pid >/dev/null; then
+    die 1 "the run $name runs: scripts/qa stop $name first"
+  fi
+  if [ ! -e "$folder" ] && [ ! -L "$folder" ]; then
+    echo "nothing to delete for $name"
+    return
+  fi
+  # Only a real folder right inside the real "Vortex QA", which itself sits right in Application Support: no link
+  # anywhere may lead the deletion elsewhere, such as into the user's Vortex folder.
+  local real_support real_root real
+  real_support=$(cd "$support" && pwd -P)
+  real_root=$(cd "$root" && pwd -P)
+  [ "$real_root" = "$real_support/Vortex QA" ] || die 1 "$root leads to $real_root: nothing deleted"
+  [ ! -L "$folder" ] || die 1 "$folder is a link: nothing deleted"
+  real=$(cd "$folder" && pwd -P)
+  [ "$real" = "$real_root/$name" ] || die 1 "$folder leads to $real: nothing deleted"
+  rm -rf -- "$real"
+  echo "deleted $real"
+}
+
+cmd_list() {
+  [ -d "$root" ] || return 0
+  local entry
+  for entry in "$root"/*; do
+    [[ -d "$entry" && "$(basename "$entry")" =~ ^[A-Za-z0-9-]{1,16}$ ]] || continue
+    use_name "$(basename "$entry")"
+    if pid=$(running_pid); then
+      echo "$name: running, pid $pid"
+    else
+      echo "$name: not running"
+    fi
+  done
+}
+
+case "${1:-}" in
+  build) cmd_build ;;
+  start) shift; [ $# -ge 1 ] || usage; cmd_start "$@" ;;
+  cmd) shift; [ $# -ge 2 ] || usage; use_name "$1"; shift; send "$@" ;;
+  stop) [ $# -eq 2 ] || usage; cmd_stop "$2" ;;
+  kill) [ $# -eq 2 ] || usage; cmd_kill "$2" ;;
+  reset) [ $# -eq 2 ] || usage; cmd_reset "$2" ;;
+  list) cmd_list ;;
+  *) usage ;;
+esac
