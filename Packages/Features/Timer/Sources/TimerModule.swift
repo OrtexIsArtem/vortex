@@ -8,6 +8,12 @@ public enum TimerModule: FeatureModule {
   public static let id: FeatureID = TimerFeature.id
   public static let title = LocalizedStringResource("Timer", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "timer"
+  public static let permissionNeeds = [
+    PermissionNeed(
+      .notifications,
+      reason: LocalizedStringResource("Tells you when a timer ends.", bundle: .atURL(Bundle.module.bundleURL))
+    ),
+  ]
 
   /// One store for the life of the app: a run goes on while the window is closed.
   static let store = Store(initialState: TimerFeature.State()) {

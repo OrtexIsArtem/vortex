@@ -9,6 +9,12 @@ public enum TasksModule: FeatureModule {
   public static let id: FeatureID = TasksFeature.id
   public static let title = LocalizedStringResource("Tasks", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "checklist"
+  public static let permissionNeeds = [
+    PermissionNeed(
+      .screenRecording,
+      reason: LocalizedStringResource("Turns a screenshot into a new task.", bundle: .atURL(Bundle.module.bundleURL))
+    ),
+  ]
 
   /// One store for the life of the app: the shortcut works while the window is closed.
   static let store = Store(initialState: TasksFeature.State()) {

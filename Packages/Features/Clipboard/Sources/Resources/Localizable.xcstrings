@@ -137,6 +137,17 @@
         }
       }
     },
+    "Keeps your clipboard history." : {
+      "comment" : "Why the clipboard needs Paste from Other Apps, next to the permission",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зберігає історію буфера обміну."
+          }
+        }
+      }
+    },
     "Not found" : {
       "comment" : "The copied file was deleted or moved",
       "localizations" : {

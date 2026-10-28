@@ -7,6 +7,7 @@
   - a ring (or a pause sign) and the time left;
   - no ears without a run;
   - an alarm when time is up and on Test, in the chosen color: the shell flashes the notch until the user sees it; a new run ends it.
+- `permissionNeeds`: notifications, «Повідомляє, коли таймер закінчився.»
 
 ## Uses
 - VortexCore: `FeatureModule`, `HomeWidget`, `notchCutout`, `notchIndicators`, `ColorValue`, `DataFolder`, design system.

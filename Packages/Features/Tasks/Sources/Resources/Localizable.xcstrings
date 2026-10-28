@@ -506,6 +506,17 @@
         }
       }
     },
+    "Turns a screenshot into a new task." : {
+      "comment" : "Why Tasks needs Screen Recording, next to the permission",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Робить задачу зі знімка екрана."
+          }
+        }
+      }
+    },
     "Undo" : {
       "localizations" : {
         "uk" : {

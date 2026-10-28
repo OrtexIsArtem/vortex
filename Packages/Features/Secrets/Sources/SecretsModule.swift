@@ -8,6 +8,12 @@ public enum SecretsModule: FeatureModule {
   public static let id: FeatureID = SecretsFeature.id
   public static let title = LocalizedStringResource("Keys", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "key.horizontal"
+  public static let permissionNeeds = [
+    PermissionNeed(
+      .notifications,
+      reason: LocalizedStringResource("Shows Claude's key requests when the window is closed.", bundle: .atURL(Bundle.module.bundleURL))
+    ),
+  ]
 
   /// One store for the life of the app: Claude reaches the keys while the window is closed.
   static let store = Store(initialState: SecretsFeature.State()) {

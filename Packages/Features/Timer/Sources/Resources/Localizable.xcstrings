@@ -193,6 +193,17 @@
         }
       }
     },
+    "Tells you when a timer ends." : {
+      "comment" : "Why the timer needs notifications, next to the permission",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повідомляє, коли таймер закінчився."
+          }
+        }
+      }
+    },
     "Test" : {
       "localizations" : {
         "uk" : {
