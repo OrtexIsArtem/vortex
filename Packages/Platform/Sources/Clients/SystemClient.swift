@@ -10,6 +10,8 @@ public struct SystemClient: Sendable {
   public var language: @Sendable () -> AppLanguage = { .system }
   /// Takes effect after a relaunch: macOS reads the language when the app starts.
   public var setLanguage: @Sendable (_ language: AppLanguage) -> Void
+  /// Quits and opens the app again once this process is gone. If it is still there after about 10 s, as when the quit
+  /// was cancelled, the app is not opened.
   public var relaunch: @Sendable () async -> Void
   public var quit: @Sendable () async -> Void
 }
@@ -40,11 +42,9 @@ extension SystemClient: DependencyKey {
     },
     relaunch: {
       await MainActor.run {
-        // A helper shell waits until this process exits, then opens the app again.
-        let pid = ProcessInfo.processInfo.processIdentifier
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.1; done; open \"$0\"", Bundle.main.bundlePath]
+        task.arguments = Relaunch.arguments(pid: ProcessInfo.processInfo.processIdentifier, bundlePath: Bundle.main.bundlePath)
         try? task.run()
         NSApp.terminate(nil)
       }
@@ -55,6 +55,20 @@ extension SystemClient: DependencyKey {
   )
 
   public static let testValue = SystemClient()
+}
+
+/// The helper shell behind `relaunch`: it waits until this process exits, then opens the app again. It gives up after
+/// `checks` looks 0.1 s apart, about 10 s, so a quit that was cancelled doesn't leave it waiting to reopen Vortex at the
+/// next quit.
+enum Relaunch {
+  static let checks = 100
+
+  /// Arguments for `/bin/sh`. The bundle path goes in as `$0`, never into the script, so no path can break it.
+  static func arguments(pid: pid_t, bundlePath: String) -> [String] {
+    let script = "n=0; while kill -0 \(pid) 2>/dev/null; do n=$((n+1)); [ $n -gt \(checks) ] && exit 0; sleep 0.1; done; "
+      + "open \"$0\""
+    return ["-c", script, bundlePath]
+  }
 }
 
 extension DependencyValues {
