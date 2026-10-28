@@ -4,9 +4,39 @@ import GRDB
 import os
 
 /// Where Vortex keeps its data: ~/Library/Application Support/Vortex. A backup is a copy of this folder.
+///
+/// A debug build started with `--qa <name>` keeps everything in ~/Library/Application Support/Vortex QA/<name> instead,
+/// so a QA run never touches the user's data; one started with a bad `--qa` stops before anything reads this.
 public enum DataFolder {
-  public static let url = URL.applicationSupportDirectory.appending(path: "Vortex", directoryHint: .isDirectory)
+  #if DEBUG
+    public static let url = folder(in: .applicationSupportDirectory, qa: .current)
+  #else
+    public static let url = URL.applicationSupportDirectory.appending(path: "Vortex", directoryHint: .isDirectory)
+  #endif
 }
+
+#if DEBUG
+  extension DataFolder {
+    /// The folder of all QA runs, one subfolder per name: Vortex QA, next to Vortex in `base`.
+    public static func qaRoot(in base: URL) -> URL {
+      base.appending(path: "Vortex QA", directoryHint: .isDirectory)
+    }
+
+    /// Vortex in `base`, or the QA run's own folder.
+    static func folder(in base: URL, qa: QALaunch) -> URL {
+      switch qa {
+      case .none:
+        return base.appending(path: "Vortex", directoryHint: .isDirectory)
+      case let .named(name, _):
+        return qaRoot(in: base).appending(path: name, directoryHint: .isDirectory)
+      case .invalid:
+        // Never the user's folder: the process stops here (main.swift stops it earlier).
+        qa.stopIfInvalid()
+        return qaRoot(in: base)
+      }
+    }
+  }
+#endif
 
 /// The one SQLite database of Vortex, DataFolder/vortex.sqlite.
 ///
