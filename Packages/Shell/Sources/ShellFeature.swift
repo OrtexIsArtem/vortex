@@ -39,6 +39,12 @@ struct ShellFeature {
     var language: AppLanguage
     /// Language the app was started with; another choice needs a relaunch.
     let launchLanguage: AppLanguage
+    /// What macOS says about each permission, as last read (S1); empty until the first read. Only the shell writes it.
+    @Shared(.permissionStatuses) var permissionStatuses
+    /// A required permission that something enabled needs reads `notGranted` (S9); follows `isBlocked`.
+    @Shared(.appBlocked) var appBlocked
+    /// The permissions Vortex can't be used without; QA mode may change them per run (S30).
+    var requiredPermissions = OnboardingConfig.requiredPermissions
 
     init(settings: ShellSettings = ShellSettings(), features: [FeatureDescriptor] = [], language: AppLanguage = .system) {
       self.settings = settings
@@ -82,6 +88,16 @@ struct ShellFeature {
 
     var needsRestartForLanguage: Bool {
       language != launchLanguage
+    }
+
+    /// The permissions the enabled features and the shell need now, and why.
+    var permissionCatalog: PermissionCatalog {
+      PermissionCatalog(features: sidebarFeatures, required: requiredPermissions)
+    }
+
+    /// A required permission that something enabled needs reads `notGranted`; never before the first read (S9, S66).
+    var isBlocked: Bool {
+      !permissionCatalog.missingRequired(permissionStatuses).isEmpty
     }
 
     /// The last tab the user chose if it still exists; otherwise the first feature, then settings.
@@ -144,12 +160,18 @@ struct ShellFeature {
     case restartButtonTapped
     case quitButtonTapped
     case keyboardCleaning(KeyboardCleaningFeature.Action)
+    /// macOS's statuses, at the first read and on every change (S3).
+    case permissionStatusesChanged([Permission: PermissionStatus])
+    /// A feature asked for the page of one permission (S24).
+    case permissionPageRequested(Permission)
   }
 
   @Dependency(\.continuousClock) var clock
   @Dependency(\.featuresClient) var features
   @Dependency(\.hotkeyClient) var hotkeys
   @Dependency(\.launchAtLoginClient) var launchAtLogin
+  @Dependency(\.permissionPage) var permissionPage
+  @Dependency(\.permissionsClient) var permissions
   @Dependency(\.settingsClient) var settingsClient
   @Dependency(\.systemClient) var system
   @Dependency(\.windowClient) var window
@@ -207,6 +229,16 @@ struct ShellFeature {
               }
               await launchAtLogin.enableOnFirstLaunch()
               await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
+            },
+            .run { send in
+              for await statuses in permissions.updates() {
+                await send(.permissionStatusesChanged(statuses))
+              }
+            },
+            .run { send in
+              for await permission in permissionPage.requests() {
+                await send(.permissionPageRequested(permission))
+              }
             }
           )
 
@@ -289,7 +321,21 @@ struct ShellFeature {
 
         case .quitButtonTapped:
           return .run { _ in await system.quit() }
+
+        case let .permissionStatusesChanged(statuses):
+          state.$permissionStatuses.withLock { $0 = statuses }
+          return .none
+
+        case let .permissionPageRequested(permission):
+          // For now macOS is asked at once; the onboarding window will show the permission's page instead.
+          return .run { _ in await permissions.request(permission) }
         }
+      }
+    }
+    .onChange(of: \.isBlocked) { _, isBlocked in
+      Reduce { state, _ in
+        state.$appBlocked.withLock { $0 = isBlocked }
+        return .none
       }
     }
     .onChange(of: \.settings) { _, settings in
@@ -399,7 +445,9 @@ struct ShellFeature {
     if reason == .fileDrag { selectDropTab(&state) }
     return .merge(
       .cancel(id: CancelID.hoverOpen),
-      .run { _ in await window.present(reason) }
+      .run { _ in await window.present(reason) },
+      // Notifications send no signal when they change, and the window opening activates no app: read again (S47).
+      .run { _ in await permissions.refresh() }
     )
   }
 

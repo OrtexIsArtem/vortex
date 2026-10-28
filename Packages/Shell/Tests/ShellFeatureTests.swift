@@ -23,6 +23,7 @@ struct ShellFeatureTests {
   let featureSwitches = LockIsolated<[String]>([])
   let receivedFiles = LockIsolated<[String]>([])
   let acceptsFiles = LockIsolated<[Bool]>([])
+  let permissionReads = LockIsolated(0)
 
   func makeStore(
     features: [FeatureDescriptor] = [.timer, .shelf, .tasks],
@@ -45,6 +46,7 @@ struct ShellFeatureTests {
         receivedFiles.withValue { $0.append("\(id):\(urls.map(\.lastPathComponent).joined(separator: ","))") }
       }
       $0.windowClient.setAcceptsFiles = { [acceptsFiles] accepts in acceptsFiles.withValue { $0.append(accepts) } }
+      $0.permissionsClient.refresh = { [permissionReads] in permissionReads.withValue { $0 += 1 } }
     }
   }
 
@@ -100,6 +102,17 @@ struct ShellFeatureTests {
     let store = makeStore { $0.openOnClick = false }
     await store.send(.window(.notchClicked(feature: nil)))
     #expect(presented.value.isEmpty)
+  }
+
+  /// Notifications send no signal when they change, and the window opening activates no app (S47).
+  @Test
+  func everyOpeningReadsThePermissionsAgainClosingDoesNot() async {
+    let store = makeStore()
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = .click }
+    await store.send(.window(.notchClicked(feature: nil))) { $0.openReason = nil }
+    await store.send(.window(.menuBarIconClicked)) { $0.openReason = .menuBarIcon }
+    await store.finish()
+    #expect(permissionReads.value == 2)
   }
 
   @Test
@@ -555,6 +568,8 @@ struct ShellFeatureTests {
     store.dependencies.systemClient.applyTheme = { _ in }
     store.dependencies.launchAtLoginClient.enableOnFirstLaunch = { firstLaunchSetUps.withValue { $0 += 1 } }
     store.dependencies.launchAtLoginClient.status = { .enabled }
+    store.dependencies.permissionsClient.updates = { .finished }
+    store.dependencies.permissionPage.requests = { .finished }
 
     await store.send(.task)
     await store.receive(\.launchAtLoginStatusLoaded) { $0.launchAtLogin = .enabled }

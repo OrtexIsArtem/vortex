@@ -198,6 +198,17 @@
         }
       }
     },
+    "Locks the keyboard while you clean it." : {
+      "comment" : "Why keyboard cleaning needs Accessibility, next to the permission",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блокує клавіатуру, поки ти її чистиш."
+          }
+        }
+      }
+    },
     "Menu bar icon" : {
       "localizations" : {
         "uk" : {
