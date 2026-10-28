@@ -136,3 +136,39 @@ struct CommandClientTests {
     #expect(text(output.stdout).hasSuffix("[]"))
   }
 }
+
+/// QA mode's stand-in: nothing runs, a script answers.
+struct QACommandClientTests {
+  let rules: [QASimulation.CommandRule] = [
+    .init(match: "command -v claude", exitCode: 127, stderr: "not found"),
+    .init(match: "claude mcp add", exitCode: 0, stdout: "added", echo: true),
+  ]
+
+  @Test
+  func nothingRunsWithoutAScript() async throws {
+    let client = CommandClient.qa(scripts: { [] })
+    let marker = FileManager.default.temporaryDirectory.appending(path: "vortex-qa-never-\(UUID().uuidString)")
+    let output = try await client.run("touch '\(marker.path)'", nil, [:], .seconds(5))
+    #expect(output == CommandClient.Output(exitCode: 0))
+    #expect(!FileManager.default.fileExists(atPath: marker.path))
+  }
+
+  @Test
+  func theFirstMatchingScriptAnswers() async throws {
+    let client = CommandClient.qa(scripts: { rules })
+    let missing = try await client.run("command -v claude", nil, ["TOKEN": "x"], .seconds(5))
+    #expect(missing.isCommandNotFound)
+    #expect(String(decoding: missing.stderr, as: UTF8.self) == "not found")
+    let added = try await client.run("claude mcp add vortex", nil, [:], .seconds(5))
+    #expect(String(decoding: added.stdout, as: UTF8.self) == "claude mcp add vortex\nadded")
+  }
+
+  @Test
+  func theLogNamesTheVariablesNeverTheirValues() async throws {
+    let client = CommandClient.qa(scripts: { [] })
+    _ = try await client.run("echo qa-log-check", nil, ["TOKEN": "value-never-logged"], .seconds(5))
+    let entry = QALog.events.value.last { $0.detail["command"] == "echo qa-log-check" }
+    #expect(entry?.detail["environment"] == "TOKEN")
+    #expect(entry.map { !$0.detail.values.contains { $0.contains("value-never-logged") } } == true)
+  }
+}

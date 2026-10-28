@@ -21,12 +21,15 @@ fi
 
 # A command can reach the network (curl), so processes start only in the two Platform clients made for it, and
 # commands run only in Secrets.
-processes=$(search '(^|[^A-Za-z0-9_])(Process(\(|\.run)|NSTask|posix_spawn|commandClient|CommandClient([^A-Za-z0-9_]|$))' |
+processes=$(search '(^|[^A-Za-z0-9_])(Process(\(|\.run)|NSTask|posix_spawn)' |
   grep -vE '^Packages/Platform/(Sources/Clients/(CommandClient|SystemClient)|Tests/CommandClientTests)\.swift:' || true)
+# QA mode's stand-in for the command client runs nothing; it may name the client, and the line above still holds there.
+commands=$(search '(^|[^A-Za-z0-9_])(commandClient|CommandClient([^A-Za-z0-9_]|$))' |
+  grep -vE '^Packages/Platform/(Sources/Clients/(CommandClient|SystemClient)|Sources/QA/QAClients|Tests/CommandClientTests)\.swift:' || true)
 
-if [ -n "$processes" ]; then
+if [ -n "$processes$commands" ]; then
   echo "error: processes start only in Platform's CommandClient and SystemClient, and commands run only in Packages/Features/Secrets:" >&2
-  echo "$processes" >&2
+  printf '%s\n' "$processes" "$commands" | grep -v '^$' >&2
   exit 1
 fi
 

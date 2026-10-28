@@ -44,8 +44,8 @@ public final class ScreenOverlay {
     onReturn: @escaping @MainActor () -> Void,
     onInterrupted: @escaping @MainActor () -> Void
   ) {
-    // Vortex itself in front is no interruption: the user was in its window.
-    let front = Self.frontApp()
+    // Vortex itself in front is no interruption: the user was in its window. A QA run's front app is simulated.
+    let front = Self.isQA ? nil : Self.frontApp()
     guard front == nil || front?.bundleIdentifier == app else {
       // Called once `show` has returned, as it would be for a later interruption.
       Task { @MainActor in onInterrupted() }
@@ -54,8 +54,19 @@ public final class ScreenOverlay {
     guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
     stopKeepingFront()
     present(content, on: screen, takesKeyboard: true, onEscape: onEscape, onReturn: onReturn, onInterrupted: onInterrupted)
+    guard !Self.isQA else { return }
     coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
     NSApp.activate()
+  }
+
+  /// QA mode (`QA`): the overlay opens off the displays, never takes the keyboard or the front, and real apps coming to
+  /// the front don't interrupt it.
+  private static var isQA: Bool {
+    #if DEBUG
+      QA.isActive
+    #else
+      false
+    #endif
   }
 
   /// Over the display under the pointer, leaving the app in front where it is.
@@ -110,12 +121,17 @@ public final class ScreenOverlay {
     panel.onEscape = onEscape
     panel.onReturn = onReturn
     panel.contentView = NSHostingView(rootView: AnyView(content.environment(\.notchCutout, screen.notchInPoints)))
-    panel.setFrame(screen.frame, display: true)
+    #if DEBUG
+      panel.setFrame(Self.isQA ? QA.offscreen(screen.frame) : screen.frame, display: true)
+    #else
+      panel.setFrame(screen.frame, display: true)
+    #endif
     // In front of everything also while Vortex is not the app in front.
     panel.orderFrontRegardless()
-    if takesKeyboard { panel.makeKey() }
+    if takesKeyboard, !Self.isQA { panel.makeKey() }
     self.panel = panel
     stopWatchingActivations()
+    guard !Self.isQA else { return }
     activations = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification,
       object: nil,
