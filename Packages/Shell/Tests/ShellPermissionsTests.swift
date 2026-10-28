@@ -191,6 +191,15 @@ struct ShellPermissionsTests {
   }
 
   @Test
+  func withNothingRequiredNothingBlocks() async {
+    let store = makeStore()
+    await store.send(.permissionStatusesChanged(Self.allOff)) {
+      $0.$permissionStatuses.withLock { $0 = Self.allOff }
+    }
+    #expect(!store.state.appBlocked)
+  }
+
+  @Test
   func nothingIsBlockedBeforeTheFirstRead() {
     let state = ShellFeature.State(features: Needing.all)
     var required = state

@@ -96,8 +96,9 @@ struct ShellFeature {
     }
 
     /// A required permission that something enabled needs reads `notGranted`; never before the first read (S9, S66).
+    /// Checked after every action, so with nothing required it builds no catalog.
     var isBlocked: Bool {
-      !permissionCatalog.missingRequired(permissionStatuses).isEmpty
+      !requiredPermissions.isEmpty && !permissionCatalog.missingRequired(permissionStatuses).isEmpty
     }
 
     /// The last tab the user chose if it still exists; otherwise the first feature, then settings.
