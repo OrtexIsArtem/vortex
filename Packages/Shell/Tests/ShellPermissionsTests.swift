@@ -122,25 +122,38 @@ struct ShellPermissionsTests {
 
   // MARK: The statuses
 
-  @Test
-  func theShellKeepsWhatMacOSSaysInTheSharedStatusesFromLaunchOn() async {
-    let mac = SimulatedPermissions()
-    let store = makeStore()
-    launchedQuietly(store)
-    store.dependencies.permissionsClient = .simulated(mac)
-    store.dependencies.permissionPage.requests = { .finished }
-    store.exhaustivity = .off
+  #if DEBUG
+    @Test
+    func theShellKeepsWhatMacOSSaysInTheSharedStatusesFromLaunchOn() async {
+      let mac = SimulatedPermissions()
+      let store = makeStore()
+      launchedQuietly(store)
+      store.dependencies.permissionsClient = .simulated(mac)
+      store.dependencies.permissionPage.requests = { .finished }
+      store.exhaustivity = .off
 
-    let launch = await store.send(.task)
-    await store.receive(\.permissionStatusesChanged)
-    @Shared(.permissionStatuses) var statuses
-    #expect(statuses == Self.allOff)
+      let launch = await store.send(.task)
+      await store.receive(\.permissionStatusesChanged)
+      @Shared(.permissionStatuses) var statuses
+      #expect(statuses == Self.allOff)
 
-    mac.toggle(.accessibility, on: true)
-    await store.receive(\.permissionStatusesChanged)
-    #expect(statuses[.accessibility] == .granted)
-    await launch.cancel()
-  }
+      mac.toggle(.accessibility, on: true)
+      await store.receive(\.permissionStatusesChanged)
+      #expect(statuses[.accessibility] == .granted)
+      await launch.cancel()
+    }
+
+    /// Until the onboarding window shows the page, the request goes to macOS.
+    @Test
+    func forNowAPageRequestAsksMacOS() async {
+      let mac = SimulatedPermissions()
+      let store = makeStore()
+      store.dependencies.permissionsClient = .simulated(mac)
+      await store.send(.permissionPageRequested(.screenRecording))
+      await store.finish()
+      #expect(mac.state.events == [.prompt(.screenRecording)])
+    }
+  #endif
 
   @Test
   func aPageAFeatureAsksForReachesTheShell() async {
@@ -159,17 +172,6 @@ struct ShellPermissionsTests {
     var askedFor = asked.stream.makeAsyncIterator()
     #expect(await askedFor.next() == .screenRecording)
     await launch.cancel()
-  }
-
-  /// Until the onboarding window shows the page, the request goes to macOS.
-  @Test
-  func forNowAPageRequestAsksMacOS() async {
-    let mac = SimulatedPermissions()
-    let store = makeStore()
-    store.dependencies.permissionsClient = .simulated(mac)
-    await store.send(.permissionPageRequested(.screenRecording))
-    await store.finish()
-    #expect(mac.state.events == [.prompt(.screenRecording)])
   }
 
   // MARK: Blocked (S9, S43)
