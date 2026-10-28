@@ -2,7 +2,7 @@
 
 ## Provides
 - `TemplateModule` — the FeatureModule entry point for the registry: id, title, symbol, `makeTab()`.
-- Optional, when needed: `makeSettings()`, `makeHomeWidget()`, `acceptsFileDrops`, `setEnabled(_:)` to start and stop background work.
+- Optional, when needed: `makeSettings()`, `makeHomeWidget()`, `acceptsFileDrops`, `setEnabled(_:)` to start and stop background work, `permissionNeeds` (each macOS permission with a one-line reason from this module's bundle), `makeOnboardingStep()`.
 
 ## Uses
 - VortexCore: `FeatureModule`, design system; `@Shared(.notchIndicators)` to show something in the notch.

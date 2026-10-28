@@ -34,6 +34,39 @@
         }
       }
     },
+    "Accessibility" : {
+      "comment" : "Permission name, as in System Settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Універсальний доступ"
+          }
+        }
+      }
+    },
+    "Needs a permission" : {
+      "comment" : "VoiceOver label of the yellow warning on a control or a feature whose permission is off",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потрібен дозвіл"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "comment" : "Permission name, as in System Settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сповіщення"
+          }
+        }
+      }
+    },
     "now" : {
       "comment" : "Less than a minute ago",
       "localizations" : {
@@ -41,6 +74,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "щойно"
+          }
+        }
+      }
+    },
+    "Paste from Other Apps" : {
+      "comment" : "Permission name, as in System Settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставлення з інших програм"
+          }
+        }
+      }
+    },
+    "Screen Recording" : {
+      "comment" : "Permission name, as in System Settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запис екрана"
           }
         }
       }

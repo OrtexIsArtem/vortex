@@ -23,6 +23,9 @@ public enum VortexColor {
   public static let accent = dynamic(dark: 0xF5F5F7, light: 0x1D1D1F)
   /// Text and icons on top of `accent`.
   public static let onAccent = dynamic(dark: 0x0A0A0A, light: 0xFFFFFF)
+  /// The one color outside the monochrome palette: a permission the user skipped (`WarningMark`). The system yellow,
+  /// which macOS adjusts for light and dark.
+  public static let warning = Color(nsColor: .systemYellow)
   /// The hardware notch and everything drawn inside it: black in both themes.
   public static let notch = Color.black
   public static let notchText = Color(white: 0.96)
