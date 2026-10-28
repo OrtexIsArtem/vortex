@@ -225,6 +225,9 @@
       for (name, provider) in QARegistry.sections {
         sections[name] = json(provider())
       }
+      let options = QALaunch.current.options ?? .init()
+      // The `.check` build's defaults are shared by every run: whatever lands there shows here.
+      let defaults = Bundle.main.bundleIdentifier.flatMap(UserDefaults.standard.persistentDomain(forName:)) ?? [:]
       return [
         "qa": [
           "name": QA.name ?? "",
@@ -235,6 +238,12 @@
           "bundleIdentifier": Bundle.main.bundleIdentifier ?? "",
           "bundlePath": Bundle.main.bundlePath,
           "isActive": NSApp.isActive,
+          "reduceMotion": ReduceMotion.isOn,
+          "releaseBehavior": options.releaseBehavior,
+          "screens": QA.screens.map(\.rawValue),
+          "appearance": NSApp.effectiveAppearance.name.rawValue,
+          "language": Bundle.main.preferredLocalizations.first ?? "",
+          "userDefaultsKeys": defaults.keys.sorted(),
         ],
         "simulation": json(QASimulation.current.value),
         "windows": windows(),
