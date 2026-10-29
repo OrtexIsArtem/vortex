@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
@@ -90,20 +91,29 @@ private struct Dock: View {
 private struct KeyboardCleaningButton: View {
   let action: @MainActor () -> Void
   @State private var isHovered = false
+  /// Accessibility off: a yellow warning on the button (S22.1); what a click does is the shell's.
+  @SharedReader(.permissionStatuses) private var permissionStatuses
 
   var body: some View {
+    let showsWarning = PermissionMark(permissionStatuses[.accessibility]) == .warning
     Button(action: action) {
       Image(systemName: "keyboard")
         .font(.system(size: 13))
         .foregroundStyle(isHovered ? VortexColor.primaryText : VortexColor.tertiaryText)
         .frame(width: 30, height: 30)
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isHovered ? VortexColor.track : .clear))
+        .overlay(alignment: .topTrailing) {
+          if showsWarning {
+            WarningMark(.accessibility, size: 9).offset(x: 2, y: -1)
+          }
+        }
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .onHover { isHovered = $0 }
-    .help(Text("Lock the keyboard for cleaning", bundle: .module))
+    .help(showsWarning ? Text(Permission.accessibility.offLabel) : Text("Lock the keyboard for cleaning", bundle: .module))
     .accessibilityLabel(Text("Lock the keyboard for cleaning", bundle: .module))
+    .accessibilityValue(showsWarning ? Text(Permission.accessibility.offLabel) : Text(verbatim: ""))
   }
 }
 

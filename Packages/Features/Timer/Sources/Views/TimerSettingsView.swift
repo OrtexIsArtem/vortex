@@ -41,6 +41,13 @@ struct TimerSettingsView: View {
           .help(Text("Plays the sound and the flashes in 3 seconds: close the window to watch the notch, point at it to stop them", bundle: .module))
         }
       }
+
+      PermissionRows(
+        TimerModule.permissionNeeds,
+        statuses: store.permissionStatuses,
+        turnOn: { store.send(.turnOnTapped($0)) },
+        restart: { store.send(.restartTapped) }
+      )
     }
     .onAppear { store.send(.settingsShown) }
   }

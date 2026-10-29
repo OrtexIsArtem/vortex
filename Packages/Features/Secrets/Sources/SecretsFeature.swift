@@ -69,6 +69,75 @@ struct SecretsFeature: Sendable {
   static let allowButtonID = "secrets.allow"
   static let denyButtonID = "secrets.deny"
 
+  /// Where the onboarding's "Connect" stands (S27, S78).
+  enum ConnectStatus: Equatable, Sendable {
+    case idle
+    case running
+    /// Added to Claude Code.
+    case added
+    /// `claude` isn't on the user's PATH.
+    case notInstalled
+    /// Any other failure, the time limit included; only the exit code is kept, never the output.
+    case failed(exitCode: Int32)
+  }
+
+  /// Connect's wall-clock limit (S78): reached, the run stops and the step shows the failure line.
+  static let connectLimit: Duration = .seconds(30)
+  /// Each run's own limit inside it: checking for `claude`, then adding.
+  static let checkTime: Duration = .seconds(5)
+  static let connectTime: Duration = .seconds(25)
+  /// The line around the PATH in the check's output: whatever a startup file prints comes before it and is never read.
+  static let pathMarker = "__vortex_claude_path__"
+  /// Asks the user's login shell, with the terminal's environment, for its PATH only: plain commands that zsh, bash and
+  /// fish run alike (`printenv` is a program, not shell syntax). Vortex looks for `claude` itself (`claudeCandidates`).
+  static var pathCommand: String {
+    "echo \(pathMarker); printenv PATH; echo \(pathMarker)"
+  }
+
+  /// The PATH between the two markers of `pathCommand`'s output; nil unless both markers stand on lines of their own
+  /// with at most one line between them. An unset PATH reads as empty.
+  static func markedPath(_ output: String) -> String? {
+    // Any line end: "\r\n" is one Character in Swift, and `isNewline` counts it.
+    let lines = output.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map(String.init)
+    guard let start = lines.firstIndex(of: pathMarker),
+          let end = lines[(start + 1)...].firstIndex(of: pathMarker),
+          end - start <= 2
+    else { return nil }
+    return end - start == 2 ? lines[start + 1] : ""
+  }
+
+  /// Where to look for `claude`, in order: each absolute directory on the PATH, then the places Claude Code's
+  /// installers use (code.claude.com's install docs), which a non-interactive shell may lack: the native installer's
+  /// ~/.local/bin, often put on the PATH only in .zshrc; the old local install, which .zshrc reaches by an alias;
+  /// Homebrew. Every candidate is an absolute path to a file named `claude`.
+  static func claudeCandidates(path: String, home: URL) -> [URL] {
+    let onPath = path.split(separator: ":").map(String.init).filter { $0.hasPrefix("/") }
+    let installers = [
+      home.appending(path: ".local/bin").path, home.appending(path: ".claude/local").path, "/opt/homebrew/bin", "/usr/local/bin",
+    ]
+    var seen = Set<String>()
+    return (onPath + installers)
+      .map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL.appending(path: "claude") }
+      .filter { seen.insert($0.path).inserted }
+  }
+
+  /// `text` as one word for the shell, whatever it holds.
+  static func shellQuoted(_ text: String) -> String {
+    "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'"
+  }
+  /// The environment variable the connect command reads the token from.
+  static let tokenVariable = "VORTEX_MCP_TOKEN"
+
+  /// In a QA run, the user's Vortex owns the default port, so the run treats it as taken.
+  static var qaTakenPorts: Set<Int> {
+    #if DEBUG
+      QA.isActive ? [SecretsSettings.defaultPort] : []
+    #else
+      []
+    #endif
+  }
+  static let claudeCodeURL = URL(string: "https://claude.com/claude-code")!
+
   enum ServerStatus: Equatable, Sendable {
     case off
     case starting
@@ -103,8 +172,29 @@ struct SecretsFeature: Sendable {
     var alarms = 0
     @Shared(.secretsSettings) var settings
     @Shared(.notchIndicators) var indicators
+    /// What macOS says about Notifications, read by the shell: the settings row (S22.3).
+    @SharedReader(.permissionStatuses) var permissionStatuses
+    /// The onboarding's Claude Code step (S27, S78).
+    var connect = ConnectStatus.idle
+    /// Ports this Vortex never serves on: in a QA run, the user's own Vortex's default port (review-2 R3), as two
+    /// listeners may share a port and Claude Code's requests would then reach the run.
+    var takenPorts = SecretsFeature.qaTakenPorts
 
     init() {}
+
+    /// The Claude Code step is done: Connect worked once, or a client connected, or one is connected now.
+    var isClaudeStepDone: Bool {
+      settings.addedToClaudeCode || settings.hasConnected || !sessions.isEmpty
+    }
+
+    /// The connect command run from the onboarding, with the absolute path of the `claude` Vortex found: the token comes
+    /// from `tokenVariable`, so the command itself never holds it, and nothing the shell prints shows.
+    func connectRunCommand(claude: String) -> String {
+      let claude = SecretsFeature.shellQuoted(claude)
+      return "\(claude) mcp remove --scope user vortex >/dev/null 2>&1; "
+        + "\(claude) mcp add --transport http --scope user vortex http://127.0.0.1:\(settings.port)/mcp "
+        + "--header \"Authorization: Bearer $\(SecretsFeature.tokenVariable)\" >/dev/null 2>&1"
+    }
 
     /// What connects Claude Code once, for every project; an earlier connection, such as to another port, goes first,
     /// as `claude mcp add` refuses a name it has.
@@ -167,6 +257,19 @@ struct SecretsFeature: Sendable {
     case commandEnded(MCPCall.ID, ran: Bool)
     case copyConnectCommandTapped
     case portChanged(Int)
+    /// The section in Settings › Features appeared: the statuses are read again (S47).
+    case settingsShown
+    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    case turnOnTapped(Permission)
+    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    case restartTapped
+    /// "Connect" or "Connect again" in the onboarding's Claude Code step.
+    case connectTapped
+    case connectFinished(ConnectStatus)
+    /// `connectLimit` passed while Connect still runs.
+    case connectTimeLimitReached
+    /// The link to Claude Code's page, when it isn't installed.
+    case getClaudeCodeTapped
   }
 
   @Dependency(\.calendar) var calendar
@@ -177,12 +280,18 @@ struct SecretsFeature: Sendable {
   @Dependency(\.date.now) var now
   @Dependency(\.keychainClient) var keychain
   @Dependency(\.notificationClient) var notifications
+  @Dependency(\.fileClient) var files
   @Dependency(\.pasteboardClient) var pasteboard
+  @Dependency(\.permissionPage) var permissionPage
+  @Dependency(\.permissionsClient) var permissions
   @Dependency(\.mcpServer) var server
+  @Dependency(\.systemClient) var system
   @Dependency(\.uuid) var uuid
 
   private enum CancelID: Hashable {
     case load
+    case connect
+    case connectLimit
     case token
     case server
     case buttons
@@ -206,6 +315,8 @@ struct SecretsFeature: Sendable {
         guard !state.isEnabled else { return .none }
         state.isEnabled = true
         state.server = .starting
+        // Done before this launch: Connect worked, or Claude Code connected (S78).
+        markClaudeStep(state.isClaudeStepDone)
         // Requests from before, such as a run Vortex quit in, are over: so are their notifications.
         guard state.isLoaded else { return .merge(load(), listenToNotificationButtons(), forgetNotifications()) }
         return .merge(expire(&state), startServing(state), listenToNotificationButtons(), forgetNotifications())
@@ -395,14 +506,101 @@ struct SecretsFeature: Sendable {
         return .run { _ in await pasteboard.write(.text(command), true, nil) }
 
       case let .portChanged(port):
-        guard SecretsSettings.ports.contains(port), port != state.settings.port else { return .none }
+        guard SecretsSettings.ports.contains(port), port != state.settings.port, !state.takenPorts.contains(port) else {
+          return .none
+        }
         state.$settings.withLock { $0.port = port }
         let reset = resetSessions(&state)
         guard state.isEnabled else { return reset }
         state.server = .starting
         return .merge(reset, serve(state))
+
+      case .settingsShown:
+        return .run { _ in await permissions.refresh() }
+
+      case let .turnOnTapped(permission):
+        return .run { _ in await permissionPage.open(permission) }
+
+      case .restartTapped:
+        return .run { _ in await system.relaunch() }
+
+      case .connectTapped:
+        // Only while the server listens, so the command names a port Claude can reach (S78).
+        guard case .listening = state.server, let token = state.token, state.connect != .running else { return .none }
+        state.connect = .running
+        return .merge(
+          .run { [state] send in
+            await send(.connectFinished(try await connect(state, token: token)))
+          } catch: { error, send in
+            logger.error("Connecting Claude Code failed: \(error, privacy: .public)")
+            await send(.connectFinished(.failed(exitCode: -1)))
+          }
+          .cancellable(id: CancelID.connect, cancelInFlight: true),
+          // One wall-clock limit for the whole step: the shell's first start, the check and the connect (S78).
+          .run { send in
+            try await clock.sleep(for: Self.connectLimit)
+            await send(.connectTimeLimitReached)
+          }
+          .cancellable(id: CancelID.connectLimit, cancelInFlight: true)
+        )
+
+      case let .connectFinished(status):
+        guard state.connect == .running else { return .none }
+        state.connect = status
+        if status == .added {
+          state.$settings.withLock { $0.addedToClaudeCode = true }
+        }
+        return .cancel(id: CancelID.connectLimit)
+
+      case .connectTimeLimitReached:
+        // The whole step, the shell's first start included, never waits longer (S78): the run is stopped, which
+        // stops everything it started, and it ends as any other failure.
+        guard state.connect == .running else { return .none }
+        state.connect = .failed(exitCode: 143)
+        return .cancel(id: CancelID.connect)
+
+      case .getClaudeCodeTapped:
+        return .run { _ in await files.open(Self.claudeCodeURL) }
       }
     }
+    .onChange(of: \.isClaudeStepDone) { _, isDone in
+      Reduce { _, _ in
+        markClaudeStep(isDone)
+        return .none
+      }
+    }
+  }
+
+  /// The onboarding offers Next instead of Skip once the step is done (S19, S27).
+  private func markClaudeStep(_ isDone: Bool) {
+    guard isDone else { return }
+    @Shared(.onboardingStepsDone) var done
+    $done.withLock { _ = $0.insert(Self.id) }
+  }
+
+  /// Asks the user's shell for its PATH (`pathCommand`), finds `claude` itself (`claudeExecutable`), then runs the
+  /// connect command with that path, in the user's shell with the terminal's environment, as Keys runs Claude's
+  /// commands, and the token only in the environment. Both run non-interactive (`shell -c`), so neither lands in the
+  /// shell's history. Only the marked PATH is read from the check; the connect's output is never kept, as it could echo
+  /// the token.
+  private func connect(_ state: State, token: String) async throws -> ConnectStatus {
+    let check = try await commands.run(Self.pathCommand, nil, [:], Self.checkTime)
+    guard !check.timedOut else { return .failed(exitCode: check.exitCode) }
+    let path = Self.markedPath(String(decoding: check.stdout, as: UTF8.self)) ?? ""
+    guard let claude = await claudeExecutable(path: path) else { return .notInstalled }
+    let output = try await commands.run(state.connectRunCommand(claude: claude.path), nil, [Self.tokenVariable: token], Self.connectTime)
+    return output.exitCode == 0 && !output.timedOut ? .added : .failed(exitCode: output.exitCode)
+  }
+
+  /// The first of `claudeCandidates` that is an existing file this user may run: always an absolute path to a file
+  /// named `claude`, checked here before anything runs it. None: Claude Code isn't installed.
+  private func claudeExecutable(path: String) async -> URL? {
+    for candidate in Self.claudeCandidates(path: path, home: URL.homeDirectory) {
+      if let info = await files.info(candidate), !info.isDirectory, info.isExecutable {
+        return candidate
+      }
+    }
+    return nil
   }
 
   private static func byName(_ lhs: SecretKey, _ rhs: SecretKey) -> Bool {
@@ -560,6 +758,10 @@ struct SecretsFeature: Sendable {
   private func serve(_ state: State) -> Effect<Action> {
     guard state.isEnabled, let token = state.token else { return .none }
     let port = state.settings.port
+    // A port that is taken is never served on, however it got into the settings (review-2 R3).
+    guard !state.takenPorts.contains(port) else {
+      return .send(.server(.failed(String(localized: "Port \(port) is taken", bundle: .module))))
+    }
     return .run { send in
       for await event in server.serve(port, token) {
         await send(.server(event))
@@ -686,10 +888,8 @@ struct SecretsFeature: Sendable {
       NotificationClient.Button(id: Self.denyButtonID, title: String(localized: "Deny", bundle: .module)),
     ]
     let id = Self.notificationID(approval.id)
-    return .run { _ in
-      guard await notifications.requestAuthorization() else { return }
-      await notifications.post(id, title, body, buttons)
-    }
+    // Never asks whether Vortex may notify (S25): without Notifications macOS drops it, and the request waits in the tab.
+    return .run { _ in await notifications.post(id, title, body, buttons) }
     .cancellable(id: CancelID.notification(approval.id), cancelInFlight: true)
   }
 

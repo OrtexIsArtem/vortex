@@ -36,6 +36,8 @@ public struct TimerFeature: Sendable {
     var isAlarming = false
     /// System sounds, for the settings.
     var sounds: [String] = []
+    /// What macOS says about Notifications, read by the shell: the settings row (S22.3).
+    @SharedReader(.permissionStatuses) var permissionStatuses
 
     public init() {}
 
@@ -76,12 +78,19 @@ public struct TimerFeature: Sendable {
     /// Plays the sound and starts the flashes three seconds later, so the window can be closed first.
     case testTapped
     case testAlarm
+    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    case turnOnTapped(Permission)
+    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    case restartTapped
   }
 
   @Dependency(\.continuousClock) var clock
   @Dependency(\.date.now) var now
   @Dependency(\.notificationClient) var notifications
+  @Dependency(\.permissionPage) var permissionPage
+  @Dependency(\.permissionsClient) var permissions
   @Dependency(\.soundClient) var sounds
+  @Dependency(\.systemClient) var system
 
   private enum CancelID {
     case tick
@@ -160,7 +169,17 @@ public struct TimerFeature: Sendable {
         return startRun(minutes: Self.addedMinutes, &state)
 
       case .settingsShown:
-        return .run { send in await send(.soundsLoaded(await sounds.names())) }
+        return .merge(
+          .run { send in await send(.soundsLoaded(await sounds.names())) },
+          // The permission row shows what macOS says now (S47).
+          .run { _ in await permissions.refresh() }
+        )
+
+      case let .turnOnTapped(permission):
+        return .run { _ in await permissionPage.open(permission) }
+
+      case .restartTapped:
+        return .run { _ in await system.relaunch() }
 
       case let .soundsLoaded(names):
         state.sounds = names
@@ -206,12 +225,9 @@ public struct TimerFeature: Sendable {
     state.now = now
     state.isAlarming = false
     state.$run.withLock { $0 = TimerRun.started(minutes: minutes, at: now) }
-    return .merge(
-      tick(state),
-      saveRun(state),
-      // The first run asks once whether Vortex may notify; later calls return the saved answer.
-      .run { _ in _ = await notifications.requestAuthorization() }
-    )
+    // Never asks whether Vortex may notify (S25): without Notifications the end shows in the notch only, and the
+    // settings row offers the page.
+    return .merge(tick(state), saveRun(state))
   }
 
   /// Sends `runChanged` whenever the shared run changes. A change from outside the reducer (another Vortex, the run

@@ -22,7 +22,7 @@
       launchAtLoginClient = .qa
       notificationClient = .qa
       pasteboardClient = .qa
-      permissionsClient = .simulated(SimulatedPermissions())
+      permissionsClient = QAPermissions.client
       quickLookClient = .qa
       screenCaptureClient = .qa
       soundClient = .qa
@@ -170,14 +170,14 @@
   }
 
   extension KeyboardLockClient {
-    /// Never a real event tap: the lock holds when `keyboardAccess` is on and `keyboardLockRefuses` off; asking for
-    /// access shows nothing.
+    /// Never a real event tap: the lock holds while the simulated Accessibility is on in System Settings (`perm`), as
+    /// a tap works exactly then, and `keyboardLockRefuses` is off; asking for access shows nothing.
     static let qa: KeyboardLockClient = {
       var client = KeyboardLockClient()
-      client.hasAccess = { simulation.keyboardAccess }
+      client.hasAccess = { QAPermissions.accessibilityIsOn }
       client.requestAccess = { QALog.record("keyboardLock", "requestAccess", ["shown": "nothing"]) }
       client.lock = {
-        let isLocked = simulation.keyboardAccess && !simulation.keyboardLockRefuses
+        let isLocked = QAPermissions.accessibilityIsOn && !simulation.keyboardLockRefuses
         QALog.record("keyboardLock", "lock", ["locked": "\(isLocked)"])
         return isLocked
       }
@@ -255,7 +255,8 @@
           "title": title,
           "body": body,
           "buttons": buttons.map(\.id).joined(separator: ","),
-          "shown": "\(simulation.notificationsAllowed)",
+          // macOS shows a post only while Notifications are allowed now, in the simulated System Settings.
+          "shown": "\(QAPermissions.simulated.state.settings[.notifications] == .granted)",
         ])
       }
       client.remove = { prefix in QALog.record("notifications", "remove", ["prefix": prefix]) }
@@ -287,16 +288,12 @@
   }
 
   extension ScreenCaptureClient {
-    /// A capture sees fixtures/screen.png, or a plain picture, as the main display; only with `screenAccess` on.
+    /// A capture sees fixtures/screen.png, or a plain picture, as the main display; only while the simulated Screen
+    /// Recording works for this process (`QAPermissions.screenCaptureWorks`).
     static let qa: ScreenCaptureClient = {
       var client = ScreenCaptureClient()
-      client.hasAccess = { simulation.screenAccess }
-      client.requestAccess = {
-        QALog.record("screenCapture", "requestAccess", ["shown": "nothing", "answer": "\(simulation.screenAccess)"])
-        return simulation.screenAccess
-      }
       client.captureScreenUnderPointer = {
-        guard simulation.screenAccess else {
+        guard QAPermissions.screenCaptureWorks else {
           QALog.record("screenCapture", "capture", ["result": "no access"])
           throw QAError("Screen Recording is off in the simulation")
         }

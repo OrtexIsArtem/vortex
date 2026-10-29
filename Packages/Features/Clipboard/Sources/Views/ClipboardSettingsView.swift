@@ -52,6 +52,13 @@ struct ClipboardSettingsView: View {
           Hairline()
         }
       }
+
+      PermissionRows(
+        ClipboardModule.permissionNeeds,
+        statuses: store.permissionStatuses,
+        turnOn: { store.send(.turnOnTapped($0)) },
+        restart: { store.send(.restartTapped) }
+      )
     }
     .task(id: isWindowOpen) {
       if isWindowOpen { store.send(.settingsShown) }

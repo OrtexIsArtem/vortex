@@ -118,8 +118,7 @@ public final class ShellController: NSObject {
     /// Lets scripts drive a debug build without touching the pointer, through distributed notifications:
     /// `io.github.ortexisartem.vortex.debug.toggle` opens or closes the window as the shortcut does,
     /// `io.github.ortexisartem.vortex.debug.indicator` shows or hides a test indicator in the notch,
-    /// `io.github.ortexisartem.vortex.debug.permissions` asks now for Screen Recording and Automation of the running
-    /// browsers,
+    /// `io.github.ortexisartem.vortex.debug.permissions` asks now for Automation of the running browsers,
     /// `io.github.ortexisartem.vortex.debug.tab` switches to a tab (userInfo `id`: a feature id, or `settings` with an
     /// optional `section`).
     private func listenForDebugCommands() {
@@ -144,8 +143,7 @@ public final class ShellController: NSObject {
         object: nil,
         queue: .main
       ) { _ in
-        // Screen Recording, then Automation of each running browser; the system asks once for each.
-        _ = ScreenCaptureClient.liveValue.requestAccess()
+        // Automation of each running browser; the system asks once for each. Screen Recording has its page (S24).
         MainActor.assumeIsolated { FrontWindowClient.askForBrowserAutomation() }
       }
       center.addObserver(

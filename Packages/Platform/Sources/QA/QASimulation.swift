@@ -5,13 +5,14 @@
   /// What the simulated system services of a QA run answer. Kept in DataFolder/.qa/simulation.json, so a relaunch
   /// keeps it; changed with the `sim set` command. Missing or unreadable keys fall back to their defaults.
   struct QASimulation: Codable, Equatable, Sendable {
-    /// Accessibility for keyboard cleaning, until the simulated permissions arrive (stage 7, task 4).
+    /// No longer read or set (`sim set` refuses it): the keyboard lock follows the simulated Accessibility (`perm`).
     var keyboardAccess = false
     /// macOS refuses the lock though access reads on, as it does when the switch in System Settings went stale.
     var keyboardLockRefuses = false
-    /// Screen Recording for screenshots, until the simulated permissions arrive.
+    /// No longer read: a capture follows the simulated Screen Recording (`perm`, `QAPermissions.screenCaptureWorks`).
+    /// Kept so older simulation files still parse; `sim set` refuses it.
     var screenAccess = false
-    /// The answer to the notifications prompt, until the simulated permissions arrive.
+    /// No longer set (`sim set` refuses it); kept so older files parse. The notifications prompt is `perm answer=`.
     var notificationsAllowed = false
     /// enabled, disabled or requiresApproval.
     var launchAtLogin = "disabled"
@@ -99,10 +100,9 @@
         }
         func text() -> String? { value.isEmpty ? nil : value }
         switch key {
-        case "keyboardAccess": copy.keyboardAccess = try flag()
+        case "keyboardAccess", "screenAccess", "notificationsAllowed":
+          throw QAError("\(key) is gone: use perm, e.g. perm set=accessibility:granted")
         case "keyboardLockRefuses": copy.keyboardLockRefuses = try flag()
-        case "screenAccess": copy.screenAccess = try flag()
-        case "notificationsAllowed": copy.notificationsAllowed = try flag()
         case "launchAtLogin":
           guard ["enabled", "disabled", "requiresApproval"].contains(value) else {
             throw QAError("launchAtLogin takes enabled, disabled or requiresApproval, not \"\(value)\"")
@@ -116,7 +116,7 @@
         case "recognizedText": copy.recognizedText = value
         default:
           throw QAError(
-            "sim set knows keyboardAccess, keyboardLockRefuses, screenAccess, notificationsAllowed, launchAtLogin, "
+            "sim set knows keyboardLockRefuses, launchAtLogin, "
               + "frontApp, frontTitle, frontURL, chooseFolder, chooseApp and recognizedText, not \(key)"
           )
         }

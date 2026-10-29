@@ -3,7 +3,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The Tasks section in Settings › Features: the shortcut, and whether Vortex may record the screen.
+/// The Tasks section in Settings › Features: the shortcut, and a row while Screen Recording isn't working (S22.3, S40).
 struct TasksSettingsView: View {
   let store: StoreOf<TasksFeature>
 
@@ -16,21 +16,12 @@ struct TasksSettingsView: View {
         HotkeyRecorder(.captureTask, label: Text("New task", bundle: .module))
       }
 
-      SettingsRow(
-        title: Text("Screen Recording", bundle: .module),
-        caption: store.hasScreenAccess
-          ? Text("Allowed: tasks get screenshots and window titles.", bundle: .module)
-          : Text("Needed for screenshots and window titles. After allowing it, open Vortex again.", bundle: .module)
-      ) {
-        if !store.hasScreenAccess {
-          Button {
-            store.send(.openScreenSettingsTapped)
-          } label: {
-            Text("Open System Settings", bundle: .module)
-          }
-          .buttonStyle(.quietCapsule)
-        }
-      }
+      PermissionRows(
+        TasksModule.permissionNeeds,
+        statuses: store.permissionStatuses,
+        turnOn: { store.send(.turnOnTapped($0)) },
+        restart: { store.send(.restartTapped) }
+      )
 
       Text("Done tasks are deleted with their screenshots 30 days after they were done.", bundle: .module)
         .font(.system(size: 11.5))

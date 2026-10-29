@@ -199,14 +199,18 @@ struct QASimulationTests {
   @Test
   func setChangesOnlyKnownKeysWithGoodValues() throws {
     var simulation = QASimulation()
-    try simulation.set(["keyboardAccess": "true", "launchAtLogin": "requiresApproval", "frontTitle": "", "chooseApp": "com.apple.Safari"])
-    #expect(simulation.keyboardAccess)
+    try simulation.set(["keyboardLockRefuses": "true", "launchAtLogin": "requiresApproval", "frontTitle": "", "chooseApp": "com.apple.Safari"])
+    #expect(simulation.keyboardLockRefuses)
     #expect(simulation.launchAtLogin == "requiresApproval")
     #expect(simulation.frontTitle == nil)
     #expect(simulation.chooseApp == "com.apple.Safari")
 
     let before = simulation
-    #expect(throws: QAError.self) { try simulation.set(["keyboardAccess": "yes"]) }
+    #expect(throws: QAError.self) { try simulation.set(["keyboardLockRefuses": "yes"]) }
+    // Gone: the simulated permissions (`perm`) are the one source of truth (R10).
+    for key in ["keyboardAccess", "screenAccess", "notificationsAllowed"] {
+      #expect(throws: QAError.self) { try simulation.set([key: "true"]) }
+    }
     #expect(throws: QAError.self) { try simulation.set(["screenAccess": "true", "volume": "11"]) }
     #expect(throws: QAError.self) { try simulation.set(["launchAtLogin": "maybe"]) }
     #expect(simulation == before)
@@ -412,10 +416,10 @@ struct QAClientsTests {
   @Test
   func theKeyboardLockIsNeverATap() async {
     let lock = KeyboardLockClient.qa
-    QASimulation.update { $0.keyboardAccess = false }
+    QAPermissions.simulated.set(.accessibility, to: .denied)
     #expect(!lock.hasAccess())
     #expect(await !lock.lock())
-    QASimulation.update { $0.keyboardAccess = true }
+    QAPermissions.simulated.set(.accessibility, to: .granted)
     #expect(await lock.lock())
     QASimulation.update { $0.keyboardLockRefuses = true }
     #expect(await !lock.lock())

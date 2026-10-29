@@ -28,6 +28,8 @@ public struct ClipboardFeature: Sendable {
     /// Running apps, offered when the user adds an app to ignore.
     var runningApps: [AppInfo] = []
     @Shared(.clipboardSettings) var settings
+    /// What macOS says about Paste from Other Apps, read by the shell: the settings row and S57.
+    @SharedReader(.permissionStatuses) var permissionStatuses
 
     public init() {}
   }
@@ -60,6 +62,10 @@ public struct ClipboardFeature: Sendable {
     case chooseAppTapped
     case appChosen(AppInfo?)
     case stopIgnoringAppTapped(bundleID: String)
+    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    case turnOnTapped(Permission)
+    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    case restartTapped
   }
 
   @Dependency(\.appsClient) var apps
@@ -69,6 +75,9 @@ public struct ClipboardFeature: Sendable {
   @Dependency(\.date.now) var now
   @Dependency(\.fileClient) var files
   @Dependency(\.pasteboardClient) var pasteboard
+  @Dependency(\.permissionPage) var permissionPage
+  @Dependency(\.permissionsClient) var permissions
+  @Dependency(\.systemClient) var system
   @Dependency(\.uuid) var uuid
 
   private enum CancelID {
@@ -84,7 +93,7 @@ public struct ClipboardFeature: Sendable {
     Reduce { state, action in
       switch action {
       case .start:
-        guard !state.isLoaded else { return watch() }
+        guard !state.isLoaded else { return watch(state) }
         // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
         return .run { [files] send in
           try await database.migrate(ClipboardItem.migrator)
@@ -113,12 +122,12 @@ public struct ClipboardFeature: Sendable {
         state.items = IdentifiedArray(items, uniquingIDsWith: { first, _ in first })
         state.items.sort(by: Self.displayOrder)
         state.isLoaded = true
-        return watch()
+        return watch(state)
 
       case .loadFailed:
         state.isLoaded = true
         state.savesToDisk = false
-        return watch()
+        return watch(state)
 
       case let .copied(copied):
         let copy = copied.copy
@@ -270,7 +279,17 @@ public struct ClipboardFeature: Sendable {
         return .none
 
       case .settingsShown:
-        return .run { send in await send(.runningAppsLoaded(apps.running())) }
+        return .merge(
+          .run { send in await send(.runningAppsLoaded(apps.running())) },
+          // The permission row shows what macOS says now (S47).
+          .run { _ in await permissions.refresh() }
+        )
+
+      case let .turnOnTapped(permission):
+        return .run { _ in await permissionPage.open(permission) }
+
+      case .restartTapped:
+        return .run { _ in await system.relaunch() }
 
       case let .runningAppsLoaded(apps):
         state.runningApps = apps
@@ -368,14 +387,37 @@ public struct ClipboardFeature: Sendable {
     return nil
   }
 
-  private func watch() -> Effect<Action> {
-    .run { send in
-      for await copy in pasteboard.copies() {
-        // Hashing an image is not for the main thread, so it happens here.
-        await send(.copied(ClipboardCopy(copy)))
+  /// Records copies, except while Paste from Other Apps reads `notGranted` (S57): macOS then enforces pasteboard
+  /// privacy and Vortex isn't allowed, so reading a copy could make macOS alert. The pasteboard isn't read at all then,
+  /// nothing is recorded, and watching starts again when the status changes.
+  private func watch(_ state: State) -> Effect<Action> {
+    .run { [statuses = state.$permissionStatuses] send in
+      let (changes, continuation) = AsyncStream.makeStream(of: Bool.self, bufferingPolicy: .bufferingNewest(1))
+      let subscription = statuses.publisher
+        .map(Self.mayReadPasteboard)
+        .removeDuplicates()
+        .sink { continuation.yield($0) }
+      defer { subscription.cancel() }
+      var copying: Task<Void, Never>?
+      defer { copying?.cancel() }
+      for await mayRead in changes {
+        copying?.cancel()
+        copying = nil
+        guard mayRead else { continue }
+        copying = Task {
+          for await copy in pasteboard.copies() {
+            // Hashing an image is not for the main thread, so it happens here.
+            await send(.copied(ClipboardCopy(copy)))
+          }
+        }
       }
     }
     .cancellable(id: CancelID.watch, cancelInFlight: true)
+  }
+
+  /// The pasteboard may be read: Paste from Other Apps isn't off (granted, not needed, or not read yet).
+  static func mayReadPasteboard(_ statuses: [Permission: PermissionStatus]) -> Bool {
+    statuses[.pasteboard] != .notGranted
   }
 
   /// Adds a new item on top and drops the oldest unpinned ones beyond the limit.

@@ -89,10 +89,21 @@ public struct TasksView: View {
           .frame(width: 30, height: 30)
           .background(Circle().fill(VortexColor.raised))
           .contentShape(Circle())
+          .overlay(alignment: .topTrailing) {
+            // Screen Recording is off: a click opens its page instead of capturing (S22.1, S23).
+            if store.showsScreenRecordingWarning {
+              WarningMark(.screenRecording, size: 9)
+                .offset(x: 3, y: -2)
+            }
+          }
       }
       .buttonStyle(.plain)
-      .help(Text("New task from the screen", bundle: .module))
+      .help(
+        store.showsScreenRecordingWarning
+          ? Text(Permission.screenRecording.offLabel) : Text("New task from the screen", bundle: .module)
+      )
       .accessibilityLabel(Text("New task from the screen", bundle: .module))
+      .accessibilityValue(store.showsScreenRecordingWarning ? Text(Permission.screenRecording.offLabel) : Text(verbatim: ""))
     }
     if let cutout {
       HStack(spacing: 0) {

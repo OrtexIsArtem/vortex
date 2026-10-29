@@ -67,7 +67,9 @@ private struct SidebarView: View {
         SidebarButton(
           symbol: feature.symbol,
           title: Text(feature.title),
-          isSelected: store.selectedTab == .feature(feature.id)
+          isSelected: store.selectedTab == .feature(feature.id),
+          // A permission the feature needs is off (S22.2, S39).
+          warning: feature.permissionNeeds.firstOff(in: store.permissionStatuses)
         ) {
           store.send(.tabSelected(.feature(feature.id)))
         }
@@ -94,6 +96,9 @@ private struct SidebarButton: View {
   let symbol: String
   let title: Text
   let isSelected: Bool
+  /// A yellow dot on the icon: decoration with its own tooltip ("Notifications are off"); a click on it opens the tab
+  /// like the icon (S39).
+  var warning: Permission?
   let action: () -> Void
   @State private var isHovered = false
 
@@ -107,12 +112,18 @@ private struct SidebarButton: View {
           RoundedRectangle(cornerRadius: 14, style: .continuous)
             .fill(isSelected ? VortexColor.raised : .clear)
         )
+        .overlay(alignment: .topTrailing) {
+          if let warning {
+            WarningMark(warning, style: .dot).padding(9)
+          }
+        }
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .onHover { isHovered = $0 }
     .help(title)
     .accessibilityLabel(title)
+    .accessibilityValue(warning.map { Text($0.offLabel) } ?? Text(verbatim: ""))
     .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 

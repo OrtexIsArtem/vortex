@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import VortexCore
+import VortexPlatform
 
 /// Entry point the app shell reads; registered in Features/Registry.
 @MainActor
@@ -33,6 +34,29 @@ public enum TimerModule: FeatureModule {
   }
 
   public static func setEnabled(_ isEnabled: Bool) {
+    #if DEBUG
+      registerQACommands()
+    #endif
     store.send(isEnabled ? .start : .stop)
   }
+
+  #if DEBUG
+    private static var isRegistered = false
+
+    /// QA mode: `timer press=turnOn|restart` presses the Notifications row in the settings.
+    private static func registerQACommands() {
+      guard QA.isActive, !isRegistered else { return }
+      isRegistered = true
+      QA.register(command: "timer") { arguments in
+        let pressed = try QAPermissions.pressRow(
+          arguments,
+          needs: permissionNeeds,
+          statuses: store.permissionStatuses,
+          turnOn: { store.send(.turnOnTapped($0)) },
+          restart: { store.send(.restartTapped) }
+        )
+        guard pressed else { throw QAError("timer takes press=turnOn or press=restart") }
+      }
+    }
+  #endif
 }

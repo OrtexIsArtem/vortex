@@ -3,7 +3,9 @@
 | Setting | Default | Notes |
 | --- | --- | --- |
 | New task | none | the shortcut that starts a capture; stored by KeyboardShortcuts under `captureTask` |
-| Screen Recording | asked on the first capture | shown as allowed or not, with a button to System Settings; after allowing it Vortex must be opened again |
-| Asked for Screen Recording (not shown) | no | DataFolder/tasks.json: the system's prompt was shown once, so a capture without access opens System Settings |
 
+- Screen Recording off: a row "⚠ Screen Recording · Turns a screenshot into a new task." with "Turn on", which opens the shell's page.
+- Screen Recording granted for the next launch: the row reads "Works after restart" with "Restart Vortex", without yellow.
+- Granted, not needed, or not read yet: no row.
+- The section re-reads the statuses when it appears (`PermissionsClient.refresh`).
 - Done tasks are deleted with their pictures 30 days after they were done; this is fixed, not a setting.

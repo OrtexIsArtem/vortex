@@ -23,6 +23,21 @@ struct FileClientTests {
     try FileManager.default.removeItem(at: root)
   }
 
+  /// Whether this user may run a file, through a link too; a folder never counts.
+  @Test
+  func infoSaysWhetherAFileRuns() async throws {
+    defer { try? FileManager.default.removeItem(at: root) }
+    let file = root.appending(path: "claude")
+    try Data("#!/bin/sh\n".utf8).write(to: file)
+    #expect(await files.info(file)?.isExecutable == false)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path)
+    #expect(await files.info(file)?.isExecutable == true)
+    let link = root.appending(path: "link")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: file)
+    #expect(await files.info(link)?.isExecutable == true)
+    #expect(await files.info(root)?.isExecutable == false)
+  }
+
   @Test
   func theWatcherReportsNewFilesAndTheFilesOfFoldersMovedIn() async throws {
     let reported = LockIsolated<Set<String>>([])

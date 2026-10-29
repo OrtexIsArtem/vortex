@@ -12,6 +12,7 @@
       let window = WindowController.shared
       QA.registerWindow(id: "notch", mode: { store.openReason.map { "\($0)" } }) { window.qaPanel }
       QA.registerState(section: "shell") { State(store: store, window: window) }
+      PermissionsQA.install(store: store)
       QA.register(command: "entry") { arguments in
         try perform(Entry(arguments), store: store, window: window)
       }

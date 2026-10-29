@@ -50,7 +50,10 @@ struct SecretsFeatureTests {
       }
       $0.mcpServer.serve = { [events] _, _ in events.stream }
       $0.mcpServer.reply = { [replies] _, result in replies.withValue { $0.append(result) } }
-      $0.notificationClient.requestAuthorization = { true }
+      $0.notificationClient.requestAuthorization = {
+        Issue.record("A request never asks whether Vortex may notify (S25)")
+        return false
+      }
       $0.notificationClient.post = { [posted, bodies] id, title, body, _ in
         posted.withValue { $0.append("\(id): \(title)") }
         bodies.withValue { $0.append(body) }
@@ -503,5 +506,30 @@ struct SecretsFeatureTests {
     #expect(copied.value.last?.text.contains("claude mcp add --transport http --scope user vortex http://127.0.0.1:47823/mcp") == true)
     #expect(copied.value.last?.concealed == true)
     await store.send(.stop)
+  }
+}
+
+/// The Notifications row in Keys' settings (S22.3, S40, S47).
+@MainActor
+struct SecretsPermissionTests {
+  @Test
+  func theSettingsRowOpensThePageRestartsAndReadsAgain() async {
+    let pages = LockIsolated<[Permission]>([])
+    let refreshes = LockIsolated(0)
+    let relaunches = LockIsolated(0)
+    let store = TestStore(initialState: SecretsFeature.State()) {
+      SecretsFeature()
+    } withDependencies: {
+      $0.permissionPage.open = { [pages] permission in pages.withValue { $0.append(permission) } }
+      $0.permissionsClient.refresh = { [refreshes] in refreshes.withValue { $0 += 1 } }
+      $0.systemClient.relaunch = { [relaunches] in relaunches.withValue { $0 += 1 } }
+    }
+    store.exhaustivity = .off
+    await store.send(.settingsShown).finish()
+    #expect(refreshes.value == 1)
+    await store.send(.turnOnTapped(.notifications)).finish()
+    #expect(pages.value == [.notifications])
+    await store.send(.restartTapped).finish()
+    #expect(relaunches.value == 1)
   }
 }

@@ -7,3 +7,6 @@
 
 - Stored in DataFolder/secrets.json, with whether Claude Code has connected once (the tab then stops showing how).
 - The status line says whether the server runs, starts, or why it could not (such as the port taken by another app).
+- Notifications off: a row "⚠ Notifications · Shows Claude's key requests when the window is closed." with "Turn on", which opens the shell's page; ↻ shows "Works after restart" with "Restart Vortex"; otherwise no row.
+- The section re-reads the statuses when it appears (`PermissionsClient.refresh`).
+- `addedToClaudeCode` in secrets.json: the onboarding's Connect worked once, so the step stays done after a relaunch.
