@@ -113,6 +113,7 @@ private struct KeyboardCleaningButton: View {
     .onHover { isHovered = $0 }
     .help(showsWarning ? Text(Permission.accessibility.offLabel) : Text("Lock the keyboard for cleaning", bundle: .module))
     .accessibilityLabel(Text("Lock the keyboard for cleaning", bundle: .module))
+    .accessibilityValue(showsWarning ? Text(Permission.accessibility.offLabel) : Text(verbatim: ""))
   }
 }
 

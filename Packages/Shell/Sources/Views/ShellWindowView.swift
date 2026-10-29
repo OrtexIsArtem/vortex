@@ -123,6 +123,7 @@ private struct SidebarButton: View {
     .onHover { isHovered = $0 }
     .help(title)
     .accessibilityLabel(title)
+    .accessibilityValue(warning.map { Text($0.offLabel) } ?? Text(verbatim: ""))
     .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 

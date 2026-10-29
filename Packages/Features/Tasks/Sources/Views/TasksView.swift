@@ -103,6 +103,7 @@ public struct TasksView: View {
           ? Text(Permission.screenRecording.offLabel) : Text("New task from the screen", bundle: .module)
       )
       .accessibilityLabel(Text("New task from the screen", bundle: .module))
+      .accessibilityValue(store.showsScreenRecordingWarning ? Text(Permission.screenRecording.offLabel) : Text(verbatim: ""))
     }
     if let cutout {
       HStack(spacing: 0) {
