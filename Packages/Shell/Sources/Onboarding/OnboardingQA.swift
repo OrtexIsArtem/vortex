@@ -18,7 +18,7 @@
           guard !store.onboarding.progress.completed else {
             throw QAError("the onboarding is completed; `onboarding reset` starts it again")
           }
-          store.send(.onboarding(.continueSetupTapped))
+          store.send(.continueSetupTapped)
         } else if arguments["reset"] != nil {
           store.send(.onboarding(.reset))
         } else {

@@ -170,6 +170,44 @@ struct ShellOnboardingTests {
 
   // MARK: - Pages (S7, S37)
 
+  /// A-B4: «Продовжити налаштування» closes the notch window before the onboarding comes forward (S37).
+  @Test
+  func continueSetupClosesTheNotchWindowFirst() async {
+    let store = makeStore(progress: .at(.basics))
+    await store.send(.openHotkeyPressed)
+    #expect(await notchWindow.next() == "present:hotkey")
+    await store.send(.continueSetupTapped)
+    #expect(store.state.openReason == nil)
+    #expect(await notchWindow.next() == "dismiss")
+    await store.receive(\.onboarding.continueSetupTapped)
+    #expect(store.state.onboarding.presentation == .flow(.window))
+    #expect(await onboardingWindow.next() == "window+activate")
+
+    // Once the onboarding is done, the menu item isn't there, and nothing changes.
+    let done = makeStore(progress: .finished)
+    await done.send(.openHotkeyPressed)
+    await done.send(.continueSetupTapped)
+    #expect(done.state.openReason == .hotkey)
+  }
+
+  /// A notch window opened before the first read closes when the onboarding window shows then (S7, S37).
+  @Test
+  func aNotchWindowOpenAtTheFirstReadClosesWhenTheOnboardingShows() async {
+    let store = makeStore(progress: .at(.welcome), statuses: nil)
+    await store.send(.openHotkeyPressed)
+    #expect(store.state.openReason == .hotkey)
+    await store.send(.permissionStatusesChanged(OnboardingNeeds.allOff))
+    #expect(store.state.openReason == nil)
+    await store.receive(\.onboarding.launched)
+    #expect(store.state.onboarding.presentation == .flow(.window))
+
+    // Done already, nothing shows at the first read, and the notch window stays.
+    let done = makeStore(progress: .finished, statuses: nil)
+    await done.send(.openHotkeyPressed)
+    await done.send(.permissionStatusesChanged(OnboardingNeeds.allOff))
+    #expect(done.state.openReason == .hotkey)
+  }
+
   @Test
   func aPageRequestClosesTheNotchWindowFirst() async {
     let store = makeStore()

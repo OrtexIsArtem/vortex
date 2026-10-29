@@ -144,7 +144,7 @@ public final class ShellController: NSObject {
   }
 
   @objc private func continueSetupFromMenu() {
-    store.send(.onboarding(.continueSetupTapped))
+    store.send(.continueSetupTapped)
   }
 
   @objc private func openFromMenu() {

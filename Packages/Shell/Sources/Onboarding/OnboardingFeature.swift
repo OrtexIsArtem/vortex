@@ -29,6 +29,9 @@ struct OnboardingFeature {
     var guideArmed: Permission?
     /// System Settings came to the front after a request from these pages (S16, S59).
     var settingsOpened: Set<Permission> = []
+    /// Permissions whose check waited for this launch's relaunch (S68): the pasteboard's page gives S59's hint only
+    /// once that relaunch still reads it off, as nothing before it can tell (S16).
+    var checkedAtLaunch: Set<Permission> = []
     /// "Click Allow in the notification…" under the notifications row, for 15 s or until the status changes (S13).
     var isNotificationHintVisible = false
     /// "Turn on" ignores more clicks until the status changes, or for 2 s (15 s for notifications) (S70).
@@ -219,7 +222,19 @@ struct OnboardingFeature {
       if let single, single.permission == permission, single.kind == .lockRefused {
         return true
       }
-      return settingsOpened.contains(permission) && statuses[permission] == .notGranted && !isPanel
+      guard !isPanel, statuses[permission] == .notGranted else { return false }
+      // The pasteboard can't be seen before a relaunch: until one still reads it off, the page says only "Checked
+      // after restart" and offers "Restart to check" (S16, S68).
+      if permission == .pasteboard {
+        return checkedAtLaunch.contains(.pasteboard) && rowState(.pasteboard) == .off
+      }
+      return settingsOpened.contains(permission)
+    }
+
+    /// Whether the window shows at launch: the onboarding isn't done, Vortex is blocked, or a page waits for this
+    /// relaunch (S7, S41, S50).
+    var showsAtLaunch: Bool {
+      !progress.completed || !missingRequired.isEmpty || progress.pendingSingle != nil
     }
 
     /// What Done's hint says (S18, S75).
@@ -402,6 +417,7 @@ struct OnboardingFeature {
       switch action {
       case .launched:
         // Any relaunch clears the pending checks; it was this onboarding's one restart (S68).
+        state.checkedAtLaunch = state.progress.pendingChecks
         if !state.progress.pendingChecks.isEmpty {
           state.progress.pendingChecks = []
           state.progress.restarted = true
@@ -590,7 +606,9 @@ struct OnboardingFeature {
         return .none
 
       case .singleCloseElapsed:
-        guard case let .single(single, surface) = state.presentation, single.isClosing else { return .none }
+        // Still granted when the 1.5 s are up; a revoke meanwhile kept the page (S24, S26).
+        guard case let .single(single, surface) = state.presentation, single.isClosing, closesOnGrant(single, state)
+        else { return .none }
         // Blocked: the next missing required page, in the window, or close (S41).
         if single.kind == .blocked, let next = state.missingRequired.first {
           state.presentation = .single(SinglePage(permission: next, kind: .blocked), .window)
@@ -604,6 +622,7 @@ struct OnboardingFeature {
       case .reset:
         state.progress = OnboardingProgress()
         state.settingsOpened = []
+        state.checkedAtLaunch = []
         state.turnOnIgnored = []
         state.openAtLoginChoice = nil
         state.isRelaunching = false
@@ -857,11 +876,14 @@ struct OnboardingFeature {
       effects.append(leavePanel(&state))
     }
     // A single page shows ✓ and closes after 1.5 s on a grant; one that waits for a relaunch offers "Restart Vortex"
-    // and "Later" instead.
-    if case .single(var single, let surface) = state.presentation, !single.isClosing, closesOnGrant(single, state) {
-      single.isClosing = true
-      state.presentation = .single(single, surface)
-      effects.append(closeSingleLater())
+    // and "Later" instead. Revoked within those 1.5 s, the page stays, with its checkbox off (S2, S26).
+    if case .single(var single, let surface) = state.presentation {
+      let closes = closesOnGrant(single, state)
+      if closes != single.isClosing {
+        single.isClosing = closes
+        state.presentation = .single(single, surface)
+        effects.append(closes ? closeSingleLater() : .cancel(id: CancelID.singleClose))
+      }
     }
     if state.isVisible, state.isFlow, state.page == .basics {
       effects.append(.send(.loginItemTick))

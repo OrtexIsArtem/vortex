@@ -236,6 +236,8 @@ struct ShellFeature {
     case permissionStatusesChanged([Permission: PermissionStatus])
     /// A feature asked for the page of one permission (S24).
     case permissionPageRequested(Permission)
+    /// «Продовжити налаштування» in the menu bar menu, and QA's `onboarding open` (S69, S80).
+    case continueSetupTapped
     case onboarding(OnboardingFeature.Action)
     /// An app came to the front, or quit: the guide panel follows System Settings (S15, S63).
     case appActivated(String)
@@ -451,6 +453,8 @@ struct ShellFeature {
           }
           if old.isEmpty {
             // The first read: the onboarding shows if it isn't done (S7), and an entry point waiting for it goes on (S64).
+            // A notch window opened before it closes first when the onboarding window shows (S37).
+            if state.onboarding.showsAtLaunch { effects.append(close(&state)) }
             effects.append(.send(.onboarding(.launched)))
             if let reason = state.pendingEntry {
               state.pendingEntry = nil
@@ -458,6 +462,11 @@ struct ShellFeature {
             }
           }
           return .merge(effects)
+
+        case .continueSetupTapped:
+          // Bringing the onboarding forward closes the notch window first, as every other way does (S37).
+          guard !state.onboarding.progress.completed else { return .none }
+          return .merge(close(&state), .send(.onboarding(.continueSetupTapped)))
 
         case let .permissionPageRequested(permission):
           // The page opens in the onboarding's window; the notch window closes first, except over the lock (S37).

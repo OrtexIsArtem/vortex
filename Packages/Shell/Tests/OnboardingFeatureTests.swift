@@ -717,6 +717,96 @@ struct OnboardingFeatureTests {
     #expect(mac.state.events.last == .settings(.accessibility))
   }
 
+  /// B-B4: turned off again within the 1.5 s, the page stays open with its checkbox off (S2, S24, S26).
+  @Test
+  func aRevokeWithinTheCloseDelayKeepsTheSinglePageOpen() async {
+    let store = makeStore(progress: .finished)
+    await store.send(.pageRequested(.accessibility, .request))
+    await change(store) { $0[.accessibility] = .granted }
+    #expect(store.state.single?.isClosing == true)
+    await clock.advance(by: .milliseconds(700))
+    await change(store) { $0[.accessibility] = .notGranted }
+    #expect(store.state.presentation == .single(.init(permission: .accessibility, kind: .request), .window))
+    #expect(store.state.rowState(.accessibility) == .off)
+    // The close that was due never comes: whatever effects sent is applied before looking.
+    await clock.advance(by: .seconds(2))
+    await store.skipReceivedActions(strict: false)
+    #expect(store.state.isVisible)
+    // A close already on its way when the revoke landed finds the permission off and leaves the page too.
+    await store.send(.singleCloseElapsed)
+    #expect(store.state.isVisible)
+    // Granted again: ✓ and close, as usual.
+    await change(store) { $0[.accessibility] = .granted }
+    await clock.advance(by: .milliseconds(1_500))
+    await store.receive(\.singleCloseElapsed)
+    #expect(store.state.presentation == .hidden)
+  }
+
+  /// The blocking page as well: a revoke within the 1.5 s keeps it on the same permission.
+  @Test
+  func aRevokeWithinTheCloseDelayKeepsTheBlockingPage() async {
+    let store = makeStore(progress: .finished, required: [.accessibility])
+    await store.send(.launched)
+    await change(store) { $0[.accessibility] = .granted }
+    #expect(store.state.single?.isClosing == true)
+    await change(store) { $0[.accessibility] = .notGranted }
+    // No ✓ while it is off again.
+    #expect(store.state.single?.isClosing == false)
+    await clock.advance(by: .seconds(2))
+    await store.skipReceivedActions(strict: false)
+    #expect(store.state.presentation == .single(.init(permission: .accessibility, kind: .blocked), .window))
+  }
+
+  // MARK: - The pasteboard's page (S16, S59, S68; PM's decision on A-B1)
+
+  /// Before the relaunch that can check it, the page says only "Checked after restart" and offers "Restart to check";
+  /// S59's hint comes only once that relaunch still reads it off.
+  @Test
+  func thePasteboardPageGivesTheRecheckHintOnlyAfterARelaunchStillReadsItOff() async {
+    let store = makeStore(progress: .at(.permission(.pasteboard)))
+    await store.send(.launched)
+    #expect(await windowCalls.next() == "window+activate")
+    await openPanel(store, for: .pasteboard)
+    await store.send(.backTapped)
+    #expect(store.state.rowState(.pasteboard) == .afterRestart)
+    #expect(store.state.showsRestartToCheck(.pasteboard))
+    #expect(!store.state.showsRecheckHint(.pasteboard))
+
+    // The relaunch: still off.
+    let relaunched = makeStore(progress: saved.value.last!, statuses: OnboardingNeeds.allOff)
+    await relaunched.send(.launched)
+    #expect(relaunched.state.rowState(.pasteboard) == .off)
+    #expect(relaunched.state.showsRecheckHint(.pasteboard))
+    // Turned on again, it waits for a check again: no hint beside the ↻.
+    await relaunched.send(.turnOnTapped(.pasteboard))
+    #expect(relaunched.state.rowState(.pasteboard) == .afterRestart)
+    #expect(!relaunched.state.showsRecheckHint(.pasteboard))
+
+    // Another permission keeps S59 as it was: after System Settings, on return, while off.
+    let accessibility = makeStore(progress: .at(.permission(.accessibility)))
+    await accessibility.send(.launched)
+    await accessibility.send(.turnOnTapped(.accessibility))
+    await accessibility.send(.appActivated(OnboardingFeature.systemSettingsID))
+    await accessibility.send(.backTapped)
+    #expect(accessibility.state.showsRecheckHint(.accessibility))
+  }
+
+  /// The single page after "Restart to check": still off, it shows the hint with the pane button (S50, S59).
+  @Test
+  func thePasteboardsSinglePageAfterRestartToCheckStillOffGivesTheHint() async {
+    let store = makeStore(progress: .finished)
+    await store.send(.pageRequested(.pasteboard, .request))
+    await store.send(.turnOnTapped(.pasteboard))
+    #expect(!store.state.showsRecheckHint(.pasteboard))
+    await store.send(.restartTapped)
+    #expect(await relaunches.next() == "relaunch")
+
+    let relaunched = makeStore(progress: saved.value.last!, statuses: OnboardingNeeds.allOff)
+    await relaunched.send(.launched)
+    #expect(relaunched.state.presentation == .single(.init(permission: .pasteboard, kind: .afterRelaunch), .window))
+    #expect(relaunched.state.showsRecheckHint(.pasteboard))
+  }
+
   // MARK: - Blocked (S9, S41, S46, S65)
 
   @Test
