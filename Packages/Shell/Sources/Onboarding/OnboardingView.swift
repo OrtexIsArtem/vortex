@@ -307,6 +307,8 @@ struct BasicsContent: View {
             Text("Open Login Items", bundle: .module)
           }
           .buttonStyle(.quietCapsule)
+          // Its whole label; the caption beside it wraps instead.
+          .fixedSize()
         }
         Toggle(isOn: Binding(get: { isOn }, set: { store.send(.loginItemToggled($0)) })) {
           Text("Open at login", bundle: .module)
@@ -394,7 +396,8 @@ struct RecheckHint: View {
 
   var body: some View {
     if store.state.showsRecheckHint(permission) {
-      HStack(alignment: .top, spacing: 10) {
+      // The button under the lines, each with the page's whole width: a long translation squeezes neither.
+      VStack(alignment: .leading, spacing: 8) {
         VStack(alignment: .leading, spacing: 3) {
           if store.single?.kind == .lockRefused {
             Text("If the switch is already on, turn it off and on again.", bundle: .module)
@@ -405,16 +408,14 @@ struct RecheckHint: View {
         }
         .font(.system(size: 12))
         .foregroundStyle(VortexColor.secondaryText)
-        // Wraps: the button keeps its width, and the lines take every line they need.
         .fixedSize(horizontal: false, vertical: true)
-        .layoutPriority(1)
-        Spacer(minLength: 8)
         Button {
           store.send(.openPaneTapped(permission))
         } label: {
           Text("Open System Settings", bundle: .module)
         }
         .buttonStyle(.quietCapsule)
+        .fixedSize()
       }
       .padding(.top, 10)
     }
