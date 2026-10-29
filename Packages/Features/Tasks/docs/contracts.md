@@ -11,7 +11,7 @@
 - VortexCore: `FeatureModule`, `DataFolder`, `database`, `databaseIsOnDisk`, design system (`SegmentedPicker`, `SettingsRow`, `PermissionRows`, `WarningMark`, capsule buttons, `Hairline`).
 - VortexCore permissions: `@SharedReader(.permissionStatuses)` and `@SharedReader(.appBlocked)`, written by the shell; `permissionPage.open(.screenRecording)` instead of asking macOS.
 - VortexPlatform:
-  - `PermissionsClient`: `statuses()` once before the shell's first read, `refresh()` when the settings section appears;
+  - `PermissionsClient`: `refresh()` when the settings section appears;
   - `SystemClient.relaunch`: "Restart Vortex" in the settings row;
   - `ScreenCaptureClient`: the display under the pointer, without Vortex's windows;
   - `FrontWindowClient`: the app in front, its window title, the page in a browser;
