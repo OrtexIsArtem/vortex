@@ -36,6 +36,29 @@
       #expect(timer.settings == [.notifications: .warning])
     }
 
+    /// A press needs its control on screen: the window open on the tab or on Settings › Features, and not covered by
+    /// keyboard cleaning's lock screen (R7).
+    @Test
+    func aControlShowsOnlyInTheOpenWindowAndNeverUnderTheLockScreen() {
+      var state = ShellFeature.State(features: [Self.home, Self.tasks, Self.timer])
+      state.selectedTab = .feature("tasks")
+      #expect(!PermissionsQA.isShowing(.tab("tasks"), in: state))
+      state.openReason = .click
+      #expect(PermissionsQA.isShowing(.tab("tasks"), in: state))
+      #expect(!PermissionsQA.isShowing(.tab("timer"), in: state))
+      #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
+      state.keyboardCleaning.isLocked = true
+      #expect(!PermissionsQA.isShowing(.tab("tasks"), in: state))
+      state.keyboardCleaning.isLocked = false
+      state.selectedTab = .settings
+      state.settingsSection = .general
+      #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
+      state.settingsSection = .features
+      #expect(PermissionsQA.isShowing(.featureSettings, in: state))
+      state.keyboardCleaning.isLocked = true
+      #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
+    }
+
     @Test
     func noMarksBeforeTheFirstReadAndNoYellowForRestart() {
       #expect(PermissionsQA.marks(of: Self.tasks, [:]) == PermissionsQA.Marks(control: nil, sidebar: nil, settings: [:]))

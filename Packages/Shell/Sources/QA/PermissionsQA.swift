@@ -16,16 +16,20 @@
          let required = try? JSONDecoder().decode(Set<Permission>.self, from: data) {
         store.send(.binding(.set(\.requiredPermissions, required)))
       }
-      QA.isShowing = { place in
-        guard store.isOpen else { return false }
-        switch place {
-        case let .tab(id): return store.selectedTab == .feature(id)
-        case .featureSettings: return store.selectedTab == .settings && store.settingsSection == .features
-        }
-      }
+      QA.isShowing = { place in isShowing(place, in: store.state) }
       QA.registerState(section: "permissions") { State(store: store) }
       QA.register(command: "perm") { arguments in
         try perform(arguments, store: store)
+      }
+    }
+
+    /// Whether a place shows: the window is open on it, and keyboard cleaning's lock screen, which covers the tabs and
+    /// takes no clicks through, isn't up.
+    nonisolated static func isShowing(_ place: QA.Place, in state: ShellFeature.State) -> Bool {
+      guard state.isOpen, !state.keyboardCleaning.isLocked else { return false }
+      switch place {
+      case let .tab(id): return state.selectedTab == .feature(id)
+      case .featureSettings: return state.selectedTab == .settings && state.settingsSection == .features
       }
     }
 
