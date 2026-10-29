@@ -209,6 +209,18 @@ struct RequiredTag: View {
   }
 }
 
+/// "Optional" next to a permission that is off and can be skipped, so a disabled Next doesn't read as a must (S19).
+struct OptionalTag: View {
+  var body: some View {
+    Text("Optional", bundle: .module)
+      .font(.system(size: 10.5, weight: .medium))
+      .foregroundStyle(VortexColor.tertiaryText)
+      .padding(.horizontal, 7)
+      .padding(.vertical, 2)
+      .overlay(Capsule().strokeBorder(VortexColor.line, lineWidth: 1))
+  }
+}
+
 /// A permission's row: its title, the reasons of every feature that needs it (S62), and the live checkbox.
 struct PermissionRowView: View {
   let store: StoreOf<OnboardingFeature>
@@ -226,7 +238,11 @@ struct PermissionRowView: View {
             title
               .font(.system(size: 14, weight: .medium))
               .foregroundStyle(VortexColor.primaryText)
-            if store.state.isRequiredMissing(permission) { RequiredTag() }
+            switch store.state.rowTag(permission) {
+            case .required?: RequiredTag()
+            case .optional?: OptionalTag()
+            case nil: EmptyView()
+            }
           }
           if showsReasons {
             Text(reasons)

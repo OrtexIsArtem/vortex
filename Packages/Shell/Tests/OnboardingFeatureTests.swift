@@ -218,6 +218,40 @@ struct OnboardingFeatureTests {
     #expect(store.state.buttons == .init(nextVisible: true, nextEnabled: true, skipVisible: false))
   }
 
+  /// Basics with Notifications off: the row reads "Optional", and Skip is there beside the disabled Next (S19).
+  @Test
+  func aPermissionThatCanBeSkippedReadsOptionalWithSkipBesideIt() async {
+    let store = makeStore(progress: .at(.basics), statuses: nil)
+    await store.send(.launched)
+    // Before the first read: no tag, no buttons (S72).
+    #expect(store.state.rowTag(.notifications) == nil)
+    write(OnboardingNeeds.allOff)
+    #expect(store.state.rowTag(.notifications) == .optional)
+    #expect(store.state.buttons == .init(nextVisible: true, nextEnabled: false, skipVisible: true))
+    // On: no tag, Next only.
+    write([.notifications: .granted])
+    #expect(store.state.rowTag(.notifications) == nil)
+    // A hard page the same, and ↻ is on.
+    let pasteboard = makeStore(progress: .at(.permission(.pasteboard)))
+    await pasteboard.send(.launched)
+    #expect(pasteboard.state.rowTag(.pasteboard) == .optional)
+    await pasteboard.send(.turnOnTapped(.pasteboard))
+    #expect(pasteboard.state.rowTag(.pasteboard) == nil)
+  }
+
+  /// Required wins over Optional; a single page, which has Close rather than Skip, says neither for a permission that
+  /// isn't required.
+  @Test
+  func requiredOrNothingWhereNothingCanBeSkipped() async {
+    let required = makeStore(progress: .at(.basics), required: [.notifications])
+    await required.send(.launched)
+    #expect(required.state.rowTag(.notifications) == .required)
+    #expect(!required.state.buttons.skipVisible)
+    let single = makeStore(progress: .finished)
+    await single.send(.pageRequested(.accessibility, .request))
+    #expect(single.state.rowTag(.accessibility) == nil)
+  }
+
   @Test
   func aRequiredPermissionThatIsOffHasNoSkipAndADisabledNext() {
     let store = makeStore(progress: .at(.permission(.accessibility)), required: [.accessibility])

@@ -550,6 +550,16 @@
         }
       }
     },
+    "Optional" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Необов'язково"
+          }
+        }
+      }
+    },
     "Privacy & Security › Accessibility" : {
       "localizations" : {
         "uk" : {

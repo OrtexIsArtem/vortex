@@ -165,6 +165,15 @@ struct OnboardingFeature {
       catalog.entry(for: permission)?.isRequired == true && statuses[permission] == .notGranted
     }
 
+    /// The tag beside a row's title: "Required" for a required permission that is off, wherever it shows; "Optional"
+    /// for one that is off and can be skipped, on the onboarding's pages, where Skip is there for it (S19). Nothing
+    /// before the first read, or once it is on.
+    func rowTag(_ permission: Permission) -> RowTag? {
+      if isRequiredMissing(permission) { return .required }
+      guard isFlow, rowState(permission) == .off, catalog.entry(for: permission)?.isRequired == false else { return nil }
+      return .optional
+    }
+
     /// Next and Skip on the page shown (S19, S72, S78).
     var buttons: Buttons {
       let page = page
@@ -315,6 +324,10 @@ struct OnboardingFeature {
     var kind: Kind
     /// Shows ✓ and closes after 1.5 s (S24, S41).
     var isClosing = false
+  }
+
+  enum RowTag: String, Equatable, Sendable {
+    case required, optional
   }
 
   struct Buttons: Equatable, Sendable {

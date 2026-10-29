@@ -25,13 +25,13 @@
 - Clicking a checkbox that is off asks macOS through `PermissionsClient.request`; clicking one that is on, ↻ included, does nothing.
 - After "Turn on", more clicks on it do nothing until the status changes, or for 2 s (15 s for notifications).
 - Next works only when every permission on the page is on; Skip shows only while one is off and none of those is required.
-- A required permission that is off shows "Required": no Skip, Next disabled, and Done's final button disabled.
+- A required permission that is off shows "Required": no Skip, Next disabled, and Done's final button disabled. One that can be skipped shows "Optional" while it is off, with Skip beside the disabled Next.
 - A feature's step shows Skip until the feature marks it done, then only Next.
 - Navigation buttons ignore clicks for 300 ms after each page change.
 
 ## Restarts
 - Opening the pasteboard's pane marks it "Checked after restart" (↻): Next works and Done shows ↻.
-- A page with a permission that works only after a relaunch shows "Restart now"; Vortex comes back on the same page.
+- A page with a permission that works only after a relaunch shows "Restart now"; Vortex comes back on the same page. So it does after System Settings' «Quit & Reopen»: Vortex opens itself again, as System Settings does only while it still runs.
 - Done's button reads "Restart and start" while something waits for a relaunch; after that relaunch Done shows again, with "Start using Vortex".
 - Vortex relaunches at most once per onboarding; any relaunch clears the pending checks.
 - Once a relaunch is asked for, no other navigation or final button is taken until Vortex is gone.

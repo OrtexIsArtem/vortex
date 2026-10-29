@@ -123,7 +123,7 @@
         /// unknown, off, on, afterRestart.
         var checkbox: PermissionRowState
         var required: Bool
-        /// "required" while the row shows the Required tag.
+        /// "required" or "optional" while the row shows that tag.
         var tag: String?
       }
 
@@ -170,13 +170,12 @@
 
       @MainActor init(_ state: OnboardingFeature.State) {
         func row(_ permission: Permission) -> Row {
-          let isRequired = state.isRequiredMissing(permission)
-          return Row(
+          Row(
             permission: permission,
             status: state.statuses[permission],
             checkbox: state.rowState(permission),
             required: state.catalog.entry(for: permission)?.isRequired == true,
-            tag: isRequired ? "required" : nil
+            tag: state.rowTag(permission)?.rawValue
           )
         }
         page = state.page.id
