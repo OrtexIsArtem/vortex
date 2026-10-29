@@ -40,6 +40,10 @@ public final class ShellController: NSObject {
   }
 
   public func start() {
+    #if DEBUG
+      // In a QA run, any window that lands on a display is a violation from here on, before the first one shows.
+      QA.guardWindows()
+    #endif
     WindowController.shared.install(content: ShellWindowView(store: store), menu: makeMenu())
     installOnboarding()
     store.send(.task)
