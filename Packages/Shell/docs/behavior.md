@@ -33,20 +33,20 @@
 
 ## Keyboard cleaning
 - Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. Mouse and trackpad keep working. The window then shows only «Режим очищення клавіатури», «Усі клавіші заблоковано» and «Увімкнути клавіатуру».
-- While the keys are locked, nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut. New displays move it there.
-- Vortex comes to the front with the lock and drops any key that still reaches it.
+- While the keys are locked, nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut. New displays move it there. Vortex comes to the front with the lock and drops any key that still reaches it.
 - «Увімкнути клавіатуру» lets the keys go at once and closes the window; the app that was in front gets the front and the keys back.
-- Without Accessibility the button asks for it instead: the system's prompt the first time, and Privacy & Security › Accessibility opens. Turn Vortex on there and press the button again.
+- Without Accessibility the button opens Accessibility's page and locks nothing; macOS is never asked by the button itself.
+- A lock macOS refuses opens that page; when the status reads granted, it says to turn the switch off and on again and never closes by itself.
+- Accessibility lost during a lock ends it at once and opens nothing; another required permission lost during a lock blocks only after «Увімкнути клавіатуру».
 - macOS never lets an app lock the Touch ID (power) button or Caps Lock: Caps Lock may stay on after cleaning. If Vortex quits or crashes, the keys come back.
 
 ## Sidebar, features and permissions
 - The sidebar shows enabled features in the user's order, with Settings at the bottom.
 - Dropping a feature's icon or settings row onto another moves it to that place; other drags are refused.
-- Turning a feature off stops it (`setEnabled(false)`) and switches away from its tab; turning it on starts it again.
-- Every feature is started or stopped at launch according to the settings.
+- Turning a feature off stops it (`setEnabled(false)`) and switches away from its tab; turning it on starts it again. At launch every feature is started or stopped according to the settings.
 - Permission statuses are read at launch, then again on macOS's change signal, when any app becomes active and each time the window opens.
 - Vortex is blocked while a required permission that an enabled feature, or keyboard cleaning with Home on, needs reads `notGranted`.
-- A feature asking for a permission's page asks macOS for now: its prompt the first time, System Settings after that.
+- A feature asking for a permission's page gets the single page in the onboarding window (onboarding.md); the notch window closes first.
 
 ## Settings
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.
@@ -55,6 +55,6 @@
 - When an indicator asks for it, the closed notch flashes in the color it gives: a glow spreading past the notch, behind the ears, blinking twice; over the window while it is open.
 - An indicator's alarm flashes the notch, one flash after another, until the pointer comes or moves over the notch or the window opens; with the window open already it flashes three times and counts as seen; with no notch on any display it waits for one.
 - Launch at login shows what the system decided; when the system wants approval, a button opens Login Items.
-- On the first launch of a release build launch at login turns on; debug builds never register themselves.
+- Nothing registers the login item at launch; the onboarding's Basics applies "Open at login" (onboarding.md).
 - Settings › General has Quit, so Vortex can be quit even with the menu bar icon hidden.
 - Settings are written 0.4 s after the last change and when the app quits.
