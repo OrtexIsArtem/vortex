@@ -248,20 +248,24 @@ public struct TasksFeature: Sendable {
         guard state.isEnabled, state.capture == nil, !state.isStartingCapture else { return .none }
         // While Vortex is blocked, the shell shows its blocking page whatever is asked for (S43).
         guard !state.appBlocked else { return openPage(.screenRecording) }
-        let status = state.permissionStatuses[.screenRecording]
+        guard let status = state.permissionStatuses[.screenRecording] else {
+          // Before the shell's first read (S64): wait for it, then decide again, blocked mode included, as the shell
+          // writes the statuses and `appBlocked` together.
+          return .run { [statuses = state.$permissionStatuses] send in
+            for await value in statuses.publisher.values where !value.isEmpty {
+              await send(.captureRequested)
+              return
+            }
+          }
+          .cancellable(id: CancelID.startCapture, cancelInFlight: true)
+        }
         // The status decides (S56): off, or granted only from the next launch, the page opens and nothing is taken;
         // Vortex never asks macOS itself (S23, S25, S40).
-        if let status, !Self.canCapture(status) { return openPage(.screenRecording) }
+        guard Self.canCapture(status) else { return openPage(.screenRecording) }
         state.isStartingCapture = true
         // A whole screen shown now would lie under the frozen one.
         state.screen = nil
-        return .run { [isKnown = status != nil] send in
-          // Before the shell's first read, the status is read once here, which never prompts (S5, S64).
-          if !isKnown, !Self.canCapture(await permissions.statuses()[.screenRecording] ?? .notGranted) {
-            await send(.captureFailed)
-            await permissionPage.open(.screenRecording)
-            return
-          }
+        return .run { send in
           // The app in front and what is open in it first: nothing of Vortex shows yet, so it is still the one the
           // user was in, and a browser's one-time Automation prompt is answered before the screen is taken.
           let source = await frontWindow.current()

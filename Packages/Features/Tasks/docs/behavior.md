@@ -46,7 +46,7 @@
 ## Permissions
 - The status the shell read decides (S56): with Screen Recording `notGranted` or `grantedAfterRestart`, «+» and the shortcut open the shell's Screen Recording page and take nothing; a capture already under way finishes.
 - Tasks never asks macOS itself, never opens System Settings and posts no notification about access (S25).
-- Before the shell's first read, a press reads the status once (never a prompt) and then captures or opens the page.
+- Before the shell's first read, a press waits for it, then decides as above, blocked mode included (S64).
 - While Vortex is blocked (`appBlocked`), the shortcut opens the page and the shell shows its blocking page (S43).
 - «+» shows a yellow warning while Screen Recording reads `notGranted`; none before the first read or for ↻.
 - Page addresses need Automation of each browser, asked by macOS on the first capture from it; Firefox gives none.

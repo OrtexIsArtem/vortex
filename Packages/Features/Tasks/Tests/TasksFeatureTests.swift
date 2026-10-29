@@ -89,6 +89,11 @@ struct TasksFeatureTests {
     return store
   }
 
+  /// The shell has read the statuses, Screen Recording granted, unless a test says otherwise.
+  init() {
+    readStatuses(simulated.statuses)
+  }
+
   /// Sets what the shell read from the simulated macOS, as `@Shared(.permissionStatuses)` (nil: no read yet).
   func readStatuses(_ statuses: [Permission: PermissionStatus]?) {
     @Shared(.permissionStatuses) var shared
@@ -298,25 +303,40 @@ struct TasksFeatureTests {
 
   /// Before the shell's first read there is no mark, and a press reads the status once, which never prompts (S5, S64).
   @Test
-  func beforeTheFirstReadAPressReadsTheStatusOnce() async {
+  func beforeTheFirstReadAPressWaitsForItAndDecidesBlockedModeToo() async {
     readStatuses(nil)
-    simulated.set(.screenRecording, to: .denied)
     let store = makeStore()
     #expect(!store.state.showsScreenRecordingWarning)
     await store.send(.start)
     await store.receive(\.loaded)
     await store.send(.captureRequested)
-    await store.receive(\.captureFailed)
+    #expect(pages.value.isEmpty)
+    #expect(screenshots.value == 0)
+
+    // The shell's first read: Screen Recording on, but Vortex blocked (R2): the page, no capture.
+    @Shared(.appBlocked) var appBlocked
+    $appBlocked.withLock { $0 = true }
+    readStatuses(simulated.statuses)
+    await store.receive(\.captureRequested)
+    await store.finish(timeout: .seconds(1))
     #expect(pages.value == [.screenRecording])
     #expect(screenshots.value == 0)
-    #expect(store.state.isStartingCapture == false)
     #expect(simulated.state.events.isEmpty)
+    await store.send(.stop)
+  }
 
-    simulated.set(.screenRecording, to: .granted)
+  @Test
+  func beforeTheFirstReadAPressCapturesOnceTheReadAllowsIt() async {
+    readStatuses(nil)
+    let store = makeStore()
+    await store.send(.start)
+    await store.receive(\.loaded)
     await store.send(.captureRequested)
+    readStatuses(simulated.statuses)
+    await store.receive(\.captureRequested)
     await store.receive(\.captureTaken)
     #expect(screenshots.value == 1)
-    #expect(pages.value == [.screenRecording])
+    #expect(pages.value.isEmpty)
     await store.send(.stop)
   }
 
