@@ -103,6 +103,16 @@ public final class ShellController: NSObject {
     try? settingsClient.save(store.settings)
   }
 
+  /// Called as the app is asked to quit, from `applicationShouldTerminate`, while the quit's Apple event is current.
+  /// A quit System Settings asked for, by its «Quit & Reopen» after a permission that needs a relaunch, opens Vortex
+  /// again by itself, as System Settings does only while it still runs; the onboarding then resumes at its page (S20).
+  /// Vortex's own Quit, ⌘Q, logout and every other sender just quit (`QuitRequest`).
+  public func prepareToTerminate() {
+    @Dependency(\.systemClient) var system
+    guard QuitRequest.reopens(senderBundleID: QuitRequest.currentSenderBundleID()) else { return }
+    system.reopenAfterQuit()
+  }
+
   /// The onboarding's window and guide panel, driven by the shell's store (S6, S15).
   private func installOnboarding() {
     let onboarding = store.scope(state: \.onboarding, action: \.onboarding)

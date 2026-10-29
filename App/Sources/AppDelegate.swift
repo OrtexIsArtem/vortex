@@ -20,6 +20,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     shell?.receiveFiles(urls.filter(\.isFileURL))
   }
 
+  /// Every quit goes ahead; one System Settings asked for first arranges for Vortex to open again.
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    shell?.prepareToTerminate()
+    return .terminateNow
+  }
+
   func applicationWillTerminate(_ notification: Notification) {
     shell?.saveSettings()
   }

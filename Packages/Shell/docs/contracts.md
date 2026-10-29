@@ -1,7 +1,7 @@
 # Contracts
 
 ## Provides
-- `ShellController` — created by App at launch: `start()`, `receiveFiles(_:)` for files opened with Vortex, and `saveSettings()` when the app quits.
+- `ShellController` — created by App at launch: `start()`, `receiveFiles(_:)` for files opened with Vortex, `prepareToTerminate()` when the app is asked to quit (a quit System Settings asked for reopens Vortex: `QuitRequest`, `SystemClient.reopenAfterQuit`), and `saveSettings()` when it quits.
 - To feature tabs: `notchCutout` and `isWindowOpen` in the SwiftUI environment.
 - Puts the Home widgets of enabled features, in sidebar order, into the environment of the tab content (`homeWidgets`).
 - Puts `keyboardCleaning` there too: the action behind Home's keyboard button.
