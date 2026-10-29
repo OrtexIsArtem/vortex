@@ -33,5 +33,5 @@
 - Of several images dropped together (shelf tiles), only the first is copied.
 - A drop before the history has been read (right after launch) is ignored.
 - While Paste from Other Apps reads `notGranted`, the pasteboard isn't read at all and nothing is recorded (S57); watching starts again when the status changes. Unknown, granted and `notNeeded` read it as always.
-- macOS's `.default` pasteboard access counts as `notNeeded` (Core's mapping): revisit this on macOS 27, which may start asking.
+- macOS's `.default` pasteboard access counts as `notNeeded` (Platform's mapping, PermissionRules.swift): revisit this on macOS 27, which may start asking.
 - While Vortex is blocked (a required permission is off), copies are still recorded (S44).
