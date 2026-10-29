@@ -68,24 +68,39 @@ wait_for() {
   done
 }
 
+# Command lines of every process, never cut short. Read into a variable first: `ps | grep -q` fails under pipefail
+# when grep stops early.
+processes() {
+  ps -axww -o command=
+}
+
 # Whether some process of Vortex runs as this run, with its name in any case.
 run_process_exists() {
-  ps -axo command= | grep -qiE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)"
+  local all
+  all=$(processes)
+  grep -qiE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)" <<< "$all"
 }
 
 # The run's process id, when it runs: from its ready marker, and only if that process is this run of Vortex.
 running_pid() {
-  local marker="$folder/.qa/ready.json" pid
+  local marker="$folder/.qa/ready.json" pid command
   [ -f "$marker" ] || return 1
   pid=$(plutil -extract pid raw -o - "$marker" 2>/dev/null) || return 1
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
-  ps -p "$pid" -o command= 2>/dev/null | grep -qiE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)" || return 1
+  command=$(ps -ww -p "$pid" -o command= 2>/dev/null) || return 1
+  grep -qiE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)" <<< "$command" || return 1
   echo "$pid"
 }
 
-# The app the run runs now, from its ready marker; else the one that ran last in its folder.
+# The app the run runs now, from its ready marker or its process; else the one that ran last in its folder.
 run_app() {
-  plutil -extract app raw -o - "$folder/.qa/ready.json" 2>/dev/null || cat "$folder/.qa/app" 2>/dev/null || true
+  local pid
+  plutil -extract app raw -o - "$folder/.qa/ready.json" 2>/dev/null && return
+  if pid=$(running_pid); then
+    ps -ww -p "$pid" -o command= | sed -E 's#/Contents/MacOS/Vortex .*##'
+    return
+  fi
+  cat "$folder/.qa/app" 2>/dev/null || true
 }
 
 # A run belongs to this checkout when its app is a copy inside it, or this checkout started it (QA_APP).
@@ -157,10 +172,10 @@ cmd_build() {
   ditto "$product" "$repo/build/qa/$run/Vortex.app"
   ln -sfn "$run" "$repo/build/qa/latest"
   # The three newest copies stay, and so does any copy a process still runs.
-  local processes
-  processes=$(ps -axo command=)
+  local running
+  running=$(processes)
   find "$repo/build/qa" -mindepth 1 -maxdepth 1 -type d -name '2*' | sort -r | tail -n +4 | while read -r old; do
-    if printf '%s\n' "$processes" | grep -qF -- "$old/Vortex.app/Contents/MacOS/Vortex"; then
+    if grep -qF -- "$old/Vortex.app/Contents/MacOS/Vortex" <<< "$running"; then
       continue
     fi
     rm -rf -- "$old"
@@ -187,9 +202,13 @@ cmd_start() {
   # In the background (-g), as a new process of its own through LaunchServices (-n); what it says on standard error,
   # such as why it refused to start, lands in the log.
   open -n -g --stderr "$log" -a "$app" --args --qa "$name" "$@"
-  local deadline=$((SECONDS + timeout)) started=$SECONDS
+  local deadline=$((SECONDS + timeout)) started=$SECONDS seen=0
   until running_pid >/dev/null; do
-    if [ $((SECONDS - started)) -ge 1 ] && ! run_process_exists; then
+    # Gone after it was seen, or never seen in 3 s: it refused to start. Its last words may take a moment to land.
+    if run_process_exists; then
+      seen=1
+    elif [ "$seen" = 1 ] || [ $((SECONDS - started)) -ge 3 ]; then
+      sleep 0.5
       cat "$log" >&2
       die 1 "the run $name did not start"
     fi
