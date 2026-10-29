@@ -69,6 +69,9 @@
       return client
     }
 
+    /// Accessibility is on in the simulated System Settings: the one source of truth for the QA keyboard lock.
+    static var accessibilityIsOn: Bool { simulated.state.settings[.accessibility] == .granted }
+
     /// A capture sees the screen: Screen Recording was on when the run started, or is on now with a live grant.
     static var screenCaptureWorks: Bool {
       let state = simulated.state
