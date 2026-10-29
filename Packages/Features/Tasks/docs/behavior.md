@@ -44,5 +44,9 @@
 - Готово finishes the task and goes back to the list; the bin deletes it and goes back to the list, where it can be taken back for 5 s.
 
 ## Permissions
-- Without Screen Recording the first attempt ever shows the system's prompt; later ones, also after a relaunch, open System Settings at Screen Recording; a notification says how to allow it.
+- The status the shell read decides (S56): with Screen Recording `notGranted` or `grantedAfterRestart`, «+» and the shortcut open the shell's Screen Recording page and take nothing; a capture already under way finishes.
+- Tasks never asks macOS itself, never opens System Settings and posts no notification about access (S25).
+- Before the shell's first read, a press reads the status once (never a prompt) and then captures or opens the page.
+- While Vortex is blocked (`appBlocked`), the shortcut opens the page and the shell shows its blocking page (S43).
+- «+» shows a yellow warning while Screen Recording reads `notGranted`; none before the first read or for ↻.
 - Page addresses need Automation of each browser, asked by macOS on the first capture from it; Firefox gives none.

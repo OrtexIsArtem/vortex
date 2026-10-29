@@ -686,10 +686,8 @@ struct SecretsFeature: Sendable {
       NotificationClient.Button(id: Self.denyButtonID, title: String(localized: "Deny", bundle: .module)),
     ]
     let id = Self.notificationID(approval.id)
-    return .run { _ in
-      guard await notifications.requestAuthorization() else { return }
-      await notifications.post(id, title, body, buttons)
-    }
+    // Never asks whether Vortex may notify (S25): without Notifications macOS drops it, and the request waits in the tab.
+    return .run { _ in await notifications.post(id, title, body, buttons) }
     .cancellable(id: CancelID.notification(approval.id), cancelInFlight: true)
   }
 

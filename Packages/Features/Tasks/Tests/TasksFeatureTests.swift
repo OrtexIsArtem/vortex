@@ -30,8 +30,16 @@ struct TasksFeatureTests {
   let removed = LockIsolated<[URL]>([])
   let opened = LockIsolated<[String]>([])
   let posted = LockIsolated<[String]>([])
-  let accessRequests = LockIsolated(0)
-  let hasAccess = LockIsolated(true)
+  /// The pages features asked the shell for.
+  let pages = LockIsolated<[Permission]>([])
+  let refreshes = LockIsolated(0)
+  let relaunches = LockIsolated(0)
+  /// macOS as the tests set it: Screen Recording granted unless a test says otherwise.
+  let simulated: SimulatedPermissions = {
+    let simulated = SimulatedPermissions()
+    simulated.set(.screenRecording, to: .granted)
+    return simulated
+  }()
   let screenshots = LockIsolated(0)
   let shortcut = AsyncStream.makeStream(of: Void.self)
 
@@ -57,11 +65,13 @@ struct TasksFeatureTests {
         guard let data = written.value[url] else { throw CocoaError(.fileNoSuchFile) }
         return data
       }
-      $0.screenCaptureClient.hasAccess = { [hasAccess] in hasAccess.value }
-      $0.screenCaptureClient.requestAccess = { [accessRequests] in
-        accessRequests.withValue { $0 += 1 }
-        return false
+      $0.permissionPage.open = { [pages] permission in pages.withValue { $0.append(permission) } }
+      $0.permissionsClient = .simulated(simulated)
+      $0.permissionsClient.refresh = { [simulated, refreshes] in
+        refreshes.withValue { $0 += 1 }
+        simulated.refresh()
       }
+      $0.systemClient.relaunch = { [relaunches] in relaunches.withValue { $0 += 1 } }
       $0.screenCaptureClient.captureScreenUnderPointer = { [screenshots] in
         screenshots.withValue { $0 += 1 }
         return testScreenshot()
@@ -69,11 +79,20 @@ struct TasksFeatureTests {
       $0.frontWindowClient.current = { telegram }
       $0.textRecognitionClient.recognize = { image in image.size.width < 40 ? "Fix the pay button\nsecond line" : "whole screen #mobile-team" }
       $0.hotkeyClient.presses = { [shortcut] _ in shortcut.stream }
-      $0.notificationClient.requestAuthorization = { true }
+      $0.notificationClient.requestAuthorization = {
+        Issue.record("Tasks never asks whether Vortex may notify (S25)")
+        return false
+      }
       $0.notificationClient.post = { [posted] id, _, _, _ in posted.withValue { $0.append(id) } }
     }
     store.exhaustivity = .off
     return store
+  }
+
+  /// Sets what the shell read from the simulated macOS, as `@Shared(.permissionStatuses)` (nil: no read yet).
+  func readStatuses(_ statuses: [Permission: PermissionStatus]?) {
+    @Shared(.permissionStatuses) var shared
+    $shared.withLock { $0 = statuses ?? [:] }
   }
 
   /// Effects write in their own time: waits a little for what they do.
@@ -217,26 +236,110 @@ struct TasksFeatureTests {
     await store.send(.stop)
   }
 
+  /// «+» and the shortcut without Screen Recording: the shell's page, never macOS's prompt, no notification, nothing
+  /// taken (S23, S25, S56); the mark shows on «+» (S22.1).
   @Test
-  func withoutScreenRecordingTheFirstCaptureAsksAndLaterOnesOpenSystemSettings() async {
-    hasAccess.setValue(false)
+  func withScreenRecordingOffANewTaskOpensThePageAndNeverAsksMacOS() async {
+    simulated.set(.screenRecording, to: .denied)
+    readStatuses(simulated.statuses)
+    let store = makeStore()
+    #expect(store.state.showsScreenRecordingWarning)
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await store.send(.captureRequested)
+    shortcut.continuation.yield()
+    await store.receive(\.captureRequested)
+    await store.finish(timeout: .seconds(1))
+    #expect(pages.value == [.screenRecording, .screenRecording])
+    #expect(store.state.capture == nil)
+    #expect(store.state.isStartingCapture == false)
+    #expect(screenshots.value == 0)
+    #expect(simulated.state.events.isEmpty)
+    #expect(posted.value.isEmpty)
+    #expect(opened.value.isEmpty)
+    await store.send(.stop)
+  }
+
+  /// Granted for the next launch only: «+» starts nothing and opens the page in its ↻ state, without yellow (S40).
+  @Test
+  func screenRecordingThatWorksAfterARestartOpensThePageWithoutAMark() async {
+    simulated.set(.screenRecording, to: .notAsked)
+    simulated.request(.screenRecording)
+    simulated.toggle(.screenRecording, on: true)
+    #expect(simulated.statuses[.screenRecording] == .grantedAfterRestart)
+    readStatuses(simulated.statuses)
+    let store = makeStore()
+    #expect(!store.state.showsScreenRecordingWarning)
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await store.send(.captureRequested).finish()
+    #expect(pages.value == [.screenRecording])
+    #expect(screenshots.value == 0)
+    await store.send(.stop)
+  }
+
+  /// While Vortex is blocked, the shortcut asks for the page and the shell shows its blocking page (S43).
+  @Test
+  func whileBlockedTheShortcutOpensThePageInsteadOfCapturing() async {
+    readStatuses(simulated.statuses)
+    @Shared(.appBlocked) var appBlocked
+    $appBlocked.withLock { $0 = true }
     let store = makeStore()
     await store.send(.start)
-    await store.send(.captureRequested)
-    await store.receive(\.captureFailed)
+    await store.receive(\.loaded)
+    shortcut.continuation.yield()
+    await store.receive(\.captureRequested)
+    await store.finish(timeout: .seconds(1))
+    #expect(pages.value == [.screenRecording])
+    #expect(screenshots.value == 0)
     #expect(store.state.capture == nil)
-    #expect(store.state.hasScreenAccess == false)
-    #expect(accessRequests.value == 1)
-    #expect(opened.value.isEmpty)
-    // The system's prompt shows once ever; this is kept for the next launches too.
-    #expect(store.state.settings.askedForScreenRecording)
+    await store.send(.stop)
+  }
+
+  /// Before the shell's first read there is no mark, and a press reads the status once, which never prompts (S5, S64).
+  @Test
+  func beforeTheFirstReadAPressReadsTheStatusOnce() async {
+    readStatuses(nil)
+    simulated.set(.screenRecording, to: .denied)
+    let store = makeStore()
+    #expect(!store.state.showsScreenRecordingWarning)
+    await store.send(.start)
+    await store.receive(\.loaded)
     await store.send(.captureRequested)
     await store.receive(\.captureFailed)
-    #expect(accessRequests.value == 1)
-    #expect(opened.value == [TasksFeature.screenSettingsURL.absoluteString])
+    #expect(pages.value == [.screenRecording])
+    #expect(screenshots.value == 0)
+    #expect(store.state.isStartingCapture == false)
+    #expect(simulated.state.events.isEmpty)
+
+    simulated.set(.screenRecording, to: .granted)
+    await store.send(.captureRequested)
+    await store.receive(\.captureTaken)
+    #expect(screenshots.value == 1)
+    #expect(pages.value == [.screenRecording])
     await store.send(.stop)
-    await store.finish()
-    #expect(posted.value == [TasksFeature.noAccessNotificationID, TasksFeature.noAccessNotificationID])
+  }
+
+  /// The settings row: "Turn on" opens the page, "Restart Vortex" relaunches, and the section re-reads (S22.3, S40, S47).
+  @Test
+  func theSettingsRowOpensThePageRestartsAndReadsAgain() async {
+    let store = makeStore()
+    await store.send(.settingsShown).finish()
+    #expect(refreshes.value == 1)
+    await store.send(.turnOnTapped(.screenRecording)).finish()
+    #expect(pages.value == [.screenRecording])
+    await store.send(.restartTapped).finish()
+    #expect(relaunches.value == 1)
+    #expect(simulated.state.events.isEmpty)
+  }
+
+  /// The mark on «+» follows the status: only `notGranted` is yellow (S22, S40).
+  @Test
+  func theMarkOnPlusShowsOnlyWhileScreenRecordingIsOff() {
+    for (status, shows) in [(PermissionStatus?.none, false), (.granted, false), (.grantedAfterRestart, false), (.notNeeded, false), (.notGranted, true)] {
+      readStatuses(status.map { [.screenRecording: $0] })
+      #expect(TasksFeature.State().showsScreenRecordingWarning == shows)
+    }
   }
 
   @Test

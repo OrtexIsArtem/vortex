@@ -48,8 +48,6 @@ public struct TasksFeature: Sendable {
   static let keptDays = 30
   /// How long marking a task done or deleting can be taken back.
   static let undoTime: Duration = .seconds(5)
-  static let noAccessNotificationID = "tasks.noAccess"
-  static let screenSettingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
 
   /// The last change, which can be taken back for `undoTime`; a new one makes it final.
   enum Undoable: Equatable {
@@ -77,13 +75,19 @@ public struct TasksFeature: Sendable {
     var capture: CaptureFeature.State?
     /// The shortcut was pressed and the screen is being taken: another press waits for it.
     var isStartingCapture = false
-    /// Whether Vortex may record the screen, for the settings.
-    var hasScreenAccess = true
-    @Shared(.tasksSettings) var settings
+    /// What macOS says about Screen Recording, read by the shell; the status decides whether «+» captures (S56).
+    @SharedReader(.permissionStatuses) var permissionStatuses
+    /// A required permission is off: the shortcut opens the shell's blocking page instead (S43).
+    @SharedReader(.appBlocked) var appBlocked
 
     public init() {}
 
     var openTask: TaskItem? { openTaskID.flatMap { tasks[id: $0] } }
+
+    /// «+» shows a yellow warning: Screen Recording reads off (S22.1). Not before the first read, nor for ↻ (S40).
+    var showsScreenRecordingWarning: Bool {
+      PermissionMark(permissionStatuses[.screenRecording]) == .warning
+    }
 
     /// The tasks the list shows: filtered and searched; active ones by priority, newest first within one; done ones by
     /// when they were done.
@@ -143,7 +147,8 @@ public struct TasksFeature: Sendable {
     /// The shortcut, the New button or a debug command: freeze the screen to frame a task.
     case captureRequested
     case captureTaken(Screenshot, FrontWindow)
-    case captureFailed(noAccess: Bool)
+    /// The screen couldn't be taken, or Screen Recording turned out to be off before the first read.
+    case captureFailed
     case capture(CaptureFeature.Action)
     case taskSaved(TaskItem)
     case textRecognized(TaskItem.ID, String)
@@ -171,8 +176,12 @@ public struct TasksFeature: Sendable {
     case queryChanged(String)
     /// The tab became visible: the window opened on it, or the user switched to it.
     case tabShown
+    /// The section in Settings › Features appeared: the statuses are read again (S47).
     case settingsShown
-    case openScreenSettingsTapped
+    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    case turnOnTapped(Permission)
+    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    case restartTapped
   }
 
   @Dependency(\.appsClient) var apps
@@ -184,8 +193,10 @@ public struct TasksFeature: Sendable {
   @Dependency(\.fileClient) var files
   @Dependency(\.frontWindowClient) var frontWindow
   @Dependency(\.hotkeyClient) var hotkeys
-  @Dependency(\.notificationClient) var notifications
+  @Dependency(\.permissionPage) var permissionPage
+  @Dependency(\.permissionsClient) var permissions
   @Dependency(\.screenCaptureClient) var screenCapture
+  @Dependency(\.systemClient) var system
   @Dependency(\.textRecognitionClient) var textRecognition
   @Dependency(\.uuid) var uuid
 
@@ -235,18 +246,20 @@ public struct TasksFeature: Sendable {
 
       case .captureRequested:
         guard state.isEnabled, state.capture == nil, !state.isStartingCapture else { return .none }
+        // While Vortex is blocked, the shell shows its blocking page whatever is asked for (S43).
+        guard !state.appBlocked else { return openPage(.screenRecording) }
+        let status = state.permissionStatuses[.screenRecording]
+        // The status decides (S56): off, or granted only from the next launch, the page opens and nothing is taken;
+        // Vortex never asks macOS itself (S23, S25, S40).
+        if let status, !Self.canCapture(status) { return openPage(.screenRecording) }
         state.isStartingCapture = true
         // A whole screen shown now would lie under the frozen one.
         state.screen = nil
-        return .run { [hasAsked = state.settings.askedForScreenRecording] send in
-          guard screenCapture.hasAccess() else {
-            // The system asks once ever; after that only System Settings can allow it, so it opens there.
-            if hasAsked {
-              await files.open(Self.screenSettingsURL)
-            } else {
-              _ = screenCapture.requestAccess()
-            }
-            await send(.captureFailed(noAccess: true))
+        return .run { [isKnown = status != nil] send in
+          // Before the shell's first read, the status is read once here, which never prompts (S5, S64).
+          if !isKnown, !Self.canCapture(await permissions.statuses()[.screenRecording] ?? .notGranted) {
+            await send(.captureFailed)
+            await permissionPage.open(.screenRecording)
             return
           }
           // The app in front and what is open in it first: nothing of Vortex shows yet, so it is still the one the
@@ -256,13 +269,12 @@ public struct TasksFeature: Sendable {
           await send(.captureTaken(screenshot, source))
         } catch: { error, send in
           logger.error("Taking the screen failed: \(error, privacy: .public)")
-          await send(.captureFailed(noAccess: false))
+          await send(.captureFailed)
         }
         .cancellable(id: CancelID.startCapture, cancelInFlight: true)
 
       case let .captureTaken(screenshot, source):
         state.isStartingCapture = false
-        state.hasScreenAccess = true
         guard state.isEnabled else { return .none }
         state.capture = CaptureFeature.State(
           screenshot: screenshot,
@@ -272,21 +284,9 @@ public struct TasksFeature: Sendable {
         )
         return .none
 
-      case let .captureFailed(noAccess):
+      case .captureFailed:
         state.isStartingCapture = false
-        guard noAccess else { return .none }
-        state.hasScreenAccess = false
-        state.$settings.withLock { $0.askedForScreenRecording = true }
-        let title = String(localized: "Vortex can't see the screen", bundle: .module)
-        let body = String(
-          localized: "Allow it in System Settings › Privacy & Security › Screen Recording, then open Vortex again.",
-          bundle: .module
-        )
-        return .run { _ in
-          // Vortex may not have asked to notify yet: the timer asks on its first run.
-          guard await notifications.requestAuthorization() else { return }
-          await notifications.post(Self.noAccessNotificationID, title, body, [])
-        }
+        return .none
 
       case let .capture(.delegate(.save(draft))):
         state.capture = nil
@@ -438,20 +438,31 @@ public struct TasksFeature: Sendable {
         return .none
 
       case .tabShown:
-        state.hasScreenAccess = screenCapture.hasAccess()
         return purgeOld(&state)
 
       case .settingsShown:
-        state.hasScreenAccess = screenCapture.hasAccess()
-        return .none
+        return .run { _ in await permissions.refresh() }
 
-      case .openScreenSettingsTapped:
-        return .run { _ in await files.open(Self.screenSettingsURL) }
+      case let .turnOnTapped(permission):
+        return openPage(permission)
+
+      case .restartTapped:
+        return .run { _ in await system.relaunch() }
       }
     }
     .ifLet(\.capture, action: \.capture) {
       CaptureFeature()
     }
+  }
+
+  /// A capture works now: granted, or not asked for on this Mac.
+  static func canCapture(_ status: PermissionStatus) -> Bool {
+    status == .granted || status == .notNeeded
+  }
+
+  /// The shell's page for a permission, instead of asking macOS (S23, S24).
+  private func openPage(_ permission: Permission) -> Effect<Action> {
+    .run { _ in await permissionPage.open(permission) }
   }
 
   private func listenToShortcut() -> Effect<Action> {

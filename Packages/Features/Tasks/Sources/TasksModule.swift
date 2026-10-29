@@ -99,7 +99,7 @@ public enum TasksModule: FeatureModule {
         let state: [String: Any] = [
           "isEnabled": store.isEnabled,
           "isLoaded": store.isLoaded,
-          "screenAccess": ScreenCaptureClient.liveValue.hasAccess(),
+          "screenAccess": store.permissionStatuses[.screenRecording]?.rawValue ?? "unknown",
           "isCapturing": store.capture != nil,
           "isFramed": store.capture?.isFramed ?? false,
           "suggestion": store.capture?.suggestion ?? "",

@@ -23,6 +23,7 @@
 - The first use of a key in a Claude session waits for «Дозволити»: the notch shows a key and the name and flashes, each request has a notification of its own whose «Дозволити» and «Відхилити» answer that request, and the tab shows the request with the folder and the command, scrolling past a few lines with a fade and the number of lines; past 200 lines (or 20,000 characters) only its start is shown, and the card says so.
 - Allowed, the key works for the rest of that session without asking; «Відхилити», or no answer in 90 s, gives Claude an error that says so. Waiting and running stay under the 5 minutes Claude Code waits for an answer.
 - Claude giving a request up (Esc, or closing its connection) takes it away from the notch and the tab; a command it gave up is stopped. Either way Claude gets «Cancelled.».
+- A request never asks macOS for permission to notify (S25): without Notifications macOS drops the notification and the request waits in the tab.
 - A request answered, given up or over takes its notification out of Notification Center; so does the feature starting, for requests of a run before.
 - After Vortex restarts, Claude Code's session goes on as a new one: its keys are asked for again, and it needs no reconnecting. It is named Claude Code, as its own name went with the old one.
 - Vortex does not decide what Claude may do with a key: Claude is told to ask the user before changing data.

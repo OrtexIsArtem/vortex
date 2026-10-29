@@ -290,11 +290,6 @@
     /// A capture sees fixtures/screen.png, or a plain picture, as the main display; only with `screenAccess` on.
     static let qa: ScreenCaptureClient = {
       var client = ScreenCaptureClient()
-      client.hasAccess = { simulation.screenAccess }
-      client.requestAccess = {
-        QALog.record("screenCapture", "requestAccess", ["shown": "nothing", "answer": "\(simulation.screenAccess)"])
-        return simulation.screenAccess
-      }
       client.captureScreenUnderPointer = {
         guard simulation.screenAccess else {
           QALog.record("screenCapture", "capture", ["result": "no access"])

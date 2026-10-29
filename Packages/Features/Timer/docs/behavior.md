@@ -36,7 +36,7 @@
 - The notch flashes, one flash after another, until the pointer comes or moves over it or the window opens; with the window open, three times.
 - Starting a run, also with «+5 хв» on the notification, stops the flashes.
 - «+5 хв» on the notification starts a five-minute run.
-- The first run asks macOS once for permission to notify; without it everything else still happens.
+- A run never asks macOS for permission to notify (S25); without Notifications everything else still happens, and the settings row offers the page.
 
 ## Lifetime
 - A run goes on while the window is closed and after Vortex relaunches; one that ran out while Vortex was closed is dropped quietly.

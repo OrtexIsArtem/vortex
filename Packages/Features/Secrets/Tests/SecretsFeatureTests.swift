@@ -50,7 +50,10 @@ struct SecretsFeatureTests {
       }
       $0.mcpServer.serve = { [events] _, _ in events.stream }
       $0.mcpServer.reply = { [replies] _, result in replies.withValue { $0.append(result) } }
-      $0.notificationClient.requestAuthorization = { true }
+      $0.notificationClient.requestAuthorization = {
+        Issue.record("A request never asks whether Vortex may notify (S25)")
+        return false
+      }
       $0.notificationClient.post = { [posted, bodies] id, title, body, _ in
         posted.withValue { $0.append("\(id): \(title)") }
         bodies.withValue { $0.append(body) }

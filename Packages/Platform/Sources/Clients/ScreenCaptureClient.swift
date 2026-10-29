@@ -108,20 +108,16 @@ public enum ScreenCaptureError: Error, Equatable {
 }
 
 /// Screenshots of a whole display. They need the Screen Recording permission, which also reveals other apps' window
-/// titles; macOS asks for it once, and a change takes effect after Vortex relaunches.
+/// titles. Its status and the request live in `PermissionsClient`: a feature checks `permissionStatuses` before it
+/// captures and opens the shell's page instead of asking (S25).
 @DependencyClient
 public struct ScreenCaptureClient: Sendable {
-  public var hasAccess: @Sendable () -> Bool = { false }
-  /// Asks for the permission the first time, with the system's own prompt; afterwards it only reports.
-  public var requestAccess: @Sendable () -> Bool = { false }
   /// The display under the pointer as it looks now, without Vortex's own windows.
   public var captureScreenUnderPointer: @Sendable () async throws -> Screenshot
 }
 
 extension ScreenCaptureClient: DependencyKey {
   public static let liveValue = ScreenCaptureClient(
-    hasAccess: { CGPreflightScreenCaptureAccess() },
-    requestAccess: { CGRequestScreenCaptureAccess() },
     captureScreenUnderPointer: {
       let target = await MainActor.run { () -> (id: CGDirectDisplayID, scale: CGFloat, notch: CGRect?, dock: CGFloat)? in
         let pointer = NSEvent.mouseLocation

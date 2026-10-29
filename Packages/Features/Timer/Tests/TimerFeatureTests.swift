@@ -63,7 +63,8 @@ struct TimerFeatureTests {
     await pass(1)
     await store.receive(\.tick)
     #expect(indicators[TimerFeature.id]?.trailing == [.text("24:59")])
-    #expect(authorizations.value == 1)
+    // A run never asks whether Vortex may notify (S25).
+    #expect(authorizations.value == 0)
     await store.send(.stop)
     #expect(indicators[TimerFeature.id] == nil)
   }

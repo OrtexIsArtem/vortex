@@ -8,8 +8,8 @@ Tables are created by the feature's migrator (`tasks.v1`, `tasks.v2`) before its
 | The last number given | table `tasks_counter` | always |
 | The framed part, PNG | DataFolder/Tasks/<id>/crop.png | with its task |
 | The whole screen, HEIC | DataFolder/Tasks/<id>/screen.heic | with its task |
-| Whether the Screen Recording prompt was shown | DataFolder/tasks.json | always |
 
+- DataFolder/tasks.json (whether the old Screen Recording prompt was shown) is no longer read or written; an old file stays as it is.
 - Numbers are never given twice: the next is one more than the highest ever given, also after that task is deleted.
 - If another Vortex took the number a capture showed, it saves with the next one, and an untouched «Задача N» title follows.
 - The pictures are written before the row, so a row always has them; at launch, picture folders without a row are deleted, unless the database is only in memory because its file didn't open.

@@ -206,12 +206,9 @@ public struct TimerFeature: Sendable {
     state.now = now
     state.isAlarming = false
     state.$run.withLock { $0 = TimerRun.started(minutes: minutes, at: now) }
-    return .merge(
-      tick(state),
-      saveRun(state),
-      // The first run asks once whether Vortex may notify; later calls return the saved answer.
-      .run { _ in _ = await notifications.requestAuthorization() }
-    )
+    // Never asks whether Vortex may notify (S25): without Notifications the end shows in the notch only, and the
+    // settings row offers the page.
+    return .merge(tick(state), saveRun(state))
   }
 
   /// Sends `runChanged` whenever the shared run changes. A change from outside the reducer (another Vortex, the run

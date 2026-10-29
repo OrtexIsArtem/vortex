@@ -31,26 +31,6 @@
         }
       }
     },
-    "Allow it in System Settings › Privacy & Security › Screen Recording, then open Vortex again." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дозвольте в Системних параметрах › Приватність і безпека › Запис екрана, потім відкрийте Vortex знову."
-          }
-        }
-      }
-    },
-    "Allowed: tasks get screenshots and window titles." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дозволено: задачі отримують знімки екрана й заголовки вікон."
-          }
-        }
-      }
-    },
     "Back to active" : {
       "localizations" : {
         "uk" : {
@@ -284,16 +264,6 @@
         }
       }
     },
-    "Needed for screenshots and window titles. After allowing it, open Vortex again." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Потрібен для знімків екрана й заголовків вікон. Після дозволу відкрийте Vortex знову."
-          }
-        }
-      }
-    },
     "New task" : {
       "localizations" : {
         "uk" : {
@@ -350,16 +320,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нічого не знайдено"
-          }
-        }
-      }
-    },
-    "Open System Settings" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Відкрити Системні параметри"
           }
         }
       }
@@ -534,16 +494,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Підставити"
-          }
-        }
-      }
-    },
-    "Vortex can't see the screen" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vortex не бачить екран"
           }
         }
       }

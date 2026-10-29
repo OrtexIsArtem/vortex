@@ -122,6 +122,16 @@
         }
       }
     },
+    "Restart Vortex" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапустити Vortex"
+          }
+        }
+      }
+    },
     "Screen Recording" : {
       "comment" : "Permission name, as in System Settings",
       "localizations" : {
@@ -140,6 +150,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запис екрана вимкнено"
+          }
+        }
+      }
+    },
+    "Turn on" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увімкнути"
+          }
+        }
+      }
+    },
+    "Works after restart" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрацює після перезапуску"
           }
         }
       }
