@@ -12,7 +12,10 @@ struct OnboardingView: View {
   var body: some View {
     Group {
       switch store.presentation {
-      case .flow, .hidden:
+      case .hidden:
+        // Nothing stays mounted while hidden, so the illustration's loop stops (S35: no CPU once settled).
+        Color.clear
+      case .flow:
         page(store.page)
       case let .single(single):
         SinglePermissionPage(store: store, single: single)

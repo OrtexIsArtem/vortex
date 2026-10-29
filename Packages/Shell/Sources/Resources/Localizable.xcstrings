@@ -33,6 +33,16 @@
         }
       }
     },
+    "Allow notifications" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дозволити сповіщення"
+          }
+        }
+      }
+    },
     "Allow Vortex in System Settings › General › Login Items." : {
       "localizations" : {
         "uk" : {
@@ -43,12 +53,82 @@
         }
       }
     },
+    "Already on in System Settings? Turn it off and on again." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже ввімкнено в Системних параметрах? Вимкни й увімкни знову."
+          }
+        }
+      }
+    },
+    "Back" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернутися"
+          }
+        }
+      }
+    },
+    "Basics" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основне"
+          }
+        }
+      }
+    },
+    "Checked after restart" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевіримо після перезапуску"
+          }
+        }
+      }
+    },
+    "Click Allow in the notification at the top right, or in Notification Center." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисни «Дозволити» у сповіщенні вгорі праворуч або в Центрі сповіщень."
+          }
+        }
+      }
+    },
     "Click the notch to open Vortex." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клацніть по вирізу, щоб відкрити Vortex."
+          }
+        }
+      }
+    },
+    "Click Vortex's icon in the menu bar to open it." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисни значок Vortex у рядку меню, щоб відкрити його."
+          }
+        }
+      }
+    },
+    "Close" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрити"
           }
         }
       }
@@ -69,6 +149,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закривати, коли курсор залишає вікно"
+          }
+        }
+      }
+    },
+    "Continue setup" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продовжити налаштування"
           }
         }
       }
@@ -136,12 +226,52 @@
         }
       }
     },
+    "Get started" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Почати"
+          }
+        }
+      }
+    },
+    "Hover over the notch to open Vortex, or click its icon in the menu bar." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведи на виріз, щоб відкрити Vortex, або натисни його значок у рядку меню."
+          }
+        }
+      }
+    },
+    "Hover over the notch to open Vortex." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведи на виріз, щоб відкрити Vortex."
+          }
+        }
+      }
+    },
     "Hover the notch to open Vortex." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Наведіть курсор на виріз, щоб відкрити Vortex."
+          }
+        }
+      }
+    },
+    "If the switch is already on, turn it off and on again." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Якщо перемикач уже ввімкнено, вимкни й увімкни його знову."
           }
         }
       }
@@ -173,6 +303,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Мова"
+          }
+        }
+      }
+    },
+    "Later" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пізніше"
           }
         }
       }
@@ -209,12 +349,32 @@
         }
       }
     },
+    "macOS may ask you to confirm this again from time to time." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS може час від часу просити підтвердити це знову."
+          }
+        }
+      }
+    },
     "Menu bar icon" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значок у рядку меню"
+          }
+        }
+      }
+    },
+    "Next" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Далі"
           }
         }
       }
@@ -229,12 +389,72 @@
         }
       }
     },
+    "Not in the list? Click + and choose Vortex." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає у списку? Натисни + і вибери Vortex."
+          }
+        }
+      }
+    },
+    "Notifications › Vortex" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сповіщення › Vortex"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вимкнено"
+          }
+        }
+      }
+    },
+    "On" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увімкнено"
+          }
+        }
+      }
+    },
+    "On a Mac without a notch, Vortex lives in the menu bar." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На Mac без вирізу Vortex живе в рядку меню."
+          }
+        }
+      }
+    },
     "Only when Vortex opened as the pointer passed the notch." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Лише якщо Vortex відкрився, коли курсор проходив повз виріз."
+          }
+        }
+      }
+    },
+    "Open at login" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкривати під час входу"
           }
         }
       }
@@ -269,6 +489,16 @@
         }
       }
     },
+    "Open System Settings" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрити Системні параметри"
+          }
+        }
+      }
+    },
     "Open Vortex" : {
       "comment" : "Menu bar icon menu",
       "localizations" : {
@@ -280,12 +510,52 @@
         }
       }
     },
+    "Open Vortex with its shortcut, set in Settings." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкривай Vortex сполученням клавіш із Налаштувань."
+          }
+        }
+      }
+    },
     "Opens and closes Vortex from anywhere." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Відкриває і закриває Vortex будь-де."
+          }
+        }
+      }
+    },
+    "Privacy & Security › Accessibility" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конфіденційність і безпека › Універсальний доступ"
+          }
+        }
+      }
+    },
+    "Privacy & Security › Paste from Other Apps" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конфіденційність і безпека › Вставлення з інших програм"
+          }
+        }
+      }
+    },
+    "Privacy & Security › Screen & System Audio Recording" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конфіденційність і безпека › Запис екрана й системного аудіо"
           }
         }
       }
@@ -312,12 +582,62 @@
         }
       }
     },
+    "Required" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обов'язково"
+          }
+        }
+      }
+    },
     "Restart" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перезапустити"
+          }
+        }
+      }
+    },
+    "Restart and start" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапустити й почати"
+          }
+        }
+      }
+    },
+    "Restart now" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапустити зараз"
+          }
+        }
+      }
+    },
+    "Restart to check" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапустити, щоб перевірити"
+          }
+        }
+      }
+    },
+    "Restart Vortex" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапустити Vortex"
           }
         }
       }
@@ -375,6 +695,26 @@
         }
       }
     },
+    "Skip" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустити"
+          }
+        }
+      }
+    },
+    "Start using Vortex" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Почати"
+          }
+        }
+      }
+    },
     "Stays on while a display has no notch or the notch can’t open Vortex." : {
       "localizations" : {
         "uk" : {
@@ -406,12 +746,92 @@
         }
       }
     },
+    "To make every part work, give it a few permissions. It takes a minute." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щоб усе працювало, дай кілька дозволів — це хвилина."
+          }
+        }
+      }
+    },
+    "Turn it off in System Settings." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вимкнути можна в Системних параметрах."
+          }
+        }
+      }
+    },
+    "Turn on" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увімкнути"
+          }
+        }
+      }
+    },
     "Turn the keyboard back on" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Увімкнути клавіатуру"
+          }
+        }
+      }
+    },
+    "Vortex lives in your notch: a timer, a shelf for files, clipboard history, tasks and keys for Claude." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex живе у вирізі екрана: таймер, полиця для файлів, історія буфера, задачі й ключі для Claude."
+          }
+        }
+      }
+    },
+    "Vortex may need to restart once for this." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Можливо, Vortex доведеться один раз перезапустити."
+          }
+        }
+      }
+    },
+    "Works after restart" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрацює після перезапуску"
+          }
+        }
+      }
+    },
+    "You may need to restart Vortex after this." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Можливо, після цього треба буде перезапустити Vortex."
+          }
+        }
+      }
+    },
+    "You're all set" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
           }
         }
       }
