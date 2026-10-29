@@ -98,15 +98,24 @@ struct ShellPermissionsTests {
   ) -> TestStoreOf<ShellFeature> {
     var settings = ShellSettings()
     settings.disabledFeatures = disabled
-    var state = ShellFeature.State(settings: settings, features: features)
+    var state = ShellFeature.State(settings: settings, features: features, onboarding: .finished)
     state.requiredPermissions = required
-    return TestStore(initialState: state) {
+    let store = TestStore(initialState: state) {
       ShellFeature()
     } withDependencies: {
       $0.continuousClock = ImmediateClock()
       $0.settingsClient.save = { _ in }
       $0.featuresClient.setEnabled = { _, _ in }
+      $0.onboardingProgress.save = { _ in }
+      $0.onboardingWindow.present = { _, _ in }
+      $0.onboardingWindow.hide = { _ in }
+      $0.permissionsClient.setFrequentChecks = { _ in }
+      $0.windowClient.dismiss = {}
     }
+    // The statuses also reach the onboarding (OnboardingFeatureTests, ShellOnboardingTests); these tests check the
+    // shared statuses and the blocked flag.
+    store.exhaustivity = .off(showSkippedAssertions: false)
+    return store
   }
 
   /// Everything the launch task starts besides the permissions, finished at once.
@@ -116,7 +125,8 @@ struct ShellPermissionsTests {
     store.dependencies.windowClient.setAcceptsFiles = { _ in }
     store.dependencies.hotkeyClient.presses = { _ in .finished }
     store.dependencies.systemClient.applyTheme = { _ in }
-    store.dependencies.launchAtLoginClient.enableOnFirstLaunch = {}
+    store.dependencies.activeAppClient.activations = { .finished }
+    store.dependencies.activeAppClient.terminations = { .finished }
     store.dependencies.launchAtLoginClient.status = { .disabled }
   }
 
@@ -143,15 +153,17 @@ struct ShellPermissionsTests {
       await launch.cancel()
     }
 
-    /// Until the onboarding window shows the page, the request goes to macOS.
+    /// A request shows the permission's page and asks macOS nothing by itself (S24, S25).
     @Test
-    func forNowAPageRequestAsksMacOS() async {
+    func aPageRequestShowsThePageAndAsksMacOSNothing() async {
       let mac = SimulatedPermissions()
       let store = makeStore()
       store.dependencies.permissionsClient = .simulated(mac)
+      store.dependencies.permissionsClient.setFrequentChecks = { _ in }
       await store.send(.permissionPageRequested(.screenRecording))
-      await store.finish()
-      #expect(mac.state.events == [.prompt(.screenRecording)])
+      await store.receive(\.onboarding.pageRequested)
+      #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request)))
+      #expect(mac.state.events.isEmpty)
     }
   #endif
 
@@ -164,13 +176,12 @@ struct ShellPermissionsTests {
     store.dependencies.permissionsClient.updates = { .finished }
     store.dependencies.permissionsClient.request = { asked.continuation.yield($0) }
     store.dependencies.permissionPage.requests = { requests }
-    store.exhaustivity = .off
 
     let launch = await store.send(.task)
     sendRequest.yield(.screenRecording)
     await store.receive(\.permissionPageRequested)
-    var askedFor = asked.stream.makeAsyncIterator()
-    #expect(await askedFor.next() == .screenRecording)
+    await store.receive(\.onboarding.pageRequested)
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request)))
     await launch.cancel()
   }
 

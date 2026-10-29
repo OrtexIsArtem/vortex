@@ -1,11 +1,22 @@
 import Foundation
 import VortexCore
+import VortexPlatform
 
 /// The onboarding's configuration, in one place (S30).
 enum OnboardingConfig {
   /// Permissions Vortex can't be used without (S9). One counts only while an enabled feature or the shell needs it
   /// (S66). None for now; QA mode may change the shell's copy per run, `ShellFeature.State.requiredPermissions`.
   static let requiredPermissions: Set<Permission> = []
+
+  /// Release builds apply "Open at login" when the user leaves Basics, and so do QA runs with release behavior; debug
+  /// builds never register themselves (S13, S74).
+  static var appliesLoginItem: Bool {
+    #if DEBUG
+      QA.releaseBehavior
+    #else
+      true
+    #endif
+  }
 }
 
 /// The permissions Vortex needs now and why (S29, S62): what the enabled features declare, plus the shell's own

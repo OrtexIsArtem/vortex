@@ -144,7 +144,7 @@
         try requireMenuBarIcon()
         guard let menu = window.qaMenu else { throw QAError("there is no menu") }
         let identifiers = menu.items.compactMap { $0.identifier?.rawValue }
-        guard let index = menu.items.firstIndex(where: { $0.identifier?.rawValue == identifier }) else {
+        guard let index = menu.items.firstIndex(where: { $0.identifier?.rawValue == identifier && !$0.isHidden }) else {
           throw QAError("no menu item \(identifier); items: \(identifiers.joined(separator: ", "))")
         }
         window.qaMovePointer(intoWindow: false)
