@@ -14,11 +14,12 @@ struct ClaudeCodeStepView: View {
         .foregroundStyle(VortexColor.secondaryText)
         .fixedSize(horizontal: false, vertical: true)
 
-      if case let .failed(message) = store.server {
-        // The server isn't running: nothing to connect to, and the onboarding offers Skip.
-        Text("Not running: \(message)", bundle: .module)
-          .foregroundStyle(VortexColor.secondaryText)
-      } else {
+      switch store.claudeStepBody {
+      case let .serverFailure(failure):
+        // The server isn't running: nothing to connect to, and the onboarding offers Skip. The Keys card's text, which
+        // names the port and says what to do.
+        ServerFailureMessage(failure: failure)
+      case .connect:
         VStack(alignment: .leading, spacing: 10) {
           if store.isConnectedNow || store.settings.hasConnected {
             Text("Connected ✓", bundle: .module)
@@ -111,7 +112,32 @@ struct ClaudeCodeStepView: View {
   }
 }
 
+extension SecretsFeature {
+  /// The server couldn't start: on which port, and why, as the system said it.
+  struct ServerFailure: Equatable {
+    var port: Int
+    var reason: String
+  }
+
+  /// What the Claude Code step shows under its text: the Keys card's server failure (`ServerFailureMessage`), or
+  /// Connect with its result.
+  enum ClaudeStepBody: Equatable {
+    case serverFailure(ServerFailure)
+    case connect
+  }
+}
+
 extension SecretsFeature.State {
+  /// Why the server isn't running, for the Keys card and the Claude Code step alike; nil while it runs or starts.
+  var serverFailure: SecretsFeature.ServerFailure? {
+    guard case let .failed(reason) = server else { return nil }
+    return SecretsFeature.ServerFailure(port: settings.port, reason: reason)
+  }
+
+  var claudeStepBody: SecretsFeature.ClaudeStepBody {
+    serverFailure.map { .serverFailure($0) } ?? .connect
+  }
+
   /// "Connect" works only while the server listens (S78), and once at a time.
   var canConnect: Bool {
     guard case .listening = server, token != nil else { return false }

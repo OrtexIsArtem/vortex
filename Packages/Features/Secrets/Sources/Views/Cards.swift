@@ -111,13 +111,8 @@ struct ConnectCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      if case let .failed(message) = store.server {
-        Text("Claude can't reach the keys", bundle: .module)
-          .font(.system(size: 13, weight: .semibold))
-        Text("Vortex could not listen on port \(String(store.settings.port)): \(message). Pick another port in Settings › Features › Keys.", bundle: .module)
-          .font(.system(size: 12))
-          .foregroundStyle(VortexColor.secondaryText)
-          .fixedSize(horizontal: false, vertical: true)
+      if let failure = store.serverFailure {
+        ServerFailureMessage(failure: failure)
       } else {
         Text("Connect Claude Code once", bundle: .module)
           .font(.system(size: 13, weight: .semibold))
@@ -151,5 +146,22 @@ struct ConnectCard: View {
   static func shown(_ command: String) -> String {
     guard let range = command.range(of: "Bearer ") else { return command }
     return command[..<range.upperBound] + "••••••\""
+  }
+}
+
+/// Why Claude can't reach the keys: the port the server couldn't listen on, the reason, and what to do. The Keys tab's
+/// card and the onboarding's Claude Code step (S27, S78) show the same text.
+struct ServerFailureMessage: View {
+  let failure: SecretsFeature.ServerFailure
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("Claude can't reach the keys", bundle: .module)
+        .font(.system(size: 13, weight: .semibold))
+      Text("Vortex could not listen on port \(String(failure.port)): \(failure.reason). Pick another port in Settings › Features › Keys.", bundle: .module)
+        .font(.system(size: 12))
+        .foregroundStyle(VortexColor.secondaryText)
+        .fixedSize(horizontal: false, vertical: true)
+    }
   }
 }

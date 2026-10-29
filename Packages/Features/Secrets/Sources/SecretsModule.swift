@@ -102,6 +102,8 @@ public enum SecretsModule: FeatureModule {
       var hasConnected: Bool
       var addedToClaudeCode: Bool
       var stepDone: Bool
+      /// The port the step names when the server is down (the Keys card's message), or nil while it shows Connect.
+      var serverFailurePort: Int?
 
       init(_ state: SecretsFeature.State) {
         server = switch state.server {
@@ -123,6 +125,7 @@ public enum SecretsModule: FeatureModule {
         addedToClaudeCode = state.settings.addedToClaudeCode
         @Shared(.onboardingStepsDone) var done
         stepDone = done.contains(SecretsFeature.id)
+        if case let .serverFailure(failure) = state.claudeStepBody { serverFailurePort = failure.port }
       }
     }
   #endif

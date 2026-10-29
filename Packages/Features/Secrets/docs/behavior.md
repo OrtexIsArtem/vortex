@@ -32,7 +32,7 @@
 
 ## Onboarding step (Claude Code)
 - `makeOnboardingStep()` gives the shell the step "Claude Code" with S27's text; the footer says it can be done later in the Keys tab.
-- "Connect" is enabled only while the server listens, and hidden when it failed to start, which shows "Not running: …" instead.
+- "Connect" is enabled only while the server listens, and hidden when it failed to start: the step then shows the Keys card's "Claude can't reach the keys" with the port, the reason and "Pick another port in Settings › Features › Keys".
 - Connect first asks the user's shell (zsh, bash or fish) only for its PATH, between two `__vortex_claude_path__` lines (5 s): what startup files print before them is never read.
 - Vortex then looks for `claude` itself: in each absolute PATH directory, then ~/.local/bin, ~/.claude/local (an old install .zshrc reaches by an alias), /opt/homebrew/bin and /usr/local/bin.
 - It runs only an absolute path to an existing executable file named `claude`, checked before the run; none found reads as not installed.
