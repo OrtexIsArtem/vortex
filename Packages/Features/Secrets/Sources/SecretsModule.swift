@@ -31,16 +31,94 @@ public enum SecretsModule: FeatureModule {
     AnyView(SecretsSettingsView(store: store))
   }
 
+  /// The onboarding's Claude Code step (S17, S27): done once Connect worked or Claude Code connected.
+  public static func makeOnboardingStep() -> OnboardingStep? {
+    OnboardingStep(id: id, title: LocalizedStringResource(stringLiteral: "Claude Code"), view: ClaudeCodeStepView(store: store))
+  }
+
   public static func setEnabled(_ isEnabled: Bool) {
     #if DEBUG
       // A QA run takes commands only on its own channel (VortexPlatform's `QA`).
-      if !isListening, !QA.isActive {
+      if !isListening {
         isListening = true
-        listenForDebugCommands()
+        if QA.isActive { registerQACommands() } else { listenForDebugCommands() }
       }
     #endif
     store.send(isEnabled ? .start : .stop)
   }
+
+  #if DEBUG
+    /// QA mode: `keys press=connect|connectAgain|copyCommand|getClaudeCode` presses the Claude Code step's buttons,
+    /// refused while the step doesn't show them; `press=turnOn|restart` the Notifications row in the settings. The
+    /// `keys` state section shows the step, never the token or the command.
+    private static func registerQACommands() {
+      QA.registerState(section: "keys") { StepState(store.state) }
+      QA.register(command: "keys") { arguments in
+        let state = store.state
+        switch arguments["press"] {
+        case "connect", "connectAgain":
+          let again = arguments["press"] == "connectAgain"
+          let showsConnected = state.isConnectedNow || state.settings.hasConnected
+          guard state.canConnect, again == showsConnected else {
+            throw QAError("\(again ? "Connect again" : "Connect") isn't there or is disabled now")
+          }
+          store.send(.connectTapped)
+        case "copyCommand":
+          switch state.connect {
+          case .notInstalled, .failed: store.send(.copyConnectCommandTapped)
+          case .idle, .running, .added: throw QAError("Copy command shows only after Connect failed")
+          }
+        case "getClaudeCode":
+          guard state.connect == .notInstalled else { throw QAError("the link shows only when Claude Code isn't installed") }
+          store.send(.getClaudeCodeTapped)
+        default:
+          let pressed = try QAPermissions.pressRow(
+            arguments,
+            needs: permissionNeeds,
+            statuses: state.permissionStatuses,
+            turnOn: { store.send(.turnOnTapped($0)) },
+            restart: { store.send(.restartTapped) }
+          )
+          guard pressed else {
+            throw QAError("keys takes press=connect, connectAgain, copyCommand, getClaudeCode, turnOn or restart")
+          }
+        }
+      }
+    }
+
+    /// The Claude Code step as QA's state shows it.
+    struct StepState: Encodable {
+      var server: String
+      var connect: String
+      var canConnect: Bool
+      var connected: Bool
+      var hasConnected: Bool
+      var addedToClaudeCode: Bool
+      var stepDone: Bool
+
+      init(_ state: SecretsFeature.State) {
+        server = switch state.server {
+        case .off: "off"
+        case .starting: "starting"
+        case .listening: "listening"
+        case .failed: "failed"
+        }
+        connect = switch state.connect {
+        case .idle: "idle"
+        case .running: "running"
+        case .added: "added"
+        case .notInstalled: "notInstalled"
+        case let .failed(exitCode): "failed \(exitCode)"
+        }
+        canConnect = state.canConnect
+        connected = state.isConnectedNow
+        hasConnected = state.settings.hasConnected
+        addedToClaudeCode = state.settings.addedToClaudeCode
+        @Shared(.onboardingStepsDone) var done
+        stepDone = done.contains(SecretsFeature.id)
+      }
+    }
+  #endif
 
   #if DEBUG
     /// Lets scripts drive keys in a debug build, through distributed notifications:

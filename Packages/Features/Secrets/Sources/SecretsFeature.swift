@@ -69,6 +69,25 @@ struct SecretsFeature: Sendable {
   static let allowButtonID = "secrets.allow"
   static let denyButtonID = "secrets.deny"
 
+  /// Where the onboarding's "Connect" stands (S27, S78).
+  enum ConnectStatus: Equatable, Sendable {
+    case idle
+    case running
+    /// Added to Claude Code.
+    case added
+    /// `claude` isn't on the user's PATH.
+    case notInstalled
+    /// Any other failure, the time limit included; only the exit code is kept, never the output.
+    case failed(exitCode: Int32)
+  }
+
+  /// The connect command's limit: checking for `claude`, then adding (S78).
+  static let checkTime: Duration = .seconds(5)
+  static let connectTime: Duration = .seconds(25)
+  /// The environment variable the connect command reads the token from.
+  static let tokenVariable = "VORTEX_MCP_TOKEN"
+  static let claudeCodeURL = URL(string: "https://claude.com/claude-code")!
+
   enum ServerStatus: Equatable, Sendable {
     case off
     case starting
@@ -105,8 +124,23 @@ struct SecretsFeature: Sendable {
     @Shared(.notchIndicators) var indicators
     /// What macOS says about Notifications, read by the shell: the settings row (S22.3).
     @SharedReader(.permissionStatuses) var permissionStatuses
+    /// The onboarding's Claude Code step (S27, S78).
+    var connect = ConnectStatus.idle
 
     init() {}
+
+    /// The Claude Code step is done: Connect worked once, or a client connected, or one is connected now.
+    var isClaudeStepDone: Bool {
+      settings.addedToClaudeCode || settings.hasConnected || !sessions.isEmpty
+    }
+
+    /// The connect command run from the onboarding: the token comes from `tokenVariable`, so the command itself never
+    /// holds it, and nothing the shell prints shows.
+    var connectRunCommand: String {
+      "claude mcp remove --scope user vortex >/dev/null 2>&1; "
+        + "claude mcp add --transport http --scope user vortex http://127.0.0.1:\(settings.port)/mcp "
+        + "--header \"Authorization: Bearer $\(SecretsFeature.tokenVariable)\" >/dev/null 2>&1"
+    }
 
     /// What connects Claude Code once, for every project; an earlier connection, such as to another port, goes first,
     /// as `claude mcp add` refuses a name it has.
@@ -175,6 +209,11 @@ struct SecretsFeature: Sendable {
     case turnOnTapped(Permission)
     /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
     case restartTapped
+    /// "Connect" or "Connect again" in the onboarding's Claude Code step.
+    case connectTapped
+    case connectFinished(ConnectStatus)
+    /// The link to Claude Code's page, when it isn't installed.
+    case getClaudeCodeTapped
   }
 
   @Dependency(\.calendar) var calendar
@@ -185,6 +224,7 @@ struct SecretsFeature: Sendable {
   @Dependency(\.date.now) var now
   @Dependency(\.keychainClient) var keychain
   @Dependency(\.notificationClient) var notifications
+  @Dependency(\.fileClient) var files
   @Dependency(\.pasteboardClient) var pasteboard
   @Dependency(\.permissionPage) var permissionPage
   @Dependency(\.permissionsClient) var permissions
@@ -194,6 +234,7 @@ struct SecretsFeature: Sendable {
 
   private enum CancelID: Hashable {
     case load
+    case connect
     case token
     case server
     case buttons
@@ -217,6 +258,8 @@ struct SecretsFeature: Sendable {
         guard !state.isEnabled else { return .none }
         state.isEnabled = true
         state.server = .starting
+        // Done before this launch: Connect worked, or Claude Code connected (S78).
+        markClaudeStep(state.isClaudeStepDone)
         // Requests from before, such as a run Vortex quit in, are over: so are their notifications.
         guard state.isLoaded else { return .merge(load(), listenToNotificationButtons(), forgetNotifications()) }
         return .merge(expire(&state), startServing(state), listenToNotificationButtons(), forgetNotifications())
@@ -421,8 +464,54 @@ struct SecretsFeature: Sendable {
 
       case .restartTapped:
         return .run { _ in await system.relaunch() }
+
+      case .connectTapped:
+        // Only while the server listens, so the command names a port Claude can reach (S78).
+        guard case .listening = state.server, let token = state.token, state.connect != .running else { return .none }
+        state.connect = .running
+        return .run { [command = state.connectRunCommand] send in
+          await send(.connectFinished(try await connect(command: command, token: token)))
+        } catch: { error, send in
+          logger.error("Connecting Claude Code failed: \(error, privacy: .public)")
+          await send(.connectFinished(.failed(exitCode: -1)))
+        }
+        .cancellable(id: CancelID.connect, cancelInFlight: true)
+
+      case let .connectFinished(status):
+        state.connect = status
+        if status == .added {
+          state.$settings.withLock { $0.addedToClaudeCode = true }
+        }
+        return .none
+
+      case .getClaudeCodeTapped:
+        return .run { _ in await files.open(Self.claudeCodeURL) }
       }
     }
+    .onChange(of: \.isClaudeStepDone) { _, isDone in
+      Reduce { _, _ in
+        markClaudeStep(isDone)
+        return .none
+      }
+    }
+  }
+
+  /// The onboarding offers Next instead of Skip once the step is done (S19, S27).
+  private func markClaudeStep(_ isDone: Bool) {
+    guard isDone else { return }
+    @Shared(.onboardingStepsDone) var done
+    $done.withLock { _ = $0.insert(Self.id) }
+  }
+
+  /// Checks for `claude`, then runs the connect command in the user's login shell with the token in the environment.
+  /// Never more than `checkTime` plus `connectTime`; the output is never kept, as it could echo the token.
+  private func connect(command: String, token: String) async throws -> ConnectStatus {
+    let check = try await commands.run("command -v claude >/dev/null 2>&1", nil, [:], Self.checkTime)
+    guard check.exitCode == 0, !check.timedOut else {
+      return check.timedOut ? .failed(exitCode: check.exitCode) : .notInstalled
+    }
+    let output = try await commands.run(command, nil, [Self.tokenVariable: token], Self.connectTime)
+    return output.exitCode == 0 && !output.timedOut ? .added : .failed(exitCode: output.exitCode)
   }
 
   private static func byName(_ lhs: SecretKey, _ rhs: SecretKey) -> Bool {

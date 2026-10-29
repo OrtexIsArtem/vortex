@@ -29,3 +29,13 @@
 - Vortex does not decide what Claude may do with a key: Claude is told to ask the user before changing data.
 - Turning the feature off, or a new port, ends every session and the requests waiting in them, and stops the commands still running (Claude gets «Cancelled.»); so does Vortex quitting.
 - Vortex keeps no log of uses: Claude Code shows every command in its own history, and a key shows when a command last ran with it (a command stopped while running counts).
+
+## Onboarding step (Claude Code)
+- `makeOnboardingStep()` gives the shell the step "Claude Code" with S27's text; the footer says it can be done later in the Keys tab.
+- "Connect" is enabled only while the server listens, and hidden when it failed to start, which shows "Not running: …" instead.
+- Connect first runs `command -v claude` (5 s), then the connect command (25 s), both through CommandClient in the user's login shell, non-interactive, so nothing lands in shell history.
+- The token goes in the environment (`VORTEX_MCP_TOKEN`), never into the command, the screen, the logs, QA's state or snapshots; output is never kept.
+- Success: "Added to Claude Code ✓ — start a new Claude Code session to use your keys.", saved as `addedToClaudeCode`.
+- `claude` missing: "Claude Code isn't installed" with the link to claude.com/claude-code; any other failure, the time limit included: one fixed line with the exit code. Both add "Copy command" (concealed) and "Run it in Terminal".
+- A client connected before (`hasConnected`) or connected now shows "Connected ✓" and a quiet "Connect again".
+- The step is done (`onboardingStepsDone` gets `secrets`) on success, on `hasConnected`, or while a session is live; checked at start too.

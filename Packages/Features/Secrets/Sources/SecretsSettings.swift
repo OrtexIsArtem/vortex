@@ -11,9 +11,11 @@ public struct SecretsSettings: Codable, Equatable, Sendable {
   public var port = Self.defaultPort
   /// Claude Code connected at least once, so the tab stops showing how to connect it.
   public var hasConnected = false
+  /// The onboarding's "Connect" added Vortex to Claude Code (S78): the step stays done after a relaunch.
+  public var addedToClaudeCode = false
 
   private enum CodingKeys: String, CodingKey {
-    case port, hasConnected
+    case port, hasConnected, addedToClaudeCode
   }
 
   public init() {}
@@ -23,6 +25,7 @@ public struct SecretsSettings: Codable, Equatable, Sendable {
     let port = (try? container.decodeIfPresent(Int.self, forKey: .port)) ?? Self.defaultPort
     self.port = Self.ports.contains(port) ? port : Self.defaultPort
     hasConnected = (try? container.decodeIfPresent(Bool.self, forKey: .hasConnected)) ?? false
+    addedToClaudeCode = (try? container.decodeIfPresent(Bool.self, forKey: .addedToClaudeCode)) ?? false
   }
 }
 
