@@ -22,9 +22,16 @@ struct QALaunchTests {
 
   @Test
   func aNameStartsAQARun() {
-    #expect(launch("--qa", "A") == .named("A", .init()))
-    #expect(launch("-AppleLanguages", "(uk)", "--qa", "tester-B2").name == "tester-B2")
+    #expect(launch("--qa", "A") == .named("a", .init()))
+    #expect(launch("-AppleLanguages", "(uk)", "--qa", "tester-B2").name == "tester-b2")
     #expect(launch("--qa", "1234567890abcdef").name == "1234567890abcdef")
+  }
+
+  @Test
+  func namesAreKeptInLowercaseSoCaseNeverMakesTwoRuns() {
+    // The run's folder is found without regard to case: A and a must be one run, with one name.
+    #expect(launch("--qa", "Tester-A").name == "tester-a")
+    #expect(launch("--qa", "A") == launch("--qa", "a"))
   }
 
   @Test
@@ -65,7 +72,7 @@ struct QALaunchTests {
   func optionsComeWithAName() {
     #expect(
       launch("--qa", "A", "--qa-reduce-motion", "--qa-release", "--qa-screens", "notch+plain")
-        == .named("A", .init(reduceMotion: true, releaseBehavior: true, screens: [.notch, .plain]))
+        == .named("a", .init(reduceMotion: true, releaseBehavior: true, screens: [.notch, .plain]))
     )
     #expect(launch("--qa-release", "--qa", "A").options == .init(releaseBehavior: true))
     #expect(launch("--qa", "A").options == .init())
@@ -98,8 +105,8 @@ struct QALaunchTests {
     let base = URL(fileURLWithPath: "/Users/someone/Library/Application Support", isDirectory: true)
     #expect(DataFolder.folder(in: base, qa: .none).path == "/Users/someone/Library/Application Support/Vortex")
     #expect(
-      DataFolder.folder(in: base, qa: .named("A", .init())).path
-        == "/Users/someone/Library/Application Support/Vortex QA/A"
+      DataFolder.folder(in: base, qa: .named("a", .init())).path
+        == "/Users/someone/Library/Application Support/Vortex QA/a"
     )
     #expect(DataFolder.qaRoot(in: base).path == "/Users/someone/Library/Application Support/Vortex QA")
   }

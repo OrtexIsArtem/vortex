@@ -132,7 +132,8 @@
 
     /// `sim` shows the simulation; `sim set key=value…` changes it; `sim copy text=|link=|file=|image= [concealed=true]
     /// [source=<bundle id>]` copies in another app; `sim press notification=<id> button=<id>` presses a notification's
-    /// button; `sim shell match=<text> exit=<code> [stdout=] [stderr=]` scripts the commands that contain the text;
+    /// button; `sim shell match=<text> exit=<code> [stdout=] [stderr=] [delay=<seconds>] [echo=true]` scripts the commands
+    /// that contain the text (a delay that reaches the time limit ends it there: exit 143, timed out);
     /// `sim shell clear` forgets the scripts.
     @MainActor
     func simulate(_ arguments: [String: String]) throws -> Any? {
@@ -183,6 +184,8 @@
         guard let url = URL(string: link), url.scheme != nil else { throw QAError("not a link: \(link)") }
         content = .link(url)
       } else if let file = values["file"] {
+        // Like image=: a copied file is drawn and looked at, so it must be QA's.
+        guard QAPaths.isSafe(file) else { throw QAError("file= takes a file inside the QA folder or a temporary folder") }
         content = .files([URL(fileURLWithPath: file)])
       } else if let image = values["image"] {
         guard QAPaths.isSafe(image), let data = FileManager.default.contents(atPath: image) else {

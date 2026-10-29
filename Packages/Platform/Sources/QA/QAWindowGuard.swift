@@ -1,8 +1,9 @@
 #if DEBUG
   import AppKit
 
-  /// Watches that a QA run leaves no trace on screen: a window that shows on a display goes off the displays again, and
-  /// a window taking the keyboard or Vortex coming to the front are recorded as violations.
+  /// Watches that a QA run leaves no trace on screen, as a violation each time: a window that shows on a display goes
+  /// off the displays again, a window that takes the keyboard is ordered out, and Vortex coming to the front gives the
+  /// front back. Windows can't take the keyboard in the first place (`QA.allowsKeyWindows`); this is the second line.
   @MainActor
   enum QAWindowGuard {
     private static var observers: [any NSObjectProtocol] = []
@@ -23,7 +24,9 @@
           let window = note.object as? NSWindow
           MainActor.assumeIsolated {
             guard let window else { return }
-            QALog.violation("window", "took the keyboard", describe(window))
+            // The keys of the app the user types in would go into a window nobody sees: it goes at once.
+            QALog.violation("window", "took the keyboard, ordered out", describe(window))
+            window.orderOut(nil)
           }
         },
         center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in

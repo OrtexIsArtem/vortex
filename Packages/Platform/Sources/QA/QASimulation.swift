@@ -39,7 +39,8 @@
       var exitCode: Int32
       var stdout: String
       var stderr: String
-      /// Seconds the command takes, at most its time limit.
+      /// Seconds the command takes. One that reaches its time limit is stopped there as the live client stops it: exit
+      /// 143, timed out.
       var delay: Double = 0
       /// The output starts with the command itself, secrets and all, as some tools print what they run.
       var echo = false

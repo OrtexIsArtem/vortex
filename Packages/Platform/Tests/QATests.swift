@@ -78,6 +78,29 @@ struct QAProcessesTests {
     #expect(QA.isSameRun(pid: getpid()))
     #expect(!QA.isActive)
   }
+
+  @Test
+  func runsTakeOverOnlyFromTheSameRunWhateverTheCase() {
+    let vortex = "/Applications/Vortex.app/Contents/MacOS/Vortex"
+    let runA = QALaunch(arguments: [vortex, "--qa", "A"])
+    // A QA run and the user's plain Vortex never stop each other.
+    #expect(!QA.isSameRun(arguments: [vortex, "--qa", "A"], as: .none))
+    #expect(!QA.isSameRun(arguments: [vortex], as: runA))
+    // Another name is another run; the same name in another case is the same run, with the same folder.
+    #expect(!QA.isSameRun(arguments: [vortex, "--qa", "B"], as: runA))
+    #expect(QA.isSameRun(arguments: [vortex, "--qa", "a"], as: runA))
+    #expect(QA.isSameRun(arguments: [vortex, "-AppleLanguages", "(uk)", "--qa", "A"], as: runA))
+    #expect(QA.isSameRun(arguments: [vortex, "-NSDocumentRevisionsDebugMode", "YES"], as: .none))
+  }
+
+  @Test
+  func onlyPlainVortexMayHaveAKeyWindow() {
+    #expect(QA.allowsKeyWindows(for: .none))
+    #expect(!QA.allowsKeyWindows(for: QALaunch(arguments: ["/x/Vortex", "--qa", "A"])))
+    #expect(!QA.allowsKeyWindows(for: .invalid("--qa needs a name")))
+    // Tests run as plain Vortex.
+    #expect(QA.allowsKeyWindows)
+  }
 }
 
 struct QAIsolationTests {
@@ -114,6 +137,32 @@ struct QAIsolationTests {
     try Data(#"{"port": 51234}"#.utf8).write(to: folder.appending(path: "secrets.json"))
     #expect(try QAIsolation.seedServerPort(in: folder) { 60000 } == 51234)
     try FileManager.default.removeItem(at: folder)
+  }
+
+  @Test
+  func linksAndHardLinksLeadingOutOfTheRunsFolderAreFound() throws {
+    let outside = FileManager.default.temporaryDirectory.appending(path: "vortex-qa-outside-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: folder.appending(path: "Timer"), withIntermediateDirectories: true)
+    try Data("{}".utf8).write(to: folder.appending(path: "settings.json"))
+    try Data().write(to: outside.appending(path: "vortex.sqlite"))
+    // A link that stays inside is fine.
+    try FileManager.default.createSymbolicLink(
+      at: folder.appending(path: "Timer/run.json"),
+      withDestinationURL: folder.appending(path: "settings.json")
+    )
+    #expect(QAIsolation.itemsLeadingOut(of: folder).isEmpty)
+    // A link out, one out to a file that isn't there yet (SQLite would make it), and a hard link.
+    try FileManager.default.createSymbolicLink(
+      at: folder.appending(path: "vortex.sqlite"),
+      withDestinationURL: outside.appending(path: "vortex.sqlite")
+    )
+    try FileManager.default.createSymbolicLink(atPath: folder.appending(path: "vortex.sqlite-wal").path, withDestinationPath: "../\(outside.lastPathComponent)/missing-wal")
+    try FileManager.default.linkItem(at: outside.appending(path: "vortex.sqlite"), to: folder.appending(path: "shelf.json"))
+    let found = Set(QAIsolation.itemsLeadingOut(of: folder).map { URL(fileURLWithPath: $0).lastPathComponent })
+    #expect(found == ["vortex.sqlite", "vortex.sqlite-wal", "shelf.json"])
+    try FileManager.default.removeItem(at: folder)
+    try FileManager.default.removeItem(at: outside)
   }
 
   @Test
@@ -196,6 +245,7 @@ struct QASimulationTests {
     #expect(throws: QAError.self) { try QASystem.copy(from: [:]) }
     #expect(throws: QAError.self) { try QASystem.copy(from: ["link": "not a link"]) }
     #expect(throws: QAError.self) { try QASystem.copy(from: ["image": "/Users/someone/Desktop/a.png"]) }
+    #expect(throws: QAError.self) { try QASystem.copy(from: ["file": "/Users/someone/Desktop/a.pdf"]) }
   }
 
   @Test
@@ -296,8 +346,10 @@ struct QAClientsTests {
     try await keychain.save("io.github.ortexisartem.vortex.qa-test", "token", "s3cr3t-token-value", "label")
     #expect(try await keychain.read("io.github.ortexisartem.vortex.qa-test", "token") == "s3cr3t-token-value")
     #expect(await keychain.accounts("io.github.ortexisartem.vortex.qa-test") == ["token"])
-    QALog.record("test", "logged", ["text": "Bearer s3cr3t-token-value"])
-    #expect(QALog.events.value.last?.detail["text"] == "Bearer ••••")
+    // Found by its own text: other suites write to the same log meanwhile.
+    let event = "logged-\(UUID().uuidString)"
+    QALog.record("test", event, ["text": "Bearer s3cr3t-token-value"])
+    #expect(QALog.events.value.last { $0.event == event }?.detail["text"] == "Bearer ••••")
     await keychain.delete("io.github.ortexisartem.vortex.qa-test", "token")
     #expect(try await keychain.read("io.github.ortexisartem.vortex.qa-test", "token") == nil)
   }

@@ -148,7 +148,24 @@
     /// Vortex. A QA run never stops the user's Vortex or another run, and neither stops it.
     public static func isSameRun(pid: pid_t) -> Bool {
       guard let arguments = QAProcesses.arguments(of: pid) else { return !isActive }
-      return QALaunch(arguments: arguments).name == name
+      return isSameRun(arguments: arguments)
+    }
+
+    /// Whether a process started with `arguments` is the same kind of instance as one started as `launch`: the same
+    /// run, its name compared in lowercase, or both plain Vortex.
+    static func isSameRun(arguments: [String], as launch: QALaunch = .current) -> Bool {
+      QALaunch(arguments: arguments).name == launch.name
+    }
+
+    /// Whether a window may become the key window. Never in a QA run: a panel made key takes the keys of the app the
+    /// user types in, even while Vortex is not in front. Every window class of Vortex checks it in `canBecomeKey`.
+    public static var allowsKeyWindows: Bool {
+      allowsKeyWindows(for: .current)
+    }
+
+    /// Only plain Vortex: anything spelled like QA fails closed.
+    static func allowsKeyWindows(for launch: QALaunch) -> Bool {
+      launch == .none
     }
 
     /// Whether QA may touch the file at `path`: absolute, inside the run's folder or a temporary folder, and never in

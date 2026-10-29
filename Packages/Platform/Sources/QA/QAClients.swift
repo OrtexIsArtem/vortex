@@ -3,8 +3,8 @@
   import ComposableArchitecture
   import VortexCore
 
-  // The only QA file that names the command client: scripts/check-no-network.sh allows it here, and still forbids
-  // starting a process in it.
+  // The only QA file that names the command client, in two lines that scripts/check-no-network.sh allows: the stand-in's
+  // declaration and taking the client's place. Starting a process stays forbidden here too.
 
   extension DependencyValues {
     /// QA mode: every system client whose effect reaches past the run's own folder, replaced. Each starts from its
@@ -61,20 +61,26 @@
     }()
   }
 
+  // The type is named only on the next line and in `useQAClients`: scripts/check-no-network.sh allows those two.
   extension CommandClient {
     /// Nothing runs: the first `sim shell` script whose text the command contains answers, otherwise exit 0 and no
-    /// output. Values in the simulated keychain are taken out of the log.
+    /// output. A script whose delay reaches the time limit ends as the live client ends such a command: exit 143,
+    /// timed out. Values in the simulated keychain are taken out of the log.
     static let qa = qa { simulation.commandRules }
 
-    static func qa(scripts: @escaping @Sendable () -> [QASimulation.CommandRule]) -> CommandClient {
-      var client = CommandClient()
+    static func qa(scripts: @escaping @Sendable () -> [QASimulation.CommandRule]) -> Self {
+      var client = Self()
       client.run = { command, directory, environment, timeout in
         let rule = scripts().first { command.contains($0.match) }
-        if let delay = rule?.delay, delay > 0 {
+        let delay = rule?.delay ?? 0
+        let timedOut = delay > 0 && delay >= timeout.inSeconds
+        if delay > 0 {
           try await Task.sleep(for: .seconds(min(delay, timeout.inSeconds)))
         }
         let stdout = (rule?.echo == true ? command + "\n" : "") + (rule?.stdout ?? "")
-        let output = Output(exitCode: rule?.exitCode ?? 0, stdout: Data(stdout.utf8), stderr: Data((rule?.stderr ?? "").utf8))
+        let output = timedOut
+          ? Output(exitCode: 128 + SIGTERM, stdout: Data(stdout.utf8), stderr: Data((rule?.stderr ?? "").utf8), timedOut: true)
+          : Output(exitCode: rule?.exitCode ?? 0, stdout: Data(stdout.utf8), stderr: Data((rule?.stderr ?? "").utf8))
         QALog.record("command", "run", [
           "command": command,
           "directory": directory?.path ?? "~",

@@ -19,6 +19,11 @@
       guard !QAPaths.isInside(QAPaths.resolved(DataFolder.url), QAPaths.resolved(QAPaths.userFolder)) else {
         stop("the QA folder \(DataFolder.url.path) leads into \(QAPaths.userFolder.path)")
       }
+      // Nor may anything inside it, such as a linked vortex.sqlite, which SQLite would follow.
+      let leading = QAIsolation.itemsLeadingOut(of: DataFolder.url)
+      guard leading.isEmpty else {
+        stop("these lead out of the QA folder (a link outside it, or a hard link): \(leading.joined(separator: ", "))")
+      }
       do {
         try FileManager.default.createDirectory(at: QAPaths.controlFolder, withIntermediateDirectories: true)
       } catch {

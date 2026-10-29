@@ -3,6 +3,27 @@
 
   /// What keeps a QA run's services apart from the user's Vortex beyond the data folder.
   enum QAIsolation {
+    /// Items inside the run's folder through which writes would land elsewhere, such as the user's database: links
+    /// that lead out of the folder, and files with a second name (a hard link) anywhere. The run must not start with any.
+    static func itemsLeadingOut(of folder: URL) -> [String] {
+      let root = QAPaths.resolved(folder)
+      let keys: [URLResourceKey] = [.isSymbolicLinkKey, .isRegularFileKey, .linkCountKey]
+      guard let items = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys) else { return [] }
+      var leading: [String] = []
+      for case let item as URL in items {
+        guard let values = try? item.resourceValues(forKeys: Set(keys)) else { continue }
+        if values.isSymbolicLink == true {
+          // Where the link points, even when nothing is there yet: SQLite would create the file through it.
+          let destination = (try? FileManager.default.destinationOfSymbolicLink(atPath: item.path)) ?? "/"
+          let target = destination.hasPrefix("/") ? destination : item.deletingLastPathComponent().path + "/" + destination
+          if !QAPaths.isInside(QAPaths.resolved(URL(fileURLWithPath: target)), root) { leading.append(item.path) }
+        } else if values.isRegularFile == true, (values.linkCount ?? 1) > 1 {
+          leading.append(item.path)
+        }
+      }
+      return leading
+    }
+
     /// The port of the user's Vortex MCP server, which a run must never take: two listeners may share a port, and
     /// Claude Code's requests would then reach the run.
     static let userPort = 47823

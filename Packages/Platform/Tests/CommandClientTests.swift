@@ -164,6 +164,18 @@ struct QACommandClientTests {
   }
 
   @Test
+  func aScriptThatReachesTheTimeLimitTimesOutAsTheLiveClientDoes() async throws {
+    let client = CommandClient.qa(scripts: { [.init(match: "claude", exitCode: 0, stdout: "added", delay: 40)] })
+    let output = try await client.run("claude mcp add vortex", nil, [:], .milliseconds(50))
+    #expect(output.timedOut)
+    #expect(output.exitCode == 143)
+    let quick = try await CommandClient.qa(scripts: { [.init(match: "claude", exitCode: 0, delay: 0.01)] })
+      .run("claude mcp add vortex", nil, [:], .seconds(5))
+    #expect(!quick.timedOut)
+    #expect(quick.exitCode == 0)
+  }
+
+  @Test
   func theLogNamesTheVariablesNeverTheirValues() async throws {
     let client = CommandClient.qa(scripts: { [] })
     _ = try await client.run("echo qa-log-check", nil, ["TOKEN": "value-never-logged"], .seconds(5))

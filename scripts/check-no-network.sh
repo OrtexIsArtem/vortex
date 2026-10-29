@@ -23,13 +23,17 @@ fi
 # commands run only in Secrets.
 processes=$(search '(^|[^A-Za-z0-9_])(Process(\(|\.run)|NSTask|posix_spawn)' |
   grep -vE '^Packages/Platform/(Sources/Clients/(CommandClient|SystemClient)|Tests/CommandClientTests)\.swift:' || true)
-# QA mode's stand-in for the command client runs nothing; it may name the client, and the line above still holds there.
+# The live command client is reached only in its own file and its tests.
+live=$(search 'CommandClient\.liveValue' |
+  grep -vE '^Packages/Platform/(Sources/Clients/CommandClient|Tests/CommandClientTests)\.swift:' || true)
+# QA mode's stand-in runs nothing: in QAClients.swift only its declaration and taking the client's place may name it.
 commands=$(search '(^|[^A-Za-z0-9_])(commandClient|CommandClient([^A-Za-z0-9_]|$))' |
-  grep -vE '^Packages/Platform/(Sources/Clients/(CommandClient|SystemClient)|Sources/QA/QAClients|Tests/CommandClientTests)\.swift:' || true)
+  grep -vE '^Packages/Platform/(Sources/Clients/(CommandClient|SystemClient)|Tests/CommandClientTests)\.swift:' |
+  grep -vE '^Packages/Platform/Sources/QA/QAClients\.swift:[0-9]+:[[:space:]]*(extension CommandClient \{|commandClient = \.qa)[[:space:]]*$' || true)
 
-if [ -n "$processes$commands" ]; then
+if [ -n "$processes$live$commands" ]; then
   echo "error: processes start only in Platform's CommandClient and SystemClient, and commands run only in Packages/Features/Secrets:" >&2
-  printf '%s\n' "$processes" "$commands" | grep -v '^$' >&2
+  printf '%s\n' "$processes" "$live" "$commands" | grep -v '^$' >&2
   exit 1
 fi
 

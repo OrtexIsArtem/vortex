@@ -6,7 +6,7 @@
   public enum QALaunch: Equatable, Sendable {
     /// Started without `--qa`: nothing changes.
     case none
-    /// Started with `--qa <name>`, the name 1–16 letters, digits or dashes.
+    /// Started with `--qa <name>`, the name 1–16 letters, digits or dashes, kept in lowercase.
     case named(String, Options)
     /// A bad name, no name, `--qa` twice, an unknown `--qa-…` option, or options without `--qa`. Such a process must not
     /// start at all: running as plain Vortex would touch the user's data and services.
@@ -63,7 +63,8 @@
             self = .invalid("--qa needs a name of 1–16 letters, digits or dashes, not \"\(value ?? "")\"")
             return
           }
-          name = value
+          // In lowercase: the run's folder is found without regard to case, so A and a are one run.
+          name = value.lowercased()
           index += 2
         case "--qa-reduce-motion":
           options.reduceMotion = true

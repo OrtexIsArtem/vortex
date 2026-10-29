@@ -75,11 +75,15 @@ public final class ScreenOverlay {
     guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main
     else { return }
     // Its keys come through the window of Vortex's that has the keyboard; with none, such as when the window closed
-    // while the content was made, no key could close it.
-    guard NSApp.keyWindow.map({ !($0 is OverlayPanel) }) == true else {
+    // while the content was made, no key could close it. A QA run has no key window ever, and no keys but commands:
+    // there it shows off the displays all the same.
+    guard Self.isQA || NSApp.keyWindow.map({ !($0 is OverlayPanel) }) == true else {
       Task { @MainActor in onDismiss() }
       return
     }
+    #if DEBUG
+      if Self.isQA { QA.log("overlay", "showKeepingFront", ["shown": "off the displays"]) }
+    #endif
     // Shown the other way: that ends first, with the front given back.
     if isShown, !keepsFront { close() }
     if !keepsFront {
@@ -234,7 +238,13 @@ private final class OverlayPanel: NSPanel {
     acceptsMouseMovedEvents = true
   }
 
-  override var canBecomeKey: Bool { takesKeyboard }
+  override var canBecomeKey: Bool {
+    #if DEBUG
+      // A QA run's panels never take the keyboard (`QA.allowsKeyWindows`).
+      guard QA.allowsKeyWindows else { return false }
+    #endif
+    return takesKeyboard
+  }
   override var canBecomeMain: Bool { false }
 
   override func cancelOperation(_ sender: Any?) {
