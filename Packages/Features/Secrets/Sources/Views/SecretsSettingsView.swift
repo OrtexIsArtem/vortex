@@ -65,5 +65,7 @@ struct SecretsSettingsView: View {
       return
     }
     store.send(.portChanged(value))
+    // The port Keys kept: a refused one (in QA, 47823) never stays in the field.
+    port = String(store.settings.port)
   }
 }
