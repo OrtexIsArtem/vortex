@@ -255,7 +255,8 @@
           "title": title,
           "body": body,
           "buttons": buttons.map(\.id).joined(separator: ","),
-          "shown": "\(simulation.notificationsAllowed)",
+          // macOS shows a post only while Notifications are allowed now, in the simulated System Settings.
+          "shown": "\(QAPermissions.simulated.state.settings[.notifications] == .granted)",
         ])
       }
       client.remove = { prefix in QALog.record("notifications", "remove", ["prefix": prefix]) }

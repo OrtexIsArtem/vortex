@@ -9,7 +9,8 @@
     var keyboardAccess = false
     /// macOS refuses the lock though access reads on, as it does when the switch in System Settings went stale.
     var keyboardLockRefuses = false
-    /// Screen Recording for screenshots, until the simulated permissions arrive.
+    /// No longer read: a capture follows the simulated Screen Recording (`perm`, `QAPermissions.screenCaptureWorks`).
+    /// Kept so older simulation files and `sim set screenAccess=` still parse.
     var screenAccess = false
     /// The answer to the notifications prompt, until the simulated permissions arrive.
     var notificationsAllowed = false
