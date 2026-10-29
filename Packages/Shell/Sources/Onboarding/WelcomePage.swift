@@ -92,7 +92,7 @@ private struct WelcomeButtonStyle: ButtonStyle {
 /// (S35). Each curve is a shape SwiftUI animates by `progress`, so nothing runs once it settles.
 struct VortexSwirl: View {
   var progress: Double
-  static let curves = 30
+  nonisolated static let curves = 30
 
   var body: some View {
     ZStack(alignment: .top) {

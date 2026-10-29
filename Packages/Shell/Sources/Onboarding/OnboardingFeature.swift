@@ -506,7 +506,7 @@ struct OnboardingFeature {
           state.progress.pendingSingle = single.permission
         case .flow:
           // The same page shows after the relaunch, with fresh statuses (S20); at most once (S68).
-          guard state.showsRestartNow || state.shownPermission.map { state.showsRestartToCheck($0) } == true else {
+          guard state.showsRestartNow || state.shownPermission.map({ state.showsRestartToCheck($0) }) == true else {
             return .none
           }
           state.progress.restarted = true

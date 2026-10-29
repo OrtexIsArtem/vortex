@@ -364,16 +364,6 @@
         }
       }
     },
-    "Screen Recording" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запис екрана"
-          }
-        }
-      }
-    },
     "Search" : {
       "localizations" : {
         "uk" : {
