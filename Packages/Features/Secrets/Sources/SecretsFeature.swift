@@ -81,7 +81,9 @@ struct SecretsFeature: Sendable {
     case failed(exitCode: Int32)
   }
 
-  /// The connect command's limit: checking for `claude`, then adding (S78).
+  /// Connect's wall-clock limit (S78): reached, the run stops and the step shows the failure line.
+  static let connectLimit: Duration = .seconds(30)
+  /// Each run's own limit inside it: checking for `claude`, then adding.
   static let checkTime: Duration = .seconds(5)
   static let connectTime: Duration = .seconds(25)
   /// Where Claude Code's installers put `claude` (code.claude.com's install docs): the native installer's
@@ -241,6 +243,8 @@ struct SecretsFeature: Sendable {
     /// "Connect" or "Connect again" in the onboarding's Claude Code step.
     case connectTapped
     case connectFinished(ConnectStatus)
+    /// `connectLimit` passed while Connect still runs.
+    case connectTimeLimitReached
     /// The link to Claude Code's page, when it isn't installed.
     case getClaudeCodeTapped
   }
@@ -264,6 +268,7 @@ struct SecretsFeature: Sendable {
   private enum CancelID: Hashable {
     case load
     case connect
+    case connectLimit
     case token
     case server
     case buttons
@@ -500,20 +505,36 @@ struct SecretsFeature: Sendable {
         // Only while the server listens, so the command names a port Claude can reach (S78).
         guard case .listening = state.server, let token = state.token, state.connect != .running else { return .none }
         state.connect = .running
-        return .run { [state] send in
-          await send(.connectFinished(try await connect(state, token: token)))
-        } catch: { error, send in
-          logger.error("Connecting Claude Code failed: \(error, privacy: .public)")
-          await send(.connectFinished(.failed(exitCode: -1)))
-        }
-        .cancellable(id: CancelID.connect, cancelInFlight: true)
+        return .merge(
+          .run { [state] send in
+            await send(.connectFinished(try await connect(state, token: token)))
+          } catch: { error, send in
+            logger.error("Connecting Claude Code failed: \(error, privacy: .public)")
+            await send(.connectFinished(.failed(exitCode: -1)))
+          }
+          .cancellable(id: CancelID.connect, cancelInFlight: true),
+          // One wall-clock limit for the whole step: the shell's first start, the check and the connect (S78).
+          .run { send in
+            try await clock.sleep(for: Self.connectLimit)
+            await send(.connectTimeLimitReached)
+          }
+          .cancellable(id: CancelID.connectLimit, cancelInFlight: true)
+        )
 
       case let .connectFinished(status):
+        guard state.connect == .running else { return .none }
         state.connect = status
         if status == .added {
           state.$settings.withLock { $0.addedToClaudeCode = true }
         }
-        return .none
+        return .cancel(id: CancelID.connectLimit)
+
+      case .connectTimeLimitReached:
+        // The whole step, the shell's first start included, never waits longer (S78): the run is stopped, which
+        // stops everything it started, and it ends as any other failure.
+        guard state.connect == .running else { return .none }
+        state.connect = .failed(exitCode: 143)
+        return .cancel(id: CancelID.connect)
 
       case .getClaudeCodeTapped:
         return .run { _ in await files.open(Self.claudeCodeURL) }

@@ -27,9 +27,49 @@ struct ClaudeCodeStepTests {
         return answers.withValue { $0.isEmpty ? CommandClient.Output(exitCode: 0) : $0.removeFirst() }
       }
       $0.fileClient.open = { [opened] url in opened.withValue { $0.append(url) } }
+      $0.continuousClock = clock
     }
     store.exhaustivity = .off
     return store
+  }
+
+  let clock = TestClock()
+
+  /// 30 s on the clock end the step, however long the runs' own limits are: the shell's first start counts too (R1).
+  @Test
+  func thirtySecondsOnTheClockEndConnectAsAFailureAndStopTheRun() async {
+    let stopped = LockIsolated(false)
+    let store = makeStore([])
+    store.dependencies.commandClient.run = { [stopped] _, _, _, _ in
+      // A shell that never answers: only cancelling stops it, as CommandClient then stops what it started.
+      do {
+        try await Task.sleep(for: .seconds(3600))
+      } catch {
+        stopped.setValue(true)
+        throw error
+      }
+      return CommandClient.Output(exitCode: 0)
+    }
+    await store.send(.connectTapped) { $0.connect = .running }
+    await clock.advance(by: .seconds(29))
+    #expect(store.state.connect == .running)
+    await clock.advance(by: .seconds(1))
+    await store.receive(\.connectTimeLimitReached) { $0.connect = .failed(exitCode: 143) }
+    for _ in 0..<100 where !stopped.value {
+      try? await Task.sleep(for: .milliseconds(5))
+    }
+    #expect(stopped.value)
+    #expect(!store.state.settings.addedToClaudeCode)
+  }
+
+  /// A run that ends in time stops the limit: nothing changes 30 s later.
+  @Test
+  func aConnectThatEndsInTimeIsNotFailedLater() async {
+    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), CommandClient.Output(exitCode: 0)])
+    await store.send(.connectTapped)
+    await store.receive(\.connectFinished) { $0.connect = .added }
+    await clock.advance(by: .seconds(31))
+    #expect(store.state.connect == .added)
   }
 
   /// The check found `claude` at `path`: it prints the path, as `findClaudeCommand` does.
