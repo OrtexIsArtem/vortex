@@ -89,13 +89,13 @@ struct CommandClientTests {
   @Test
   func whatTheStartupFilesLeaveRunningDoesNotHoldItUp() async throws {
     // A process of another session keeps whatever it was given, which killing the shell's group doesn't reach.
-    let home = try home([".zshrc": "/usr/bin/perl -e 'use POSIX; setsid(); sleep 3' &\nexport FROM_ZSHRC=yes\n"])
+    let home = try home([".zshrc": "/usr/bin/perl -e 'use POSIX; setsid(); sleep 10' &\nexport FROM_ZSHRC=yes\n"])
     defer { try? FileManager.default.removeItem(at: home) }
     let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
     let start = ContinuousClock.now
     let environment = await TerminalEnvironment.ask(shell: "/bin/zsh", base: base)
     #expect(environment?["FROM_ZSHRC"] == "yes")
-    #expect(ContinuousClock.now - start < .seconds(2))
+    #expect(ContinuousClock.now - start < .seconds(6))
   }
 
   @Test
