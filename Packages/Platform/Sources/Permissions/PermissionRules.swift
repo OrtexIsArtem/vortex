@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import Foundation
 import UserNotifications
 import VortexCore
@@ -35,11 +36,9 @@ enum PasteboardAccess: String, Codable, Sendable {
 
 /// One step of a request (S4).
 enum PermissionRequestStep: Equatable, Sendable {
-  /// macOS's own prompt, for notifications: macOS shows it once, while the user has never answered.
-  case prompt
-  /// macOS's own prompt for Accessibility or Screen Recording, then the pane unless macOS's alert or System Settings
-  /// comes up within about 1.5 s (S67): macOS shows no prompt for an app it lists already, as after an upgrade, a
-  /// reinstall or with another build, and the click would otherwise do nothing.
+  /// macOS's own prompt, then the pane if macOS shows nothing (`PromptWatch`): it doesn't for an app it lists already,
+  /// as after an upgrade, a reinstall or with another build, nor for notifications it asked about once, and the click
+  /// would otherwise do nothing (S67, S48).
   case promptOrSettings
   /// The permission's pane in System Settings.
   case openSettings
@@ -54,7 +53,7 @@ extension Permission {
     case .notifications:
       // A second request may show nothing, as an unanswered prompt keeps it undetermined: the pane then, whatever the
       // status (S48).
-      askedBefore || notificationsDetermined ? [.openSettings] : [.prompt]
+      askedBefore || notificationsDetermined ? [.openSettings] : [.promptOrSettings]
     case .accessibility, .screenRecording:
       askedBefore ? [.openSettings] : [.promptOrSettings]
     case .pasteboard:
@@ -122,17 +121,23 @@ struct AskedPermissions: Sendable {
   }
 }
 
-/// What comes up after macOS's prompt for Accessibility or Screen Recording is asked for.
+/// Whether macOS showed something after a request: if not, the request opens the pane (S48, S67).
 enum PromptWatch {
   /// The app that shows macOS's alert for Accessibility, Screen Recording and Input Monitoring (macOS 26.4,
-  /// /System/Library/PrivateFrameworks/UniversalAccess.framework/…/universalAccessAuthWarn.app), and System Settings,
-  /// which the alert's «Open System Settings» brings up.
-  static let promptApps: Set<String> = ["com.apple.accessibility.universalAccessAuthWarn", "com.apple.systempreferences"]
+  /// /System/Library/PrivateFrameworks/UniversalAccess.framework/…/universalAccessAuthWarn.app).
+  static let alertApp = "com.apple.accessibility.universalAccessAuthWarn"
+  /// The alert app, and System Settings, which the alert's «Open System Settings» brings up.
+  static let promptApps: Set<String> = [alertApp, "com.apple.systempreferences"]
 
-  /// True as soon as one of `promptApps` arrives in `apps` (the bundle ids of apps launched or activated), false when
-  /// `timeout` passes first.
-  static func comesUp(_ apps: AsyncStream<String>, within timeout: Duration) async -> Bool {
-    await withTaskGroup(of: Bool.self) { group in
+  /// Accessibility, Screen Recording: true as soon as one of `promptApps` arrives in `apps` (the bundle ids of apps
+  /// launched or activated). When `timeout` passes first, `alertIsShowing` decides: the alert app may be running
+  /// already from an earlier request, or show its alert without becoming active.
+  static func comesUp(
+    _ apps: AsyncStream<String>,
+    within timeout: Duration,
+    alertIsShowing: @Sendable () async -> Bool
+  ) async -> Bool {
+    let arrived = await withTaskGroup(of: Bool.self) { group in
       group.addTask {
         for await app in apps where promptApps.contains(app) {
           return true
@@ -143,9 +148,46 @@ enum PromptWatch {
         try? await Task.sleep(for: timeout)
         return false
       }
-      let cameUp = await group.next() ?? false
+      let arrived = await group.next() ?? false
       group.cancelAll()
-      return cameUp
+      return arrived
+    }
+    if arrived { return true }
+    return await alertIsShowing()
+  }
+
+  /// The alert is on screen: a window on screen belongs to the alert app. `kCGWindowOwnerPID` needs no permission.
+  static func alertIsUp(_ windowsOnScreen: [ListedWindow], alertApps: Set<pid_t>) -> Bool {
+    windowsOnScreen.contains { alertApps.contains($0.ownerPID) }
+  }
+
+  /// Notifications: `requestAuthorization` waits for the answer while its prompt shows. Back within about 1 s with
+  /// macOS still undetermined, it showed nothing (S48).
+  static func notificationsShowedNothing(returnedQuickly: Bool, authorization: UNAuthorizationStatus) -> Bool {
+    returnedQuickly && authorization == .notDetermined
+  }
+}
+
+/// Work that may never end, given a time limit.
+enum Deadline {
+  /// The work's result, or nil when `limit` passes first. The work goes on in the background either way.
+  static func result<T: Sendable>(
+    within limit: Duration,
+    _ work: @escaping @Sendable () async -> T
+  ) async -> T? {
+    await withCheckedContinuation { (continuation: CheckedContinuation<T?, Never>) in
+      let pending = LockIsolated<CheckedContinuation<T?, Never>?>(continuation)
+      @Sendable func finish(_ result: T?) {
+        pending.withValue { continuation in
+          continuation?.resume(returning: result)
+          continuation = nil
+        }
+      }
+      Task { finish(await work()) }
+      Task {
+        try? await Task.sleep(for: limit)
+        finish(nil)
+      }
     }
   }
 }

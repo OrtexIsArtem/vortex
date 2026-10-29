@@ -24,10 +24,12 @@ public struct PermissionsClient: Sendable {
   /// Reads once a second while a permission window is visible; off, it doesn't poll.
   public var setFrequentChecks: @Sendable (_ on: Bool) async -> Void
   /// Asks for a permission (S4, S48, S67), without waiting for the user's answer:
-  /// - Notifications: macOS's prompt while the user never answered and Vortex never asked; otherwise the Notifications
+  /// - Notifications: macOS's prompt while the user never answered and Vortex never asked, and the pane too if the
+  ///   request comes back within about 1 s still unanswered, as macOS then showed nothing; otherwise the Notifications
   ///   pane of Vortex, whatever the status, as a second request may show nothing.
-  /// - Accessibility, Screen Recording: the first time, macOS's request, and the pane if neither macOS's alert nor
-  ///   System Settings comes up within about 1.5 s; after that, the pane.
+  /// - Accessibility, Screen Recording: the first time, macOS's request, and the pane if within about 1.5 s neither
+  ///   macOS's alert nor System Settings came up (launched, activated, or with the alert's window on screen at the
+  ///   end); after that, the pane.
   /// - Pasteboard: the pane; macOS has no request for it.
   ///
   /// What Vortex asked for is kept in DataFolder/permissions.json. After Vortex was removed from a list with "−", or a
@@ -42,12 +44,12 @@ public struct PermissionsClient: Sendable {
 
 extension PermissionsClient: DependencyKey {
   public static let liveValue = PermissionsClient(
-    statuses: { await LivePermissions.shared.statuses() },
-    updates: { LivePermissions.shared.updates() },
-    setFrequentChecks: { isOn in await LivePermissions.shared.setFrequentChecks(isOn) },
-    request: { permission in await LivePermissions.shared.request(permission) },
+    statuses: { await LivePermissions.feed.statuses() },
+    updates: { LivePermissions.updates() },
+    setFrequentChecks: { isOn in LivePermissions.feed.setFrequentChecks(isOn) },
+    request: { permission in await LivePermissions.request(permission) },
     openSettings: { permission in await LivePermissions.openSettings(permission) },
-    refresh: { await LivePermissions.shared.refresh() }
+    refresh: { _ = await LivePermissions.feed.statuses() }
   )
 
   public static let testValue = PermissionsClient()

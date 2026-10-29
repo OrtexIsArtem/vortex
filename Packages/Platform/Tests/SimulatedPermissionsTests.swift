@@ -52,10 +52,10 @@
       mac.request(.notifications)
       #expect(mac.statuses[.notifications] == .notGranted)
       #expect(mac.state.events == [.prompt(.notifications), .settings(.notifications)])
-      // Without the app's memory, as after a reinstall, it asks macOS again, and nothing shows.
+      // Without the app's memory, as after a reinstall, it asks macOS again: nothing shows, so the pane opens.
       mac.forgetRequests()
       mac.request(.notifications)
-      #expect(mac.state.events == [.prompt(.notifications), .settings(.notifications)])
+      #expect(mac.state.events == [.prompt(.notifications), .settings(.notifications), .settings(.notifications)])
       // Allowed later in Notification Center.
       mac.toggle(.notifications, on: true)
       mac.refresh()

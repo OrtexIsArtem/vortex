@@ -5,95 +5,44 @@ import ScreenCaptureKit
 import UserNotifications
 import VortexCore
 
-/// The live statuses: read from macOS without ever prompting (S5), and read again on the signals that may change them
-/// while someone listens (S3). Nothing here runs under `swift test`: UNUserNotificationCenter needs an app bundle.
-actor LivePermissions {
+/// The live statuses: read from macOS without ever prompting (S5), through `PermissionFeed`, and read again on the
+/// signals that may change them from the first listener on (S3). Nothing here runs under `swift test`:
+/// UNUserNotificationCenter needs an app bundle.
+enum LivePermissions {
   typealias Statuses = [Permission: PermissionStatus]
 
-  static let shared = LivePermissions()
+  static let feed = PermissionFeed(clock: ContinuousClock(), read: { await read() })
 
-  /// Wakes the read loop. Wake-ups that come during a read make one more read after it, so reads never overlap and a
-  /// burst of signals costs one read.
-  private nonisolated let wakeUps: AsyncStream<Void>.Continuation
-  private var screenRecording: ScreenRecordingDetector?
-  /// The last statuses read; listeners hear only changes.
-  private var latest: Statuses?
-  private var listeners: [UUID: AsyncStream<Statuses>.Continuation] = [:]
-  /// Callers of `statuses()` waiting for the next read.
-  private var waitingForRead: [CheckedContinuation<Statuses, Never>] = []
-  private var isWatching = false
-  private var frequentChecks: Task<Void, Never>?
-
-  private init() {
-    let (stream, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
-    wakeUps = continuation
-    Task { await self.readLoop(stream) }
-  }
-
-  /// Reads every status now.
-  func statuses() async -> Statuses {
-    await withCheckedContinuation { continuation in
-      waitingForRead.append(continuation)
-      wakeUps.yield()
-    }
-  }
+  /// Screen Recording across reads; the feed runs one read at a time.
+  private static let screenRecording = LockIsolated<ScreenRecordingDetector?>(nil)
 
   /// The statuses now, and again on every change. Watches macOS's signals from the first listener on.
-  nonisolated func updates() -> AsyncStream<Statuses> {
-    let (stream, continuation) = AsyncStream.makeStream(of: Statuses.self, bufferingPolicy: .bufferingNewest(1))
-    let id = UUID()
-    continuation.onTermination = { _ in
-      Task { await LivePermissions.shared.removeListener(id) }
-    }
-    Task { await self.addListener(id, continuation) }
-    return stream
+  static func updates() -> AsyncStream<Statuses> {
+    _ = watching
+    return feed.updates()
   }
 
-  /// Reads once a second while a permission window is visible (S3); nowhere else.
-  func setFrequentChecks(_ isOn: Bool) {
-    frequentChecks?.cancel()
-    frequentChecks = nil
-    guard isOn else { return }
-    wakeUps.yield()
-    frequentChecks = Task { [wakeUps] in
-      while !Task.isCancelled {
-        try? await Task.sleep(for: .seconds(1))
-        wakeUps.yield()
-      }
-    }
-  }
-
-  /// Asks for a permission (S4, S48, S67): macOS's own prompt the first time, its pane in System Settings after that.
-  /// Returns without waiting for the user's answer.
-  nonisolated func request(_ permission: Permission) async {
+  /// Asks for a permission (S4, S48, S67): macOS's own prompt the first time, its pane in System Settings after that,
+  /// or at once when macOS shows nothing. Returns without waiting for the user's answer.
+  static func request(_ permission: Permission) async {
     let asked = AskedPermissions.inDataFolder
     let askedBefore = asked.contains(permission)
     if permission.remembersRequests { asked.insert(permission) }
     let notificationsDetermined = permission == .notifications && !askedBefore
-      ? await Self.notificationsAuthorization() != .notDetermined
+      ? await notificationsAuthorization() != .notDetermined
       : true
     for step in permission.requestSteps(askedBefore: askedBefore, notificationsDetermined: notificationsDetermined) {
       switch step {
-      case .prompt:
-        // The answer comes whenever the user gives it, maybe never: read again then.
-        Task { [wakeUps] in
-          _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
-          wakeUps.yield()
-        }
       case .promptOrSettings:
-        if await !Self.promptComesUp(for: permission) {
-          await Self.openSettings(permission)
-        }
+        let cameUp = permission == .notifications
+          ? await notificationsPromptComesUp()
+          : await promptComesUp(for: permission)
+        if !cameUp { await openSettings(permission) }
       case .openSettings:
-        await Self.openSettings(permission)
+        await openSettings(permission)
       }
     }
-    wakeUps.yield()
-  }
-
-  /// Reads again now (S47); listeners hear of a change.
-  func refresh() async {
-    _ = await statuses()
+    feed.wakeUp()
   }
 
   static func openSettings(_ permission: Permission) async {
@@ -103,100 +52,74 @@ actor LivePermissions {
 
   // MARK: - Reading
 
-  private func readLoop(_ signals: AsyncStream<Void>) async {
-    for await _ in signals {
-      let callers = waitingForRead
-      waitingForRead = []
-      let statuses = await read()
-      publish(statuses)
-      for caller in callers {
-        caller.resume(returning: statuses)
-      }
-    }
-  }
-
-  private func read() async -> Statuses {
+  private static func read() async -> Statuses {
     [
-      .notifications: PermissionStatus(notifications: await Self.notificationsAuthorization()),
+      .notifications: PermissionStatus(notifications: await notificationsAuthorization()),
       .accessibility: AXIsProcessTrusted() ? .granted : .notGranted,
       .screenRecording: await readScreenRecording(),
-      .pasteboard: PermissionStatus(pasteboard: Self.pasteboardAccess()),
+      .pasteboard: PermissionStatus(pasteboard: pasteboardAccess()),
     ]
   }
 
-  private func readScreenRecording() async -> PermissionStatus {
+  private static func readScreenRecording() async -> PermissionStatus {
     // The first read is at launch, so the preflight answers for the launch: it never changes in this process.
-    var detector = screenRecording ?? ScreenRecordingDetector(grantedAtLaunch: CGPreflightScreenCaptureAccess())
-    let titles = WindowTitles(Self.listedWindows(), ownPID: getpid())
+    var detector = screenRecording.value ?? ScreenRecordingDetector(grantedAtLaunch: CGPreflightScreenCaptureAccess())
+    let titles = WindowTitles(listedWindows(), ownPID: getpid())
     // The file is read only when titles show a grant to confirm.
     let asked = titles == .visible && detector.status == .notGranted
       && AskedPermissions.inDataFolder.contains(.screenRecording)
-    let captureWorks = detector.needsProbe(titles, asked: asked) ? await Self.screenCaptureWorks() : false
+    let captureWorks = detector.needsProbe(titles, asked: asked)
+      ? await Deadline.result(within: .seconds(5)) {
+        (try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)) != nil
+      } ?? false
+      : false
     detector.update(titles, asked: asked, probeSucceeded: captureWorks)
-    screenRecording = detector
-    return detector.status
+    let updated = detector
+    screenRecording.setValue(updated)
+    return updated.status
   }
 
-  private func publish(_ statuses: Statuses) {
-    guard statuses != latest else { return }
-    latest = statuses
-    for listener in listeners.values {
-      listener.yield(statuses)
-    }
-  }
-
-  private func addListener(_ id: UUID, _ continuation: AsyncStream<Statuses>.Continuation) {
-    listeners[id] = continuation
-    if let latest { continuation.yield(latest) }
-    watch()
-    wakeUps.yield()
-  }
-
-  private func removeListener(_ id: UUID) {
-    listeners[id] = nil
-  }
+  // MARK: - Signals
 
   /// Reads again on macOS's permission-change signal, after Accessibility's own one, and whenever an app becomes
-  /// active, Vortex included (S3). The observers stay for the life of the app.
-  private func watch() {
-    guard !isWatching else { return }
-    isWatching = true
+  /// active, Vortex included (S3). Set up once, for the life of the app.
+  private static let watching: Void = {
     // tccd posts it after every change of a privacy permission. It says only that something changed.
     CFNotificationCenterAddObserver(
       CFNotificationCenterGetDarwinNotifyCenter(),
-      Unmanaged.passUnretained(self).toOpaque(),
-      { _, _, _, _, _ in LivePermissions.shared.wakeUp() },
+      Unmanaged.passUnretained(feed).toOpaque(),
+      { _, _, _, _, _ in LivePermissions.feed.wakeUp() },
       "com.apple.tcc.access.changed" as CFString,
       nil,
       .deliverImmediately
     )
-    // System Settings posts it before tccd writes the change, and `AXIsProcessTrusted` answers from a cache it
-    // refreshes, so the read waits a moment, as Loop does.
-    _ = DistributedNotificationCenter.default().addObserver(
-      forName: Notification.Name("com.apple.accessibility.api"),
+    // Delivered at once also while Vortex is inactive, as it is while the user is in System Settings.
+    DistributedNotificationCenter.default().addObserver(
+      accessibilityObserver,
+      selector: #selector(AccessibilityObserver.accessibilityChanged(_:)),
+      name: Notification.Name("com.apple.accessibility.api"),
       object: nil,
-      queue: nil
-    ) { _ in LivePermissions.shared.wakeUp(after: .milliseconds(250)) }
+      suspensionBehavior: .deliverImmediately
+    )
     _ = NotificationCenter.default.addObserver(
       forName: NSApplication.didBecomeActiveNotification,
       object: nil,
       queue: nil
-    ) { _ in LivePermissions.shared.wakeUp() }
+    ) { _ in LivePermissions.feed.wakeUp() }
     _ = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification,
       object: nil,
       queue: nil
-    ) { _ in LivePermissions.shared.wakeUp() }
-  }
+    ) { _ in LivePermissions.feed.wakeUp() }
+  }()
 
-  nonisolated func wakeUp() {
-    wakeUps.yield()
-  }
+  private static let accessibilityObserver = AccessibilityObserver()
 
-  nonisolated func wakeUp(after delay: Duration) {
-    Task { [wakeUps] in
-      try? await Task.sleep(for: delay)
-      wakeUps.yield()
+  /// System Settings posts `com.apple.accessibility.api` before tccd writes the change, and `AXIsProcessTrusted`
+  /// answers from a cache it refreshes, so the read waits a moment, as Loop does.
+  private final class AccessibilityObserver: NSObject, Sendable {
+    @objc func accessibilityChanged(_ notification: Notification) {
+      LivePermissions.feed.wakeUp(after: .milliseconds(250))
     }
   }
 
@@ -230,27 +153,6 @@ actor LivePermissions {
     }
   }
 
-  /// Whether ScreenCaptureKit gives this process the screen's content now; false after 5 s without an answer.
-  private static func screenCaptureWorks() async -> Bool {
-    await withCheckedContinuation { continuation in
-      let answer = LockIsolated<CheckedContinuation<Bool, Never>?>(continuation)
-      @Sendable func finish(_ works: Bool) {
-        answer.withValue { continuation in
-          continuation?.resume(returning: works)
-          continuation = nil
-        }
-      }
-      Task {
-        let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-        finish(content != nil)
-      }
-      Task {
-        try? await Task.sleep(for: .seconds(5))
-        finish(false)
-      }
-    }
-  }
-
   private static func pasteboardAccess() -> PasteboardAccess? {
     guard #available(macOS 15.4, *) else { return nil }
     return switch NSPasteboard.general.accessBehavior {
@@ -263,7 +165,8 @@ actor LivePermissions {
   }
 
   /// Calls macOS's request for Accessibility or Screen Recording, without waiting for the answer, and tells whether
-  /// macOS's alert or System Settings came up within about 1.5 s (S67).
+  /// macOS's alert or System Settings came up within about 1.5 s (S67): launched or activated meanwhile, or, at the
+  /// end, a window of the alert app on screen.
   private static func promptComesUp(for permission: Permission) async -> Bool {
     let (apps, continuation) = AsyncStream.makeStream(of: String.self)
     let center = NSWorkspace.shared.notificationCenter
@@ -293,6 +196,22 @@ actor LivePermissions {
     case .notifications, .pasteboard:
       return false
     }
-    return await PromptWatch.comesUp(apps, within: .milliseconds(1500))
+    return await PromptWatch.comesUp(apps, within: .milliseconds(1500)) {
+      let alert = NSRunningApplication.runningApplications(withBundleIdentifier: PromptWatch.alertApp)
+      return PromptWatch.alertIsUp(listedWindows(), alertApps: Set(alert.map(\.processIdentifier)))
+    }
+  }
+
+  /// Calls macOS's request for notifications. `requestAuthorization` waits for the answer while its prompt shows, and
+  /// returns at once when macOS shows nothing, as after a prompt that was never answered (S48): then nothing came up.
+  private static func notificationsPromptComesUp() async -> Bool {
+    let returned: Void? = await Deadline.result(within: .seconds(1)) {
+      _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
+      // The answer, whenever it comes.
+      feed.wakeUp()
+    }
+    let returnedQuickly = returned != nil
+    let authorization = returnedQuickly ? await notificationsAuthorization() : .notDetermined
+    return !PromptWatch.notificationsShowedNothing(returnedQuickly: returnedQuickly, authorization: authorization)
   }
 }

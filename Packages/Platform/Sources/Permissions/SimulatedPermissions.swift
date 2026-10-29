@@ -178,10 +178,9 @@
         let notificationsDetermined = (model.state.settings[.notifications] ?? .notAsked) != .notAsked
         for step in permission.requestSteps(askedBefore: askedBefore, notificationsDetermined: notificationsDetermined) {
           switch step {
-          case .prompt:
-            Self.prompt(permission, &model.state)
           case .promptOrSettings:
-            // Within 1.5 s macOS's alert comes up, or System Settings from it; otherwise the app opens the pane.
+            // macOS's prompt comes up, or the app opens the pane: an alert or System Settings within 1.5 s, or a
+            // notifications request that doesn't come back at once with no answer.
             if !Self.prompt(permission, &model.state) { model.state.events.append(.settings(permission)) }
           case .openSettings:
             model.state.events.append(.settings(permission))

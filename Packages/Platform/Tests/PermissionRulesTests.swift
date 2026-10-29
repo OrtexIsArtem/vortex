@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import Foundation
 import Testing
 import UserNotifications
@@ -33,7 +34,7 @@ struct PermissionRulesTests {
 
   @Test
   func notificationsPromptOnlyTheFirstTimeAndOnlyIfMacOSNeverHadAnAnswer() {
-    #expect(Permission.notifications.requestSteps(askedBefore: false, notificationsDetermined: false) == [.prompt])
+    #expect(Permission.notifications.requestSteps(askedBefore: false, notificationsDetermined: false) == [.promptOrSettings])
     // Answered before Vortex remembers asking, as by an older Vortex: the pane.
     #expect(Permission.notifications.requestSteps(askedBefore: false, notificationsDetermined: true) == [.openSettings])
   }
@@ -70,21 +71,65 @@ struct PermissionRulesTests {
   /// macOS's alert app on macOS 26.4, read from its Info.plist, and System Settings.
   @Test
   func macOSsAlertOrSystemSettingsCountAsSomethingComingUp() async {
-    #expect(PromptWatch.promptApps == ["com.apple.accessibility.universalAccessAuthWarn", "com.apple.systempreferences"])
+    #expect(PromptWatch.alertApp == "com.apple.accessibility.universalAccessAuthWarn")
+    #expect(PromptWatch.promptApps == [PromptWatch.alertApp, "com.apple.systempreferences"])
     for app in PromptWatch.promptApps {
       let (apps, continuation) = AsyncStream.makeStream(of: String.self)
       continuation.yield("com.apple.finder")
       continuation.yield(app)
-      #expect(await PromptWatch.comesUp(apps, within: .seconds(30)))
+      let askedForTheAlert = LockIsolated(false)
+      #expect(await PromptWatch.comesUp(apps, within: .seconds(30)) {
+        askedForTheAlert.setValue(true)
+        return false
+      })
+      #expect(!askedForTheAlert.value)
     }
   }
 
+  /// The alert app may be running already, from a request a moment before, or show its alert without becoming
+  /// active: its window on screen at the end counts too (S67).
   @Test
-  func otherAppsOrNothingWithinTheTimeMeanThePaneOpens() async {
+  func withNothingLaunchedOrActivatedTheAlertsWindowDecides() async {
     let (apps, continuation) = AsyncStream.makeStream(of: String.self)
     continuation.yield("com.apple.finder")
-    #expect(await !PromptWatch.comesUp(apps, within: .milliseconds(50)))
+    #expect(await PromptWatch.comesUp(apps, within: .milliseconds(50)) { true })
+    #expect(await !PromptWatch.comesUp(AsyncStream { $0.finish() }, within: .milliseconds(50)) { false })
     continuation.finish()
+  }
+
+  @Test
+  func theAlertIsUpWhileAWindowOfTheAlertAppIsOnScreen() {
+    let alert: pid_t = 700
+    let windows = [
+      ListedWindow(ownerPID: 200, layer: 0, name: nil, ownerIsRegularApp: true),
+      ListedWindow(ownerPID: alert, layer: 8, name: nil, ownerIsRegularApp: false),
+    ]
+    #expect(PromptWatch.alertIsUp(windows, alertApps: [alert]))
+    #expect(!PromptWatch.alertIsUp(Array(windows.prefix(1)), alertApps: [alert]))
+    // The alert app isn't running.
+    #expect(!PromptWatch.alertIsUp(windows, alertApps: []))
+  }
+
+  /// `requestAuthorization` waits for the answer while its prompt shows; back at once with no answer, macOS showed
+  /// nothing and the pane opens (S48).
+  @Test
+  func notificationsShowedNothingWhenTheRequestCameBackAtOnceWithNoAnswer() {
+    #expect(PromptWatch.notificationsShowedNothing(returnedQuickly: true, authorization: .notDetermined))
+    // Answered at once, either way: the prompt showed.
+    #expect(!PromptWatch.notificationsShowedNothing(returnedQuickly: true, authorization: .authorized))
+    #expect(!PromptWatch.notificationsShowedNothing(returnedQuickly: true, authorization: .denied))
+    // Still waiting: the prompt is up.
+    #expect(!PromptWatch.notificationsShowedNothing(returnedQuickly: false, authorization: .notDetermined))
+  }
+
+  @Test
+  func workGetsAResultOnlyWithinItsLimit() async {
+    #expect(await Deadline.result(within: .seconds(30)) { 7 } == 7)
+    let slow = await Deadline.result(within: .milliseconds(50)) { () -> Int in
+      try? await Task.sleep(for: .seconds(2))
+      return 7
+    }
+    #expect(slow == nil)
   }
 
   @Test
