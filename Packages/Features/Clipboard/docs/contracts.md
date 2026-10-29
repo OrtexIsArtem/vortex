@@ -6,7 +6,8 @@
 - `permissionNeeds`: Paste from Other Apps, «Зберігає історію буфера обміну.» It shows only where macOS enforces pasteboard privacy and asks or denies: on macOS 26.4 it reads `notNeeded`, as do apps macOS never asked (`.default`); revisit on macOS 27.
 
 ## Uses
-- VortexCore: `FeatureModule`, `@Dependency(\.database)`, `databaseIsOnDisk` with its own migrator (`clipboard.v1`), `DataFolder`, design system, `SettingsRow`.
+- VortexCore: `FeatureModule`, `@Dependency(\.database)`, `databaseIsOnDisk` with its own migrator (`clipboard.v1`), `DataFolder`, design system, `SettingsRow`, `PermissionRows`; `@SharedReader(.permissionStatuses)` (S57 and the row) and `permissionPage.open`.
+- VortexPlatform permissions: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex".
 - VortexPlatform: `PasteboardClient` (copies and writing), `FileClient` (image files, missing files, Show in Finder), `AppsClient` and `AppIcon` (sources, ignored apps), `DragSourceArea` (dragging cards and rows out), `dropTarget` (drops on the Home widget), `FileThumbnail`, `FileIcon`.
 
 ## Not yet

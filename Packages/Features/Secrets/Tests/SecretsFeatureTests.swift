@@ -508,3 +508,28 @@ struct SecretsFeatureTests {
     await store.send(.stop)
   }
 }
+
+/// The Notifications row in Keys' settings (S22.3, S40, S47).
+@MainActor
+struct SecretsPermissionTests {
+  @Test
+  func theSettingsRowOpensThePageRestartsAndReadsAgain() async {
+    let pages = LockIsolated<[Permission]>([])
+    let refreshes = LockIsolated(0)
+    let relaunches = LockIsolated(0)
+    let store = TestStore(initialState: SecretsFeature.State()) {
+      SecretsFeature()
+    } withDependencies: {
+      $0.permissionPage.open = { [pages] permission in pages.withValue { $0.append(permission) } }
+      $0.permissionsClient.refresh = { [refreshes] in refreshes.withValue { $0 += 1 } }
+      $0.systemClient.relaunch = { [relaunches] in relaunches.withValue { $0 += 1 } }
+    }
+    store.exhaustivity = .off
+    await store.send(.settingsShown).finish()
+    #expect(refreshes.value == 1)
+    await store.send(.turnOnTapped(.notifications)).finish()
+    #expect(pages.value == [.notifications])
+    await store.send(.restartTapped).finish()
+    #expect(relaunches.value == 1)
+  }
+}

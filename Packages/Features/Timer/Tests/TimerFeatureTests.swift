@@ -34,6 +34,7 @@ struct TimerFeatureTests {
         posted.withValue { $0.append("\(id):\(buttons.map(\.id).joined(separator: ","))") }
       }
       $0.notificationClient.buttonPresses = { [buttons] in buttons.stream }
+      $0.permissionsClient.refresh = {}
     }
     store.exhaustivity = .off
     return store

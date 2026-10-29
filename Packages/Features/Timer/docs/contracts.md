@@ -10,7 +10,8 @@
 - `permissionNeeds`: notifications, «Повідомляє, коли таймер закінчився.»
 
 ## Uses
-- VortexCore: `FeatureModule`, `HomeWidget`, `notchCutout`, `notchIndicators`, `ColorValue`, `DataFolder`, design system.
+- VortexCore: `FeatureModule`, `HomeWidget`, `notchCutout`, `notchIndicators`, `ColorValue`, `DataFolder`, design system (`PermissionRows`); `@SharedReader(.permissionStatuses)` and `permissionPage.open` for the Notifications row.
+- VortexPlatform: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex".
 - VortexPlatform:
   - `SoundClient`: the system sounds;
   - `NotificationClient`: the notification with «+5 хв» and its button presses;

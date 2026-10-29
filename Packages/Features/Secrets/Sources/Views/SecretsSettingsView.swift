@@ -32,12 +32,22 @@ struct SecretsSettingsView: View {
         .onSubmit(applyPort)
       }
 
+      PermissionRows(
+        SecretsModule.permissionNeeds,
+        statuses: store.permissionStatuses,
+        turnOn: { store.send(.turnOnTapped($0)) },
+        restart: { store.send(.restartTapped) }
+      )
+
       Text("Values stay in the keychain; Claude gets the output with them taken out.", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.top, 12)
     }
-    .onAppear { port = String(store.settings.port) }
+    .onAppear {
+      port = String(store.settings.port)
+      store.send(.settingsShown)
+    }
   }
 
   private var status: Text {

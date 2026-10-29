@@ -103,6 +103,8 @@ struct SecretsFeature: Sendable {
     var alarms = 0
     @Shared(.secretsSettings) var settings
     @Shared(.notchIndicators) var indicators
+    /// What macOS says about Notifications, read by the shell: the settings row (S22.3).
+    @SharedReader(.permissionStatuses) var permissionStatuses
 
     init() {}
 
@@ -167,6 +169,12 @@ struct SecretsFeature: Sendable {
     case commandEnded(MCPCall.ID, ran: Bool)
     case copyConnectCommandTapped
     case portChanged(Int)
+    /// The section in Settings › Features appeared: the statuses are read again (S47).
+    case settingsShown
+    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    case turnOnTapped(Permission)
+    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    case restartTapped
   }
 
   @Dependency(\.calendar) var calendar
@@ -178,7 +186,10 @@ struct SecretsFeature: Sendable {
   @Dependency(\.keychainClient) var keychain
   @Dependency(\.notificationClient) var notifications
   @Dependency(\.pasteboardClient) var pasteboard
+  @Dependency(\.permissionPage) var permissionPage
+  @Dependency(\.permissionsClient) var permissions
   @Dependency(\.mcpServer) var server
+  @Dependency(\.systemClient) var system
   @Dependency(\.uuid) var uuid
 
   private enum CancelID: Hashable {
@@ -401,6 +412,15 @@ struct SecretsFeature: Sendable {
         guard state.isEnabled else { return reset }
         state.server = .starting
         return .merge(reset, serve(state))
+
+      case .settingsShown:
+        return .run { _ in await permissions.refresh() }
+
+      case let .turnOnTapped(permission):
+        return .run { _ in await permissionPage.open(permission) }
+
+      case .restartTapped:
+        return .run { _ in await system.relaunch() }
       }
     }
   }
