@@ -264,6 +264,26 @@ struct ClaudeCodeStepTests {
     #expect(!isStepDone)
   }
 
+  /// With the server down, the step shows the Keys card's message, which names the port and says what to do, never
+  /// Settings' raw status line (A-B3); Connect is hidden and Skip stays.
+  @Test
+  func withTheServerDownTheStepShowsTheKeysCardsMessageWithThePort() {
+    var state = SecretsFeature.State()
+    state.$settings.withLock { $0.port = 55555 }
+    state.token = Self.token
+    state.server = .failed("Address already in use")
+    let failure = SecretsFeature.ServerFailure(port: 55555, reason: "Address already in use")
+    #expect(state.claudeStepBody == .serverFailure(failure))
+    #expect(state.serverFailure == failure)
+    #expect(!state.canConnect)
+    #expect(!state.isClaudeStepDone)
+    for server in [SecretsFeature.ServerStatus.off, .starting, .listening(port: 55555)] {
+      state.server = server
+      #expect(state.claudeStepBody == .connect)
+      #expect(state.serverFailure == nil)
+    }
+  }
+
   @Test
   func connectWaitsForTheServerToListen() async {
     for server in [SecretsFeature.ServerStatus.starting, .off, .failed("port taken")] {
