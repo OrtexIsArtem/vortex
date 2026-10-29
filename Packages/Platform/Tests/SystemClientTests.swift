@@ -33,4 +33,62 @@ struct RelaunchTests {
     #expect(!arguments[1].contains(path))
     #expect(arguments[2] == path)
   }
+
+  /// The reopen after System Settings' «Quit & Reopen» uses this helper: `open` without `-n`, so a Vortex System Settings
+  /// opened first is not doubled.
+  @Test
+  func theHelperOpensWithoutANewInstance() {
+    let script = Relaunch.arguments(pid: 4242, bundlePath: "/Applications/Vortex.app")[1]
+    #expect(!script.contains("-n"))
+    #expect(script.components(separatedBy: "open").count == 2)
+  }
 }
+
+/// Which quits bring Vortex back by itself: only the one System Settings asks for after «Quit & Reopen» (S20).
+struct QuitRequestTests {
+  @Test
+  func systemSettingsQuitReopens() {
+    #expect(QuitRequest.reopens(senderBundleID: "com.apple.systempreferences"))
+  }
+
+  @Test(arguments: [
+    // Vortex's own Quit and ⌘Q: no Apple event.
+    nil,
+    // Logout and shutdown.
+    "com.apple.loginwindow",
+    // A newer Vortex taking over, and QA's build of it.
+    "io.github.ortexisartem.vortex",
+    "io.github.ortexisartem.vortex.check",
+    // Any other app, and near misses of System Settings' id.
+    "com.apple.ActivityMonitor",
+    "com.apple.Terminal",
+    "com.apple.systempreferences.extension",
+    "COM.APPLE.SYSTEMPREFERENCES",
+    "",
+  ] as [String?])
+  func everyOtherQuitJustQuits(sender: String?) {
+    #expect(!QuitRequest.reopens(senderBundleID: sender))
+  }
+
+  /// Outside an Apple event, as under `swift test`, there is no sender, so nothing reopens.
+  @MainActor
+  @Test
+  func withNoQuitEventThereIsNoSender() {
+    #expect(QuitRequest.currentSenderBundleID() == nil)
+  }
+}
+
+#if DEBUG
+  /// In a QA run the reopen after System Settings' quit is logged and never run: no helper outlives the run.
+  struct QASystemClientTests {
+    @Test
+    func theReopenIsLoggedNeverRun() {
+      func count() -> Int {
+        QALog.events.value.filter { $0.client == "system" && $0.event == "reopenAfterQuit" }.count
+      }
+      let before = count()
+      SystemClient.qa.reopenAfterQuit()
+      #expect(count() == before + 1)
+    }
+  }
+#endif

@@ -335,6 +335,8 @@
         QALog.record("system", "quit")
         await QA.quit()
       }
+      // Logged, never run: no helper outlives a run to open Vortex.
+      client.reopenAfterQuit = { QALog.record("system", "reopenAfterQuit") }
       return client
     }()
   }
