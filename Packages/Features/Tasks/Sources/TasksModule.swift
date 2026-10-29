@@ -50,6 +50,7 @@ public enum TasksModule: FeatureModule {
     private static func registerQACommands() {
       QA.register(command: "tasks") { arguments in
         if arguments["press"] == "plus" {
+          guard QA.isShowing(.tab(id)) else { throw QAError("«+» is on the Tasks tab, in the open window") }
           store.send(.captureRequested)
           return
         }

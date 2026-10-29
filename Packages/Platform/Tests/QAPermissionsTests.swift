@@ -54,8 +54,8 @@
       let needs = [PermissionNeed(.notifications, reason: "Tells you when a timer ends.")]
       var opened: [Permission] = []
       var restarts = 0
-      func press(_ arguments: [String: String], _ statuses: [Permission: PermissionStatus]) throws -> Bool {
-        try QAPermissions.pressRow(arguments, needs: needs, statuses: statuses, turnOn: { opened.append($0) }, restart: { restarts += 1 })
+      func press(_ arguments: [String: String], _ statuses: [Permission: PermissionStatus], showing: Bool = true) throws -> Bool {
+        try QAPermissions.pressRow(arguments, needs: needs, statuses: statuses, showing: showing, turnOn: { opened.append($0) }, restart: { restarts += 1 })
       }
       #expect(try press(["press": "turnOn"], [.notifications: .notGranted]))
       #expect(opened == [.notifications])
@@ -66,6 +66,11 @@
       #expect(restarts == 1)
       #expect(throws: QAError.self) { try press(["press": "turnOn", "permission": "accessibility"], [.accessibility: .notGranted]) }
       #expect(try press(["press": "other"], [:]) == false)
+      // Settings › Features isn't showing: refused, whatever the row would show (R7).
+      #expect(throws: QAError.self) { try press(["press": "turnOn"], [.notifications: .notGranted], showing: false) }
+      #expect(opened == [.notifications])
+      // Before the shell says what shows, nothing does.
+      #expect(!QA.isShowing(.featureSettings))
     }
   }
 #endif

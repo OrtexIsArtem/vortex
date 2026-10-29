@@ -16,6 +16,13 @@
          let required = try? JSONDecoder().decode(Set<Permission>.self, from: data) {
         store.send(.binding(.set(\.requiredPermissions, required)))
       }
+      QA.isShowing = { place in
+        guard store.isOpen else { return false }
+        switch place {
+        case let .tab(id): return store.selectedTab == .feature(id)
+        case .featureSettings: return store.selectedTab == .settings && store.settingsSection == .features
+        }
+      }
       QA.registerState(section: "permissions") { State(store: store) }
       QA.register(command: "perm") { arguments in
         try perform(arguments, store: store)

@@ -34,6 +34,11 @@ struct ClaudeCodeStepView: View {
         .foregroundStyle(VortexColor.tertiaryText)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
+    #if DEBUG
+      // QA presses the step's buttons only while the onboarding shows it.
+      .onAppear { SecretsModule.isStepShowing = true }
+      .onDisappear { SecretsModule.isStepShowing = false }
+    #endif
   }
 
   /// "Connect", the page's main button, or once connected or added a quiet "Connect again"; a spinner while it runs.

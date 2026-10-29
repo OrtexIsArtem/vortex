@@ -48,6 +48,9 @@ public enum SecretsModule: FeatureModule {
   }
 
   #if DEBUG
+    /// The onboarding shows the Claude Code step now: its view appeared and hasn't gone.
+    static var isStepShowing = false
+
     /// QA mode: `keys press=connect|connectAgain|copyCommand|getClaudeCode` presses the Claude Code step's buttons,
     /// refused while the step doesn't show them; `press=turnOn|restart` the Notifications row in the settings. The
     /// `keys` state section shows the step, never the token or the command.
@@ -55,6 +58,10 @@ public enum SecretsModule: FeatureModule {
       QA.registerState(section: "keys") { StepState(store.state) }
       QA.register(command: "keys") { arguments in
         let state = store.state
+        let stepPresses: Set<String> = ["connect", "connectAgain", "copyCommand", "getClaudeCode"]
+        if let press = arguments["press"], stepPresses.contains(press), !isStepShowing {
+          throw QAError("the Claude Code step's buttons are on its onboarding page, which isn't showing")
+        }
         switch arguments["press"] {
         case "connect", "connectAgain":
           let again = arguments["press"] == "connectAgain"

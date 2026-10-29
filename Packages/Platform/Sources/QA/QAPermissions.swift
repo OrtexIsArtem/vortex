@@ -2,6 +2,20 @@
   import Foundation
   import VortexCore
 
+  extension QA {
+    /// Where a control lives on screen, so a QA press of a control that isn't showing is refused, as a user couldn't
+    /// click it.
+    public enum Place: Equatable, Sendable {
+      /// A feature's tab, in the open window.
+      case tab(FeatureID)
+      /// Settings › Features in the open window: the features' sections with their permission rows.
+      case featureSettings
+    }
+
+    /// Whether a place shows now. The shell sets it when QA mode starts; until then nothing shows.
+    @MainActor public static var isShowing: (Place) -> Bool = { _ in false }
+  }
+
   /// macOS's permissions in a QA run: one `SimulatedPermissions`, kept in DataFolder/.qa/permissions.json after every
   /// change, so a relaunch keeps what System Settings holds. Each launch starts from the saved state and calls
   /// `relaunch()`: the new process sees what System Settings holds now. The `perm` command (the shell's) changes it.
@@ -123,12 +137,14 @@
     static var names: String { Permission.allCases.map(\.rawValue).joined(separator: ", ") }
 
     /// `press=turnOn [permission=]` or `press=restart` on a feature's permission settings row (`PermissionRows`).
-    /// Refused while the row doesn't show that button, as a user couldn't press it; returns false for other presses.
+    /// Refused while Settings › Features isn't showing (`showing`) or the row doesn't show that button, as a user
+    /// couldn't press it; returns false for other presses.
     @MainActor
     public static func pressRow(
       _ arguments: [String: String],
       needs: [PermissionNeed],
       statuses: [Permission: PermissionStatus],
+      showing: Bool = QA.isShowing(.featureSettings),
       turnOn: (Permission) -> Void,
       restart: () -> Void
     ) throws -> Bool {
@@ -138,6 +154,7 @@
       case "restart": wanted = .afterRestart
       default: return false
       }
+      guard showing else { throw QAError("the row is in Settings › Features, in the open window") }
       let permission: Permission
       if let name = arguments["permission"] {
         guard let named = Permission(rawValue: name) else { throw QAError("permission= takes one of \(names), not \(name)") }
