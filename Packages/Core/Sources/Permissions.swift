@@ -25,6 +25,16 @@ public enum Permission: String, CaseIterable, Codable, Sendable {
   public var isGrantedInPlace: Bool {
     self == .notifications
   }
+
+  /// What its warning says, as a tooltip and to VoiceOver (S32, S39): "Notifications are off".
+  public var offLabel: LocalizedStringResource {
+    switch self {
+    case .notifications: LocalizedStringResource("Notifications are off", bundle: .atURL(Bundle.module.bundleURL))
+    case .accessibility: LocalizedStringResource("Accessibility is off", bundle: .atURL(Bundle.module.bundleURL))
+    case .screenRecording: LocalizedStringResource("Screen Recording is off", bundle: .atURL(Bundle.module.bundleURL))
+    case .pasteboard: LocalizedStringResource("Paste from Other Apps is off", bundle: .atURL(Bundle.module.bundleURL))
+    }
+  }
 }
 
 /// A dictionary keyed by permission encodes as an object, `{"accessibility": "granted"}`, not as a list of pairs.

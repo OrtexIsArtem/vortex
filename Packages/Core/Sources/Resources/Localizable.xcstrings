@@ -45,6 +45,17 @@
         }
       }
     },
+    "Accessibility is off" : {
+      "comment" : "Tooltip and VoiceOver label of the yellow warning for a permission that is off",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Універсальний доступ вимкнено"
+          }
+        }
+      }
+    },
     "Needs a permission" : {
       "comment" : "VoiceOver label of the yellow warning on a control or a feature whose permission is off",
       "localizations" : {
@@ -63,6 +74,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сповіщення"
+          }
+        }
+      }
+    },
+    "Notifications are off" : {
+      "comment" : "Tooltip and VoiceOver label of the yellow warning for a permission that is off",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сповіщення вимкнено"
           }
         }
       }
@@ -89,6 +111,17 @@
         }
       }
     },
+    "Paste from Other Apps is off" : {
+      "comment" : "Tooltip and VoiceOver label of the yellow warning for a permission that is off",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставлення з інших програм вимкнено"
+          }
+        }
+      }
+    },
     "Screen Recording" : {
       "comment" : "Permission name, as in System Settings",
       "localizations" : {
@@ -96,6 +129,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запис екрана"
+          }
+        }
+      }
+    },
+    "Screen Recording is off" : {
+      "comment" : "Tooltip and VoiceOver label of the yellow warning for a permission that is off",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запис екрана вимкнено"
           }
         }
       }

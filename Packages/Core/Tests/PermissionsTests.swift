@@ -26,6 +26,12 @@ struct PermissionsTests {
   }
 
   @Test
+  func everyPermissionHasATitleAndAWarningOfItsOwn() {
+    #expect(Set(Permission.allCases.map(\.title.key)).count == Permission.allCases.count)
+    #expect(Set(Permission.allCases.map(\.offLabel.key)).count == Permission.allCases.count)
+  }
+
+  @Test
   func theCheckboxIsOnForAGrantEvenOneThatWaitsForARelaunch() {
     #expect(PermissionStatus.granted.isOn)
     #expect(PermissionStatus.grantedAfterRestart.isOn)
