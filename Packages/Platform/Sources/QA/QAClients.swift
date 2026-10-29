@@ -165,6 +165,8 @@
     static let qa: HotkeyClient = {
       var client = HotkeyClient()
       client.presses = { hotkey in QASystem.shared.presses(hotkey.name) }
+      // No shortcut is ever recorded in a run: the shared defaults may hold the user's.
+      client.shortcut = { _ in nil }
       return client
     }()
   }
@@ -231,6 +233,7 @@
         }
         QALog.record("launchAtLogin", "enableOnFirstLaunch", ["registered": "yes"])
       }
+      client.isSetUp = { simulation.launchAtLoginSetUp }
       client.openSystemSettings = { QALog.record("launchAtLogin", "openSystemSettings") }
       return client
     }()
