@@ -84,6 +84,22 @@ struct SecretsFeature: Sendable {
   /// The connect command's limit: checking for `claude`, then adding (S78).
   static let checkTime: Duration = .seconds(5)
   static let connectTime: Duration = .seconds(25)
+  /// Where Claude Code's installers put `claude` (code.claude.com's install docs): the native installer's
+  /// ~/.local/bin, which users put on the PATH in .zshrc; the old local install, which .zshrc reaches through an alias
+  /// that a non-interactive shell never has; Homebrew. Looked at only when the terminal's PATH has no `claude`.
+  static let claudeLocations = ["$HOME/.local/bin/claude", "$HOME/.claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
+  /// Prints the `claude` to run: the one on the terminal's PATH, else the first of `claudeLocations` that runs; exits
+  /// 1 when there is none. Run like any command, in the user's shell with the terminal's environment, non-interactive.
+  static var findClaudeCommand: String {
+    "command -v claude 2>/dev/null || { for c in "
+      + claudeLocations.map { "\"\($0)\"" }.joined(separator: " ")
+      + "; do if [ -x \"$c\" ]; then printf '%s\\n' \"$c\"; exit 0; fi; done; exit 1; }"
+  }
+
+  /// `text` as one word for the shell, whatever it holds.
+  static func shellQuoted(_ text: String) -> String {
+    "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'"
+  }
   /// The environment variable the connect command reads the token from.
   static let tokenVariable = "VORTEX_MCP_TOKEN"
 
@@ -146,11 +162,12 @@ struct SecretsFeature: Sendable {
       settings.addedToClaudeCode || settings.hasConnected || !sessions.isEmpty
     }
 
-    /// The connect command run from the onboarding: the token comes from `tokenVariable`, so the command itself never
-    /// holds it, and nothing the shell prints shows.
-    var connectRunCommand: String {
-      "claude mcp remove --scope user vortex >/dev/null 2>&1; "
-        + "claude mcp add --transport http --scope user vortex http://127.0.0.1:\(settings.port)/mcp "
+    /// The connect command run from the onboarding, with `claude` as `findClaudeCommand` found it: the token comes from
+    /// `tokenVariable`, so the command itself never holds it, and nothing the shell prints shows.
+    func connectRunCommand(claude: String) -> String {
+      let claude = SecretsFeature.shellQuoted(claude)
+      return "\(claude) mcp remove --scope user vortex >/dev/null 2>&1; "
+        + "\(claude) mcp add --transport http --scope user vortex http://127.0.0.1:\(settings.port)/mcp "
         + "--header \"Authorization: Bearer $\(SecretsFeature.tokenVariable)\" >/dev/null 2>&1"
     }
 
@@ -483,8 +500,8 @@ struct SecretsFeature: Sendable {
         // Only while the server listens, so the command names a port Claude can reach (S78).
         guard case .listening = state.server, let token = state.token, state.connect != .running else { return .none }
         state.connect = .running
-        return .run { [command = state.connectRunCommand] send in
-          await send(.connectFinished(try await connect(command: command, token: token)))
+        return .run { [state] send in
+          await send(.connectFinished(try await connect(state, token: token)))
         } catch: { error, send in
           logger.error("Connecting Claude Code failed: \(error, privacy: .public)")
           await send(.connectFinished(.failed(exitCode: -1)))
@@ -517,14 +534,19 @@ struct SecretsFeature: Sendable {
     $done.withLock { _ = $0.insert(Self.id) }
   }
 
-  /// Checks for `claude`, then runs the connect command in the user's login shell with the token in the environment.
-  /// Never more than `checkTime` plus `connectTime`; the output is never kept, as it could echo the token.
-  private func connect(command: String, token: String) async throws -> ConnectStatus {
-    let check = try await commands.run("command -v claude >/dev/null 2>&1", nil, [:], Self.checkTime)
-    guard check.exitCode == 0, !check.timedOut else {
+  /// Finds `claude` (`findClaudeCommand`), then runs the connect command with it, by its path, in the user's shell with
+  /// the terminal's environment, as Keys runs Claude's commands, and the token only in the environment. Both run
+  /// non-interactive (`shell -c`), so neither lands in the shell's history. The connect's output is never kept, as it
+  /// could echo the token; the check prints only a path.
+  private func connect(_ state: State, token: String) async throws -> ConnectStatus {
+    let check = try await commands.run(Self.findClaudeCommand, nil, [:], Self.checkTime)
+    let claude = String(decoding: check.stdout, as: UTF8.self)
+      .split(whereSeparator: \.isNewline).first.map(String.init)?
+      .trimmingCharacters(in: .whitespaces) ?? ""
+    guard check.exitCode == 0, !check.timedOut, !claude.isEmpty else {
       return check.timedOut ? .failed(exitCode: check.exitCode) : .notInstalled
     }
-    let output = try await commands.run(command, nil, [Self.tokenVariable: token], Self.connectTime)
+    let output = try await commands.run(state.connectRunCommand(claude: claude), nil, [Self.tokenVariable: token], Self.connectTime)
     return output.exitCode == 0 && !output.timedOut ? .added : .failed(exitCode: output.exitCode)
   }
 

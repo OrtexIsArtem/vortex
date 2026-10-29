@@ -32,6 +32,46 @@ struct ClaudeCodeStepTests {
     return store
   }
 
+  /// The check found `claude` at `path`: it prints the path, as `findClaudeCommand` does.
+  static func found(_ path: String) -> CommandClient.Output {
+    CommandClient.Output(exitCode: 0, stdout: Data("\(path)\n".utf8))
+  }
+
+  /// `claude` that only .zshrc puts on the PATH, or reaches through an alias, is found at the places its installers
+  /// use, and run by its path (R4).
+  @Test
+  func claudeOutsideTheShellsPathIsFoundWhereItsInstallersPutIt() async {
+    let check = SecretsFeature.findClaudeCommand
+    #expect(check.hasPrefix("command -v claude 2>/dev/null || "))
+    for place in ["$HOME/.local/bin/claude", "$HOME/.claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"] {
+      #expect(check.contains("\"\(place)\""))
+    }
+    let store = makeStore([Self.found("/Users/me/My Apps/.claude/local/claude"), CommandClient.Output(exitCode: 0)])
+    await store.send(.connectTapped)
+    await store.receive(\.connectFinished) { $0.connect = .added }
+    #expect(runs.value.count == 2)
+    // Quoted as one word, spaces and all; non-interactive, as every CommandClient run (`shell -c`): no history.
+    #expect(runs.value[1].command.hasPrefix("'/Users/me/My Apps/.claude/local/claude' mcp remove --scope user vortex"))
+    #expect(runs.value[1].command.contains("'/Users/me/My Apps/.claude/local/claude' mcp add"))
+    #expect(runs.value[1].environment == [SecretsFeature.tokenVariable: Self.token])
+    #expect(!runs.value[1].command.contains(Self.token))
+  }
+
+  /// A check that finds nothing, or prints nothing, means Claude Code isn't installed.
+  @Test
+  func aCheckThatPrintsNoPathIsNotInstalled() async {
+    let store = makeStore([CommandClient.Output(exitCode: 0)])
+    await store.send(.connectTapped)
+    await store.receive(\.connectFinished) { $0.connect = .notInstalled }
+    #expect(runs.value.count == 1)
+  }
+
+  @Test
+  func shellQuotingKeepsAPathOneWord() {
+    #expect(SecretsFeature.shellQuoted("/a b/claude") == "'/a b/claude'")
+    #expect(SecretsFeature.shellQuoted("/it's/claude") == "'/it'\\''s/claude'")
+  }
+
   var isStepDone: Bool {
     @Shared(.onboardingStepsDone) var done
     return done.contains(SecretsFeature.id)
@@ -39,12 +79,12 @@ struct ClaudeCodeStepTests {
 
   @Test
   func connectChecksForClaudeThenAddsVortexWithTheTokenOnlyInTheEnvironment() async {
-    let store = makeStore([CommandClient.Output(exitCode: 0), CommandClient.Output(exitCode: 0)])
+    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), CommandClient.Output(exitCode: 0)])
     await store.send(.connectTapped) { $0.connect = .running }
     await store.receive(\.connectFinished) { $0.connect = .added }
     #expect(runs.value.count == 2)
-    #expect(runs.value[0].command.contains("command -v claude"))
-    #expect(runs.value[1].command.contains("claude mcp add --transport http --scope user vortex http://127.0.0.1:47823/mcp"))
+    #expect(runs.value[0].command == SecretsFeature.findClaudeCommand)
+    #expect(runs.value[1].command.contains("'/opt/homebrew/bin/claude' mcp add --transport http --scope user vortex http://127.0.0.1:47823/mcp"))
     // The token is in the environment only: never in the command, which logs and QA show.
     #expect(runs.value.allSatisfy { !$0.command.contains(Self.token) })
     #expect(runs.value[1].environment == [SecretsFeature.tokenVariable: Self.token])
@@ -70,7 +110,7 @@ struct ClaudeCodeStepTests {
   @Test
   func aFailureKeepsOnlyTheExitCodeNeverTheOutput() async {
     let leaked = CommandClient.Output(exitCode: 1, stdout: Data("Bearer \(Self.token)".utf8), stderr: Data("bad \(Self.token)".utf8))
-    let store = makeStore([CommandClient.Output(exitCode: 0), leaked])
+    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), leaked])
     await store.send(.connectTapped)
     await store.receive(\.connectFinished) { $0.connect = .failed(exitCode: 1) }
     #expect(!String(describing: store.state.connect).contains(Self.token))
@@ -80,7 +120,7 @@ struct ClaudeCodeStepTests {
   /// The 30 s limit ends as any other failure (S78).
   @Test
   func reachingTheTimeLimitIsAFailure() async {
-    let store = makeStore([CommandClient.Output(exitCode: 0), CommandClient.Output(exitCode: 143, timedOut: true)])
+    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), CommandClient.Output(exitCode: 143, timedOut: true)])
     await store.send(.connectTapped)
     await store.receive(\.connectFinished) { $0.connect = .failed(exitCode: 143) }
     #expect(runs.value.last?.timeout == SecretsFeature.connectTime)

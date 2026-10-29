@@ -33,7 +33,8 @@
 ## Onboarding step (Claude Code)
 - `makeOnboardingStep()` gives the shell the step "Claude Code" with S27's text; the footer says it can be done later in the Keys tab.
 - "Connect" is enabled only while the server listens, and hidden when it failed to start, which shows "Not running: …" instead.
-- Connect first runs `command -v claude` (5 s), then the connect command (25 s), both through CommandClient in the user's login shell, non-interactive, so nothing lands in shell history.
+- Connect first finds `claude` (5 s): on the terminal's PATH, else at ~/.local/bin, ~/.claude/local (an old install .zshrc reaches by an alias), /opt/homebrew/bin or /usr/local/bin; then runs the connect command with that path (25 s). Both go through CommandClient, as Keys' `run`, non-interactive (`shell -c`), so nothing lands in shell history.
+- In QA, script the check: `sim shell match="command -v claude" exit=0 stdout=/opt/homebrew/bin/claude`; unscripted it prints nothing, which reads as not installed.
 - The token goes in the environment (`VORTEX_MCP_TOKEN`), never into the command, the screen, the logs, QA's state or snapshots; output is never kept.
 - Success: "Added to Claude Code ✓ — start a new Claude Code session to use your keys.", saved as `addedToClaudeCode`.
 - `claude` missing: "Claude Code isn't installed" with the link to claude.com/claude-code; any other failure, the time limit included: one fixed line with the exit code. Both add "Copy command" (concealed) and "Run it in Terminal".
