@@ -170,12 +170,9 @@
   }
 
   extension KeyboardLockClient {
-    /// Never a real event tap: the lock holds when `keyboardAccess` is on and `keyboardLockRefuses` off; asking for
-    /// access shows nothing.
+    /// Never a real event tap: the lock holds when `keyboardAccess` is on and `keyboardLockRefuses` off.
     static let qa: KeyboardLockClient = {
       var client = KeyboardLockClient()
-      client.hasAccess = { simulation.keyboardAccess }
-      client.requestAccess = { QALog.record("keyboardLock", "requestAccess", ["shown": "nothing"]) }
       client.lock = {
         let isLocked = simulation.keyboardAccess && !simulation.keyboardLockRefuses
         QALog.record("keyboardLock", "lock", ["locked": "\(isLocked)"])

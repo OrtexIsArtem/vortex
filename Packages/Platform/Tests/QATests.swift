@@ -413,7 +413,6 @@ struct QAClientsTests {
   func theKeyboardLockIsNeverATap() async {
     let lock = KeyboardLockClient.qa
     QASimulation.update { $0.keyboardAccess = false }
-    #expect(!lock.hasAccess())
     #expect(await !lock.lock())
     QASimulation.update { $0.keyboardAccess = true }
     #expect(await lock.lock())

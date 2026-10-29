@@ -10,11 +10,6 @@ import ComposableArchitecture
 /// while an app has secure input on, reach the window with the keyboard: the shell keeps Vortex's there meanwhile.
 @DependencyClient
 public struct KeyboardLockClient: Sendable {
-  /// Whether Vortex has Accessibility. Asks nothing.
-  public var hasAccess: @Sendable () -> Bool = { false }
-  /// Shows the system's prompt the first time, which also puts Vortex in the Accessibility list, and opens
-  /// System Settings › Privacy & Security › Accessibility.
-  public var requestAccess: @Sendable () async -> Void
   /// Holds the keys back until `unlock`; false when macOS doesn't let Vortex do it. If Vortex quits or crashes, the
   /// keys come back with it.
   public var lock: @Sendable () async -> Bool = { false }
@@ -23,16 +18,6 @@ public struct KeyboardLockClient: Sendable {
 
 extension KeyboardLockClient: DependencyKey {
   public static let liveValue = KeyboardLockClient(
-    hasAccess: { AXIsProcessTrusted() },
-    requestAccess: {
-      await MainActor.run {
-        // By name: `kAXTrustedCheckOptionPrompt` is a mutable global, which strict concurrency won't read.
-        _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-          NSWorkspace.shared.open(url)
-        }
-      }
-    },
     lock: { await KeyboardTap.start() },
     unlock: { await KeyboardTap.stop() }
   )

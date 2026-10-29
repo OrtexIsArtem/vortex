@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import VortexCore
 import VortexPlatform
 
 /// Keyboard cleaning: every key on the Mac held back while the window shows the lock screen, until the user turns the
@@ -9,6 +10,8 @@ struct KeyboardCleaningFeature {
   @ObservableState
   struct State: Equatable {
     var isLocked = false
+    /// What macOS says about Accessibility, as the shell last read it.
+    @SharedReader(.permissionStatuses) var statuses
   }
 
   enum Action: Equatable {
@@ -16,6 +19,14 @@ struct KeyboardCleaningFeature {
     /// «Увімкнути клавіатуру».
     case stopTapped
     case lockFailed
+    /// Accessibility went during the lock (S38).
+    case accessLost
+    case delegate(Delegate)
+
+    enum Delegate: Equatable {
+      /// Show Accessibility's page. `lockRefused`: macOS refused the tap while the status read granted (S55).
+      case openPage(lockRefused: Bool)
+    }
   }
 
   @Dependency(\.keyboardLockClient) var keyboardLock
@@ -26,9 +37,9 @@ struct KeyboardCleaningFeature {
       switch action {
       case .startTapped:
         guard !state.isLocked else { return .none }
-        // Without Accessibility the click asks for it: the system's prompt the first time, then System Settings.
-        guard keyboardLock.hasAccess() else {
-          return .run { _ in await keyboardLock.requestAccess() }
+        // Without Accessibility the click opens its page and locks nothing; it never asks macOS itself (S23, S25).
+        guard state.statuses[.accessibility] != .notGranted else {
+          return .send(.delegate(.openPage(lockRefused: false)))
         }
         state.isLocked = true
         return .run { send in
@@ -36,16 +47,22 @@ struct KeyboardCleaningFeature {
           if await !keyboardLock.lock() { await send(.lockFailed) }
         }
 
-      case .stopTapped, .lockFailed:
+      case .stopTapped, .lockFailed, .accessLost:
         guard state.isLocked else { return .none }
         state.isLocked = false
         let isRefused = action == .lockFailed
-        return .run { _ in
+        let readsGranted = state.statuses[.accessibility] == .granted
+        return .run { send in
+          // On a loss the tap goes at once, and no page opens by itself (S38).
           await keyboardLock.unlock()
           await window.holdKeyboard(false)
-          // macOS refused the tap though Vortex looked allowed: its switch in System Settings may need turning back on.
-          if isRefused { await keyboardLock.requestAccess() }
+          // macOS refused the tap: Accessibility's page, which says to turn the switch off and on again when the
+          // status reads granted (S55).
+          if isRefused { await send(.delegate(.openPage(lockRefused: readsGranted))) }
         }
+
+      case .delegate:
+        return .none
       }
     }
   }

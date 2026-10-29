@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Testing
+import VortexCore
 import VortexPlatform
 
 @testable import VortexShell
@@ -8,37 +9,60 @@ import VortexPlatform
 struct KeyboardCleaningFeatureTests {
   /// The keyboard held (true) and let go (false), in order.
   let holds = LockIsolated<[Bool]>([])
-  let accessRequests = LockIsolated(0)
+  let unlocks = LockIsolated(0)
 
-  func makeStore(hasAccess: Bool) -> TestStoreOf<KeyboardCleaningFeature> {
+  func makeStore(accessibility: PermissionStatus?) -> TestStoreOf<KeyboardCleaningFeature> {
+    @Shared(.permissionStatuses) var statuses
+    $statuses.withLock { $0 = accessibility.map { [.accessibility: $0] } ?? [:] }
     // Calls nobody expects — `lock` without access, among them — fail the test.
-    TestStore(initialState: KeyboardCleaningFeature.State()) {
+    return TestStore(initialState: KeyboardCleaningFeature.State()) {
       KeyboardCleaningFeature()
     } withDependencies: {
-      $0.keyboardLockClient.hasAccess = { hasAccess }
-      $0.keyboardLockClient.requestAccess = { [accessRequests] in accessRequests.withValue { $0 += 1 } }
       $0.windowClient.holdKeyboard = { [holds] isHeld in holds.withValue { $0.append(isHeld) } }
+      $0.keyboardLockClient.unlock = { [unlocks] in unlocks.withValue { $0 += 1 } }
     }
   }
 
+  /// Without Accessibility the click opens its page and locks nothing; macOS is never asked (S23, S25).
   @Test
-  func withoutAccessTheClickAsksForItAndLocksNothing() async {
-    let store = makeStore(hasAccess: false)
+  func withoutAccessTheClickOpensThePageAndLocksNothing() async {
+    let store = makeStore(accessibility: .notGranted)
     await store.send(.startTapped)
-    await store.finish()
-    #expect(accessRequests.value == 1)
+    await store.receive(\.delegate, .openPage(lockRefused: false))
     #expect(holds.value.isEmpty)
   }
 
+  /// A tap macOS refuses while the status reads granted opens the page in S55's mode.
   @Test
-  func aTapMacOSRefusesLetsTheKeyboardGoAndAsksForAccess() async {
-    let store = makeStore(hasAccess: true)
+  func aTapMacOSRefusesLetsTheKeyboardGoAndOpensThePageThatSaysToFlipTheSwitch() async {
+    let store = makeStore(accessibility: .granted)
     store.dependencies.keyboardLockClient.lock = { false }
-    store.dependencies.keyboardLockClient.unlock = {}
     await store.send(.startTapped) { $0.isLocked = true }
     await store.receive(\.lockFailed) { $0.isLocked = false }
-    await store.finish()
+    await store.receive(\.delegate, .openPage(lockRefused: true))
     #expect(holds.value == [true, false])
-    #expect(accessRequests.value == 1)
+    #expect(unlocks.value == 1)
+  }
+
+  /// Before the first read the lock is tried; a refusal opens the ordinary page.
+  @Test
+  func aRefusalBeforeTheFirstReadOpensTheOrdinaryPage() async {
+    let store = makeStore(accessibility: nil)
+    store.dependencies.keyboardLockClient.lock = { false }
+    await store.send(.startTapped) { $0.isLocked = true }
+    await store.receive(\.lockFailed) { $0.isLocked = false }
+    await store.receive(\.delegate, .openPage(lockRefused: false))
+  }
+
+  /// Accessibility lost during the lock: the tap goes at once and no page opens (S38).
+  @Test
+  func losingAccessDuringTheLockEndsItWithoutAPage() async {
+    let store = makeStore(accessibility: .granted)
+    store.dependencies.keyboardLockClient.lock = { true }
+    await store.send(.startTapped) { $0.isLocked = true }
+    await store.send(.accessLost) { $0.isLocked = false }
+    await store.finish()
+    #expect(unlocks.value == 1)
+    #expect(holds.value == [true, false])
   }
 }
