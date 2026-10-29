@@ -14,13 +14,14 @@
 - A saved page that no longer exists resumes at the next page in order, else Done.
 - Welcome: the vortex animation (about 2.5 s; only its last frame with Reduce Motion), "Vortex", three lines and "Get started"; a dark backdrop in both appearances.
 - Basics: the Notifications row and "Open at login"; after "Turn on" the hint about the notification shows for 15 s or until the status changes.
+- "Open at login" shows on for a fresh install, and the real state for one that set it up before; in release builds the user's choice is applied on leaving Basics, never while it shows. Afterwards the switch shows and sets the real state.
 - A hard page: the reasons of every feature that needs it, the drawn System Settings mock, and the "Turn on" checkbox; Screen Recording and the pasteboard add the relaunch note.
 - Done: a row per needed permission with ✓, ↻ or the warning; a row that is off opens its page, and Next or Skip there comes back to Done; the notifications row opens Basics.
-- Done's hint names hovering over the notch only with Open on hover and a notch everywhere, and the menu bar icon only while it shows.
+- Done's hint names the notch only while a notch display is connected, by hover when Open on hover is on, else by click; then the menu bar icon while it shows, otherwise the "Open Vortex" shortcut if one is set.
 
 ## Checkboxes, Skip and Next
 - Every checkbox shows what macOS says; before the first read it shows no state, and Skip and Next are hidden.
-- Clicking a checkbox that is off asks macOS through `PermissionsClient.request`; clicking one that is on does nothing.
+- Clicking a checkbox that is off asks macOS through `PermissionsClient.request`; clicking one that is on, ↻ included, does nothing.
 - After "Turn on", more clicks on it do nothing until the status changes, or for 2 s (15 s for notifications).
 - Next works only when every permission on the page is on; Skip shows only while one is off and none of those is required.
 - A required permission that is off shows "Required": no Skip, Next disabled, and Done's final button disabled.
@@ -32,18 +33,20 @@
 - A page with a permission that works only after a relaunch shows "Restart now"; Vortex comes back on the same page.
 - Done's button reads "Restart and start" while something waits for a relaunch; after that relaunch Done shows again, with "Start using Vortex".
 - Vortex relaunches at most once per onboarding; any relaunch clears the pending checks.
+- Once a relaunch is asked for, no other navigation or final button is taken until Vortex is gone.
 
 ## The single page
 - A feature's request shows that permission's page in the same window, with Close instead of Skip and Next.
 - With the onboarding on screen, a request only brings it to the front at its page; with it closed before completion, the request gets a single page and the saved page stays.
 - A new request switches the single page to the latest permission.
-- On a grant it shows ✓ and closes after 1.5 s; a grant that waits for a relaunch offers "Restart Vortex" and "Later".
+- On a grant it shows ✓ and closes after 1.5 s, the pasteboard's too, which then reads `notNeeded`; a grant that waits for a relaunch offers "Restart Vortex" and "Later".
 - "Restart Vortex" and "Restart to check" reopen the page once after the relaunch.
 - After Close the app that was in front gets the front back.
 
 ## Blocked
 - While a required permission is off, every entry point (hover, notch and ear clicks, the menu bar icon, its menu, the shortcuts, files dragged onto the notch) opens the blocking page instead of the notch window, which closes.
-- Before completion that is the onboarding, jumped to the first page with a missing required permission; after it, the single page of that permission, with Close only.
+- Before completion that is the onboarding, jumped to the first page with a missing required permission, also from «Продовжити налаштування»; after it, the single page of that permission, with Close only.
+- It opens by itself at launch, before a page waiting for that relaunch, and whenever Vortex becomes blocked after it.
 - A hover shows the blocking page without activating Vortex; entry points used before the first status read wait for it.
 - On the grant the blocking page shows ✓, then the next missing required page, or closes.
 
@@ -51,4 +54,5 @@
 - System Settings in front within 10 s of "Turn on" (once per click) turns the window into a 340×300 panel next to System Settings: right of it, left of it, or bottom right of its display.
 - It holds the title, a smaller mock, the live checkbox and "Back"; it never takes focus and has no close control.
 - It turns back into the window, in front, on the grant, on "Back" or when System Settings quits; it hides while another app is in front.
+- «Продовжити налаштування», a blocked entry point or a request brings a showing panel forward as a panel; one that hid behind another app turns back into the window, in front.
 - Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again." and "Not in the list? Click + and choose Vortex.", with the pane button.

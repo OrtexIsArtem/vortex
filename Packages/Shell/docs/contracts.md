@@ -19,10 +19,11 @@
 ## Uses
 - FeatureRegistry: every `FeatureModule` — descriptor (with `permissionNeeds`), `makeTab()`, `makeSettings()`, `makeHomeWidget()`, `acceptsFileDrops`, `receiveFiles(_:)`, `setEnabled(_:)`.
 - VortexCore: `FeatureModule`, `@Shared(.notchIndicators)`, `Permission`, `PermissionPage`, design system, `AppTheme`, `AppLanguage`.
-- VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`, `KeyboardLockClient`, `PermissionsClient`, `ActiveAppClient` (System Settings in front, quitting, its window frames); `OutsideActivity` to keep the window open during drags out of it, Quick Look and the folder picker; `QuickLook`, which the window hands the Quick Look panel to.
+- VortexPlatform: `HotkeyClient` (`shortcut` names "Open Vortex" in Done's hint), `LaunchAtLoginClient` (`isSetUp` starts Basics' switch from the real state), `SystemClient`, `KeyboardLockClient`, `PermissionsClient`, `ActiveAppClient` (System Settings in front, quitting, its window frames); `OutsideActivity` to keep the window open during drags out of it, Quick Look and the folder picker; `QuickLook`, which the window hands the Quick Look panel to.
 
 ## QA mode (debug builds)
 - Gives App `ShellController.prepareQA()`, called first in main.swift, and `isSameQARun(pid:)`, so one instance runs per QA run.
+- `start()` first installs QA's window guard (`QA.guardWindows()`): any window of the run that lands on a display is a violation and is ordered out.
 - Registers with VortexPlatform's `QA`: the window `notch` (mode: why it is open), the state section `shell`, and the commands `entry`, `tab`, `keyboard`, `screens` and `indicator` (QA/ShellQA.swift).
 - The menu bar menu's items have identifiers (continueSetup, open, settings, quit), which `entry kind=menu item=` names; a hidden item can't be chosen.
 - The onboarding registers the windows `onboarding` and `onboarding-panel`, the state section `onboarding` (page, mode, rows, Skip/Next, completed, saved progress, frames) and the command `onboarding press=…|open|reset`.
