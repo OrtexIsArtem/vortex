@@ -16,3 +16,4 @@
 | Menu bar icon | shown | Forced on while a display has no notch or the notch can't open Vortex |
 | Feature order | registry order | Features missing from the saved order follow in registry order |
 | Turned-off features | none | |
+| Required permissions | none | `OnboardingConfig.requiredPermissions`, not in settings.json; QA mode may change them per run |

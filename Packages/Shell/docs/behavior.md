@@ -45,7 +45,7 @@
 - Turning a feature off stops it (`setEnabled(false)`) and switches away from its tab; turning it on starts it again.
 - Every feature is started or stopped at launch according to the settings.
 - Permission statuses are read at launch, then again on macOS's change signal, when any app becomes active and each time the window opens.
-- Vortex is blocked while a required permission that an enabled feature, or keyboard cleaning with Home on, needs reads `notGranted`; turning such a feature on blocks at once. Nothing is required for now.
+- Vortex is blocked while a required permission that an enabled feature, or keyboard cleaning with Home on, needs reads `notGranted`.
 - A feature asking for a permission's page asks macOS for now: its prompt the first time, System Settings after that.
 
 ## Settings
