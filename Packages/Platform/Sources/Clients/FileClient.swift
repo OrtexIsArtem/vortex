@@ -8,10 +8,13 @@ public struct FileInfo: Equatable, Sendable {
   /// Bytes of a file; nil for folders.
   public var size: Int64?
   public var isDirectory: Bool
+  /// A file this user may run (through a link too); false for folders.
+  public var isExecutable: Bool
 
-  public init(size: Int64?, isDirectory: Bool) {
+  public init(size: Int64?, isDirectory: Bool, isExecutable: Bool = false) {
     self.size = size
     self.isDirectory = isDirectory
+    self.isExecutable = isExecutable
   }
 }
 
@@ -50,7 +53,11 @@ extension FileClient: DependencyKey {
       var isDirectory: ObjCBool = false
       guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else { return nil }
       let size = isDirectory.boolValue ? nil : (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int64
-      return FileInfo(size: size, isDirectory: isDirectory.boolValue)
+      return FileInfo(
+        size: size,
+        isDirectory: isDirectory.boolValue,
+        isExecutable: !isDirectory.boolValue && FileManager.default.isExecutableFile(atPath: path)
+      )
     },
     contents: { folder in
       (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)) ?? []

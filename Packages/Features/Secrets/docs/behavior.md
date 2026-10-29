@@ -33,9 +33,12 @@
 ## Onboarding step (Claude Code)
 - `makeOnboardingStep()` gives the shell the step "Claude Code" with S27's text; the footer says it can be done later in the Keys tab.
 - "Connect" is enabled only while the server listens, and hidden when it failed to start, which shows "Not running: …" instead.
-- Connect first finds `claude` (5 s): on the terminal's PATH, else at ~/.local/bin, ~/.claude/local (an old install .zshrc reaches by an alias), /opt/homebrew/bin or /usr/local/bin; then runs the connect command with that path (25 s). Both go through CommandClient, as Keys' `run`, non-interactive (`shell -c`), so nothing lands in shell history.
+- Connect first asks the user's shell (zsh, bash or fish) only for its PATH, between two `__vortex_claude_path__` lines (5 s): what startup files print before them is never read.
+- Vortex then looks for `claude` itself: in each absolute PATH directory, then ~/.local/bin, ~/.claude/local (an old install .zshrc reaches by an alias), /opt/homebrew/bin and /usr/local/bin.
+- It runs only an absolute path to an existing executable file named `claude`, checked before the run; none found reads as not installed.
+- The connect command then runs with that path (25 s). Both go through CommandClient, as Keys' `run`, non-interactive (`shell -c`), so nothing lands in shell history.
 - The whole step stops 30 s after Connect on the clock, the shell's first start included: the run is stopped and the failure line shows exit code 143.
-- In QA, script the check: `sim shell match="command -v claude" exit=0 stdout=/opt/homebrew/bin/claude`; unscripted it prints nothing, which reads as not installed.
+- In QA, put an executable `claude` in the run's folder and script the PATH: `sim shell match="printenv PATH" stdout=<marker>\n<that folder>\n<marker>`; unscripted, nothing is found, which reads as not installed.
 - The token goes in the environment (`VORTEX_MCP_TOKEN`), never into the command Vortex builds, the screen, the logs, QA's state or snapshots; output is never kept.
 - That guards Vortex's own outputs only: while it runs, the user's other programs can see the token in the shell's environment and in `claude`'s arguments, and Claude Code then keeps it in ~/.claude.json.
 - Success: "Added to Claude Code ✓ — start a new Claude Code session to use your keys.", saved as `addedToClaudeCode`.

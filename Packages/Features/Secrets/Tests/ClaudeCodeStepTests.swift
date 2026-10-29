@@ -27,6 +27,7 @@ struct ClaudeCodeStepTests {
         return answers.withValue { $0.isEmpty ? CommandClient.Output(exitCode: 0) : $0.removeFirst() }
       }
       $0.fileClient.open = { [opened] url in opened.withValue { $0.append(url) } }
+      $0.fileClient.info = { [files] url in files.value[url.path] }
       $0.continuousClock = clock
     }
     store.exhaustivity = .off
@@ -34,6 +35,19 @@ struct ClaudeCodeStepTests {
   }
 
   let clock = TestClock()
+  /// The files the fake disk holds, by path.
+  let files = LockIsolated<[String: FileInfo]>([:])
+
+  /// An executable `claude` at `path`.
+  func installClaude(at path: String) {
+    files.withValue { $0[path] = FileInfo(size: 1, isDirectory: false, isExecutable: true) }
+  }
+
+  /// What `pathCommand` prints in the user's shell: whatever a startup file printed first, then the marked PATH.
+  static func shellPATH(_ path: String, printedBefore: String = "") -> CommandClient.Output {
+    let marker = SecretsFeature.pathMarker
+    return CommandClient.Output(exitCode: 0, stdout: Data("\(printedBefore)\(marker)\n\(path)\n\(marker)\n".utf8))
+  }
 
   /// "Connect again" runs as Connect does, with the spinner and the result shown under it; after a relaunch the step
   /// still reads as added (R5).
@@ -83,39 +97,100 @@ struct ClaudeCodeStepTests {
   /// A run that ends in time stops the limit: nothing changes 30 s later.
   @Test
   func aConnectThatEndsInTimeIsNotFailedLater() async {
-    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), CommandClient.Output(exitCode: 0)])
+    installClaude(at: "/opt/homebrew/bin/claude")
+    let store = makeStore([Self.shellPATH("/usr/bin:/bin:/opt/homebrew/bin"), CommandClient.Output(exitCode: 0)])
     await store.send(.connectTapped)
     await store.receive(\.connectFinished) { $0.connect = .added }
     await clock.advance(by: .seconds(31))
     #expect(store.state.connect == .added)
   }
 
-  /// The check found `claude` at `path`: it prints the path, as `findClaudeCommand` does.
-  static func found(_ path: String) -> CommandClient.Output {
-    CommandClient.Output(exitCode: 0, stdout: Data("\(path)\n".utf8))
+  /// The check asks the shell only for its PATH, in plain commands zsh, bash and fish all run (N1).
+  @Test
+  func theCheckIsPlainCommandsEveryShellRuns() {
+    let check = SecretsFeature.pathCommand
+    #expect(check == "echo __vortex_claude_path__; printenv PATH; echo __vortex_claude_path__")
+    // No sh-only syntax: fish has no do/done, then/fi, { …; } or ||.
+    for syntax in ["do ", "done", "then", "fi", "{", "||", "&&", "$("] {
+      #expect(!check.contains(syntax))
+    }
   }
 
-  /// `claude` that only .zshrc puts on the PATH, or reaches through an alias, is found at the places its installers
-  /// use, and run by its path (R4).
+  /// What zsh, bash and fish print for the check reads the same; what a startup file prints first is never read, and
+  /// without both markers there is no PATH (N1, N2).
   @Test
-  func claudeOutsideTheShellsPathIsFoundWhereItsInstallersPutIt() async {
-    let check = SecretsFeature.findClaudeCommand
-    #expect(check.hasPrefix("command -v claude 2>/dev/null || "))
-    for place in ["$HOME/.local/bin/claude", "$HOME/.claude/local/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude"] {
-      #expect(check.contains("\"\(place)\""))
-    }
-    let store = makeStore([Self.found("/Users/me/My Apps/.claude/local/claude"), CommandClient.Output(exitCode: 0)])
+  func theMarkedPathIsReadFromEveryShellsOutput() {
+    let marker = SecretsFeature.pathMarker
+    let path = "/Users/me/.local/bin:/opt/homebrew/bin:/usr/bin:/bin"
+    // zsh and bash: `echo` and `printenv` print lines; fish prints the PATH list joined by colons for `printenv` too.
+    #expect(SecretsFeature.markedPath("\(marker)\n\(path)\n\(marker)\n") == path)
+    // A greeting from .zshenv or config.fish, and a CRLF line end.
+    #expect(SecretsFeature.markedPath("Welcome back\nalias claude=/x/claude\n\(marker)\r\n\(path)\r\n\(marker)\r\n") == path)
+    // An unset PATH: `printenv` prints nothing.
+    #expect(SecretsFeature.markedPath("\(marker)\n\(marker)\n") == "")
+    // Not ours: one marker, none, or more than a line between them.
+    #expect(SecretsFeature.markedPath("\(marker)\n\(path)\n") == nil)
+    #expect(SecretsFeature.markedPath("/opt/homebrew/bin/claude\n") == nil)
+    #expect(SecretsFeature.markedPath("\(marker)\n/a\n/b\n\(marker)\n") == nil)
+    #expect(SecretsFeature.markedPath("x\(marker)\n\(path)\n\(marker)\n") == nil)
+  }
+
+  /// Only absolute PATH entries count, then the installers' places; each candidate is an absolute path named `claude`.
+  @Test
+  func candidatesAreAbsolutePathsNamedClaude() {
+    let home = URL(fileURLWithPath: "/Users/me", isDirectory: true)
+    let candidates = SecretsFeature.claudeCandidates(path: "/usr/bin:.:bin:~/bin::/opt/homebrew/bin/:/usr/bin", home: home)
+    #expect(candidates.map(\.path) == [
+      "/usr/bin/claude", "/opt/homebrew/bin/claude", "/Users/me/.local/bin/claude", "/Users/me/.claude/local/claude",
+      "/usr/local/bin/claude",
+    ])
+    #expect(candidates.allSatisfy { $0.path.hasPrefix("/") && $0.lastPathComponent == "claude" })
+  }
+
+  /// A greeting before the PATH changes nothing: Vortex runs the executable it found on the PATH, by its absolute
+  /// path, never a line of output (N2).
+  @Test
+  func noiseBeforeThePathIsNeverRun() async {
+    installClaude(at: "/opt/homebrew/bin/claude")
+    let check = Self.shellPATH("/usr/bin:/opt/homebrew/bin", printedBefore: "Welcome back\nalias claude=/tmp/evil\n/tmp/evil\n")
+    let store = makeStore([check, CommandClient.Output(exitCode: 0)])
     await store.send(.connectTapped)
     await store.receive(\.connectFinished) { $0.connect = .added }
     #expect(runs.value.count == 2)
-    // Quoted as one word, spaces and all; non-interactive, as every CommandClient run (`shell -c`): no history.
-    #expect(runs.value[1].command.hasPrefix("'/Users/me/My Apps/.claude/local/claude' mcp remove --scope user vortex"))
-    #expect(runs.value[1].command.contains("'/Users/me/My Apps/.claude/local/claude' mcp add"))
+    #expect(runs.value[1].command.hasPrefix("'/opt/homebrew/bin/claude' mcp remove --scope user vortex"))
+    #expect(!runs.value[1].command.contains("evil"))
+    #expect(!runs.value[1].command.contains("Welcome"))
+  }
+
+  /// A `claude` that isn't an executable file is skipped; with none left, Claude Code isn't installed and nothing runs.
+  @Test
+  func aClaudeThatIsNotAnExecutableFileIsNotInstalled() async {
+    files.withValue {
+      $0["/usr/bin/claude"] = FileInfo(size: 1, isDirectory: false, isExecutable: false)
+      $0["/opt/homebrew/bin/claude"] = FileInfo(size: nil, isDirectory: true, isExecutable: false)
+    }
+    let store = makeStore([Self.shellPATH("/usr/bin:/opt/homebrew/bin")])
+    await store.send(.connectTapped)
+    await store.receive(\.connectFinished) { $0.connect = .notInstalled }
+    #expect(runs.value.count == 1)
+  }
+
+  /// `claude` that only .zshrc puts on the PATH, or reaches by an alias, is found at the places its installers use,
+  /// and run by its path, quoted as one word (R4).
+  @Test
+  func claudeOutsideTheShellsPathIsFoundWhereItsInstallersPutIt() async {
+    let local = URL.homeDirectory.appending(path: ".claude/local/claude").path
+    installClaude(at: local)
+    let store = makeStore([Self.shellPATH("/usr/bin:/bin"), CommandClient.Output(exitCode: 0)])
+    await store.send(.connectTapped)
+    await store.receive(\.connectFinished) { $0.connect = .added }
+    #expect(runs.value.count == 2)
+    #expect(runs.value[1].command.hasPrefix("\(SecretsFeature.shellQuoted(local)) mcp remove --scope user vortex"))
     #expect(runs.value[1].environment == [SecretsFeature.tokenVariable: Self.token])
     #expect(!runs.value[1].command.contains(Self.token))
   }
 
-  /// A check that finds nothing, or prints nothing, means Claude Code isn't installed.
+  /// A check that prints no marked PATH still looks at the installers' places; with nothing there, not installed.
   @Test
   func aCheckThatPrintsNoPathIsNotInstalled() async {
     let store = makeStore([CommandClient.Output(exitCode: 0)])
@@ -137,11 +212,13 @@ struct ClaudeCodeStepTests {
 
   @Test
   func connectChecksForClaudeThenAddsVortexWithTheTokenOnlyInTheEnvironment() async {
-    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), CommandClient.Output(exitCode: 0)])
+    installClaude(at: "/opt/homebrew/bin/claude")
+    let store = makeStore([Self.shellPATH("/usr/bin:/opt/homebrew/bin"), CommandClient.Output(exitCode: 0)])
     await store.send(.connectTapped) { $0.connect = .running }
     await store.receive(\.connectFinished) { $0.connect = .added }
     #expect(runs.value.count == 2)
-    #expect(runs.value[0].command == SecretsFeature.findClaudeCommand)
+    #expect(runs.value[0].command == SecretsFeature.pathCommand)
+    #expect(runs.value[0].environment.isEmpty)
     #expect(runs.value[1].command.contains("'/opt/homebrew/bin/claude' mcp add --transport http --scope user vortex http://127.0.0.1:47823/mcp"))
     // The token is in the environment only: never in the command, which logs and QA show.
     #expect(runs.value.allSatisfy { !$0.command.contains(Self.token) })
@@ -168,7 +245,8 @@ struct ClaudeCodeStepTests {
   @Test
   func aFailureKeepsOnlyTheExitCodeNeverTheOutput() async {
     let leaked = CommandClient.Output(exitCode: 1, stdout: Data("Bearer \(Self.token)".utf8), stderr: Data("bad \(Self.token)".utf8))
-    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), leaked])
+    installClaude(at: "/opt/homebrew/bin/claude")
+    let store = makeStore([Self.shellPATH("/usr/bin:/opt/homebrew/bin"), leaked])
     await store.send(.connectTapped)
     await store.receive(\.connectFinished) { $0.connect = .failed(exitCode: 1) }
     #expect(!String(describing: store.state.connect).contains(Self.token))
@@ -178,7 +256,8 @@ struct ClaudeCodeStepTests {
   /// The 30 s limit ends as any other failure (S78).
   @Test
   func reachingTheTimeLimitIsAFailure() async {
-    let store = makeStore([Self.found("/opt/homebrew/bin/claude"), CommandClient.Output(exitCode: 143, timedOut: true)])
+    installClaude(at: "/opt/homebrew/bin/claude")
+    let store = makeStore([Self.shellPATH("/usr/bin:/opt/homebrew/bin"), CommandClient.Output(exitCode: 143, timedOut: true)])
     await store.send(.connectTapped)
     await store.receive(\.connectFinished) { $0.connect = .failed(exitCode: 143) }
     #expect(runs.value.last?.timeout == SecretsFeature.connectTime)

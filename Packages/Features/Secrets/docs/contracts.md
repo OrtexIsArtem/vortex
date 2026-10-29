@@ -11,6 +11,6 @@
 
 ## Uses
 - VortexCore: `FeatureModule`, `DataFolder`, `database`, `databaseIsOnDisk`, `@Shared(.fileStorage)`, `@Shared(.notchIndicators)`, design system (`PermissionRows`); `@SharedReader(.permissionStatuses)` and `permissionPage.open` for the Notifications row.
-- VortexPlatform: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex", `FileClient.open` for claude.com/claude-code.
+- VortexPlatform: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex", `FileClient.open` for claude.com/claude-code, `FileClient.info` to check the `claude` it runs.
 - VortexPlatform: `KeychainClient` (values, token), `CommandClient` (the user's shell with the terminal's environment), `PasteboardClient` (copies, concealed where secret), `NotificationClient` (a notification per request, its presses by notification id, taken back by id prefix).
 - The network (Network.framework), allowed only in this module by `make check`, and only for the server on the loopback.
