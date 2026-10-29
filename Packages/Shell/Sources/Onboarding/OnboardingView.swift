@@ -66,18 +66,24 @@ struct PageScaffold<Content: View>: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
+      FittingPage { column }
+      Hairline()
+      footer
+        .frame(height: 72)
+    }
+    .padding(.horizontal, 40)
+  }
+
+  /// The title and the content, as the page lays them out above its footer.
+  var column: some View {
+    VStack(alignment: .leading, spacing: 0) {
       title
         .font(.system(size: 26, weight: .semibold))
         .foregroundStyle(VortexColor.primaryText)
         .padding(.top, 52)
       content
         .padding(.top, 20)
-      Spacer(minLength: 0)
-      Hairline()
-      footer
-        .frame(height: 72)
     }
-    .padding(.horizontal, 40)
   }
 
   private var footer: some View {
@@ -112,6 +118,36 @@ struct PageScaffold<Content: View>: View {
         .keyboardShortcut(.defaultAction)
       }
     }
+  }
+}
+
+/// A page's title and content, above its footer: laid out in full when they fit, scrolling when a long translation
+/// doesn't, so no text is ever cut short (S31). Content that ends with a `Spacer` keeps it while it fits.
+struct FittingPage<Content: View>: View {
+  /// The width and height a page's column gets in full, above the footer and its hairline and the space kept under it.
+  static var columnSpace: CGSize {
+    let window = OnboardingWindowController.windowSize
+    return CGSize(width: window.width - 80, height: window.height - 72 - 1 - 16)
+  }
+
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    ViewThatFits(in: .vertical) {
+      column
+      ScrollView(.vertical) {
+        column
+      }
+      .scrollBounceBehavior(.basedOnSize)
+    }
+  }
+
+  private var column: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      content
+      Spacer(minLength: 16)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
@@ -208,6 +244,7 @@ struct PermissionRowView: View {
             }
             .font(.system(size: 11.5))
             .foregroundStyle(VortexColor.tertiaryText)
+            .fixedSize(horizontal: false, vertical: true)
           }
         }
         Spacer(minLength: 12)
@@ -237,6 +274,7 @@ struct BasicsContent: View {
           Text("Click Allow in the notification at the top right, or in Notification Center.", bundle: .module)
             .font(.system(size: 12))
             .foregroundStyle(VortexColor.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 8)
         }
         RecheckHint(store: store, permission: .notifications)
@@ -258,6 +296,7 @@ struct BasicsContent: View {
             Text("Allow Vortex in System Settings › General › Login Items.", bundle: .module)
               .font(.system(size: 12))
               .foregroundStyle(VortexColor.secondaryText)
+              .fixedSize(horizontal: false, vertical: true)
           }
         }
         Spacer(minLength: 12)
@@ -296,16 +335,18 @@ struct HardPermissionContent: View {
         .font(.system(size: 13))
         .foregroundStyle(VortexColor.secondaryText)
         .fixedSize(horizontal: false, vertical: true)
+      // The mock needs about 154 pt; the rest of the page's room goes to text, which may be longer in Ukrainian.
       SettingsIllustration(permission: permission)
-        .frame(height: 210)
+        .frame(height: 170)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
+        .padding(.vertical, 14)
       Hairline()
       PermissionRowView(store: store, permission: permission, title: Text("Turn on", bundle: .module), showsReasons: false)
       if permission == .notifications, store.isNotificationHintVisible {
         Text("Click Allow in the notification at the top right, or in Notification Center.", bundle: .module)
           .font(.system(size: 12))
           .foregroundStyle(VortexColor.secondaryText)
+          .fixedSize(horizontal: false, vertical: true)
           .padding(.top, 8)
       }
       RecheckHint(store: store, permission: permission)
@@ -342,6 +383,7 @@ struct HardPermissionContent: View {
     }
     .font(.system(size: 11.5))
     .foregroundStyle(VortexColor.tertiaryText)
+    .fixedSize(horizontal: false, vertical: true)
   }
 }
 
@@ -363,6 +405,9 @@ struct RecheckHint: View {
         }
         .font(.system(size: 12))
         .foregroundStyle(VortexColor.secondaryText)
+        // Wraps: the button keeps its width, and the lines take every line they need.
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(1)
         Spacer(minLength: 8)
         Button {
           store.send(.openPaneTapped(permission))
@@ -383,22 +428,7 @@ struct DonePage: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Text("You're all set", bundle: .module)
-        .font(.system(size: 26, weight: .semibold))
-        .foregroundStyle(VortexColor.primaryText)
-        .padding(.top, 52)
-      VStack(spacing: 0) {
-        Hairline()
-        ForEach(store.state.doneRows, id: \.self) { permission in
-          row(permission)
-        }
-      }
-      .padding(.top, 20)
-      hint
-        .font(.system(size: 13))
-        .foregroundStyle(VortexColor.secondaryText)
-        .padding(.top, 18)
-      Spacer(minLength: 0)
+      FittingPage { column }
       Hairline()
       HStack {
         Spacer()
@@ -419,6 +449,28 @@ struct DonePage: View {
       .frame(height: 72)
     }
     .padding(.horizontal, 40)
+  }
+
+  /// The title, a row per permission and the hint, as the page lays them out above its button.
+  var column: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text("You're all set", bundle: .module)
+        .font(.system(size: 26, weight: .semibold))
+        .foregroundStyle(VortexColor.primaryText)
+        .padding(.top, 52)
+      VStack(spacing: 0) {
+        Hairline()
+        ForEach(store.state.doneRows, id: \.self) { permission in
+          row(permission)
+        }
+      }
+      .padding(.top, 20)
+      hint
+        .font(.system(size: 13))
+        .foregroundStyle(VortexColor.secondaryText)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.top, 18)
+    }
   }
 
   @ViewBuilder
@@ -487,7 +539,8 @@ struct SinglePermissionPage: View {
   let store: StoreOf<OnboardingFeature>
   let single: OnboardingFeature.SinglePage
 
-  var body: some View {
+  /// The title and the permission's content, as the page lays them out above its buttons.
+  var column: some View {
     VStack(alignment: .leading, spacing: 0) {
       Text(single.permission.title)
         .font(.system(size: 26, weight: .semibold))
@@ -495,7 +548,12 @@ struct SinglePermissionPage: View {
         .padding(.top, 52)
       HardPermissionContent(store: store, permission: single.permission, isSingle: true)
         .padding(.top, 20)
-      Spacer(minLength: 0)
+    }
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      FittingPage { column }
       Hairline()
       HStack(spacing: 10) {
         Spacer()
