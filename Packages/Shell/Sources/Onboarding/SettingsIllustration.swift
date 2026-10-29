@@ -5,13 +5,12 @@ import VortexPlatform
 
 /// A drawn mock of the System Settings pane for a permission, never a screenshot (S36): a sidebar hint, the
 /// breadcrumb, two faded rows with no real names, and Vortex's row with its icon and a switch. Every ~3 s a pointer
-/// moves to the switch and turns it on; with Reduce Motion the switch is on, with an arrow pointing at it.
+/// moves to the switch and turns it on, played by Core Animation (`SwitchFlipAnimation`), so the page costs no CPU
+/// while it shows; with Reduce Motion the switch is on, with an arrow pointing at it.
 struct SettingsIllustration: View {
   let permission: Permission
   var compact = false
   @Environment(\.reduceMotion) private var reduceMotion
-  @State private var pointerAtSwitch = false
-  @State private var isOn = false
 
   var body: some View {
     let scale: CGFloat = compact ? 0.72 : 1
@@ -23,8 +22,8 @@ struct SettingsIllustration: View {
         Text(IllustrationText.breadcrumb(permission))
           .font(.system(size: 11 * scale, weight: .semibold))
           .foregroundStyle(VortexColor.primaryText)
-          .lineLimit(1)
-          .minimumScaleFactor(0.7)
+          // Wraps rather than cutting a long pane name short (uk).
+          .fixedSize(horizontal: false, vertical: true)
         VStack(spacing: 0) {
           fadedRow(scale)
           Hairline()
@@ -39,11 +38,17 @@ struct SettingsIllustration: View {
       .padding(12 * scale)
     }
     .background(VortexColor.raised.opacity(0.5))
+    .overlayPreferenceValue(IllustrationSwitchAnchor.self) { anchor in
+      if let anchor, !reduceMotion {
+        GeometryReader { proxy in
+          SwitchFlipAnimation(switchFrame: proxy[anchor], scale: scale)
+        }
+      }
+    }
     .clipShape(RoundedRectangle(cornerRadius: 12))
     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(VortexColor.line, lineWidth: 1))
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text(IllustrationText.breadcrumb(permission)))
-    .task(id: reduceMotion) { await play() }
   }
 
   private var sidebar: some View {
@@ -86,54 +91,25 @@ struct SettingsIllustration: View {
         .font(.system(size: 11 * scale, weight: .medium))
         .foregroundStyle(VortexColor.primaryText)
       Spacer()
-      ZStack {
-        Capsule()
-          .fill(isOn ? Color.accentColor : VortexColor.track)
-          .frame(width: 26 * scale, height: 15 * scale)
-          .overlay(alignment: isOn ? .trailing : .leading) {
-            Circle().fill(Color.white).frame(width: 12 * scale, height: 12 * scale).padding(1.5)
+      // Off, as the animation over it starts; on, with an arrow pointing at it, under Reduce Motion.
+      Capsule()
+        .fill(reduceMotion ? Color.accentColor : VortexColor.track)
+        .frame(width: 26 * scale, height: 15 * scale)
+        .overlay(alignment: reduceMotion ? .trailing : .leading) {
+          Circle().fill(Color.white).frame(width: 12 * scale, height: 12 * scale).padding(1.5)
+        }
+        .anchorPreference(key: IllustrationSwitchAnchor.self, value: .bounds) { $0 }
+        .overlay(alignment: .trailing) {
+          if reduceMotion {
+            Image(systemName: "arrow.left")
+              .font(.system(size: 13 * scale, weight: .bold))
+              .foregroundStyle(VortexColor.primaryText)
+              .offset(x: 20 * scale)
           }
-        pointer(scale)
-      }
+        }
     }
     .padding(.horizontal, 10)
     .frame(height: 38 * scale)
-  }
-
-  @ViewBuilder
-  private func pointer(_ scale: CGFloat) -> some View {
-    if reduceMotion {
-      Image(systemName: "arrow.left")
-        .font(.system(size: 13 * scale, weight: .bold))
-        .foregroundStyle(VortexColor.primaryText)
-        .offset(x: 30 * scale)
-    } else {
-      Image(systemName: "cursorarrow")
-        .font(.system(size: 15 * scale))
-        .foregroundStyle(VortexColor.primaryText)
-        .shadow(color: .black.opacity(0.25), radius: 1)
-        .offset(x: pointerAtSwitch ? 4 * scale : -60 * scale, y: pointerAtSwitch ? 6 * scale : 34 * scale)
-        .opacity(pointerAtSwitch || isOn ? 1 : 0.0)
-    }
-  }
-
-  /// Every ~3 s: the pointer moves to the switch, the switch turns on, then it starts over.
-  private func play() async {
-    guard !reduceMotion else {
-      isOn = true
-      return
-    }
-    while !Task.isCancelled {
-      isOn = false
-      pointerAtSwitch = false
-      try? await Task.sleep(for: .milliseconds(500))
-      withAnimation(.easeInOut(duration: 0.8)) { pointerAtSwitch = true }
-      try? await Task.sleep(for: .milliseconds(900))
-      withAnimation(.snappy(duration: 0.2)) { isOn = true }
-      try? await Task.sleep(for: .milliseconds(1_600))
-      withAnimation(.easeOut(duration: 0.3)) { pointerAtSwitch = false }
-      try? await Task.sleep(for: .milliseconds(300))
-    }
   }
 }
 

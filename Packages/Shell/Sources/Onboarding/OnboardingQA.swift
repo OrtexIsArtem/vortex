@@ -165,6 +165,8 @@
       var completed: Bool
       var saved: OnboardingProgress
       var windows: [String: Frame]
+      /// For each illustration mounted in the window or the panel: whether Core Animation plays its pointer and switch.
+      var illustrationsAnimating: [Bool]
 
       @MainActor init(_ state: OnboardingFeature.State) {
         func row(_ permission: Permission) -> Row {
@@ -229,6 +231,12 @@
           )
         }
         self.windows = windows
+        func flipViews(in view: NSView?) -> [SwitchFlipView] {
+          guard let view else { return [] }
+          return ((view as? SwitchFlipView).map { [$0] } ?? []) + view.subviews.flatMap { flipViews(in: $0) }
+        }
+        illustrationsAnimating = (flipViews(in: controller.window?.contentView) + flipViews(in: controller.panel?.contentView))
+          .map(\.isAnimating)
       }
     }
   }
