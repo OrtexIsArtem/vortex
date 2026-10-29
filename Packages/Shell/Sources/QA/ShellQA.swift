@@ -110,6 +110,15 @@
       func requireMenuBarIcon() throws {
         guard window.qaIsMenuBarIconShown else { throw QAError("the menu bar icon is hidden") }
       }
+      func requireNotch() throws {
+        guard QA.screens.contains(.notch) else { throw QAError("no display has a notch: screens are \(QA.screens.map(\.rawValue).joined(separator: "+"))") }
+      }
+      switch entry {
+      case .hover, .earClick, .notchClick, .drag:
+        try requireNotch()
+      default:
+        break
+      }
       switch entry {
       case let .hover(ear):
         if let ear { try requireEar(ear) }
