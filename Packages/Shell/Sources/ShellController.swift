@@ -8,6 +8,10 @@ import VortexPlatform
 @MainActor
 public final class ShellController: NSObject {
   private let store: StoreOf<ShellFeature>
+  #if DEBUG
+    private var qaReadiness: ObserveToken?
+    private var isQAStarted = false
+  #endif
 
   override public init() {
     @Dependency(\.settingsClient) var settingsClient
@@ -30,12 +34,31 @@ public final class ShellController: NSObject {
       // A QA run takes commands only on its own channel, never the debug notifications every debug build answers.
       if QA.isActive {
         ShellQA.install(store: store)
-        QA.start()
+        startQAWhenReady()
       } else {
         listenForDebugCommands()
       }
     #endif
   }
+
+  #if DEBUG
+    /// A QA run says it is ready (and starts listening) only once the shell hears window events and every feature is
+    /// started, so the first command never lands before them or before a feature's own commands exist.
+    private func startQAWhenReady() {
+      WindowController.shared.qaOnEventsSubscribed = { [weak self] in self?.startQAIfReady() }
+      qaReadiness = observe { [weak self] in
+        guard let self else { return }
+        _ = self.store.isStarted
+        self.startQAIfReady()
+      }
+    }
+
+    private func startQAIfReady() {
+      guard !isQAStarted, store.isStarted, WindowController.shared.qaHasEventsSubscriber else { return }
+      isQAStarted = true
+      QA.start()
+    }
+  #endif
 
   #if DEBUG
     /// Call first in main.swift, before anything else: a QA run (`--qa <name>`) gets its own folder and simulated

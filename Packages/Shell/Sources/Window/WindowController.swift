@@ -103,6 +103,10 @@ final class WindowController: NSObject {
   private let isQA: Bool
   /// QA: whether the pretended pointer is inside the window, as it is after opening it from the notch.
   private var isQAPointerInWindow = false
+  /// QA: the shell listens for events; until then an event a command makes would be lost.
+  private(set) var qaHasEventsSubscriber = false
+  /// QA: called once the shell listens for events.
+  var qaOnEventsSubscribed: (() -> Void)?
 
   override private init() {
     #if DEBUG
@@ -144,6 +148,10 @@ final class WindowController: NSObject {
     emit = { continuation.yield($0) }
     finishEvents = { continuation.finish() }
     continuation.yield(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
+    if isQA {
+      qaHasEventsSubscriber = true
+      qaOnEventsSubscribed?()
+    }
     return stream
   }
 

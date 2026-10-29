@@ -36,6 +36,8 @@ struct ShellFeature {
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
     var launchAtLogin: LaunchAtLoginStatus = .disabled
+    /// The launch has switched every feature on or off; a QA run says it is ready only after this.
+    var isStarted = false
     var language: AppLanguage
     /// Language the app was started with; another choice needs a relaunch.
     let launchLanguage: AppLanguage
@@ -138,6 +140,8 @@ struct ShellFeature {
     case settingsShown
     case launchAtLoginChanged(Bool)
     case launchAtLoginStatusLoaded(LaunchAtLoginStatus)
+    /// Every feature has been started or stopped at launch.
+    case started
     case openLoginItemsTapped
     case menuOpenTapped
     case menuSettingsTapped
@@ -207,6 +211,7 @@ struct ShellFeature {
               }
               await launchAtLogin.enableOnFirstLaunch()
               await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
+              await send(.started)
             }
           )
 
@@ -270,6 +275,10 @@ struct ShellFeature {
 
         case let .launchAtLoginStatusLoaded(status):
           state.launchAtLogin = status
+          return .none
+
+        case .started:
+          state.isStarted = true
           return .none
 
         case .openLoginItemsTapped:

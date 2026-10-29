@@ -558,6 +558,7 @@ struct ShellFeatureTests {
 
     await store.send(.task)
     await store.receive(\.launchAtLoginStatusLoaded) { $0.launchAtLogin = .enabled }
+    await store.receive(\.started) { $0.isStarted = true }
     await store.finish()
     #expect(menuBarIcon.value == [true])
     #expect(featureSwitches.value == ["timer:true", "shelf:true", "tasks:false"])
