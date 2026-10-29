@@ -94,9 +94,15 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 
   private func show(_ window: NSWindow, activate: Bool) {
     if isQA {
-      // Never key, never in front (QA.allowsKeyWindows, the window guard).
-      window.setFrame(QA.offscreen(window.frame), display: false)
-      window.orderFront(nil)
+      #if DEBUG
+        // Never key, never in front, never on a display (QA.allowsKeyWindows, the window guard).
+        window.setFrame(QA.offscreen(window.frame), display: false)
+        window.orderFront(nil)
+        if NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) {
+          window.orderOut(nil)
+          QA.violation("onboarding", "the window landed on a display", ["frame": "\(window.frame)"])
+        }
+      #endif
       return
     }
     if activate {
@@ -142,6 +148,12 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       }
       panel.setFrame(frame, display: false)
       panel.orderFrontRegardless()
+      #if DEBUG
+        if isQA, NSScreen.screens.contains(where: { $0.frame.intersects(panel.frame) }) {
+          panel.orderOut(nil)
+          QA.violation("onboarding", "the panel landed on a display", ["frame": "\(panel.frame)"])
+        }
+      #endif
       _ = self
     }
   }
@@ -205,6 +217,15 @@ final class OnboardingWindow: NSWindow {
 
   override func cancelOperation(_ sender: Any?) {
     onEscape?()
+  }
+
+  /// AppKit keeps a titled window's title bar on a display when it orders it front; a QA run's window must stay off
+  /// every display (`QA.offscreen`), so there the frame stays as given.
+  override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+    #if DEBUG
+      if QA.isActive { return frameRect }
+    #endif
+    return super.constrainFrameRect(frameRect, to: screen)
   }
 
   override func performKeyEquivalent(with event: NSEvent) -> Bool {

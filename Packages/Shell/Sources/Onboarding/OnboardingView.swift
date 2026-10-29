@@ -174,6 +174,8 @@ struct PermissionRowView: View {
   let store: StoreOf<OnboardingFeature>
   let permission: Permission
   let title: Text
+  /// A hard page shows the reasons above its illustration already.
+  var showsReasons = true
 
   var body: some View {
     let state = store.state.rowState(permission)
@@ -186,10 +188,12 @@ struct PermissionRowView: View {
               .foregroundStyle(VortexColor.primaryText)
             if store.state.isRequiredMissing(permission) { RequiredTag() }
           }
-          Text(reasons)
-            .font(.system(size: 12))
-            .foregroundStyle(VortexColor.secondaryText)
-            .fixedSize(horizontal: false, vertical: true)
+          if showsReasons {
+            Text(reasons)
+              .font(.system(size: 12))
+              .foregroundStyle(VortexColor.secondaryText)
+              .fixedSize(horizontal: false, vertical: true)
+          }
           if state == .afterRestart {
             Group {
               if store.progress.pendingChecks.contains(permission) {
@@ -296,7 +300,7 @@ struct HardPermissionContent: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
       Hairline()
-      PermissionRowView(store: store, permission: permission, title: Text("Turn on", bundle: .module))
+      PermissionRowView(store: store, permission: permission, title: Text("Turn on", bundle: .module), showsReasons: false)
       if permission == .notifications, store.isNotificationHintVisible {
         Text("Click Allow in the notification at the top right, or in Notification Center.", bundle: .module)
           .font(.system(size: 12))
