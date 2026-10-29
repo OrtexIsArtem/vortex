@@ -4,7 +4,7 @@
 - At launch, after the first status read, an onboarding that isn't completed opens at its saved page; a fresh install, or one from before stage 7, opens at Welcome.
 - It lives in its own standard window, centered on the pointer's screen, about 560×620 pt, with only a close button; never in the notch window.
 - Only Done's final button completes it; after that no launch shows it unless Vortex is blocked.
-- Closing it (close button or ⌘W) hides it and keeps the page; the menu bar menu then has «Продовжити налаштування», which reopens it at the saved page, even over a single page.
+- Closing it (close button or ⌘W) hides it and keeps the page; the menu bar menu then has «Продовжити налаштування», which closes the notch window and reopens it at the saved page, even over a single page.
 - «Продовжити налаштування» shows whenever the onboarding isn't completed, blocked or not; the menu bar icon shows then too, even if hidden.
 - ⌘Q in the window quits Vortex; Esc closes only a single page; Return presses the page's main button.
 
@@ -16,6 +16,7 @@
 - Basics: the Notifications row and "Open at login"; after "Turn on" the hint about the notification shows for 15 s or until the status changes.
 - "Open at login" shows on for a fresh install, and the real state for one that set it up before; in release builds the user's choice is applied on leaving Basics, never while it shows. Afterwards the switch shows and sets the real state.
 - A hard page: the reasons of every feature that needs it, the drawn System Settings mock, and the "Turn on" checkbox; Screen Recording and the pasteboard add the relaunch note.
+- The mock's pointer and switch move by Core Animation: the page uses no CPU while it shows. No text is cut short: a page too long for the window scrolls.
 - Done: a row per needed permission with ✓, ↻ or the warning; a row that is off opens its page, and Next or Skip there comes back to Done; the notifications row opens Basics.
 - Done's hint names the notch only while a notch display is connected, by hover when Open on hover is on, else by click; then the menu bar icon while it shows, otherwise the "Open Vortex" shortcut if one is set.
 
@@ -39,7 +40,7 @@
 - A feature's request shows that permission's page in the same window, with Close instead of Skip and Next.
 - With the onboarding on screen, a request only brings it to the front at its page; with it closed before completion, the request gets a single page and the saved page stays.
 - A new request switches the single page to the latest permission.
-- On a grant it shows ✓ and closes after 1.5 s, the pasteboard's too, which then reads `notNeeded`; a grant that waits for a relaunch offers "Restart Vortex" and "Later".
+- On a grant it shows ✓ and closes after 1.5 s, the pasteboard's too, which then reads `notNeeded`; turned off again within those 1.5 s, it stays open with the checkbox off. A grant that waits for a relaunch offers "Restart Vortex" and "Later".
 - "Restart Vortex" and "Restart to check" reopen the page once after the relaunch.
 - After Close the app that was in front gets the front back.
 
@@ -55,4 +56,4 @@
 - It holds the title, a smaller mock, the live checkbox and "Back"; it never takes focus and has no close control.
 - It turns back into the window, in front, on the grant, on "Back" or when System Settings quits; it hides while another app is in front.
 - «Продовжити налаштування», a blocked entry point or a request brings a showing panel forward as a panel; one that hid behind another app turns back into the window, in front.
-- Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again." and "Not in the list? Click + and choose Vortex.", with the pane button.
+- Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again." and "Not in the list? Click + and choose Vortex.", with the pane button. For the pasteboard only after a relaunch still reads it off: before one, its page says "Checked after restart" and offers "Restart to check".

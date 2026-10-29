@@ -45,7 +45,7 @@
 - Turning a feature off stops it (`setEnabled(false)`) and switches away from its tab; turning it on starts it again. At launch every feature is started or stopped according to the settings.
 - Permission statuses are read at launch, then again on macOS's change signal, when any app becomes active and each time the window opens.
 - Vortex is blocked while a required permission that an enabled feature, or keyboard cleaning with Home on, needs reads `notGranted`; becoming blocked after the launch's read (a revoke, a feature turned on, a new required set) closes the notch window and opens the blocking page.
-- A feature asking for a permission's page gets the single page in the onboarding window (onboarding.md); the notch window closes first.
+- A feature asking for a permission's page gets the single page in the onboarding window (onboarding.md); the notch window closes first, as it does for «Продовжити налаштування».
 
 ## Settings
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.
