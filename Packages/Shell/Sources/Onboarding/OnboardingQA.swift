@@ -30,7 +30,8 @@
       }
     }
 
-    private static func press(_ button: String, store: StoreOf<ShellFeature>) throws {
+    /// Presses a button the way the user would, or throws when the button isn't there.
+    static func press(_ button: String, store: StoreOf<ShellFeature>) throws {
       let state = store.onboarding
       guard state.isVisible else { throw QAError("the onboarding window is hidden") }
       let parts = button.split(separator: ":", maxSplits: 1).map(String.init)
@@ -39,7 +40,8 @@
       func need(_ condition: Bool, _ reason: String) throws {
         guard condition else { throw QAError(reason) }
       }
-      let isFlow = state.presentation == .flow && !state.isPanel
+      let isFlow = state.presentation == .flow(.window)
+      let isSingle = state.single != nil && !state.isPanel
       let action: OnboardingFeature.Action
       switch name {
       case "next":
@@ -52,6 +54,7 @@
         try need(!state.isPanel, "the panel has no close control")
         action = .closeTapped
       case "escape":
+        try need(isSingle, "Esc closes only a single page")
         action = .escapePressed
       case "getStarted":
         try need(isFlow && state.page == .welcome, "Get started is only on Welcome")
@@ -68,19 +71,29 @@
           try need(state.finishRestarts, "Done's button reads Start using Vortex")
           action = .finishTapped
         } else {
+          // "Restart now", "Restart to check", or a single page's "Restart Vortex": only where one shows.
+          let shown = state.shownPermission.map { state.showsRestartToCheck($0) } == true
+          try need(
+            (isFlow && (state.showsRestartNow || shown)) || (isSingle && (state.waitsForRelaunch || shown)),
+            "no restart button or link shows here"
+          )
           action = .restartTapped
         }
       case "restartNow":
         try need(isFlow && state.showsRestartNow, "Restart now isn't shown")
         action = .restartTapped
       case "later":
+        try need(isSingle && state.waitsForRelaunch, "Later shows only on a single page that waits for a relaunch")
         action = .laterTapped
       case "back":
         try need(state.isPanel, "Back is only on the guide panel")
         action = .backTapped
       case "turnOn":
         guard let permission else { throw QAError("turnOn:<notifications|accessibility|screenRecording|pasteboard>") }
-        try need(state.shownPermission == permission || state.guided == permission, "\(permission) has no row here")
+        let hasRow = state.isPanel
+          ? state.guided == permission
+          : state.single?.permission == permission || (isFlow && state.rows(on: state.page).contains(permission))
+        try need(hasRow, "\(permission) has no row here")
         action = .turnOnTapped(permission)
       case "row":
         guard let permission else { throw QAError("row:<permission>") }
@@ -88,7 +101,7 @@
         action = .doneRowTapped(permission)
       case "pane":
         guard let permission else { throw QAError("pane:<permission>") }
-        try need(state.showsRecheckHint(permission), "the pane button isn't shown")
+        try need(!state.isPanel && state.showsRecheckHint(permission), "the pane button isn't shown")
         action = .openPaneTapped(permission)
       case "loginItem":
         try need(isFlow && state.page == .basics, "Open at login is only on Basics")
@@ -138,9 +151,17 @@
       var notificationHint: Bool
       var recheckHint: [Permission]
       var guided: Permission?
+      /// The panel stepped aside while another app is in front.
+      var panelHidden: Bool
       var guideArmed: Permission?
+      /// A relaunch was asked for; nothing else is taken until the process is gone.
+      var relaunching: Bool
       var loginItem: String
-      var openAtLoginChoice: Bool
+      /// "Open at login" as Basics shows it, and whether the user set it there.
+      var openAtLogin: Bool
+      var openAtLoginTouched: Bool
+      /// What Done's hint says: hoverOrIcon, hoverOrShortcut, hover, clickOrIcon, clickOrShortcut, click or icon.
+      var doneHint: String
       var completed: Bool
       var saved: OnboardingProgress
       var windows: [String: Frame]
@@ -158,7 +179,7 @@
         }
         page = state.page.id
         mode = state.mode
-        if case let .single(single) = state.presentation {
+        if let single = state.single {
           self.single = single.permission.rawValue
           singleKind = single.kind.rawValue
           closing = single.isClosing
@@ -181,9 +202,21 @@
         notificationHint = state.isNotificationHintVisible
         recheckHint = Permission.allCases.filter(state.showsRecheckHint)
         guided = state.guided
+        panelHidden = state.isPanelHidden
         guideArmed = state.guideArmed
+        relaunching = state.isRelaunching
         loginItem = "\(state.loginItem)"
-        openAtLoginChoice = state.openAtLoginChoice
+        openAtLogin = state.openAtLoginShown
+        openAtLoginTouched = state.openAtLoginChoice != nil
+        doneHint = switch state.doneHintText {
+        case .hoverOrIcon: "hoverOrIcon"
+        case .hoverOrShortcut: "hoverOrShortcut"
+        case .hover: "hover"
+        case .clickOrIcon: "clickOrIcon"
+        case .clickOrShortcut: "clickOrShortcut"
+        case .click: "click"
+        case .icon: "icon"
+        }
         completed = state.progress.completed
         saved = state.progress
         var windows: [String: Frame] = [:]

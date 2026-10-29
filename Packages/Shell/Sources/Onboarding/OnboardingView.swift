@@ -12,17 +12,21 @@ struct OnboardingView: View {
   var body: some View {
     Group {
       switch store.presentation {
-      case .hidden:
-        // Nothing stays mounted while hidden, so the illustration's loop stops (S35: no CPU once settled).
-        Color.clear
-      case .flow:
+      case .flow(.window):
         page(store.page)
-      case let .single(single):
+      case let .single(single, .window):
         SinglePermissionPage(store: store, single: single)
+      case .hidden, .flow(.panel), .single(_, .panel):
+        // Nothing stays mounted while the window is hidden or the panel stands in for it, so the illustration's loop
+        // stops (S35: no CPU once settled).
+        Color.clear
       }
     }
     .frame(width: OnboardingWindowController.windowSize.width, height: OnboardingWindowController.windowSize.height)
     .background(VortexColor.windowBackground)
+    // The whole window, the transparent title bar's strip included: pages leave room for it at the top themselves,
+    // and Welcome's dark backdrop reaches the top edge (S76).
+    .ignoresSafeArea()
   }
 
   @ViewBuilder
@@ -243,7 +247,7 @@ struct BasicsContent: View {
 
   private var loginRow: some View {
     let showsChoice = store.appliesLoginItem && !store.progress.loginItemApplied
-    let isOn = showsChoice ? store.openAtLoginChoice : store.loginItem == .enabled
+    let isOn = store.openAtLoginShown
     return VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 12) {
         VStack(alignment: .leading, spacing: 3) {
@@ -288,9 +292,6 @@ struct HardPermissionContent: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      if isSingle || permission == .notifications {
-        EmptyView()
-      }
       Text(reasons)
         .font(.system(size: 13))
         .foregroundStyle(VortexColor.secondaryText)
@@ -330,7 +331,7 @@ struct HardPermissionContent: View {
       if permission == .screenRecording {
         Text("macOS may ask you to confirm this again from time to time.", bundle: .module)
       }
-      if permission == .pasteboard, store.progress.pendingChecks.contains(.pasteboard), isSingle || !store.progress.restarted {
+      if store.state.showsRestartToCheck(permission) {
         Button {
           store.send(.restartTapped)
         } label: {
@@ -353,7 +354,7 @@ struct RecheckHint: View {
     if store.state.showsRecheckHint(permission) {
       HStack(alignment: .top, spacing: 10) {
         VStack(alignment: .leading, spacing: 3) {
-          if case let .single(single) = store.presentation, single.kind == .lockRefused {
+          if store.single?.kind == .lockRefused {
             Text("If the switch is already on, turn it off and on again.", bundle: .module)
           } else {
             Text("Already on in System Settings? Turn it off and on again.", bundle: .module)
@@ -458,18 +459,23 @@ struct DonePage: View {
     }
   }
 
-  /// Built from the settings and screens (S75).
+  /// Built from the settings, the screens and the "Open Vortex" shortcut (S18, S75).
   private var hint: Text {
-    let hint = store.doneHint
-    switch (hint.hoverNotch, hint.menuBarIcon) {
-    case (true, true):
-      return Text("Hover over the notch to open Vortex, or click its icon in the menu bar.", bundle: .module)
-    case (true, false):
-      return Text("Hover over the notch to open Vortex.", bundle: .module)
-    case (false, true):
-      return Text("Click Vortex's icon in the menu bar to open it.", bundle: .module)
-    case (false, false):
-      return Text("Open Vortex with its shortcut, set in Settings.", bundle: .module)
+    switch store.state.doneHintText {
+    case .hoverOrIcon:
+      Text("Hover over the notch to open Vortex, or click its icon in the menu bar.", bundle: .module)
+    case let .hoverOrShortcut(shortcut):
+      Text("Hover over the notch to open Vortex, or press \(shortcut).", bundle: .module)
+    case .hover:
+      Text("Hover over the notch to open Vortex.", bundle: .module)
+    case .clickOrIcon:
+      Text("Click the notch to open Vortex, or click its icon in the menu bar.", bundle: .module)
+    case let .clickOrShortcut(shortcut):
+      Text("Click the notch to open Vortex, or press \(shortcut).", bundle: .module)
+    case .click:
+      Text("Click the notch to open Vortex.", bundle: .module)
+    case .icon:
+      Text("Click Vortex's icon in the menu bar to open it.", bundle: .module)
     }
   }
 }
@@ -493,7 +499,7 @@ struct SinglePermissionPage: View {
       Hairline()
       HStack(spacing: 10) {
         Spacer()
-        if waitsForRelaunch {
+        if store.waitsForRelaunch {
           Button {
             store.send(.laterTapped)
           } label: {
@@ -520,10 +526,5 @@ struct SinglePermissionPage: View {
       .frame(height: 72)
     }
     .padding(.horizontal, 40)
-  }
-
-  /// ✓ with "Restart Vortex" and "Later" (S24, S40).
-  private var waitsForRelaunch: Bool {
-    store.statuses[single.permission] == .grantedAfterRestart
   }
 }

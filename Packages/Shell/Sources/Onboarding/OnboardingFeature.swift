@@ -4,8 +4,8 @@ import VortexCore
 import VortexPlatform
 
 /// The first-run onboarding and the single permission page (S6–S21, S24, S41, S49–S55, S65–S81). The shell owns it:
-/// it keeps `catalog` and `steps` current, hands it the entry points while Vortex is blocked, and the requests features
-/// make through `PermissionPage`.
+/// it keeps `catalog`, `steps` and `doneHint` current, hands it the entry points while Vortex is blocked, and the
+/// requests features make through `PermissionPage`.
 @Reducer
 struct OnboardingFeature {
   /// System Settings' bundle id: the guide panel sits next to its window (S15).
@@ -19,16 +19,12 @@ struct OnboardingFeature {
     var catalog = PermissionCatalog(features: [], required: [])
     /// Enabled features that bring their own step (S17), in sidebar order.
     var steps: [FeatureID] = []
+    /// Every feature with a step, on or off, in sidebar order: where a step's page sits in the order (S71).
+    var stepOrder: [FeatureID] = []
     @SharedReader(.permissionStatuses) var statuses
     @SharedReader(.onboardingStepsDone) var stepsDone
-    /// Whether the window shows, and what.
+    /// Whether the window shows, what, and as the full window or the guide panel.
     var presentation: Presentation = .hidden
-    /// The window is the small guide panel next to System Settings (S15).
-    var isPanel = false
-    /// The panel steps aside while an app other than System Settings or Vortex is in front (S63).
-    var isPanelHidden = false
-    /// The permission the guide panel shows.
-    var guided: Permission?
     /// A "Turn on" click armed the panel: System Settings coming to the front within 10 s shrinks the window (S73).
     var guideArmed: Permission?
     /// System Settings came to the front after a request from these pages (S16, S59).
@@ -39,23 +35,62 @@ struct OnboardingFeature {
     var turnOnIgnored: Set<Permission> = []
     /// Navigation buttons ignore input for 300 ms after a page change (S70).
     var isNavigationLocked = false
+    /// A relaunch was asked for: until the process is gone, no other navigation or finish is taken (S18).
+    var isRelaunching = false
     var loginItem: LaunchAtLoginStatus = .disabled
-    /// "Open at login" as the user chose it on Basics, applied when they leave it (S74).
-    var openAtLoginChoice = true
+    /// "Open at login" as the user set it on Basics, applied when they leave it (S74); nil until they touch the switch.
+    var openAtLoginChoice: Bool?
+    /// Vortex set the login item up before, as every release build before stage 7 did: the switch starts from the
+    /// real state, not from "on".
+    var loginItemWasSetUp = false
     /// Release builds, and QA runs with release behavior, apply the login item choice (S13, S74).
     var appliesLoginItem = false
     /// Vortex's own bundle id: Vortex in front keeps the panel showing (S63).
     var ownBundleID = Bundle.main.bundleIdentifier ?? ""
-    /// What Done's hint names (S75).
+    /// What Done's hint names, from the settings and screens (S75).
     var doneHint = DoneHint()
+    /// The "Open Vortex" shortcut, read when Done shows; nil while none is set.
+    var openShortcut: String?
 
     init(progress: OnboardingProgress = OnboardingProgress()) {
       self.progress = progress
     }
 
     var isVisible: Bool { presentation != .hidden }
-    var isCompleted: Bool { progress.completed }
     var statusesRead: Bool { !statuses.isEmpty }
+
+    /// Where the page shows: the window or the panel; nil while hidden.
+    var surface: Surface? {
+      switch presentation {
+      case .hidden: nil
+      case let .flow(surface), let .single(_, surface): surface
+      }
+    }
+
+    var isPanel: Bool { guided != nil }
+    /// The panel stepped aside while another app is in front (S63).
+    var isPanelHidden: Bool { surface?.isHidden == true }
+    /// The permission the guide panel shows.
+    var guided: Permission? {
+      if case let .panel(permission, _) = surface { permission } else { nil }
+    }
+
+    var isFlow: Bool {
+      if case .flow = presentation { true } else { false }
+    }
+
+    var single: SinglePage? {
+      if case let .single(single, _) = presentation { single } else { nil }
+    }
+
+    /// Changes where a shown page is; nothing while hidden.
+    mutating func setSurface(_ surface: Surface) {
+      switch presentation {
+      case .hidden: break
+      case .flow: presentation = .flow(surface)
+      case let .single(single, _): presentation = .single(single, surface)
+      }
+    }
 
     /// The required permissions that read `notGranted`, in the catalog's order (S9, S66).
     var missingRequired: [Permission] { catalog.missingRequired(statuses) }
@@ -71,12 +106,25 @@ struct OnboardingFeature {
       return pages
     }
 
-    /// The saved page; one that no longer exists resumes at the next page in order, else Done (S71).
+    /// Where a page sits in the order every onboarding follows; a step by its feature's place in the sidebar.
+    func rank(_ page: OnboardingPage) -> Int {
+      switch page {
+      case .welcome: 0
+      case .basics: 1
+      case let .permission(permission): 2 + (Permission.allCases.firstIndex(of: permission) ?? 0)
+      case let .step(feature): 100 + (stepOrder.firstIndex(of: feature) ?? stepOrder.count)
+      case .done: 10_000
+      }
+    }
+
+    /// The saved page; one that no longer exists resumes at the next page in order, else Done (S71). A page id this
+    /// build can't read starts at Welcome.
     var page: OnboardingPage {
       let pages = pages
       guard let saved = OnboardingPage(id: progress.page) else { return .welcome }
       if pages.contains(saved) { return saved }
-      return pages.first { $0.rank > saved.rank } ?? .done
+      let savedRank = rank(saved)
+      return pages.first { rank($0) > savedRank } ?? .done
     }
 
     /// The permissions with a row on a page: notifications on Basics, a hard page's own.
@@ -149,16 +197,43 @@ struct OnboardingFeature {
     /// The quiet "Restart now" link (S20): a permission on the page works only after a relaunch, and Vortex hasn't
     /// relaunched during this onboarding yet (S68).
     var showsRestartNow: Bool {
-      guard !progress.restarted else { return false }
+      guard isFlow, !progress.restarted else { return false }
       return rows(on: page).contains { statuses[$0] == .grantedAfterRestart }
+    }
+
+    /// "Restart to check" under the pasteboard once its pane was opened (S16, S68): on a single page always, in the
+    /// onboarding only before its one restart.
+    func showsRestartToCheck(_ permission: Permission) -> Bool {
+      guard permission == .pasteboard, progress.pendingChecks.contains(.pasteboard) else { return false }
+      return single != nil || !progress.restarted
+    }
+
+    /// A single page whose permission waits for a relaunch: ✓, "Restart Vortex" and "Later" (S24, S40).
+    var waitsForRelaunch: Bool {
+      guard let single else { return false }
+      return statuses[single.permission] == .grantedAfterRestart
     }
 
     /// "Already on in System Settings? Turn it off and on again." (S59), and S55's line on a page the lock opened.
     func showsRecheckHint(_ permission: Permission) -> Bool {
-      if case let .single(single) = presentation, single.permission == permission, single.kind == .lockRefused {
+      if let single, single.permission == permission, single.kind == .lockRefused {
         return true
       }
       return settingsOpened.contains(permission) && statuses[permission] == .notGranted && !isPanel
+    }
+
+    /// What Done's hint says (S18, S75).
+    var doneHintText: DoneHint.Line {
+      switch (doneHint.notch, doneHint.menuBarIcon, openShortcut) {
+      case (.hover?, true, _): .hoverOrIcon
+      case let (.hover?, false, shortcut?): .hoverOrShortcut(shortcut)
+      case (.hover?, false, nil): .hover
+      case (.click?, true, _): .clickOrIcon
+      case let (.click?, false, shortcut?): .clickOrShortcut(shortcut)
+      case (.click?, false, nil): .click
+      // Without a way through the notch, the menu bar icon always shows.
+      case (nil, _, _): .icon
+      }
     }
 
     /// The mode QA reports: `window`, `guide`, `single`, `blocked`, or `hidden`.
@@ -166,7 +241,7 @@ struct OnboardingFeature {
       switch presentation {
       case .hidden: "hidden"
       case .flow: isPanel ? "guide" : (missingRequired.isEmpty ? "window" : "blocked")
-      case let .single(single):
+      case let .single(single, _):
         isPanel ? "guide" : (single.kind == .blocked ? "blocked" : "single")
       }
     }
@@ -175,19 +250,38 @@ struct OnboardingFeature {
     var shownPermission: Permission? {
       switch presentation {
       case .hidden: nil
-      case let .single(single): single.permission
+      case let .single(single, _): single.permission
       case .flow:
         if case let .permission(permission) = page { permission } else { page == .basics ? .notifications : nil }
       }
+    }
+
+    /// "Open at login" as Basics shows it: the user's choice until it is applied, on by default for a fresh install
+    /// and the real state for one that set it up before (S13, S74); afterwards the real state.
+    var openAtLoginShown: Bool {
+      guard appliesLoginItem, !progress.loginItemApplied else { return loginItem == .enabled }
+      return openAtLoginChoice ?? (loginItemWasSetUp ? loginItem == .enabled : true)
     }
   }
 
   enum Presentation: Equatable, Sendable {
     case hidden
     /// The onboarding, at `progress.page`.
-    case flow
+    case flow(Surface)
     /// One permission's page (S24), outside the onboarding.
-    case single(SinglePage)
+    case single(SinglePage, Surface)
+  }
+
+  /// Where a shown page is.
+  enum Surface: Equatable, Sendable {
+    /// The full window.
+    case window
+    /// The guide panel next to System Settings, for this permission (S15); hidden while another app is in front (S63).
+    case panel(Permission, isHidden: Bool)
+
+    var isHidden: Bool {
+      if case .panel(_, true) = self { true } else { false }
+    }
   }
 
   struct SinglePage: Equatable, Sendable {
@@ -214,17 +308,28 @@ struct OnboardingFeature {
     var skipVisible: Bool
   }
 
-  /// What Done's hint names (S75): hovering over the notch only when Open on hover is on and a notch screen is
-  /// connected; the menu bar icon when it shows, otherwise the "Open Vortex" shortcut if one is set.
+  /// What Done's hint names (S75), as the shell sees the settings and screens.
   struct DoneHint: Equatable, Sendable {
-    var hoverNotch = true
+    enum Notch: String, Equatable, Sendable {
+      case hover, click
+    }
+
+    /// How the notch opens Vortex: hovering when Open on hover is on, else clicking when Open on click is on; nil
+    /// without either, or without a notch screen.
+    var notch: Notch? = .hover
+    /// The menu bar icon shows once the onboarding is done.
     var menuBarIcon = true
-    var shortcut: String?
+
+    /// The sentence Done shows.
+    enum Line: Equatable, Sendable {
+      case hoverOrIcon, hover, clickOrIcon, click, icon
+      case hoverOrShortcut(String), clickOrShortcut(String)
+    }
   }
 
   enum Action: Equatable {
-    /// The first statuses were read at launch: show the onboarding if it isn't done, or a page waiting for this
-    /// relaunch (S7, S50, S64).
+    /// The first statuses were read at launch: show the blocking page, the onboarding if it isn't done, or a page
+    /// waiting for this relaunch (S7, S41, S50, S64).
     case launched
     /// Welcome's "Get started".
     case getStartedTapped
@@ -251,7 +356,7 @@ struct OnboardingFeature {
     case continueSetupTapped
     /// An entry point while Vortex is blocked (S9, S46): a hover shows the window without activating it.
     case blockedEntry(activate: Bool)
-    /// Vortex became blocked, at launch or on a revoke (S41, S65).
+    /// Vortex became blocked: on a revoke, a feature turned on, a changed required set, or a lock that ended (S41, S65).
     case blocked
     /// A feature, or the shell, asked for a permission's page (S24).
     case pageRequested(Permission, SinglePage.Kind)
@@ -261,8 +366,10 @@ struct OnboardingFeature {
     case appTerminated(String)
     case loginItemToggled(Bool)
     case loginItemStatusLoaded(LaunchAtLoginStatus)
+    case loginItemSetUpLoaded(Bool)
     /// Basics' button for System Settings › Login Items; it gets no panel (S73).
     case openLoginItemsTapped
+    case openShortcutLoaded(String?)
     case navigationUnlocked
     case turnOnUnlocked(Permission)
     case notificationHintExpired
@@ -274,6 +381,7 @@ struct OnboardingFeature {
   }
 
   @Dependency(\.continuousClock) var clock
+  @Dependency(\.hotkeyClient) var hotkeys
   @Dependency(\.launchAtLoginClient) var launchAtLogin
   @Dependency(\.onboardingProgress) var progressClient
   @Dependency(\.onboardingWindow) var window
@@ -293,50 +401,47 @@ struct OnboardingFeature {
     Reduce { state, action in
       switch action {
       case .launched:
-        var progress = state.progress
         // Any relaunch clears the pending checks; it was this onboarding's one restart (S68).
-        if !progress.pendingChecks.isEmpty {
-          progress.pendingChecks = []
-          progress.restarted = true
+        if !state.progress.pendingChecks.isEmpty {
+          state.progress.pendingChecks = []
+          state.progress.restarted = true
         }
-        if progress.completed, let pending = progress.pendingSingle {
-          progress.pendingSingle = nil
-          state.progress = progress
-          return .merge(save(state), showSingle(pending, .afterRelaunch, activate: true, &state))
-        }
-        progress.pendingSingle = nil
-        state.progress = progress
-        if !state.missingRequired.isEmpty {
-          return .merge(save(state), showBlocking(activate: true, &state))
-        }
-        guard !progress.completed else { return save(state) }
-        return .merge(save(state), showFlow(activate: true, &state))
+        let pending = state.progress.pendingSingle
+        state.progress.pendingSingle = nil
+        let saved = save(state)
+        // Blocked first: the blocking page opens by itself at launch, before a page waiting for this relaunch (S41).
+        if !state.missingRequired.isEmpty { return .merge(saved, showBlocking(activate: true, &state)) }
+        if !state.progress.completed { return .merge(saved, showFlow(activate: true, &state)) }
+        guard let pending else { return saved }
+        return .merge(saved, showSingle(pending, .afterRelaunch, activate: true, &state))
 
       case .getStartedTapped:
-        guard state.page == .welcome, !state.isNavigationLocked else { return .none }
+        guard state.isFlow, state.page == .welcome, !state.isNavigationLocked, !state.isRelaunching else { return .none }
         return go(to: .basics, &state)
 
       case .nextTapped:
-        guard !state.isNavigationLocked, state.buttons.nextEnabled else { return .none }
+        guard state.isFlow, !state.isNavigationLocked, !state.isRelaunching, state.buttons.nextEnabled else { return .none }
         return leave(&state)
 
       case .skipTapped:
-        guard !state.isNavigationLocked, state.buttons.skipVisible else { return .none }
+        guard state.isFlow, !state.isNavigationLocked, !state.isRelaunching, state.buttons.skipVisible else { return .none }
         return leave(&state)
 
       case .finishTapped:
-        guard state.page == .done, !state.isNavigationLocked, state.finishEnabled else { return .none }
+        guard state.isFlow, state.page == .done, !state.isNavigationLocked, !state.isRelaunching, state.finishEnabled
+        else { return .none }
         if state.finishRestarts {
           // Done shows again after the relaunch, with fresh statuses; the onboarding isn't completed yet (S18, S68).
           state.progress.restarted = true
-          return .concatenate(save(state), .run { _ in await system.relaunch() })
+          return relaunch(&state)
         }
         state.progress.completed = true
         state.progress.returnToDone = false
         return .concatenate(save(state), hide(&state, restoreFront: false))
 
       case let .turnOnTapped(permission):
-        guard state.statuses[permission] == .notGranted, !state.turnOnIgnored.contains(permission) else { return .none }
+        // A checkbox that is on, ↻ included, does nothing (S2).
+        guard state.rowState(permission) == .off, !state.turnOnIgnored.contains(permission) else { return .none }
         state.turnOnIgnored.insert(permission)
         state.guideArmed = permission
         if permission == .notifications { state.isNotificationHintVisible = true }
@@ -347,11 +452,7 @@ struct OnboardingFeature {
             await send(.turnOnUnlocked(permission))
           }
           .cancellable(id: CancelID.turnOn(permission), cancelInFlight: true),
-          .run { send in
-            try await clock.sleep(for: .seconds(10))
-            await send(.guideExpired)
-          }
-          .cancellable(id: CancelID.guide, cancelInFlight: true),
+          armGuide(),
         ]
         if permission == .notifications {
           effects.append(
@@ -363,7 +464,7 @@ struct OnboardingFeature {
           )
         }
         // The pasteboard has no prompt: its pane opens, and only a relaunch can tell (S16, S68).
-        if permission == .pasteboard, !state.progress.pendingChecks.contains(.pasteboard) {
+        if permission == .pasteboard {
           state.progress.pendingChecks.insert(.pasteboard)
           effects.append(save(state))
         }
@@ -371,36 +472,35 @@ struct OnboardingFeature {
 
       case let .openPaneTapped(permission):
         state.guideArmed = permission
-        return .merge(
-          .run { _ in await permissions.openSettings(permission) },
-          .run { send in
-            try await clock.sleep(for: .seconds(10))
-            await send(.guideExpired)
-          }
-          .cancellable(id: CancelID.guide, cancelInFlight: true)
-        )
+        return .merge(.run { _ in await permissions.openSettings(permission) }, armGuide())
 
       case let .doneRowTapped(permission):
-        guard state.page == .done, !state.isNavigationLocked, state.doneRows.contains(permission) else { return .none }
+        guard state.isFlow, state.page == .done, !state.isNavigationLocked, !state.isRelaunching,
+              state.doneRows.contains(permission)
+        else { return .none }
         state.progress.returnToDone = true
         return go(to: .holding(permission), &state)
 
       case .restartTapped:
+        guard !state.isRelaunching else { return .none }
         switch state.presentation {
-        case let .single(single):
+        case let .single(single, _):
+          guard state.waitsForRelaunch || state.showsRestartToCheck(single.permission) else { return .none }
           // The page shows once more after the relaunch it starts (S50).
           state.progress.pendingSingle = single.permission
         case .flow:
           // The same page shows after the relaunch, with fresh statuses (S20); at most once (S68).
-          guard !state.progress.restarted else { return .none }
+          guard state.showsRestartNow || state.shownPermission.map { state.showsRestartToCheck($0) } == true else {
+            return .none
+          }
           state.progress.restarted = true
         case .hidden:
           return .none
         }
-        return .concatenate(save(state), .run { _ in await system.relaunch() })
+        return relaunch(&state)
 
       case .laterTapped:
-        guard case .single = state.presentation else { return .none }
+        guard state.waitsForRelaunch, !state.isRelaunching else { return .none }
         return hide(&state, restoreFront: true)
 
       case .closeTapped:
@@ -411,7 +511,7 @@ struct OnboardingFeature {
         }
 
       case .escapePressed:
-        guard case .single = state.presentation else { return .none }
+        guard state.single != nil else { return .none }
         return hide(&state, restoreFront: true)
 
       case .backTapped:
@@ -421,13 +521,10 @@ struct OnboardingFeature {
         return leavePanel(&state)
 
       case .continueSetupTapped:
-        // Always the onboarding at the saved page, replacing a single page (S80); the panel stays a panel (S69).
         guard !state.progress.completed else { return .none }
-        if case .single = state.presentation {
-          state.isPanel = false
-          state.isPanelHidden = false
-          state.guided = nil
-        }
+        // While blocked, the page with the missing required permission (S65); otherwise the saved page, replacing a
+        // single page (S80). A panel that shows comes forward as a panel (S69).
+        if !state.missingRequired.isEmpty { return showBlocking(activate: true, &state) }
         return showFlow(activate: true, &state)
 
       case let .blockedEntry(activate):
@@ -465,8 +562,16 @@ struct OnboardingFeature {
         state.loginItem = status
         return .none
 
+      case let .loginItemSetUpLoaded(wasSetUp):
+        state.loginItemWasSetUp = wasSetUp
+        return .none
+
       case .openLoginItemsTapped:
         return .run { _ in await launchAtLogin.openSystemSettings() }
+
+      case let .openShortcutLoaded(shortcut):
+        state.openShortcut = shortcut
+        return .none
 
       case .navigationUnlocked:
         state.isNavigationLocked = false
@@ -485,11 +590,11 @@ struct OnboardingFeature {
         return .none
 
       case .singleCloseElapsed:
-        guard case let .single(single) = state.presentation, single.isClosing else { return .none }
-        // Blocked: the next missing required page, or close (S41).
+        guard case let .single(single, surface) = state.presentation, single.isClosing else { return .none }
+        // Blocked: the next missing required page, in the window, or close (S41).
         if single.kind == .blocked, let next = state.missingRequired.first {
-          state.presentation = .single(SinglePage(permission: next, kind: .blocked))
-          return .none
+          state.presentation = .single(SinglePage(permission: next, kind: .blocked), .window)
+          return surface == .window ? .none : present(state, activate: true)
         }
         return hide(&state, restoreFront: true)
 
@@ -500,7 +605,8 @@ struct OnboardingFeature {
         state.progress = OnboardingProgress()
         state.settingsOpened = []
         state.turnOnIgnored = []
-        state.openAtLoginChoice = true
+        state.openAtLoginChoice = nil
+        state.isRelaunching = false
         return .concatenate(save(state), hide(&state, restoreFront: false))
       }
     }
@@ -525,7 +631,7 @@ struct OnboardingFeature {
     return .merge(effects)
   }
 
-  /// Shows `page`, saving it at once (S21) and holding the navigation buttons for 300 ms (S70).
+  /// Shows `page` in the window, saving it at once (S21) and holding the navigation buttons for 300 ms (S70).
   private func go(to page: OnboardingPage, _ state: inout State) -> Effect<Action> {
     state.progress.page = page.id
     state.isNavigationLocked = true
@@ -541,21 +647,24 @@ struct OnboardingFeature {
       }
       .cancellable(id: CancelID.navigation, cancelInFlight: true),
     ]
+    // A page change happens in the window: a panel belonged to the page before. The caller brings it forward.
+    if state.isFlow, state.isPanel { state.setSurface(.window) }
     effects.append(page == .basics ? loginItemTicks() : .cancel(id: CancelID.loginItemTick))
+    if page == .done { effects.append(loadOpenShortcut()) }
     return .merge(effects)
   }
 
-  /// Leaving Basics applies "Open at login" in release builds, once (S13, S74). A switch the user never touched turns
-  /// it on only if Vortex never set it up before, so an earlier "off" stays off.
+  /// Leaving Basics applies "Open at login" in release builds, once (S13, S74): the user's own choice as they set it,
+  /// or, untouched, on for an install that never set it up, which keeps an earlier "off" off.
   private func applyLoginItemChoice(_ state: inout State) -> Effect<Action> {
     guard state.appliesLoginItem, !state.progress.loginItemApplied else { return .none }
     state.progress.loginItemApplied = true
     let choice = state.openAtLoginChoice
     return .run { send in
-      if choice {
-        await launchAtLogin.enableOnFirstLaunch()
-        await send(.loginItemStatusLoaded(launchAtLogin.status()))
+      if let choice {
+        await send(.loginItemStatusLoaded(launchAtLogin.setEnabled(choice)))
       } else {
+        await launchAtLogin.enableOnFirstLaunch()
         await send(.loginItemStatusLoaded(launchAtLogin.status()))
       }
     }
@@ -564,6 +673,7 @@ struct OnboardingFeature {
   /// Basics re-reads the login item with the statuses, every second while it shows (S81).
   private func loginItemTicks() -> Effect<Action> {
     .run { send in
+      await send(.loginItemSetUpLoaded(launchAtLogin.isSetUp()))
       await send(.loginItemTick)
       for await _ in clock.timer(interval: .seconds(1)) {
         await send(.loginItemTick)
@@ -572,23 +682,42 @@ struct OnboardingFeature {
     .cancellable(id: CancelID.loginItemTick, cancelInFlight: true)
   }
 
+  private func loadOpenShortcut() -> Effect<Action> {
+    .run { send in await send(.openShortcutLoaded(hotkeys.shortcut(.openVortex))) }
+  }
+
+  /// System Settings coming to the front within 10 s of a request shrinks the window to the panel (S73).
+  private func armGuide() -> Effect<Action> {
+    .run { send in
+      try await clock.sleep(for: .seconds(10))
+      await send(.guideExpired)
+    }
+    .cancellable(id: CancelID.guide, cancelInFlight: true)
+  }
+
   private func save(_ state: State) -> Effect<Action> {
     // Synchronous: a forced quit right after a page change still resumes there (S71).
     progressClient.save(state.progress)
     return .none
   }
 
+  /// Saves, then relaunches; until the process is gone, no other navigation or finish is taken (S18).
+  private func relaunch(_ state: inout State) -> Effect<Action> {
+    state.isRelaunching = true
+    return .concatenate(save(state), .run { _ in await system.relaunch() })
+  }
+
   // MARK: - Showing and hiding
 
-  /// The onboarding at its page. A panel stays a panel and comes forward (S52, S69).
+  /// The onboarding at its page, replacing a single page (S80).
   private func showFlow(activate: Bool, _ state: inout State) -> Effect<Action> {
     let wasHidden = !state.isVisible
-    if case .single = state.presentation { state.isPanel = false }
-    state.presentation = .flow
-    var effects: [Effect<Action>] = [present(state, activate: activate)]
+    if !state.isFlow { state.presentation = .flow(.window) }
+    var effects: [Effect<Action>] = [bringForward(activate: activate, &state)]
     if wasHidden {
       effects.append(.run { _ in await permissions.setFrequentChecks(true) })
       if state.page == .basics { effects.append(loginItemTicks()) }
+      if state.page == .done { effects.append(loadOpenShortcut()) }
     }
     return .merge(effects)
   }
@@ -600,18 +729,15 @@ struct OnboardingFeature {
     _ state: inout State
   ) -> Effect<Action> {
     let wasHidden = !state.isVisible
-    // A request switches the page to the latest permission; a panel for the old one closes (S51).
-    if state.isPanel, state.guided != permission {
-      state.isPanel = false
-      state.isPanelHidden = false
-      state.guided = nil
-    }
+    // A request switches the page to the latest permission; a panel for another one closes (S51).
+    var surface = Surface.window
+    if let current = state.surface, state.guided == permission { surface = current }
     state.guideArmed = nil
     var page = SinglePage(permission: permission, kind: kind)
     // Reopened after its relaunch and on already: ✓, then close (S50).
-    if kind == .afterRelaunch, state.statuses[permission] == .granted { page.isClosing = true }
-    state.presentation = .single(page)
-    var effects: [Effect<Action>] = [present(state, activate: activate)]
+    if kind == .afterRelaunch, closesOnGrant(page, state) { page.isClosing = true }
+    state.presentation = .single(page, surface)
+    var effects: [Effect<Action>] = [bringForward(activate: activate, &state)]
     if wasHidden { effects.append(.run { _ in await permissions.setFrequentChecks(true) }) }
     if page.isClosing { effects.append(closeSingleLater()) }
     effects.append(.cancel(id: CancelID.loginItemTick))
@@ -624,40 +750,49 @@ struct OnboardingFeature {
     guard let first = state.missingRequired.first else { return .none }
     if !state.progress.completed {
       var effects: [Effect<Action>] = []
-      let target = OnboardingPage.holding(first)
-      let firstBlockedPage = state.pages.first { page in state.rows(on: page).contains(where: state.isRequiredMissing) }
-        ?? target
-      if state.page != firstBlockedPage {
+      let blockedPage = state.pages.first { page in state.rows(on: page).contains(where: state.isRequiredMissing) }
+        ?? .holding(first)
+      if state.page != blockedPage {
         state.progress.returnToDone = false
-        effects.append(go(to: firstBlockedPage, &state))
+        effects.append(go(to: blockedPage, &state))
       }
       effects.append(showFlow(activate: activate, &state))
       return .merge(effects)
     }
-    if case let .single(single) = state.presentation, single.kind == .blocked, single.permission == first {
-      return present(state, activate: activate)
+    if let single = state.single, single.kind == .blocked, single.permission == first {
+      return bringForward(activate: activate, &state)
     }
     return showSingle(first, .blocked, activate: activate, &state)
   }
 
+  /// Whether the blocking page is on screen: a panel that stepped aside isn't.
   private func isShowingBlocking(_ state: State) -> Bool {
     switch state.presentation {
     case .hidden: false
-    case .flow: !state.progress.completed
-    case let .single(single): single.kind == .blocked
+    case let .flow(surface): !state.progress.completed && !surface.isHidden
+    case let .single(single, surface): single.kind == .blocked && !surface.isHidden
     }
   }
 
+  /// Every path that brings the onboarding forward goes through here (S9, S11, S52, S69): a panel that shows comes
+  /// forward as a panel; one that stepped aside because another app came to the front turns back into the window, as
+  /// the System Settings window it stood next to is behind that app.
+  private func bringForward(activate: Bool, _ state: inout State) -> Effect<Action> {
+    if state.isPanelHidden { state.setSurface(.window) }
+    return present(state, activate: activate)
+  }
+
   private func present(_ state: State, activate: Bool) -> Effect<Action> {
-    let mode: OnboardingWindowMode = state.isPanel ? (state.isPanelHidden ? .panelHidden : .panel) : .window
+    let mode: OnboardingWindowMode = switch state.surface {
+    case .panel(_, isHidden: true)?: .panelHidden
+    case .panel?: .panel
+    case .window?, nil: .window
+    }
     return .run { _ in await window.present(mode, activate) }
   }
 
   private func hide(_ state: inout State, restoreFront: Bool) -> Effect<Action> {
     state.presentation = .hidden
-    state.isPanel = false
-    state.isPanelHidden = false
-    state.guided = nil
     state.guideArmed = nil
     state.isNotificationHintVisible = false
     return .merge(
@@ -679,6 +814,17 @@ struct OnboardingFeature {
     .cancellable(id: CancelID.singleClose, cancelInFlight: true)
   }
 
+  /// A single page shows ✓ and closes on a grant (S24, S41, S50): `granted`, or `notNeeded`, which is how the
+  /// pasteboard reads once macOS allows it; for the blocking page `grantedAfterRestart` too, which counts as on for
+  /// blocking (S82). Never the page the refused lock opened (S55).
+  private func closesOnGrant(_ single: SinglePage, _ state: State) -> Bool {
+    switch state.statuses[single.permission] {
+    case .granted?, .notNeeded?: single.kind != .lockRefused
+    case .grantedAfterRestart?: single.kind == .blocked
+    case .notGranted?, nil: false
+    }
+  }
+
   // MARK: - Requests, statuses and System Settings
 
   private func pageRequested(_ permission: Permission, _ kind: SinglePage.Kind, _ state: inout State) -> Effect<Action> {
@@ -686,8 +832,8 @@ struct OnboardingFeature {
     if !state.missingRequired.isEmpty { return showBlocking(activate: true, &state) }
     switch state.presentation {
     case .flow:
-      // The onboarding comes to the front at its page; a panel stays a panel (S11, S52).
-      return present(state, activate: true)
+      // The onboarding comes to the front at its page (S11, S52).
+      return bringForward(activate: true, &state)
     case .hidden, .single:
       // Closed before completion: a single page, and the saved page stays as it was (S52).
       return showSingle(permission, kind, activate: true, &state)
@@ -707,18 +853,17 @@ struct OnboardingFeature {
       }
     }
     // The panel turns back into the window once its permission is on (S15).
-    if state.isPanel, let guided = state.guided, state.statuses[guided]?.isOn == true {
+    if let guided = state.guided, state.statuses[guided]?.isOn == true || state.statuses[guided] == .notNeeded {
       effects.append(leavePanel(&state))
     }
-    // A single page shows ✓ and closes after 1.5 s on a grant (S24, S41); not when the lock opened it (S55), and not
-    // when the grant waits for a relaunch, which offers "Restart Vortex" and "Later".
-    if case var .single(single) = state.presentation, !single.isClosing, single.kind != .lockRefused,
-       state.statuses[single.permission] == .granted || (single.kind == .blocked && state.statuses[single.permission]?.isOn == true) {
+    // A single page shows ✓ and closes after 1.5 s on a grant; one that waits for a relaunch offers "Restart Vortex"
+    // and "Later" instead.
+    if case .single(var single, let surface) = state.presentation, !single.isClosing, closesOnGrant(single, state) {
       single.isClosing = true
-      state.presentation = .single(single)
+      state.presentation = .single(single, surface)
       effects.append(closeSingleLater())
     }
-    if state.isVisible, state.page == .basics, case .flow = state.presentation {
+    if state.isVisible, state.isFlow, state.page == .basics {
       effects.append(.send(.loginItemTick))
     }
     return .merge(effects)
@@ -730,24 +875,22 @@ struct OnboardingFeature {
       if let armed = state.guideArmed, !state.isPanel, armed == state.shownPermission {
         // Once per request (S73); the hint about the notification gives way to System Settings.
         state.guideArmed = nil
-        state.isPanel = true
-        state.isPanelHidden = false
-        state.guided = armed
+        state.setSurface(.panel(armed, isHidden: false))
         state.settingsOpened.insert(armed)
         state.isNotificationHintVisible = false
         return .merge(.cancel(id: CancelID.guide), present(state, activate: false))
       }
-      if state.isPanel {
+      if let guided = state.guided {
         // Placed again on each activation, and back if it stepped aside (S63, S73).
-        state.isPanelHidden = false
+        state.setSurface(.panel(guided, isHidden: false))
         return present(state, activate: false)
       }
       return .none
     }
-    guard state.isPanel else { return .none }
+    guard let guided = state.guided else { return .none }
     let isVortex = bundleID == state.ownBundleID
     if isVortex == state.isPanelHidden {
-      state.isPanelHidden = !isVortex
+      state.setSurface(.panel(guided, isHidden: !isVortex))
       return present(state, activate: false)
     }
     return .none
@@ -755,9 +898,7 @@ struct OnboardingFeature {
 
   /// The panel turns back into the full window, in front (S15, S61).
   private func leavePanel(_ state: inout State) -> Effect<Action> {
-    state.isPanel = false
-    state.isPanelHidden = false
-    state.guided = nil
+    state.setSurface(.window)
     return present(state, activate: true)
   }
 }

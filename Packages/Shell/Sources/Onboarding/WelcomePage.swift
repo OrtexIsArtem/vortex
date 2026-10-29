@@ -16,9 +16,13 @@ struct WelcomePage: View {
 
   var body: some View {
     ZStack(alignment: .top) {
+      // Dark in both appearances, up to the window's top edge (S76).
       Color(white: 0.035)
+        .ignoresSafeArea()
+      // The notch hangs from the window's top edge.
       VortexSwirl(progress: swirl)
         .frame(height: 330)
+        .ignoresSafeArea(edges: .top)
       VStack(spacing: 0) {
         Spacer(minLength: 0)
         Text(verbatim: "Vortex")

@@ -103,12 +103,32 @@
         }
       }
     },
+    "Click the notch to open Vortex, or click its icon in the menu bar." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисни на виріз, щоб відкрити Vortex, або на його значок у рядку меню."
+          }
+        }
+      }
+    },
+    "Click the notch to open Vortex, or press %@." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисни на виріз, щоб відкрити Vortex, або натисни %@."
+          }
+        }
+      }
+    },
     "Click the notch to open Vortex." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Клацніть по вирізу, щоб відкрити Vortex."
+            "value" : "Натисни на виріз, щоб відкрити Vortex."
           }
         }
       }
@@ -242,6 +262,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Наведи на виріз, щоб відкрити Vortex, або натисни його значок у рядку меню."
+          }
+        }
+      }
+    },
+    "Hover over the notch to open Vortex, or press %@." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведи на виріз, щоб відкрити Vortex, або натисни %@."
           }
         }
       }
@@ -506,16 +536,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Відкрити Vortex"
-          }
-        }
-      }
-    },
-    "Open Vortex with its shortcut, set in Settings." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Відкривай Vortex сполученням клавіш із Налаштувань."
           }
         }
       }

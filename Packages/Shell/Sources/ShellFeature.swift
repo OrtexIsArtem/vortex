@@ -35,6 +35,8 @@ struct ShellFeature {
     var keyboardCleaning = KeyboardCleaningFeature.State()
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
+    /// Some connected display has a notch, so the notch is a way in (S75).
+    var hasNotchScreen = true
     var launchAtLogin: LaunchAtLoginStatus = .disabled
     /// The launch has switched every feature on or off; a QA run says it is ready only after this.
     var isStarted = false
@@ -68,24 +70,17 @@ struct ShellFeature {
       self.onboarding = OnboardingFeature.State(progress: onboarding)
       self.stepFeatures = stepFeatures
       self.selectedTab = restoredTab
-      self.onboarding.catalog = permissionCatalog
-      self.onboarding.steps = onboardingSteps
-      self.onboarding.doneHint = doneHint
       self.onboarding.appliesLoginItem = OnboardingConfig.appliesLoginItem
+      onboardingContext.apply(to: &self.onboarding)
     }
 
-    /// Enabled features with their own step, in sidebar order (S17).
-    var onboardingSteps: [FeatureID] {
-      sidebarFeatures.map(\.id).filter(stepFeatures.contains)
-    }
-
-    /// What Done's hint names, from the settings and screens (S75).
+    /// What Done's hint names, from the settings and screens (S75): the notch only while a notch display is
+    /// connected, by hover if that opens Vortex, else by click; the menu bar icon as it shows once the onboarding is
+    /// done.
     var doneHint: OnboardingFeature.DoneHint {
-      OnboardingFeature.DoneHint(
-        hoverNotch: settings.openOnHover && everyScreenHasNotch,
-        menuBarIcon: settings.showMenuBarIcon || isMenuBarIconRequired,
-        shortcut: nil
-      )
+      let notch: OnboardingFeature.DoneHint.Notch? = !hasNotchScreen
+        ? nil : settings.openOnHover ? .hover : settings.openOnClick ? .click : nil
+      return OnboardingFeature.DoneHint(notch: notch, menuBarIcon: settings.showMenuBarIcon || isMenuBarIconRequired)
     }
 
     var isOpen: Bool { openReason != nil }
@@ -138,7 +133,22 @@ struct ShellFeature {
 
     /// What the onboarding needs to know about the shell; kept current after every action.
     var onboardingContext: OnboardingContext {
-      OnboardingContext(catalog: permissionCatalog, steps: onboardingSteps, hint: doneHint)
+      // Features with their own step, on or off, in sidebar order (S17, S71).
+      let stepOrder = orderedFeatures.map(\.id).filter(stepFeatures.contains)
+      let enabled = Set(sidebarFeatures.map(\.id))
+      return OnboardingContext(
+        catalog: permissionCatalog,
+        steps: stepOrder.filter(enabled.contains),
+        stepOrder: stepOrder,
+        hint: doneHint
+      )
+    }
+
+    /// Whether Vortex is blocked, and whether the statuses were read yet: the first read is the launch's, which the
+    /// onboarding's `launched` decides; any later change to blocked is a revoke, a feature turned on or a new required
+    /// set (S9, S45).
+    var blockState: BlockState {
+      BlockState(isRead: !permissionStatuses.isEmpty, isBlocked: isBlocked)
     }
 
     /// The last tab the user chose if it still exists; otherwise the first feature, then settings.
@@ -160,7 +170,20 @@ struct ShellFeature {
   struct OnboardingContext: Equatable, Sendable {
     var catalog: PermissionCatalog
     var steps: [FeatureID]
+    var stepOrder: [FeatureID]
     var hint: OnboardingFeature.DoneHint
+
+    func apply(to onboarding: inout OnboardingFeature.State) {
+      onboarding.catalog = catalog
+      onboarding.steps = steps
+      onboarding.stepOrder = stepOrder
+      onboarding.doneHint = hint
+    }
+  }
+
+  struct BlockState: Equatable, Sendable {
+    var isRead: Bool
+    var isBlocked: Bool
   }
 
   enum Tab: Hashable, Sendable {
@@ -255,6 +278,12 @@ struct ShellFeature {
           // permission that went during the lock blocks only now (S38).
           let effect = close(&state)
           return state.isBlocked ? .merge(effect, .send(.onboarding(.blocked))) : effect
+
+        case .keyboardCleaning(.accessLost), .keyboardCleaning(.lockFailed):
+          // The lock ended by itself, and Home with its warning shows; blocked meanwhile, the blocking page takes over
+          // now, as after «Увімкнути клавіатуру» (S38).
+          guard state.isBlocked else { return .none }
+          return .merge(close(&state), .send(.onboarding(.blocked)))
 
         case let .keyboardCleaning(.delegate(.openPage(lockRefused))):
           // Opening a page closes the notch window first (S37).
@@ -414,7 +443,6 @@ struct ShellFeature {
 
         case let .permissionStatusesChanged(statuses):
           let old = state.permissionStatuses
-          let wasBlocked = state.isBlocked
           state.$permissionStatuses.withLock { $0 = statuses }
           var effects: [Effect<Action>] = [.send(.onboarding(.statusesChanged(old: old)))]
           // While the keyboard is locked, losing Accessibility ends the lock at once; no page opens by itself (S38).
@@ -428,11 +456,6 @@ struct ShellFeature {
               state.pendingEntry = nil
               effects.append(open(reason, &state))
             }
-          } else if !wasBlocked, state.isBlocked, !state.keyboardCleaning.isLocked {
-            // A required permission went: the notch window closes and the blocking page opens (S9, S41). During a lock
-            // this waits for «Увімкнути клавіатуру» (S38).
-            effects.append(close(&state))
-            effects.append(.send(.onboarding(.blocked)))
           }
           return .merge(effects)
 
@@ -442,17 +465,18 @@ struct ShellFeature {
         }
       }
     }
-    .onChange(of: \.isBlocked) { _, isBlocked in
+    .onChange(of: \.blockState) { old, new in
       Reduce { state, _ in
-        state.$appBlocked.withLock { $0 = isBlocked }
-        return .none
+        state.$appBlocked.withLock { $0 = new.isBlocked }
+        // Becoming blocked after the launch's read, however it happened: the notch window closes and the blocking page
+        // opens (S9, S41, S45). During a lock this waits for the lock to end (S38).
+        guard new.isBlocked, !old.isBlocked, old.isRead, !state.keyboardCleaning.isLocked else { return .none }
+        return .merge(close(&state), .send(.onboarding(.blocked)))
       }
     }
     .onChange(of: \.onboardingContext) { _, context in
       Reduce { state, _ in
-        state.onboarding.catalog = context.catalog
-        state.onboarding.steps = context.steps
-        state.onboarding.doneHint = context.hint
+        context.apply(to: &state.onboarding)
         return .none
       }
     }
@@ -549,8 +573,9 @@ struct ShellFeature {
       guard state.isOpen else { return .none }
       return close(&state)
 
-    case let .screensChanged(everyScreenHasNotch):
+    case let .screensChanged(everyScreenHasNotch, anyScreenHasNotch):
       state.everyScreenHasNotch = everyScreenHasNotch
+      state.hasNotchScreen = anyScreenHasNotch
       guard let reason = state.openReason else { return .none }
       // A window kept open for keyboard cleaning moves to the new screens; any other was placed for the old ones.
       return state.keyboardCleaning.isLocked ? .run { _ in await window.present(reason) } : close(&state)

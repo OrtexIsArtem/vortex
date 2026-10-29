@@ -531,14 +531,14 @@ struct ShellFeatureTests {
   @Test
   func menuBarIconStaysOnWhileADisplayHasNoNotch() async {
     let store = makeStore { $0.showMenuBarIcon = false }
-    // Done's hint follows the screens too (S75).
+    // Done's hint follows the screens too: the icon shows, and the notch display is still a way in (S75).
     await store.send(.window(.screensChanged(everyScreenHasNotch: false))) {
       $0.everyScreenHasNotch = false
-      $0.onboarding.doneHint = .init(hoverNotch: false, menuBarIcon: true)
+      $0.onboarding.doneHint.menuBarIcon = true
     }
     await store.send(.window(.screensChanged(everyScreenHasNotch: true))) {
       $0.everyScreenHasNotch = true
-      $0.onboarding.doneHint = .init(hoverNotch: true, menuBarIcon: false)
+      $0.onboarding.doneHint.menuBarIcon = false
     }
     await store.finish()
     #expect(menuBarIcon.value == [true, false])
@@ -549,11 +549,11 @@ struct ShellFeatureTests {
     let store = makeStore { $0.showMenuBarIcon = false }
     await store.send(.binding(.set(\.settings.openOnHover, false))) {
       $0.settings.openOnHover = false
-      $0.onboarding.doneHint.hoverNotch = false
+      $0.onboarding.doneHint.notch = .click
     }
     await store.send(.binding(.set(\.settings.openOnClick, false))) {
       $0.settings.openOnClick = false
-      $0.onboarding.doneHint.menuBarIcon = true
+      $0.onboarding.doneHint = .init(notch: nil, menuBarIcon: true)
     }
     #expect(store.state.isMenuBarIconRequired)
     await clock.advance(by: .milliseconds(400))

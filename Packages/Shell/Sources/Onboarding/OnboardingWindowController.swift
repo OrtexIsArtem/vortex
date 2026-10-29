@@ -109,6 +109,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       if !NSApp.isActive, let front = NSWorkspace.shared.frontmostApplication, front != .current { appBefore = front }
       NSApp.activate()
       window.makeKeyAndOrderFront(nil)
+      // macOS may decline the activation when nothing of Vortex's was clicked (at login, on a revoke, back from the
+      // panel): the window still comes to the front.
+      window.orderFrontRegardless()
     } else {
       // A hover shows the window without making it key (S46).
       window.orderFrontRegardless()
@@ -135,10 +138,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private func placePanel() {
     guard let panel else { return }
     placementTask?.cancel()
-    placementTask = Task { [weak self, isQA] in
+    placementTask = Task { [isQA] in
       @Dependency(\.activeAppClient) var activeApp
       let frames = await activeApp.windowFrames(OnboardingFeature.systemSettingsID)
-      guard let self, !Task.isCancelled else { return }
+      guard !Task.isCancelled else { return }
       let size = Self.panelSize
       let frame: CGRect
       if isQA {
@@ -154,7 +157,6 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
           QA.violation("onboarding", "the panel landed on a display", ["frame": "\(panel.frame)"])
         }
       #endif
-      _ = self
     }
   }
 

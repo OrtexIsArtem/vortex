@@ -100,7 +100,8 @@ struct ShellPermissionsTests {
     settings.disabledFeatures = disabled
     var state = ShellFeature.State(settings: settings, features: features, onboarding: .finished)
     state.requiredPermissions = required
-    let store = TestStore(initialState: state) {
+    state.onboardingContext.apply(to: &state.onboarding)
+    return TestStore(initialState: state) {
       ShellFeature()
     } withDependencies: {
       $0.continuousClock = ImmediateClock()
@@ -112,10 +113,15 @@ struct ShellPermissionsTests {
       $0.permissionsClient.setFrequentChecks = { _ in }
       $0.windowClient.dismiss = {}
     }
-    // The statuses also reach the onboarding (OnboardingFeatureTests, ShellOnboardingTests); these tests check the
-    // shared statuses and the blocked flag.
-    store.exhaustivity = .off(showSkippedAssertions: false)
-    return store
+  }
+
+  /// The first read reaches the onboarding: its statuses, then the launch's decision.
+  func firstRead(_ store: TestStoreOf<ShellFeature>, _ statuses: [Permission: PermissionStatus]) async {
+    await store.send(.permissionStatusesChanged(statuses)) {
+      $0.$permissionStatuses.withLock { $0 = statuses }
+    }
+    await store.receive(\.onboarding.statusesChanged)
+    await store.receive(\.onboarding.launched)
   }
 
   /// Everything the launch task starts besides the permissions, finished at once.
@@ -161,8 +167,10 @@ struct ShellPermissionsTests {
       store.dependencies.permissionsClient = .simulated(mac)
       store.dependencies.permissionsClient.setFrequentChecks = { _ in }
       await store.send(.permissionPageRequested(.screenRecording))
-      await store.receive(\.onboarding.pageRequested)
-      #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request)))
+      await store.receive(\.onboarding.pageRequested) {
+        $0.onboarding.presentation = .single(.init(permission: .screenRecording, kind: .request), .window)
+      }
+      await store.finish()
       #expect(mac.state.events.isEmpty)
     }
   #endif
@@ -176,17 +184,19 @@ struct ShellPermissionsTests {
     store.dependencies.permissionsClient.updates = { .finished }
     store.dependencies.permissionsClient.request = { asked.continuation.yield($0) }
     store.dependencies.permissionPage.requests = { requests }
+    store.exhaustivity = .off
 
     let launch = await store.send(.task)
     sendRequest.yield(.screenRecording)
     await store.receive(\.permissionPageRequested)
     await store.receive(\.onboarding.pageRequested)
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request)))
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
     await launch.cancel()
   }
 
   // MARK: Blocked (S9, S43)
 
+  /// Blocked at the first read: the launch opens the blocking page; the grant closes it after ✓ (S9, S41).
   @Test
   func vortexIsBlockedWhileARequiredPermissionSomethingNeedsIsOff() async {
     let store = makeStore(required: [.accessibility])
@@ -194,19 +204,28 @@ struct ShellPermissionsTests {
       $0.$permissionStatuses.withLock { $0 = Self.allOff }
       $0.$appBlocked.withLock { $0 = true }
     }
+    await store.receive(\.onboarding.statusesChanged)
+    await store.receive(\.onboarding.launched) {
+      $0.onboarding.presentation = .single(.init(permission: .accessibility, kind: .blocked), .window)
+    }
     let granted = Self.allOff.merging([.accessibility: .granted]) { $1 }
     await store.send(.permissionStatusesChanged(granted)) {
       $0.$permissionStatuses.withLock { $0 = granted }
       $0.$appBlocked.withLock { $0 = false }
     }
+    await store.receive(\.onboarding.statusesChanged) {
+      $0.onboarding.presentation = .single(.init(permission: .accessibility, kind: .blocked, isClosing: true), .window)
+    }
+    await store.receive(\.onboarding.singleCloseElapsed) {
+      $0.onboarding.presentation = .hidden
+    }
+    await store.finish()
   }
 
   @Test
   func withNothingRequiredNothingBlocks() async {
     let store = makeStore()
-    await store.send(.permissionStatusesChanged(Self.allOff)) {
-      $0.$permissionStatuses.withLock { $0 = Self.allOff }
-    }
+    await firstRead(store, Self.allOff)
     #expect(!store.state.appBlocked)
   }
 
@@ -219,20 +238,24 @@ struct ShellPermissionsTests {
     #expect(!required.appBlocked)
   }
 
-  /// Turning on a feature that needs a required permission that is off blocks at once (S45).
+  /// Turning on a feature that needs a required permission that is off blocks at once, and opens the blocking page;
+  /// turned off again, it unblocks, and the page stays until it is closed (S45, S54).
   @Test
   func turningOnAFeatureThatNeedsAMissingRequiredPermissionBlocksAtOnce() async {
     let store = makeStore(disabled: ["tasks"], required: [.screenRecording])
-    await store.send(.permissionStatusesChanged(Self.allOff)) {
-      $0.$permissionStatuses.withLock { $0 = Self.allOff }
-    }
+    await firstRead(store, Self.allOff)
     await store.send(.featureEnabledChanged("tasks", isEnabled: true)) {
       $0.settings.disabledFeatures = []
       $0.$appBlocked.withLock { $0 = true }
+      $0.onboarding.catalog = $0.permissionCatalog
+    }
+    await store.receive(\.onboarding.blocked) {
+      $0.onboarding.presentation = .single(.init(permission: .screenRecording, kind: .blocked), .window)
     }
     await store.send(.featureEnabledChanged("tasks", isEnabled: false)) {
       $0.settings.disabledFeatures = ["tasks"]
       $0.$appBlocked.withLock { $0 = false }
+      $0.onboarding.catalog = $0.permissionCatalog
     }
     await store.finish()
   }
@@ -241,12 +264,14 @@ struct ShellPermissionsTests {
   @Test
   func keyboardCleaningBlocksOnlyWhileHomeIsOn() async {
     let store = makeStore(disabled: ["home"], required: [.accessibility])
-    await store.send(.permissionStatusesChanged(Self.allOff)) {
-      $0.$permissionStatuses.withLock { $0 = Self.allOff }
-    }
+    await firstRead(store, Self.allOff)
     await store.send(.featureEnabledChanged("home", isEnabled: true)) {
       $0.settings.disabledFeatures = []
       $0.$appBlocked.withLock { $0 = true }
+      $0.onboarding.catalog = $0.permissionCatalog
+    }
+    await store.receive(\.onboarding.blocked) {
+      $0.onboarding.presentation = .single(.init(permission: .accessibility, kind: .blocked), .window)
     }
     await store.finish()
   }
@@ -258,9 +283,7 @@ struct ShellPermissionsTests {
     let statuses: [Permission: PermissionStatus] = [
       .notifications: .notGranted, .accessibility: .notGranted, .screenRecording: .grantedAfterRestart, .pasteboard: .notNeeded,
     ]
-    await store.send(.permissionStatusesChanged(statuses)) {
-      $0.$permissionStatuses.withLock { $0 = statuses }
-    }
+    await firstRead(store, statuses)
     #expect(!store.state.appBlocked)
   }
 }

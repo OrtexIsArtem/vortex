@@ -23,16 +23,20 @@ struct OnboardingProgress: Codable, Equatable, Sendable {
 
   init() {}
 
+  /// Each field on its own: a missing, unknown or broken value takes its default and the rest of the file stays, so a
+  /// file from another build, or one edited by hand, never drops `completed`. Unknown permissions are left out.
   init(from decoder: Decoder) throws {
-    // Every field has a default, so a file written by an older or newer build still reads.
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    page = try container.decodeIfPresent(String.self, forKey: .page) ?? OnboardingPage.welcome.id
-    returnToDone = try container.decodeIfPresent(Bool.self, forKey: .returnToDone) ?? false
-    pendingChecks = try container.decodeIfPresent(Set<Permission>.self, forKey: .pendingChecks) ?? []
-    pendingSingle = try container.decodeIfPresent(Permission.self, forKey: .pendingSingle)
-    completed = try container.decodeIfPresent(Bool.self, forKey: .completed) ?? false
-    restarted = try container.decodeIfPresent(Bool.self, forKey: .restarted) ?? false
-    loginItemApplied = try container.decodeIfPresent(Bool.self, forKey: .loginItemApplied) ?? false
+    func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
+      (try? container.decodeIfPresent(T.self, forKey: key)) ?? fallback
+    }
+    page = value(.page, OnboardingPage.welcome.id)
+    returnToDone = value(.returnToDone, false)
+    pendingChecks = Set(value(.pendingChecks, [String]()).compactMap(Permission.init(rawValue:)))
+    pendingSingle = (try? container.decodeIfPresent(String.self, forKey: .pendingSingle)).flatMap(Permission.init(rawValue:))
+    completed = value(.completed, false)
+    restarted = value(.restarted, false)
+    loginItemApplied = value(.loginItemApplied, false)
   }
 }
 
@@ -45,9 +49,11 @@ struct OnboardingProgressClient: Sendable {
 }
 
 extension OnboardingProgressClient: DependencyKey {
-  static let liveValue: OnboardingProgressClient = {
-    let url = DataFolder.url.appending(path: "onboarding.json")
-    return OnboardingProgressClient(
+  static let liveValue = live(at: DataFolder.url.appending(path: "onboarding.json"))
+
+  /// The file at `url`; one that can't be read at all is a fresh onboarding.
+  static func live(at url: URL) -> OnboardingProgressClient {
+    OnboardingProgressClient(
       load: {
         guard let data = try? Data(contentsOf: url) else { return OnboardingProgress() }
         return (try? JSONDecoder().decode(OnboardingProgress.self, from: data)) ?? OnboardingProgress()
@@ -59,7 +65,7 @@ extension OnboardingProgressClient: DependencyKey {
         try? encoder.encode(progress).write(to: url, options: .atomic)
       }
     )
-  }()
+  }
 
   static let testValue = OnboardingProgressClient()
 }

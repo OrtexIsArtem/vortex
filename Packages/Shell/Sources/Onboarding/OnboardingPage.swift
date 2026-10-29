@@ -45,17 +45,6 @@ enum OnboardingPage: Hashable, Sendable {
   static func holding(_ permission: Permission) -> OnboardingPage {
     permission.isGrantedInPlace ? .basics : .permission(permission)
   }
-
-  /// Where the page sits in the order every onboarding follows; feature steps share one place, in sidebar order.
-  var rank: Int {
-    switch self {
-    case .welcome: 0
-    case .basics: 1
-    case let .permission(permission): 2 + (Permission.allCases.firstIndex(of: permission) ?? 0)
-    case .step: 10
-    case .done: 20
-    }
-  }
 }
 
 /// What a permission's checkbox shows (S2, S68, S72).
