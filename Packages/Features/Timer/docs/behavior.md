@@ -43,3 +43,4 @@
 - A run changed from outside (another Vortex, the run file edited or deleted) is followed at once: the notch shows it and it ticks, or stops.
 - Turning the feature off ends the run and the flashes.
 - Test in the settings plays the sound and starts the flashes three seconds later, without a notification.
+- While Vortex is blocked (a required permission is off), a run goes on and its end still sounds and flashes (S44).

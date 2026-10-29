@@ -40,3 +40,4 @@
 - A client connected before (`hasConnected`) or connected now shows "Connected ✓" and a quiet "Connect again".
 - The step is done (`onboardingStepsDone` gets `secrets`) on success, on `hasConnected`, or while a session is live; checked at start too.
 - In a QA run, 47823 (the user's own Vortex) counts as taken: Settings refuses it, and a port of 47823 found in secrets.json is never served on; the status says "Not running: Port 47823 is taken".
+- While Vortex is blocked (a required permission is off), the MCP server goes on, and a request can be answered only from its notification, as the window doesn't open (S44).
