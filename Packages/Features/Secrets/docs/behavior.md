@@ -39,7 +39,8 @@
 - The token goes in the environment (`VORTEX_MCP_TOKEN`), never into the command, the screen, the logs, QA's state or snapshots; output is never kept.
 - Success: "Added to Claude Code ✓ — start a new Claude Code session to use your keys.", saved as `addedToClaudeCode`.
 - `claude` missing: "Claude Code isn't installed" with the link to claude.com/claude-code; any other failure, the time limit included: one fixed line with the exit code. Both add "Copy command" (concealed) and "Run it in Terminal".
-- A client connected before (`hasConnected`) or connected now shows "Connected ✓" and a quiet "Connect again".
+- A client connected before (`hasConnected`) or connected now shows "Connected ✓"; then, or after a success (also from before a relaunch, which shows the success line), the main "Connect" becomes a quiet "Connect again".
+- "Connect again" shows the spinner and its result like "Connect".
 - The step is done (`onboardingStepsDone` gets `secrets`) on success, on `hasConnected`, or while a session is live; checked at start too.
 - In a QA run, 47823 (the user's own Vortex) counts as taken: Settings refuses it, and a port of 47823 found in secrets.json is never served on; the status says "Not running: Port 47823 is taken".
 - While Vortex is blocked (a required permission is off), the MCP server goes on, and a request can be answered only from its notification, as the window doesn't open (S44).

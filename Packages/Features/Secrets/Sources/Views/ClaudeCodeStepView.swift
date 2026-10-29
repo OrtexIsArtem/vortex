@@ -18,10 +18,14 @@ struct ClaudeCodeStepView: View {
         // The server isn't running: nothing to connect to, and the onboarding offers Skip.
         Text("Not running: \(message)", bundle: .module)
           .foregroundStyle(VortexColor.secondaryText)
-      } else if store.isConnectedNow || store.settings.hasConnected {
-        connected
       } else {
-        connect
+        VStack(alignment: .leading, spacing: 10) {
+          if store.isConnectedNow || store.settings.hasConnected {
+            Text("Connected ✓", bundle: .module)
+          }
+          controls
+          result
+        }
       }
 
       Spacer(minLength: 0)
@@ -32,54 +36,61 @@ struct ClaudeCodeStepView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  /// A client connected, or one is connected now: done, with a quiet way to run the command again.
-  private var connected: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text("Connected ✓", bundle: .module)
-      Button {
-        store.send(.connectTapped)
-      } label: {
-        Text("Connect again", bundle: .module)
-      }
-      .buttonStyle(.quietCapsule)
-      .disabled(!store.canConnect)
-    }
-  }
-
-  @ViewBuilder
-  private var connect: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 10) {
+  /// "Connect", the page's main button, or once connected or added a quiet "Connect again"; a spinner while it runs.
+  private var controls: some View {
+    HStack(spacing: 10) {
+      if store.showsConnectAgain {
+        Button {
+          store.send(.connectTapped)
+        } label: {
+          Text("Connect again", bundle: .module)
+        }
+        .buttonStyle(.quietCapsule)
+        .disabled(!store.canConnect)
+      } else {
         Button {
           store.send(.connectTapped)
         } label: {
           Text("Connect", bundle: .module)
         }
-        .buttonStyle(.quietCapsule)
+        .buttonStyle(.primaryCapsule)
         .disabled(!store.canConnect)
-        if store.connect == .running {
-          ProgressView().controlSize(.small)
-        }
       }
-      switch store.connect {
-      case .idle, .running:
-        EmptyView()
-      case .added:
-        Text("Added to Claude Code ✓ — start a new Claude Code session to use your keys.", bundle: .module)
-      case .notInstalled:
-        Text("Claude Code isn't installed", bundle: .module)
-        Button {
-          store.send(.getClaudeCodeTapped)
-        } label: {
-          Text(verbatim: "claude.com/claude-code")
-        }
-        .buttonStyle(.link)
-        fallback
-      case let .failed(exitCode):
-        Text("Couldn't add Vortex to Claude Code (exit code \(Int(exitCode))).", bundle: .module)
-        fallback
+      if store.connect == .running {
+        ProgressView().controlSize(.small)
       }
     }
+  }
+
+  /// What the last run gave, under either button; after a relaunch, an earlier success (S27, S78).
+  @ViewBuilder
+  private var result: some View {
+    switch store.connect {
+    case .running:
+      EmptyView()
+    case .idle:
+      if store.settings.addedToClaudeCode {
+        added
+      }
+    case .added:
+      added
+    case .notInstalled:
+      Text("Claude Code isn't installed", bundle: .module)
+      Button {
+        store.send(.getClaudeCodeTapped)
+      } label: {
+        Text(verbatim: "claude.com/claude-code")
+      }
+      .buttonStyle(.link)
+      fallback
+    case let .failed(exitCode):
+      Text("Couldn't add Vortex to Claude Code (exit code \(Int(exitCode))).", bundle: .module)
+      fallback
+    }
+  }
+
+  private var added: some View {
+    Text("Added to Claude Code ✓ — start a new Claude Code session to use your keys.", bundle: .module)
   }
 
   /// The command to run by hand: copied concealed, as from the tab's card.
@@ -104,4 +115,9 @@ extension SecretsFeature.State {
 
   /// A Claude Code session is live now.
   var isConnectedNow: Bool { !sessions.isEmpty }
+
+  /// The step's button reads "Connect again", quiet: a client connected, or Connect worked, also before a relaunch.
+  var showsConnectAgain: Bool {
+    isConnectedNow || settings.hasConnected || settings.addedToClaudeCode
+  }
 }

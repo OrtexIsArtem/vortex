@@ -58,7 +58,7 @@ public enum SecretsModule: FeatureModule {
         switch arguments["press"] {
         case "connect", "connectAgain":
           let again = arguments["press"] == "connectAgain"
-          let showsConnected = state.isConnectedNow || state.settings.hasConnected
+          let showsConnected = state.showsConnectAgain
           guard state.canConnect, again == showsConnected else {
             throw QAError("\(again ? "Connect again" : "Connect") isn't there or is disabled now")
           }

@@ -35,6 +35,24 @@ struct ClaudeCodeStepTests {
 
   let clock = TestClock()
 
+  /// "Connect again" runs as Connect does, with the spinner and the result shown under it; after a relaunch the step
+  /// still reads as added (R5).
+  @Test
+  func connectAgainShowsItsRunAndARelaunchKeepsTheSuccess() async {
+    let store = makeStore([CommandClient.Output(exitCode: 1)])
+    #expect(!store.state.showsConnectAgain)
+    await store.send(.server(.sessionStarted(MCPSession(id: "s1", client: "Claude Code"))))
+    #expect(store.state.showsConnectAgain)
+    await store.send(.connectTapped) { $0.connect = .running }
+    await store.receive(\.connectFinished) { $0.connect = .notInstalled }
+
+    // Relaunched after a success: the run's state is gone, the saved success isn't.
+    var relaunched = SecretsFeature.State()
+    relaunched.$settings.withLock { $0.addedToClaudeCode = true }
+    #expect(relaunched.connect == .idle)
+    #expect(relaunched.showsConnectAgain)
+  }
+
   /// 30 s on the clock end the step, however long the runs' own limits are: the shell's first start counts too (R1).
   @Test
   func thirtySecondsOnTheClockEndConnectAsAFailureAndStopTheRun() async {
