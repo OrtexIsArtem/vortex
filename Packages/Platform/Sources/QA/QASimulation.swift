@@ -134,16 +134,16 @@
       current.setValue(loaded)
     }
 
-    /// Changes the simulation, and keeps it in the run's folder; outside QA mode, as in tests, only in memory.
+    /// Changes the simulation, and keeps it in the run's folder, in the order the changes came; outside QA mode, as in
+    /// tests, only in memory.
     static func update(_ change: @Sendable (inout QASimulation) throws -> Void) rethrows {
-      let simulation = try current.withValue { simulation in
+      try current.withValue { simulation in
         try change(&simulation)
-        return simulation
+        guard QA.isActive else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try? encoder.encode(simulation).write(to: QAPaths.simulationFile, options: .atomic)
       }
-      guard QA.isActive else { return }
-      let encoder = JSONEncoder()
-      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-      try? encoder.encode(simulation).write(to: QAPaths.simulationFile, options: .atomic)
     }
   }
 #endif

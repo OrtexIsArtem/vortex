@@ -21,7 +21,7 @@ A debug build started with `--qa <name>` (1–16 letters, digits or dashes) runs
     scripts/qa cmd A state path=/tmp/a.json
     scripts/qa stop A; scripts/qa kill A; scripts/qa reset A; scripts/qa list
 
-- Data: everything in ~/Library/Application Support/Vortex QA/<name>/ (database, feature JSON, files, settings.json); QA's own files in its `.qa/`, fixtures in `fixtures/` (`screen.png` is what a capture sees). UserDefaults is the `.check` build's, shared by all runs: keep run state in DataFolder.
+- Data: everything in ~/Library/Application Support/Vortex QA/<name>/ (database, feature JSON, files, settings.json); QA's own files in its `.qa/`, fixtures in `fixtures/` (`screen.png` is what a capture sees). To start from given data, put files there before `start`. UserDefaults is the `.check` build's, shared by all runs: keep run state in DataFolder.
 - Isolated: one instance per name; the MCP server on a port of its own (49152–65535, in its secrets.json, never 47823); no `…debug.*` notifications, commands only on `io.github.ortexisartem.vortex.qa.<name>`.
 - Simulated: pasteboard and keychain in memory; shortcuts pressed only by `entry kind=hotkey`; keyboard lock (never a tap), screen capture, front window, text recognition and apps from fixtures; notifications, sounds, the login item, Finder, opened files and URLs only logged; commands never run; file panels never show; relaunch restarts the run with its arguments.
 - Nothing shows: no menu bar icon or ears, windows off the displays, never in front or with the keyboard, no global monitors.
