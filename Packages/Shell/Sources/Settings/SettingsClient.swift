@@ -1,7 +1,8 @@
 import ComposableArchitecture
 import Foundation
+import VortexCore
 
-/// Reads and writes ~/Library/Application Support/Vortex/settings.json.
+/// Reads and writes DataFolder/settings.json.
 @DependencyClient
 struct SettingsClient: Sendable {
   var load: @Sendable () -> ShellSettings = { ShellSettings() }
@@ -10,7 +11,7 @@ struct SettingsClient: Sendable {
 
 extension SettingsClient: DependencyKey {
   static let liveValue: SettingsClient = {
-    let url = URL.applicationSupportDirectory.appending(path: "Vortex/settings.json")
+    let url = DataFolder.url.appending(path: "settings.json")
     return SettingsClient(
       load: {
         guard let data = try? Data(contentsOf: url) else { return ShellSettings() }

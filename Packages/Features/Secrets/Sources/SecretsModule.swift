@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import VortexCore
+import VortexPlatform
 
 /// Entry point the app shell reads; registered in Features/Registry.
 @MainActor
@@ -32,7 +33,8 @@ public enum SecretsModule: FeatureModule {
 
   public static func setEnabled(_ isEnabled: Bool) {
     #if DEBUG
-      if !isListening {
+      // A QA run takes commands only on its own channel (VortexPlatform's `QA`).
+      if !isListening, !QA.isActive {
         isListening = true
         listenForDebugCommands()
       }

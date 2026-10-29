@@ -37,7 +37,8 @@ public enum TasksModule: FeatureModule {
       overlay = CaptureOverlay(store: store)
       screenOverlay = TaskScreenOverlay(store: store)
       #if DEBUG
-        listenForDebugCommands()
+        // A QA run takes commands only on its own channel (VortexPlatform's `QA`).
+        if !QA.isActive { listenForDebugCommands() }
       #endif
     }
     store.send(isEnabled ? .start : .stop)

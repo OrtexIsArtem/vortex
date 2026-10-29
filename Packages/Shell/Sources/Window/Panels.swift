@@ -35,7 +35,13 @@ final class VortexPanel: NSPanel {
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
-  override var canBecomeKey: Bool { acceptsKey }
+  override var canBecomeKey: Bool {
+    #if DEBUG
+      // A QA run's panels never take the keyboard (VortexPlatform's `QA.allowsKeyWindows`).
+      guard QA.allowsKeyWindows else { return false }
+    #endif
+    return acceptsKey
+  }
   override var canBecomeMain: Bool { false }
 
   override func cancelOperation(_ sender: Any?) {

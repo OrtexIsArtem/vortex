@@ -11,4 +11,4 @@ The app shell: the notch window and the menu bar icon, opening and closing, the 
 
 Code: ShellFeature.swift (logic, tested), ShellController.swift (start-up, menu), FeaturesClient.swift,
 Window/ (panels, chrome, ears, menu bar icon — AppKit, reports events to ShellFeature), Views/, Settings/,
-KeyboardCleaning/ (the mode's reducer and screen, scoped into ShellFeature; tested), Permissions/ (what is needed and required; tested).
+KeyboardCleaning/ (the mode's reducer and screen, scoped into ShellFeature; tested), Permissions/ (what is needed and required; tested), QA/ (the shell's QA commands, state and window; debug builds only).

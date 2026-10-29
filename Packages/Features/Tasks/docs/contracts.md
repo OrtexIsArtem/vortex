@@ -5,6 +5,7 @@
 - Its own shortcut `Hotkey.captureTask`.
 - No Home widget and no notch indicator. While a capture or a task's whole screen covers the display it draws its own notch pill over the real notch.
 - `permissionNeeds`: Screen Recording, «Робить задачу зі знімка екрана.»
+- Debug builds outside QA mode: distributed notifications `…debug.task*` drive a capture and the list (see TasksModule); a QA run (VortexPlatform's `QA`) listens to none.
 
 ## Uses
 - VortexCore: `FeatureModule`, `DataFolder`, `database`, `databaseIsOnDisk`, `@Shared(.fileStorage)` for tasks.json, design system (`SegmentedPicker`, `SettingsRow`, capsule buttons, `Hairline`).

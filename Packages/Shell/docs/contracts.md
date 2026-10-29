@@ -18,3 +18,10 @@
 - FeatureRegistry: every `FeatureModule` — descriptor (with `permissionNeeds`), `makeTab()`, `makeSettings()`, `makeHomeWidget()`, `acceptsFileDrops`, `receiveFiles(_:)`, `setEnabled(_:)`.
 - VortexCore: `FeatureModule`, `@Shared(.notchIndicators)`, `Permission`, `PermissionPage`, design system, `AppTheme`, `AppLanguage`.
 - VortexPlatform: `HotkeyClient`, `LaunchAtLoginClient`, `SystemClient`, `KeyboardLockClient`, `PermissionsClient`; `OutsideActivity` to keep the window open during drags out of it, Quick Look and the folder picker; `QuickLook`, which the window hands the Quick Look panel to.
+
+## QA mode (debug builds)
+- Gives App `ShellController.prepareQA()`, called first in main.swift, and `isSameQARun(pid:)`, so one instance runs per QA run.
+- Registers with VortexPlatform's `QA`: the window `notch` (mode: why it is open), the state section `shell`, and the commands `entry`, `tab`, `keyboard`, `screens` and `indicator` (QA/ShellQA.swift).
+- The menu bar menu's items have identifiers (open, settings, quit), which `entry kind=menu item=` names; a new item needs one too.
+- In a QA run the window opens off the displays without animation and never takes the keyboard or the front; there are no ears, no menu bar icon and no click monitor, and the displays are `QA.screens`.
+- A QA run listens to no `…debug.*` notification.

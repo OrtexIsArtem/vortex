@@ -44,8 +44,8 @@ public final class ScreenOverlay {
     onReturn: @escaping @MainActor () -> Void,
     onInterrupted: @escaping @MainActor () -> Void
   ) {
-    // Vortex itself in front is no interruption: the user was in its window.
-    let front = Self.frontApp()
+    // Vortex itself in front is no interruption: the user was in its window. A QA run's front app is simulated.
+    let front = Self.isQA ? nil : Self.frontApp()
     guard front == nil || front?.bundleIdentifier == app else {
       // Called once `show` has returned, as it would be for a later interruption.
       Task { @MainActor in onInterrupted() }
@@ -54,8 +54,19 @@ public final class ScreenOverlay {
     guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
     stopKeepingFront()
     present(content, on: screen, takesKeyboard: true, onEscape: onEscape, onReturn: onReturn, onInterrupted: onInterrupted)
+    guard !Self.isQA else { return }
     coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
     NSApp.activate()
+  }
+
+  /// QA mode (`QA`): the overlay opens off the displays, never takes the keyboard or the front, and real apps coming to
+  /// the front don't interrupt it.
+  private static var isQA: Bool {
+    #if DEBUG
+      QA.isActive
+    #else
+      false
+    #endif
   }
 
   /// Over the display under the pointer, leaving the app in front where it is.
@@ -64,11 +75,15 @@ public final class ScreenOverlay {
     guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main
     else { return }
     // Its keys come through the window of Vortex's that has the keyboard; with none, such as when the window closed
-    // while the content was made, no key could close it.
-    guard NSApp.keyWindow.map({ !($0 is OverlayPanel) }) == true else {
+    // while the content was made, no key could close it. A QA run has no key window ever, and no keys but commands:
+    // there it shows off the displays all the same.
+    guard Self.isQA || NSApp.keyWindow.map({ !($0 is OverlayPanel) }) == true else {
       Task { @MainActor in onDismiss() }
       return
     }
+    #if DEBUG
+      if Self.isQA { QA.log("overlay", "showKeepingFront", ["shown": "off the displays"]) }
+    #endif
     // Shown the other way: that ends first, with the front given back.
     if isShown, !keepsFront { close() }
     if !keepsFront {
@@ -110,12 +125,17 @@ public final class ScreenOverlay {
     panel.onEscape = onEscape
     panel.onReturn = onReturn
     panel.contentView = NSHostingView(rootView: AnyView(content.environment(\.notchCutout, screen.notchInPoints)))
-    panel.setFrame(screen.frame, display: true)
+    #if DEBUG
+      panel.setFrame(Self.isQA ? QA.offscreen(screen.frame) : screen.frame, display: true)
+    #else
+      panel.setFrame(screen.frame, display: true)
+    #endif
     // In front of everything also while Vortex is not the app in front.
     panel.orderFrontRegardless()
-    if takesKeyboard { panel.makeKey() }
+    if takesKeyboard, !Self.isQA { panel.makeKey() }
     self.panel = panel
     stopWatchingActivations()
+    guard !Self.isQA else { return }
     activations = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification,
       object: nil,
@@ -218,7 +238,13 @@ private final class OverlayPanel: NSPanel {
     acceptsMouseMovedEvents = true
   }
 
-  override var canBecomeKey: Bool { takesKeyboard }
+  override var canBecomeKey: Bool {
+    #if DEBUG
+      // A QA run's panels never take the keyboard (`QA.allowsKeyWindows`).
+      guard QA.allowsKeyWindows else { return false }
+    #endif
+    return takesKeyboard
+  }
   override var canBecomeMain: Bool { false }
 
   override func cancelOperation(_ sender: Any?) {

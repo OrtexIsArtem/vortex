@@ -98,8 +98,22 @@ final class WindowController: NSObject {
   private var generation = 0
   private var emit: (WindowEvent) -> Void = { _ in }
   private var finishEvents: () -> Void = {}
+  /// QA mode (VortexPlatform's `QA`): nothing on screen. No ears, no menu bar icon, no monitors; the window opens off
+  /// the displays without animation and never takes the keyboard; the displays are the ones the run pretends to have.
+  private let isQA: Bool
+  /// QA: whether the pretended pointer is inside the window, as it is after opening it from the notch.
+  private var isQAPointerInWindow = false
+  /// QA: the shell listens for events; until then an event a command makes would be lost.
+  private(set) var qaHasEventsSubscriber = false
+  /// QA: called once the shell listens for events.
+  var qaOnEventsSubscribed: (() -> Void)?
 
   override private init() {
+    #if DEBUG
+      isQA = QA.isActive
+    #else
+      isQA = false
+    #endif
     super.init()
   }
 
@@ -108,7 +122,7 @@ final class WindowController: NSObject {
   /// Puts the notch on screen and builds the window, so the first open does not wait for it. Call once at launch.
   func install(content: some View, menu: NSMenu) {
     menuBarMenu = menu
-    presentation.notch = NSScreen.screens.lazy.compactMap(\.notchRect).first?.size
+    presentation.notch = isQA ? qaPlacement(for: .click).notch : NSScreen.screens.lazy.compactMap(\.notchRect).first?.size
     presentation.onNotchTapped = { [weak self] in self?.emit(.notchClicked(feature: nil)) }
     mainPanel = makeMainPanel(content: AnyView(content))
     rebuildEars()
@@ -116,6 +130,8 @@ final class WindowController: NSObject {
     outsideActivityObservation = observe { [weak self] in
       self?.outsideActivityChanged(OutsideActivity.shared.isActive)
     }
+    // A QA run's displays change only by command.
+    guard !isQA else { return }
     screenObserver = NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification,
       object: nil,
@@ -132,11 +148,18 @@ final class WindowController: NSObject {
     emit = { continuation.yield($0) }
     finishEvents = { continuation.finish() }
     continuation.yield(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
+    if isQA {
+      qaHasEventsSubscriber = true
+      qaOnEventsSubscribed?()
+    }
     return stream
   }
 
   private var everyScreenHasNotch: Bool {
-    NSScreen.screens.allSatisfy { $0.notchRect != nil }
+    #if DEBUG
+      if isQA { return QA.screens.allSatisfy { $0 == .notch } }
+    #endif
+    return NSScreen.screens.allSatisfy { $0.notchRect != nil }
   }
 
   // MARK: - Window
@@ -146,6 +169,11 @@ final class WindowController: NSObject {
     seeAlarms()
     generation += 1
     let current = generation
+
+    if isQA {
+      presentOffscreen(panel, placement)
+      return
+    }
 
     if !panel.isVisible { presentation.isExpanded = false }
     presentation.notch = placement.notch
@@ -178,6 +206,11 @@ final class WindowController: NSObject {
     guard let panel = mainPanel, panel.isVisible else { return }
     generation += 1
     let current = generation
+    if isQA {
+      withoutAnimation { presentation.isExpanded = false }
+      panel.orderOut(nil)
+      return
+    }
     panel.hasShadow = false
     withAnimation(closeAnimation) {
       presentation.isExpanded = false
@@ -195,6 +228,13 @@ final class WindowController: NSObject {
   /// off — goes nowhere rather than into the app the user was in. Let go, that app gets the front and the keys back,
   /// unless the user went to another app meanwhile.
   func holdKeyboard(_ isHeld: Bool) {
+    if isQA {
+      // Never in front and never the keyboard: the lock itself is simulated.
+      #if DEBUG
+        QA.log("window", "holdKeyboard", ["held": "\(isHeld)"])
+      #endif
+      return
+    }
     if isHeld {
       guard keyboardHoldMonitor == nil else { return }
       if let front = NSWorkspace.shared.frontmostApplication, front != .current {
@@ -229,6 +269,7 @@ final class WindowController: NSObject {
   }
 
   private func placement(for reason: OpenReason) -> Placement? {
+    if isQA { return qaPlacement(for: reason) }
     let pointer = NSEvent.mouseLocation
     let pointerScreen = NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) } ?? NSScreen.main
     let screen: NSScreen? = switch reason {
@@ -258,6 +299,43 @@ final class WindowController: NSObject {
     )
   }
 
+  /// QA: where the window would open on the displays the run pretends to have, moved off the real ones. The pointer
+  /// is on the main display, at its notch when it has one; the menu bar icon is there too.
+  private func qaPlacement(for reason: OpenReason) -> Placement {
+    #if DEBUG
+      let screens = QA.screens
+      let screen: QALaunch.Screen? = switch reason {
+      case .hover, .click, .fileDrag: screens.contains(.notch) ? .notch : screens.first
+      case .hotkey, .menuBarIcon: screens.first
+      }
+      let size = VortexMetrics.windowSize
+      if screen == .notch {
+        let frame = CGRect(x: 0, y: 0, width: size.width + VortexMetrics.shoulder * 2, height: size.height)
+        return Placement(frame: QA.offscreen(frame), notch: QA.notchSize)
+      }
+      return Placement(frame: QA.offscreen(CGRect(origin: .zero, size: size)), notch: nil)
+    #else
+      return Placement(frame: .zero, notch: nil)
+    #endif
+  }
+
+  /// QA: opens at once, off the displays, without taking the keyboard: a panel made key takes the keys of the app the
+  /// user types in even while Vortex is not in front.
+  private func presentOffscreen(_ panel: VortexPanel, _ placement: Placement) {
+    presentation.notch = placement.notch
+    panel.hasShadow = false
+    panel.setFrame(placement.frame, display: true)
+    panel.orderFrontRegardless()
+    emit(.pointerInsideWindowChanged(isInside: isQAPointerInWindow))
+    withoutAnimation { presentation.isExpanded = true }
+  }
+
+  private func withoutAnimation(_ change: () -> Void) {
+    var transaction = Transaction()
+    transaction.disablesAnimations = true
+    withTransaction(transaction, change)
+  }
+
   private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
   private var openAnimation: Animation {
@@ -272,14 +350,16 @@ final class WindowController: NSObject {
   private func outsideActivityChanged(_ isActive: Bool) {
     emit(.outsideActivityChanged(isActive: isActive))
     if !isActive, let panel = mainPanel, panel.isVisible {
-      emit(.pointerInsideWindowChanged(isInside: NSMouseInRect(NSEvent.mouseLocation, panel.frame, false)))
+      let isInside = isQA ? isQAPointerInWindow : NSMouseInRect(NSEvent.mouseLocation, panel.frame, false)
+      emit(.pointerInsideWindowChanged(isInside: isInside))
     }
   }
 
   // MARK: - Outside clicks
 
   private func installOutsideClickMonitor() {
-    guard outsideClickMonitor == nil else { return }
+    // QA watches no clicks: `entry kind=outside` stands for one.
+    guard !isQA, outsideClickMonitor == nil else { return }
     // Global monitors only see clicks in other apps; clicks in our own panels never arrive here.
     outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
       MainActor.assumeIsolated { self?.emit(.clickedOutside) }
@@ -300,7 +380,8 @@ final class WindowController: NSObject {
       $0.glowPanel.orderOut(nil)
     }
     ears.removeAll()
-    for screen in NSScreen.screens {
+    // A QA run shows no ears: its indicators are in the state dump.
+    for screen in NSScreen.screens where !isQA {
       guard let notch = screen.notchRect else { continue }
       let model = EarsModel()
       model.notchSize = notch.size
@@ -469,6 +550,8 @@ final class WindowController: NSObject {
   }
 
   private func updateMenuBarIcon() {
+    // A QA run puts no icon in the menu bar; the state says whether it would.
+    guard !isQA else { return }
     if isMenuBarIconWanted {
       if menuBarItem == nil { menuBarItem = makeMenuBarItem() }
       updateMenuBarTitle()
@@ -519,6 +602,37 @@ final class WindowController: NSObject {
     button.title = text.isEmpty ? "" : " \(text)"
   }
 }
+
+#if DEBUG
+  // MARK: - QA mode
+
+  /// What the shell's QA commands drive: the events the user would make at the notch, the menu bar icon and the window.
+  extension WindowController {
+    func qaEmit(_ event: WindowEvent) {
+      emit(event)
+    }
+
+    var qaPanel: NSWindow? { mainPanel }
+    var qaMenu: NSMenu? { menuBarMenu }
+    /// Whether the menu bar icon would show: QA puts none in the menu bar.
+    var qaIsMenuBarIconShown: Bool { isMenuBarIconWanted }
+    var qaEars: NotchEars { currentEars }
+    var qaIsPointerInWindow: Bool { isQAPointerInWindow }
+
+    /// Where the pretended pointer is: inside the window, or not; the window hears of it when it is open.
+    func qaMovePointer(intoWindow isInside: Bool) {
+      isQAPointerInWindow = isInside
+      if mainPanel?.isVisible == true {
+        emit(.pointerInsideWindowChanged(isInside: isInside))
+      }
+    }
+
+    /// The pretended displays changed, as when one is connected or disconnected.
+    func qaScreensChanged() {
+      emit(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
+    }
+  }
+#endif
 
 // MARK: - Files dropped on the menu bar icon
 
