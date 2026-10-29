@@ -41,6 +41,7 @@
 
 ## Sidebar, features and permissions
 - The sidebar shows enabled features in the user's order, with Settings at the bottom.
+- A yellow dot on a feature's icon while a permission it needs reads `notGranted` (S22.2, S39): decoration with the tooltip "<Permission> is off"; a click on it, as on the icon, opens the tab. None before the first read, for ↻, or on Home and Settings.
 - Dropping a feature's icon or settings row onto another moves it to that place; other drags are refused.
 - Turning a feature off stops it (`setEnabled(false)`) and switches away from its tab; turning it on starts it again.
 - Every feature is started or stopped at launch according to the settings.

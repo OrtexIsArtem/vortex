@@ -86,6 +86,15 @@ struct SecretsFeature: Sendable {
   static let connectTime: Duration = .seconds(25)
   /// The environment variable the connect command reads the token from.
   static let tokenVariable = "VORTEX_MCP_TOKEN"
+
+  /// In a QA run, the user's Vortex owns the default port, so the run treats it as taken.
+  static var qaTakenPorts: Set<Int> {
+    #if DEBUG
+      QA.isActive ? [SecretsSettings.defaultPort] : []
+    #else
+      []
+    #endif
+  }
   static let claudeCodeURL = URL(string: "https://claude.com/claude-code")!
 
   enum ServerStatus: Equatable, Sendable {
@@ -126,6 +135,9 @@ struct SecretsFeature: Sendable {
     @SharedReader(.permissionStatuses) var permissionStatuses
     /// The onboarding's Claude Code step (S27, S78).
     var connect = ConnectStatus.idle
+    /// Ports this Vortex never serves on: in a QA run, the user's own Vortex's default port (review-2 R3), as two
+    /// listeners may share a port and Claude Code's requests would then reach the run.
+    var takenPorts = SecretsFeature.qaTakenPorts
 
     init() {}
 
@@ -449,7 +461,9 @@ struct SecretsFeature: Sendable {
         return .run { _ in await pasteboard.write(.text(command), true, nil) }
 
       case let .portChanged(port):
-        guard SecretsSettings.ports.contains(port), port != state.settings.port else { return .none }
+        guard SecretsSettings.ports.contains(port), port != state.settings.port, !state.takenPorts.contains(port) else {
+          return .none
+        }
         state.$settings.withLock { $0.port = port }
         let reset = resetSessions(&state)
         guard state.isEnabled else { return reset }
@@ -669,6 +683,10 @@ struct SecretsFeature: Sendable {
   private func serve(_ state: State) -> Effect<Action> {
     guard state.isEnabled, let token = state.token else { return .none }
     let port = state.settings.port
+    // A port that is taken is never served on, however it got into the settings (review-2 R3).
+    guard !state.takenPorts.contains(port) else {
+      return .send(.server(.failed(String(localized: "Port \(port) is taken", bundle: .module))))
+    }
     return .run { send in
       for await event in server.serve(port, token) {
         await send(.server(event))

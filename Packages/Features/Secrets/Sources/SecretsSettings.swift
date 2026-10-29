@@ -6,6 +6,9 @@ import VortexCore
 public struct SecretsSettings: Codable, Equatable, Sendable {
   public static let defaultPort = 47823
   static let ports = 1024...65535
+  /// In DataFolder. A QA run writes its own port under `port` in this file before Keys starts (VortexPlatform's
+  /// `QAIsolation.seedServerPort`): renaming the file or the key would send QA runs back to 47823.
+  static let fileName = "secrets.json"
 
   /// Where the MCP server listens, on 127.0.0.1.
   public var port = Self.defaultPort
@@ -32,6 +35,6 @@ public struct SecretsSettings: Codable, Equatable, Sendable {
 extension SharedKey where Self == FileStorageKey<SecretsSettings>.Default {
   /// DataFolder/secrets.json.
   static var secretsSettings: Self {
-    Self[.fileStorage(DataFolder.url.appending(path: "secrets.json")), default: SecretsSettings()]
+    Self[.fileStorage(DataFolder.url.appending(path: SecretsSettings.fileName)), default: SecretsSettings()]
   }
 }

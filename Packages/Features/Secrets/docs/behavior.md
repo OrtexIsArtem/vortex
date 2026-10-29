@@ -39,3 +39,4 @@
 - `claude` missing: "Claude Code isn't installed" with the link to claude.com/claude-code; any other failure, the time limit included: one fixed line with the exit code. Both add "Copy command" (concealed) and "Run it in Terminal".
 - A client connected before (`hasConnected`) or connected now shows "Connected ✓" and a quiet "Connect again".
 - The step is done (`onboardingStepsDone` gets `secrets`) on success, on `hasConnected`, or while a session is live; checked at start too.
+- In a QA run, 47823 (the user's own Vortex) counts as taken: Settings refuses it, and a port of 47823 found in secrets.json is never served on; the status says "Not running: Port 47823 is taken".
