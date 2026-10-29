@@ -15,6 +15,8 @@
     static var simulationFile: URL { controlFolder.appending(path: "simulation.json") }
     /// How many times the run has started.
     static var launchesFile: URL { controlFolder.appending(path: "launches") }
+    /// The path of the app that last ran in this folder.
+    static var appFile: URL { controlFolder.appending(path: "app") }
     /// Files a tester puts in for the simulated services: screen.png, the display a capture sees.
     static var fixturesFolder: URL { DataFolder.url.appending(path: "fixtures", directoryHint: .isDirectory) }
 

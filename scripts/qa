@@ -1,6 +1,6 @@
 #!/bin/bash
 # QA mode: a debug build of Vortex next to the user's own, isolated from it and driven by commands
-# (App/docs/README.md).
+# (App/docs/README.md). Names are 1-16 letters, digits or dashes, used in lowercase: A and a are one run.
 #
 #   scripts/qa build                               make build, then copy the app to build/qa/<run>/ (build/qa/latest)
 #   scripts/qa start <name> [args…]                start the run <name> from that copy; waits until it listens
@@ -8,9 +8,10 @@
 #   scripts/qa stop <name>                         quit the run
 #   scripts/qa kill <name>                         stop it at once, as a force quit: nothing is saved
 #   scripts/qa reset <name>                        delete the run's data folder, only inside "Vortex QA"
-#   scripts/qa list                                the runs and whether they run
+#   scripts/qa list                                the runs, whether they run, and the app each runs
 #
-# Exit codes: 0 done, 1 an error reply or a refusal, 2 a timeout, 64 bad usage.
+# cmd, stop, kill and reset refuse a run whose app comes from another checkout; --other-checkout before the
+# subcommand allows it. Exit codes: 0 done, 1 an error reply or a refusal, 2 a timeout, 64 bad usage.
 # QA_TIMEOUT bounds every wait (seconds, default 15); QA_APP=<path to Vortex.app> starts another make build copy.
 set -euo pipefail
 
@@ -20,6 +21,7 @@ root="$support/Vortex QA"
 timeout=${QA_TIMEOUT:-15}
 bundle_id="io.github.ortexisartem.vortex.check"
 channel_prefix="io.github.ortexisartem.vortex.qa."
+other_checkout=0
 
 # Posts a distributed notification: the name, then key=value or bare words (a word becomes word="").
 read -r -d '' post_js <<'JS' || true
@@ -44,14 +46,14 @@ die() {
 }
 
 usage() {
-  sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 64
 }
 
-# 1–16 letters, digits or dashes, as the app takes them; never something that looks like a QA option.
+# 1-16 letters, digits or dashes, in lowercase as the app keeps them; never something that looks like a QA option.
 use_name() {
-  name=${1:-}
-  [[ "$name" =~ ^[A-Za-z0-9-]{1,16}$ && "$name" != --qa* ]] || die 64 "a QA name is 1-16 letters, digits or dashes, not '$name'"
+  name=$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')
+  [[ "$name" =~ ^[a-z0-9-]{1,16}$ && "$name" != --qa* ]] || die 64 "a QA name is 1-16 letters, digits or dashes, not '${1:-}'"
   folder="$root/$name"
 }
 
@@ -66,14 +68,35 @@ wait_for() {
   done
 }
 
+# Whether some process of Vortex runs as this run, with its name in any case.
+run_process_exists() {
+  ps -axo command= | grep -qiE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)"
+}
+
 # The run's process id, when it runs: from its ready marker, and only if that process is this run of Vortex.
 running_pid() {
   local marker="$folder/.qa/ready.json" pid
   [ -f "$marker" ] || return 1
   pid=$(plutil -extract pid raw -o - "$marker" 2>/dev/null) || return 1
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
-  ps -p "$pid" -o command= 2>/dev/null | grep -qE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)" || return 1
+  ps -p "$pid" -o command= 2>/dev/null | grep -qiE -- "/Contents/MacOS/Vortex .*--qa $name( |\$)" || return 1
   echo "$pid"
+}
+
+# The app the run runs now, from its ready marker; else the one that ran last in its folder.
+run_app() {
+  plutil -extract app raw -o - "$folder/.qa/ready.json" 2>/dev/null || cat "$folder/.qa/app" 2>/dev/null || true
+}
+
+# A run belongs to this checkout when its app is a copy inside it, or this checkout started it (QA_APP).
+check_own_run() {
+  local app
+  app=$(run_app)
+  [ "$other_checkout" = 1 ] && return 0
+  [ -z "$app" ] && return 0
+  case "$app" in "$repo"/*) return 0 ;; esac
+  [ "$(cat "$folder/.qa/checkout" 2>/dev/null || true)" = "$repo" ] && return 0
+  die 1 "the run $name runs $app, from another checkout: pick another name, or pass --other-checkout"
 }
 
 is_new_run() {
@@ -105,6 +128,7 @@ send() {
   done
   local pid
   pid=$(running_pid) || die 1 "the run $name is not running: scripts/qa start $name"
+  check_own_run
   local replies="$folder/.qa/replies"
   mkdir -p "$replies"
   local reply
@@ -132,8 +156,13 @@ cmd_build() {
   mkdir -p "$repo/build/qa/$run"
   ditto "$product" "$repo/build/qa/$run/Vortex.app"
   ln -sfn "$run" "$repo/build/qa/latest"
-  # The three newest copies stay; runs started from older ones keep running.
+  # The three newest copies stay, and so does any copy a process still runs.
+  local processes
+  processes=$(ps -axo command=)
   find "$repo/build/qa" -mindepth 1 -maxdepth 1 -type d -name '2*' | sort -r | tail -n +4 | while read -r old; do
+    if printf '%s\n' "$processes" | grep -qF -- "$old/Vortex.app/Contents/MacOS/Vortex"; then
+      continue
+    fi
     rm -rf -- "$old"
   done
   echo "$repo/build/qa/$run/Vortex.app"
@@ -147,20 +176,32 @@ cmd_start() {
   # The real path, so a newer build never changes the app under the run.
   app=$(cd "$app" && pwd -P)
   check_app "$app"
-  if pid=$(running_pid); then
-    die 1 "the run $name runs already (pid $pid)"
+  if pid=$(running_pid) || run_process_exists; then
+    die 1 "the run $name runs already (${pid:+pid $pid, }app $(run_app)): pick another name"
   fi
+  mkdir -p "$folder/.qa"
   rm -f "$folder/.qa/ready.json"
-  # In the background (-g), as a new process of its own through LaunchServices (-n).
-  open -n -g -a "$app" --args --qa "$name" "$@"
-  wait_for "the run $name to start" running_pid >/dev/null
-  echo "started $name: pid $(running_pid), data in $folder"
+  echo "$repo" > "$folder/.qa/checkout"
+  local log="$folder/.qa/launch.log"
+  : > "$log"
+  # In the background (-g), as a new process of its own through LaunchServices (-n); what it says on standard error,
+  # such as why it refused to start, lands in the log.
+  open -n -g --stderr "$log" -a "$app" --args --qa "$name" "$@"
+  local deadline=$((SECONDS + timeout)) started=$SECONDS
+  until running_pid >/dev/null; do
+    if [ $((SECONDS - started)) -ge 1 ] && ! run_process_exists; then
+      cat "$log" >&2
+      die 1 "the run $name did not start"
+    fi
+    [ "$SECONDS" -lt "$deadline" ] || die 2 "timed out after ${timeout}s waiting for the run $name to start"
+    sleep 0.1
+  done
+  echo "started $name: pid $(running_pid), app $app, data in $folder"
 }
 
 cmd_stop() {
   use_name "${1:-}"
-  local pid
-  if ! pid=$(running_pid); then
+  if ! running_pid >/dev/null; then
     echo "the run $name is not running"
     return
   fi
@@ -172,6 +213,7 @@ cmd_kill() {
   use_name "${1:-}"
   local pid
   pid=$(running_pid) || die 1 "the run $name is not running"
+  check_own_run
   kill -9 "$pid"
   wait_for "the run $name to end" is_gone "$pid"
   echo "killed $name (pid $pid)"
@@ -179,7 +221,7 @@ cmd_kill() {
 
 cmd_reset() {
   use_name "${1:-}"
-  if running_pid >/dev/null; then
+  if running_pid >/dev/null || run_process_exists; then
     die 1 "the run $name runs: scripts/qa stop $name first"
   fi
   if [ ! -e "$folder" ] && [ ! -L "$folder" ]; then
@@ -195,24 +237,29 @@ cmd_reset() {
   [ ! -L "$folder" ] || die 1 "$folder is a link: nothing deleted"
   real=$(cd "$folder" && pwd -P)
   [ "$real" = "$real_root/$name" ] || die 1 "$folder leads to $real: nothing deleted"
+  check_own_run
   rm -rf -- "$real"
   echo "deleted $real"
 }
 
 cmd_list() {
   [ -d "$root" ] || return 0
-  local entry
+  local entry pid
   for entry in "$root"/*; do
-    [[ -d "$entry" && "$(basename "$entry")" =~ ^[A-Za-z0-9-]{1,16}$ ]] || continue
+    [[ -d "$entry" && "$(basename "$entry")" =~ ^[a-z0-9-]{1,16}$ ]] || continue
     use_name "$(basename "$entry")"
     if pid=$(running_pid); then
-      echo "$name: running, pid $pid"
+      echo "$name: running, pid $pid, app $(run_app)"
     else
-      echo "$name: not running"
+      echo "$name: not running, last app $(run_app)"
     fi
   done
 }
 
+if [ "${1:-}" = "--other-checkout" ]; then
+  other_checkout=1
+  shift
+fi
 case "${1:-}" in
   build) cmd_build ;;
   start) shift; [ $# -ge 1 ] || usage; cmd_start "$@" ;;

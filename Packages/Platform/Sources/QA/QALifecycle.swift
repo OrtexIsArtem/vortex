@@ -30,6 +30,8 @@
         stop("the QA folder \(DataFolder.url.path) can't be made: \(error)")
       }
       launch = countLaunch()
+      // Kept after the run quits: scripts/qa reset deletes only the folder of a run its own checkout started.
+      try? Bundle.main.bundlePath.write(to: QAPaths.appFile, atomically: true, encoding: .utf8)
       QASimulation.load()
       do {
         let port = try QAIsolation.seedServerPort(in: DataFolder.url)
@@ -122,9 +124,15 @@
       return previous + 1
     }
 
-    /// scripts/qa waits for this file, with this process's id, before it sends commands.
+    /// scripts/qa waits for this file, with this process's id, before it sends commands. The app's path says which
+    /// checkout's build answers, so scripts/qa in another checkout leaves the run alone.
     private static func writeReadyMarker() {
-      let marker: [String: Any] = ["pid": Int(getpid()), "launch": launch, "name": QA.name ?? ""]
+      let marker: [String: Any] = [
+        "pid": Int(getpid()),
+        "launch": launch,
+        "name": QA.name ?? "",
+        "app": Bundle.main.bundlePath,
+      ]
       guard let data = try? JSONSerialization.data(withJSONObject: marker, options: [.sortedKeys]) else { return }
       try? data.write(to: QAPaths.readyFile, options: .atomic)
     }
