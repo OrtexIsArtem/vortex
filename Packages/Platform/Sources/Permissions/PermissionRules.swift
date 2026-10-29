@@ -3,7 +3,7 @@ import UserNotifications
 import VortexCore
 
 // The rules behind every status and request, apart from the system calls, so the live client and the simulated one
-// follow the same rules and tests check them. Facts and sources: .superpowers/sdd/onboarding/platform-facts.md.
+// follow the same rules and tests check them.
 
 extension PermissionStatus {
   /// Notifications, from `UNNotificationSettings.authorizationStatus`: allowed, also quietly (provisional), is
