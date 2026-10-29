@@ -31,7 +31,8 @@ struct ShellFeatureTests {
   ) -> TestStoreOf<ShellFeature> {
     var settings = ShellSettings()
     configure(&settings)
-    return TestStore(initialState: ShellFeature.State(settings: settings, features: features)) {
+    // The onboarding is done here; OnboardingFeatureTests and ShellOnboardingTests cover it.
+    return TestStore(initialState: ShellFeature.State(settings: settings, features: features, onboarding: .finished)) {
       ShellFeature()
     } withDependencies: {
       $0.continuousClock = clock
@@ -372,7 +373,6 @@ struct ShellFeatureTests {
     let holds = LockIsolated<[Bool]>([])
     let locks = LockIsolated<[Bool]>([])
     let store = makeStore()
-    store.dependencies.keyboardLockClient.hasAccess = { true }
     store.dependencies.keyboardLockClient.lock = { locks.withValue { $0.append(true) }; return true }
     store.dependencies.keyboardLockClient.unlock = { locks.withValue { $0.append(false) } }
     store.dependencies.windowClient.holdKeyboard = { isHeld in holds.withValue { $0.append(isHeld) } }
@@ -531,8 +531,15 @@ struct ShellFeatureTests {
   @Test
   func menuBarIconStaysOnWhileADisplayHasNoNotch() async {
     let store = makeStore { $0.showMenuBarIcon = false }
-    await store.send(.window(.screensChanged(everyScreenHasNotch: false))) { $0.everyScreenHasNotch = false }
-    await store.send(.window(.screensChanged(everyScreenHasNotch: true))) { $0.everyScreenHasNotch = true }
+    // Done's hint follows the screens too: the icon shows, and the notch display is still a way in (S75).
+    await store.send(.window(.screensChanged(everyScreenHasNotch: false))) {
+      $0.everyScreenHasNotch = false
+      $0.onboarding.doneHint.menuBarIcon = true
+    }
+    await store.send(.window(.screensChanged(everyScreenHasNotch: true))) {
+      $0.everyScreenHasNotch = true
+      $0.onboarding.doneHint.menuBarIcon = false
+    }
     await store.finish()
     #expect(menuBarIcon.value == [true, false])
   }
@@ -540,8 +547,14 @@ struct ShellFeatureTests {
   @Test
   func menuBarIconStaysOnWhileTheNotchCannotOpenVortex() async {
     let store = makeStore { $0.showMenuBarIcon = false }
-    await store.send(.binding(.set(\.settings.openOnHover, false))) { $0.settings.openOnHover = false }
-    await store.send(.binding(.set(\.settings.openOnClick, false))) { $0.settings.openOnClick = false }
+    await store.send(.binding(.set(\.settings.openOnHover, false))) {
+      $0.settings.openOnHover = false
+      $0.onboarding.doneHint.notch = .click
+    }
+    await store.send(.binding(.set(\.settings.openOnClick, false))) {
+      $0.settings.openOnClick = false
+      $0.onboarding.doneHint = .init(notch: nil, menuBarIcon: true)
+    }
     #expect(store.state.isMenuBarIconRequired)
     await clock.advance(by: .milliseconds(400))
     await store.finish()
@@ -559,6 +572,7 @@ struct ShellFeatureTests {
     #expect(applied.value == [.english])
   }
 
+  /// The launch no longer registers the login item by itself: Basics does, when the user leaves it (S13, S74).
   @Test
   func launchStartsFeaturesAndSetsUpTheShell() async {
     let firstLaunchSetUps = LockIsolated(0)
@@ -570,6 +584,8 @@ struct ShellFeatureTests {
     store.dependencies.launchAtLoginClient.status = { .enabled }
     store.dependencies.permissionsClient.updates = { .finished }
     store.dependencies.permissionPage.requests = { .finished }
+    store.dependencies.activeAppClient.activations = { .finished }
+    store.dependencies.activeAppClient.terminations = { .finished }
 
     await store.send(.task)
     await store.receive(\.launchAtLoginStatusLoaded) { $0.launchAtLogin = .enabled }
@@ -577,7 +593,7 @@ struct ShellFeatureTests {
     await store.finish()
     #expect(menuBarIcon.value == [true])
     #expect(featureSwitches.value == ["timer:true", "shelf:true", "tasks:false"])
-    #expect(firstLaunchSetUps.value == 1)
+    #expect(firstLaunchSetUps.value == 0)
   }
 
   @Test

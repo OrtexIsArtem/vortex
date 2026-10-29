@@ -269,6 +269,8 @@
 
     /// Registered windows, open or not, then any other window of the app that is up.
     static func windows() -> [[String: Any]] {
+      // A window that sits on a display shows up as a violation, and goes, before it is described.
+      QAWindowGuard.checkAll()
       var listed: [[String: Any]] = []
       var seen = Set<ObjectIdentifier>()
       for (id, entry) in QARegistry.windows.sorted(by: { $0.key < $1.key }) {

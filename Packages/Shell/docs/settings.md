@@ -2,7 +2,7 @@
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| Launch at login | on in release builds | System login item, not stored in settings.json |
+| Launch at login | on once Basics is left, on a fresh install | System login item, not stored in settings.json; Basics shows it on (an install that set it up before: the real state) and applies the user's choice on leaving, in release builds |
 | Language | system | System, Українська, English; needs a relaunch |
 | Theme | system | System, light, dark |
 | Open on hover | on | |

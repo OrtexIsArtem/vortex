@@ -8,6 +8,10 @@ import VortexPlatform
 @MainActor
 public final class ShellController: NSObject {
   private let store: StoreOf<ShellFeature>
+  /// The features' own onboarding steps, made once (S17).
+  private let onboardingSteps: [FeatureID: OnboardingStep]
+  private var continueSetupItem: NSMenuItem?
+  private var continueSetupObservation: ObserveToken?
   #if DEBUG
     private var qaReadiness: ObserveToken?
     private var isQAStarted = false
@@ -16,10 +20,18 @@ public final class ShellController: NSObject {
   override public init() {
     @Dependency(\.settingsClient) var settingsClient
     @Dependency(\.systemClient) var system
+    @Dependency(\.onboardingProgress) var onboardingProgress
+    var steps: [FeatureID: OnboardingStep] = [:]
+    for module in FeatureRegistry.all {
+      if let step = module.makeOnboardingStep() { steps[module.id] = step }
+    }
+    onboardingSteps = steps
     let state = ShellFeature.State(
       settings: settingsClient.load(),
       features: FeatureRegistry.all.map { $0.descriptor },
-      language: system.language()
+      language: system.language(),
+      onboarding: onboardingProgress.load(),
+      stepFeatures: Set(steps.keys)
     )
     store = Store(initialState: state) {
       ShellFeature()
@@ -28,7 +40,12 @@ public final class ShellController: NSObject {
   }
 
   public func start() {
+    #if DEBUG
+      // In a QA run, any window that lands on a display is a violation from here on, before the first one shows.
+      QA.guardWindows()
+    #endif
     WindowController.shared.install(content: ShellWindowView(store: store), menu: makeMenu())
+    installOnboarding()
     store.send(.task)
     #if DEBUG
       // A QA run takes commands only on its own channel, never the debug notifications every debug build answers.
@@ -86,6 +103,27 @@ public final class ShellController: NSObject {
     try? settingsClient.save(store.settings)
   }
 
+  /// The onboarding's window and guide panel, driven by the shell's store (S6, S15).
+  private func installOnboarding() {
+    let onboarding = store.scope(state: \.onboarding, action: \.onboarding)
+    let controller = OnboardingWindowController.shared
+    controller.install(
+      window: OnboardingView(store: onboarding, steps: onboardingSteps),
+      panel: GuidePanelView(store: onboarding)
+    )
+    controller.onClose = { [store] in store.send(.onboarding(.closeTapped)) }
+    controller.onEscape = { [store] in store.send(.onboarding(.escapePressed)) }
+    controller.onQuit = { [store] in store.send(.quitButtonTapped) }
+    // «Продовжити налаштування» shows whenever the onboarding isn't completed, blocked or not (S10, S69).
+    continueSetupObservation = observe { [weak self] in
+      guard let self else { return }
+      self.continueSetupItem?.isHidden = self.store.onboarding.progress.completed
+    }
+    #if DEBUG
+      if QA.isActive { OnboardingQA.install(store: store) }
+    #endif
+  }
+
   /// Menu of the menu bar icon, shown on right click. Each item has an identifier, which QA's `entry kind=menu item=…`
   /// names.
   private func makeMenu() -> NSMenu {
@@ -95,11 +133,18 @@ public final class ShellController: NSObject {
       item.target = self
       item.identifier = NSUserInterfaceItemIdentifier(id)
     }
+    add(String(localized: "Continue setup", bundle: .module), #selector(continueSetupFromMenu), key: "", id: "continueSetup")
+    continueSetupItem = menu.items.last
+    continueSetupItem?.isHidden = store.onboarding.progress.completed
     add(String(localized: "Open Vortex", bundle: .module), #selector(openFromMenu), key: "", id: "open")
     add(String(localized: "Settings…", bundle: .module), #selector(openSettingsFromMenu), key: ",", id: "settings")
     menu.addItem(.separator())
     add(String(localized: "Quit Vortex", bundle: .module), #selector(quitFromMenu), key: "q", id: "quit")
     return menu
+  }
+
+  @objc private func continueSetupFromMenu() {
+    store.send(.onboarding(.continueSetupTapped))
   }
 
   @objc private func openFromMenu() {

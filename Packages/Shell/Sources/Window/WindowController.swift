@@ -36,8 +36,8 @@ enum WindowEvent: Equatable, Sendable {
   case outsideActivityChanged(isActive: Bool)
   case clickedOutside
   case escapePressed
-  /// Sent when the events start and whenever displays change.
-  case screensChanged(everyScreenHasNotch: Bool)
+  /// Sent when the events start and whenever displays change. `anyScreenHasNotch`: some display has one.
+  case screensChanged(everyScreenHasNotch: Bool, anyScreenHasNotch: Bool = true)
 }
 
 /// Owns everything Vortex puts on screen: the closed notch with its ears, the window that grows out of the
@@ -147,7 +147,7 @@ final class WindowController: NSObject {
     finishEvents()
     emit = { continuation.yield($0) }
     finishEvents = { continuation.finish() }
-    continuation.yield(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
+    continuation.yield(.screensChanged(everyScreenHasNotch: everyScreenHasNotch, anyScreenHasNotch: anyScreenHasNotch))
     if isQA {
       qaHasEventsSubscriber = true
       qaOnEventsSubscribed?()
@@ -160,6 +160,13 @@ final class WindowController: NSObject {
       if isQA { return QA.screens.allSatisfy { $0 == .notch } }
     #endif
     return NSScreen.screens.allSatisfy { $0.notchRect != nil }
+  }
+
+  private var anyScreenHasNotch: Bool {
+    #if DEBUG
+      if isQA { return QA.screens.contains(.notch) }
+    #endif
+    return NSScreen.screens.contains { $0.notchRect != nil }
   }
 
   // MARK: - Window
@@ -539,7 +546,7 @@ final class WindowController: NSObject {
     rebuildEars()
     // An alarm that waited for a notch flashes on the one that came back.
     startAlarmIfUnseen()
-    emit(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
+    emit(.screensChanged(everyScreenHasNotch: everyScreenHasNotch, anyScreenHasNotch: anyScreenHasNotch))
   }
 
   // MARK: - Menu bar icon
@@ -629,7 +636,7 @@ final class WindowController: NSObject {
 
     /// The pretended displays changed, as when one is connected or disconnected.
     func qaScreensChanged() {
-      emit(.screensChanged(everyScreenHasNotch: everyScreenHasNotch))
+      emit(.screensChanged(everyScreenHasNotch: everyScreenHasNotch, anyScreenHasNotch: anyScreenHasNotch))
     }
   }
 #endif

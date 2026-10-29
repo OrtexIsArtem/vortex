@@ -137,6 +137,14 @@
       QALifecycle.bootstrap()
     }
 
+    /// Call when the shell starts, before it creates any window: from then on any window of the run that shows on a
+    /// display is a violation, and is ordered out. Checks the windows already up. Does nothing outside QA mode.
+    @MainActor
+    public static func guardWindows() {
+      guard isActive else { return }
+      QAWindowGuard.install()
+    }
+
     /// Call once the shell has put its window up and registered its commands: starts listening for commands and
     /// tells scripts/qa the run is ready.
     @MainActor

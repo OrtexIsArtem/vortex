@@ -22,6 +22,8 @@ public struct Hotkey: Hashable, Sendable {
 public struct HotkeyClient: Sendable {
   /// Every press of the shortcut. Ending the stream stops listening.
   public var presses: @Sendable (_ hotkey: Hotkey) -> AsyncStream<Void> = { _ in .finished }
+  /// The keys the user recorded for the shortcut, as the menus show them ("⌥⌘V"); nil while none is set.
+  public var shortcut: @Sendable (_ hotkey: Hotkey) async -> String? = { _ in nil }
 }
 
 extension HotkeyClient: DependencyKey {
@@ -37,6 +39,9 @@ extension HotkeyClient: DependencyKey {
         }
         continuation.onTermination = { _ in listener.cancel() }
       }
+    },
+    shortcut: { hotkey in
+      await MainActor.run { KeyboardShortcuts.getShortcut(for: hotkey.shortcutName)?.description }
     }
   )
 

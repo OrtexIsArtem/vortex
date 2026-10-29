@@ -417,7 +417,6 @@ struct QAClientsTests {
   func theKeyboardLockIsNeverATap() async {
     let lock = KeyboardLockClient.qa
     QAPermissions.simulated.set(.accessibility, to: .denied)
-    #expect(!lock.hasAccess())
     #expect(await !lock.lock())
     QAPermissions.simulated.set(.accessibility, to: .granted)
     #expect(await lock.lock())

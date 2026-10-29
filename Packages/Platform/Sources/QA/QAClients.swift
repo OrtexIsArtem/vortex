@@ -165,17 +165,17 @@
     static let qa: HotkeyClient = {
       var client = HotkeyClient()
       client.presses = { hotkey in QASystem.shared.presses(hotkey.name) }
+      // No shortcut is ever recorded in a run: the shared defaults may hold the user's.
+      client.shortcut = { _ in nil }
       return client
     }()
   }
 
   extension KeyboardLockClient {
     /// Never a real event tap: the lock holds while the simulated Accessibility is on in System Settings (`perm`), as
-    /// a tap works exactly then, and `keyboardLockRefuses` is off; asking for access shows nothing.
+    /// a tap works exactly then, and `keyboardLockRefuses` is off.
     static let qa: KeyboardLockClient = {
       var client = KeyboardLockClient()
-      client.hasAccess = { QAPermissions.accessibilityIsOn }
-      client.requestAccess = { QALog.record("keyboardLock", "requestAccess", ["shown": "nothing"]) }
       client.lock = {
         let isLocked = QAPermissions.accessibilityIsOn && !simulation.keyboardLockRefuses
         QALog.record("keyboardLock", "lock", ["locked": "\(isLocked)"])
@@ -234,6 +234,7 @@
         }
         QALog.record("launchAtLogin", "enableOnFirstLaunch", ["registered": "yes"])
       }
+      client.isSetUp = { simulation.launchAtLoginSetUp }
       client.openSystemSettings = { QALog.record("launchAtLogin", "openSystemSettings") }
       return client
     }()
