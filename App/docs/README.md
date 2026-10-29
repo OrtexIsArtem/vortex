@@ -5,7 +5,7 @@ Entry point only: main.swift starts AppKit with AppDelegate, which creates `Shel
 Debug builds outside QA mode can be driven by scripts without touching the pointer, through distributed notifications:
 - `io.github.ortexisartem.vortex.debug.toggle` — open or close the window, as the shortcut does;
 - `io.github.ortexisartem.vortex.debug.indicator` — show or hide a test indicator in the notch;
-- `io.github.ortexisartem.vortex.debug.permissions` — ask now for Screen Recording and Automation of the running browsers;
+- `io.github.ortexisartem.vortex.debug.permissions` — ask now for Automation of the running browsers (Screen Recording has its page);
 - `io.github.ortexisartem.vortex.debug.tab` — switch to a tab (userInfo `id`; `settings` takes a `section`);
 - features add their own: Tasks drives a capture with `…taskCapture`, `…taskCaptureImage`, `…taskFrame`, `…taskSave` and more, listed in TasksModule.
 
@@ -28,5 +28,6 @@ A debug build started with `--qa <name>` (1–16 letters, digits or dashes) runs
 - Nothing shows: no menu bar icon or ears, windows off the displays (a task's whole screen too), never in front, no global monitors. No window can take the keyboard: each window class checks `QA.allowsKeyWindows` in `canBecomeKey`, and one that becomes key anyway is ordered out.
 - Built in: `state [path=]`, `snapshot window=<id> path=<png>` (drawn by the app with `cacheDisplay`), `relaunch`, `quit`, `help`, `app activate=|quit=|frames=<bundle id>:<x,y,w,h;…>`, `sim [set k=v…|copy text=…|press notification= button=|shell match= exit= [stdout= stderr= delay= echo=true]|shell clear]`; a script whose delay reaches the command's time limit ends as the live client ends it: exit 143, timed out.
 - The shell adds `entry kind=hover [ear=]|leave|ear id=|notch|menubar|menu item=open|settings|quit|hotkey id=|pointer inside=|outside|escape|drag|drop file=|open file=`, `tab id= [section=]`, `keyboard press=start|stop`, `screens set=`, `indicator`; features add theirs with `QA.register(command:)`, `QA.registerState(section:)` and `QA.registerWindow(id:)`, and give menu items an identifier.
+- macOS permissions are `SimulatedPermissions`, kept in `.qa/permissions.json` and seen as after a relaunch at each start: `perm set=<p>:<notAsked|denied|granted>[,…]`, `answer=<p>:<allow|deny|ignore>`, `toggle=<p>:<on|off>`, `liveScreenRecording=`, `pasteboardAsks=`, `refresh`, `required=<p>,…` (empty: none; kept in `.qa/required.json`), `quitReopen` (System Settings' «Quit & Reopen»). `state` section `permissions`: the statuses read, the simulation and its events, and each enabled feature's marks (control, sidebar, settings). Presses: `tasks press=plus|turnOn|restart`, `timer|clipboard|keys press=turnOn|restart`.
 - `state` lists violations: a window on a display, Vortex in front, a window with the keyboard, a call the simulation lacks. Files are written only inside the run's folder or a temporary one; `reset` deletes only inside "Vortex QA".
 - Safety: `scripts/qa` starts only `make build` copies (bundle id ….check), through LaunchServices in the background. Never post `…debug.*`; never touch the user's Vortex, its data or its port.

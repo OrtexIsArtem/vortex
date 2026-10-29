@@ -22,7 +22,7 @@
       launchAtLoginClient = .qa
       notificationClient = .qa
       pasteboardClient = .qa
-      permissionsClient = .simulated(SimulatedPermissions())
+      permissionsClient = QAPermissions.client
       quickLookClient = .qa
       screenCaptureClient = .qa
       soundClient = .qa
@@ -287,11 +287,12 @@
   }
 
   extension ScreenCaptureClient {
-    /// A capture sees fixtures/screen.png, or a plain picture, as the main display; only with `screenAccess` on.
+    /// A capture sees fixtures/screen.png, or a plain picture, as the main display; only while the simulated Screen
+    /// Recording works for this process (`QAPermissions.screenCaptureWorks`).
     static let qa: ScreenCaptureClient = {
       var client = ScreenCaptureClient()
       client.captureScreenUnderPointer = {
-        guard simulation.screenAccess else {
+        guard QAPermissions.screenCaptureWorks else {
           QALog.record("screenCapture", "capture", ["result": "no access"])
           throw QAError("Screen Recording is off in the simulation")
         }

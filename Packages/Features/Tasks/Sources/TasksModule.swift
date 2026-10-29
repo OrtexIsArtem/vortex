@@ -38,13 +38,32 @@ public enum TasksModule: FeatureModule {
       screenOverlay = TaskScreenOverlay(store: store)
       #if DEBUG
         // A QA run takes commands only on its own channel (VortexPlatform's `QA`).
-        if !QA.isActive { listenForDebugCommands() }
+        if QA.isActive { registerQACommands() } else { listenForDebugCommands() }
       #endif
     }
     store.send(isEnabled ? .start : .stop)
   }
 
   #if DEBUG
+    /// QA mode: `tasks press=plus` clicks «+» (or the "New task" shortcut: `entry kind=hotkey id=captureTask`), and
+    /// `press=turnOn|restart` presses the Screen Recording row in the settings.
+    private static func registerQACommands() {
+      QA.register(command: "tasks") { arguments in
+        if arguments["press"] == "plus" {
+          store.send(.captureRequested)
+          return
+        }
+        let pressed = try QAPermissions.pressRow(
+          arguments,
+          needs: permissionNeeds,
+          statuses: store.permissionStatuses,
+          turnOn: { store.send(.turnOnTapped($0)) },
+          restart: { store.send(.restartTapped) }
+        )
+        guard pressed else { throw QAError("tasks takes press=plus, press=turnOn or press=restart") }
+      }
+    }
+
     /// Lets scripts drive a capture in a debug build, through distributed notifications:
     /// `io.github.ortexisartem.vortex.debug.taskCapture` presses the shortcut,
     /// `…taskFrame` draws a frame (userInfo `x`, `y`, `width`, `height` in points from the screen's top left),
