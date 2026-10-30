@@ -1,0 +1,6 @@
+// The app's identity and signing. Override them in Config/Local.xcconfig, which git ignores:
+// copy Local.xcconfig.example there and put your own team in it.
+PRODUCT_BUNDLE_IDENTIFIER = io.github.ortexisartem.vortex
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

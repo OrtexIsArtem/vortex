@@ -1,0 +1,7 @@
+// Copy this file to Config/Local.xcconfig (git ignores it) and fill it in.
+
+// Your Apple developer team ID: Xcode › Settings › Accounts. A free Personal Team works.
+DEVELOPMENT_TEAM = ABCDE12345
+
+// A bundle id of your own, if Xcode says this one belongs to another team.
+// PRODUCT_BUNDLE_IDENTIFIER = com.example.vortex

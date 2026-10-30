@@ -11,5 +11,12 @@ build/
 .build/
 .swiftpm/
 
-# Local notes for Claude, not shared
+# Local only, never published
 CLAUDE.local.md
+# Signing: each developer's own team (see Config/Local.xcconfig.example)
+Config/Local.xcconfig
+# Private planning and process notes (the root docs/ only; module docs stay public)
+/docs/
+# Agent workspaces and worktrees
+.superpowers/
+.claude/
