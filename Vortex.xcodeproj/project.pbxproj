@@ -16,6 +16,7 @@
 /* Begin PBXFileReference section */
 		08D820EFEBD8985D1741A7E5 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		22BC3AEFE278CAB1429A2B0E /* Vortex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vortex.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4EFAB82B66A2A8BF5B773BFD /* Vortex.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Vortex.xcconfig; sourceTree = "<group>"; };
 		66BC97C8411DEA204D599C3D /* Packages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Packages; path = Packages; sourceTree = SOURCE_ROOT; };
 		D333C57DF64394ECC7341A50 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E5C80B0DB8C2376DE1C7C01F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -37,6 +38,7 @@
 			isa = PBXGroup;
 			children = (
 				E692AEE1F55A7855730DB7EA /* App */,
+				C2C37D68CE0348F41EB12B40 /* Config */,
 				AAC9703639C1EC36FE915577 /* Packages */,
 				4F2CACCCB9118181BAD11E49 /* Products */,
 			);
@@ -56,6 +58,14 @@
 				66BC97C8411DEA204D599C3D /* Packages */,
 			);
 			path = Packages;
+			sourceTree = "<group>";
+		};
+		C2C37D68CE0348F41EB12B40 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				4EFAB82B66A2A8BF5B773BFD /* Vortex.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		C6237923FCF5756C2AB4F0D1 /* Resources */ = {
@@ -194,13 +204,13 @@
 /* Begin XCBuildConfiguration section */
 		03221DB18AB3AAFFA831A87E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4EFAB82B66A2A8BF5B773BFD /* Vortex.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Vortex.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -215,7 +225,6 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.ortexisartem.vortex;
 				PRODUCT_NAME = Vortex;
 				SDKROOT = macosx;
 			};
@@ -281,13 +290,13 @@
 		};
 		B2B09D41CA4C0BF3A13C2336 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4EFAB82B66A2A8BF5B773BFD /* Vortex.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Vortex.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -302,7 +311,6 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.ortexisartem.vortex;
 				PRODUCT_NAME = Vortex;
 				SDKROOT = macosx;
 			};
