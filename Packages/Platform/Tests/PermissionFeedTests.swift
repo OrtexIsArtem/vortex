@@ -45,7 +45,7 @@ struct PermissionFeedTests {
     try await Task.sleep(for: .milliseconds(100))
   }
 
-  // MARK: R1: listeners never stay behind
+  // MARK: Listeners never stay behind
 
   @Test
   func aConsumerThatStopsLeavesNoListenerHoweverItStops() async {
@@ -67,7 +67,7 @@ struct PermissionFeedTests {
     }
   }
 
-  // MARK: R2: the read loop
+  // MARK: The read loop
 
   /// A read that finds what the last one found tells nobody.
   @Test

@@ -44,7 +44,7 @@
       #expect(mac.statuses[.notifications] == .granted)
     }
 
-    /// An ignored banner leaves notifications undetermined, and macOS shows its prompt only once (S48).
+    /// An ignored banner leaves notifications undetermined, and macOS shows its prompt only once.
     @Test
     func anIgnoredNotificationPromptNeverShowsAgain() {
       let mac = SimulatedPermissions()
@@ -90,7 +90,7 @@
     }
 
     /// Listed already but never asked in Vortex's memory, as after an upgrade or a reinstall: macOS shows nothing, so
-    /// the pane opens and the first click is never dead (S67).
+    /// the pane opens and the first click is never dead.
     @Test
     func aListedAppsFirstRequestOpensThePane() {
       for permission in [Permission.accessibility, .screenRecording] {
@@ -136,7 +136,7 @@
       #expect(mac.statuses[.screenRecording] == .granted)
     }
 
-    /// Without a request of Vortex's own the probe never runs (S58): the grant counts after a relaunch, or a request.
+    /// Without a request of Vortex's own the probe never runs: the grant counts after a relaunch, or a request.
     @Test
     func screenRecordingTurnedOnWithoutARequestCountsAfterARelaunchOrARequest() {
       let mac = SimulatedPermissions()

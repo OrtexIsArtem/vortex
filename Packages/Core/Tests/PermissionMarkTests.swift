@@ -2,7 +2,7 @@ import Testing
 
 @testable import VortexCore
 
-/// Where a permission shows in a feature (S22, S40): yellow only while off, ↻ without yellow, nothing before the first
+/// Where a permission shows in a feature: yellow only while off, ↻ without yellow, nothing before the first
 /// read or once it works.
 struct PermissionMarkTests {
   @Test

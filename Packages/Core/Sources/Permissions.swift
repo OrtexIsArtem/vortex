@@ -1,12 +1,12 @@
 import ComposableArchitecture
 import Foundation
 
-/// A macOS permission that some part of Vortex needs (S29). Features declare theirs in `FeatureModule.permissionNeeds`;
+/// A macOS permission that some part of Vortex needs. Features declare theirs in `FeatureModule.permissionNeeds`;
 /// the shell reads every status from macOS and keeps them in `@Shared(.permissionStatuses)`.
 public enum Permission: String, CaseIterable, Codable, Sendable {
   case notifications, accessibility, screenRecording, pasteboard
 
-  /// Its name, as System Settings shows it (S32).
+  /// Its name, as System Settings shows it.
   public var title: LocalizedStringResource {
     switch self {
     case .notifications: LocalizedStringResource("Notifications", bundle: .atURL(Bundle.module.bundleURL))
@@ -26,7 +26,7 @@ public enum Permission: String, CaseIterable, Codable, Sendable {
     self == .notifications
   }
 
-  /// What its warning says, as a tooltip and to VoiceOver (S32, S39): "Notifications are off".
+  /// What its warning says, as a tooltip and to VoiceOver: "Notifications are off".
   public var offLabel: LocalizedStringResource {
     switch self {
     case .notifications: LocalizedStringResource("Notifications are off", bundle: .atURL(Bundle.module.bundleURL))
@@ -40,7 +40,7 @@ public enum Permission: String, CaseIterable, Codable, Sendable {
 /// A dictionary keyed by permission encodes as an object, `{"accessibility": "granted"}`, not as a list of pairs.
 extension Permission: CodingKeyRepresentable {}
 
-/// What macOS says about a permission (S1).
+/// What macOS says about a permission.
 public enum PermissionStatus: String, Codable, Sendable {
   /// Not asked, denied, or unknown.
   case notGranted
@@ -51,11 +51,11 @@ public enum PermissionStatus: String, Codable, Sendable {
   /// macOS doesn't ask for it on this system, as for the pasteboard on macOS 26.4. Hidden everywhere.
   case notNeeded
 
-  /// The checkbox shows on (S2).
+  /// The checkbox shows on.
   public var isOn: Bool { self == .granted || self == .grantedAfterRestart }
 }
 
-/// A permission a feature needs, with the reason the user reads next to it (S33).
+/// A permission a feature needs, with the reason the user reads next to it.
 public struct PermissionNeed: Equatable, Sendable {
   public var permission: Permission
   /// One short line from the feature's own bundle: `LocalizedStringResource("…", bundle: .atURL(Bundle.module.bundleURL))`.
@@ -75,7 +75,7 @@ extension SharedReaderKey where Self == InMemoryKey<[Permission: PermissionStatu
 }
 
 extension SharedReaderKey where Self == InMemoryKey<Bool>.Default {
-  /// Vortex is blocked (S9, S43): a permission that is required, and needed by an enabled feature or the shell, reads
+  /// Vortex is blocked: a permission that is required, and needed by an enabled feature or the shell, reads
   /// `notGranted`. Written only by the shell; false until the first read. While it is true, a feature's own shortcut
   /// opens the shell's page with `permissionPage` instead of doing its work.
   public static var appBlocked: Self {
@@ -83,7 +83,7 @@ extension SharedReaderKey where Self == InMemoryKey<Bool>.Default {
   }
 }
 
-/// Opens the shell's page for one permission (S24). Features call it instead of asking macOS.
+/// Opens the shell's page for one permission. Features call it instead of asking macOS.
 ///
 /// The live `open` leaves the request in a channel inside the app, and the shell takes the requests out with
 /// `requests()` from launch on: feature stores are not children of the shell's store, and Core can't import the shell.

@@ -44,7 +44,7 @@ struct RelaunchTests {
   }
 }
 
-/// Which quits bring Vortex back by itself: only the one System Settings asks for after «Quit & Reopen» (S20).
+/// Which quits bring Vortex back by itself: only the one System Settings asks for after «Quit & Reopen».
 struct QuitRequestTests {
   @Test
   func systemSettingsQuitReopens() {

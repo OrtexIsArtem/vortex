@@ -88,7 +88,7 @@ enum Relaunch {
 /// A permission that works only after a relaunch, such as Screen Recording, makes System Settings offer «Quit & Reopen».
 /// System Settings then quits Vortex with a Quit Apple event and opens it again about 3 s after it exits, but only while
 /// System Settings itself still runs: closed before that, Vortex stays quit. So for that quit Vortex opens itself again
-/// (`SystemClient.reopenAfterQuit`); `open` leaves a Vortex that System Settings opened first as it is (S20).
+/// (`SystemClient.reopenAfterQuit`); `open` leaves a Vortex that System Settings opened first as it is.
 public enum QuitRequest {
   /// System Settings' bundle id.
   public static let systemSettings = "com.apple.systempreferences"

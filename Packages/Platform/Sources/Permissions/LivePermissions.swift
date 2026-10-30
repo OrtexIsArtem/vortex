@@ -5,8 +5,8 @@ import ScreenCaptureKit
 import UserNotifications
 import VortexCore
 
-/// The live statuses: read from macOS without ever prompting (S5), through `PermissionFeed`, and read again on the
-/// signals that may change them from the first listener on (S3). Nothing here runs under `swift test`:
+/// The live statuses: read from macOS without ever prompting, through `PermissionFeed`, and read again on the
+/// signals that may change them from the first listener on. Nothing here runs under `swift test`:
 /// UNUserNotificationCenter needs an app bundle.
 enum LivePermissions {
   typealias Statuses = [Permission: PermissionStatus]
@@ -22,7 +22,7 @@ enum LivePermissions {
     return feed.updates()
   }
 
-  /// Asks for a permission (S4, S48, S67): macOS's own prompt the first time, its pane in System Settings after that,
+  /// Asks for a permission: macOS's own prompt the first time, its pane in System Settings after that,
   /// or at once when macOS shows nothing. Returns without waiting for the user's answer.
   static func request(_ permission: Permission) async {
     let asked = AskedPermissions.inDataFolder
@@ -82,7 +82,7 @@ enum LivePermissions {
   // MARK: - Signals
 
   /// Reads again on macOS's permission-change signal, after Accessibility's own one, and whenever an app becomes
-  /// active, Vortex included (S3). Set up once, for the life of the app.
+  /// active, Vortex included. Set up once, for the life of the app.
   private static let watching: Void = {
     // tccd posts it after every change of a privacy permission. It says only that something changed.
     CFNotificationCenterAddObserver(
@@ -165,7 +165,7 @@ enum LivePermissions {
   }
 
   /// Calls macOS's request for Accessibility or Screen Recording, without waiting for the answer, and tells whether
-  /// macOS's alert or System Settings came up within about 1.5 s (S67): launched or activated meanwhile, or, at the
+  /// macOS's alert or System Settings came up within about 1.5 s: launched or activated meanwhile, or, at the
   /// end, a window of the alert app on screen.
   private static func promptComesUp(for permission: Permission) async -> Bool {
     let (apps, continuation) = AsyncStream.makeStream(of: String.self)
@@ -203,7 +203,7 @@ enum LivePermissions {
   }
 
   /// Calls macOS's request for notifications. `requestAuthorization` waits for the answer while its prompt shows, and
-  /// returns at once when macOS shows nothing, as after a prompt that was never answered (S48): then nothing came up.
+  /// returns at once when macOS shows nothing, as after a prompt that was never answered: then nothing came up.
   private static func notificationsPromptComesUp() async -> Bool {
     let returned: Void? = await Deadline.result(within: .seconds(1)) {
       _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])

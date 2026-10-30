@@ -18,8 +18,8 @@ public struct LaunchAtLoginClient: Sendable {
   /// Turns launch at login on once in a release build, unless it was set up before: the onboarding calls it when the
   /// user leaves Basics with the switch untouched. Debug builds never register themselves and do not use it up.
   public var enableOnFirstLaunch: @Sendable () async -> Void
-  /// Whether `enableOnFirstLaunch` set the login item up before, as every release build before stage 7 did at its
-  /// first launch. Asks nothing.
+  /// Whether `enableOnFirstLaunch` set the login item up before, as every release build without the onboarding did
+  /// at its first launch. Asks nothing.
   public var isSetUp: @Sendable () async -> Bool = { false }
   public var openSystemSettings: @Sendable () async -> Void
 }

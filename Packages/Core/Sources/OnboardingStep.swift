@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// A feature's own onboarding page (S17), shown after the permission pages. The shell asks for it with
+/// A feature's own onboarding page, shown after the permission pages. The shell asks for it with
 /// `FeatureModule.makeOnboardingStep()` and hosts the view; the onboarding offers Skip until the feature marks the step
 /// done in `@Shared(.onboardingStepsDone)`.
 public struct OnboardingStep {

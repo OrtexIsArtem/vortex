@@ -34,11 +34,11 @@ enum PasteboardAccess: String, Codable, Sendable {
   case `default`, ask, alwaysAllow, alwaysDeny
 }
 
-/// One step of a request (S4).
+/// One step of a request.
 enum PermissionRequestStep: Equatable, Sendable {
   /// macOS's own prompt, then the pane if macOS shows nothing (`PromptWatch`): it doesn't for an app it lists already,
   /// as after an upgrade, a reinstall or with another build, nor for notifications it asked about once, and the click
-  /// would otherwise do nothing (S67, S48).
+  /// would otherwise do nothing.
   case promptOrSettings
   /// The permission's pane in System Settings.
   case openSettings
@@ -46,13 +46,13 @@ enum PermissionRequestStep: Equatable, Sendable {
 
 extension Permission {
   /// What a request does: macOS's own prompt the first time, the pane in System Settings after that, never both on a
-  /// first request (S4, S48, S67). `askedBefore`: Vortex requested this permission before (`AskedPermissions`).
+  /// first request. `askedBefore`: Vortex requested this permission before (`AskedPermissions`).
   /// `notificationsDetermined`: the user has answered macOS about notifications, either way.
   func requestSteps(askedBefore: Bool, notificationsDetermined: Bool) -> [PermissionRequestStep] {
     switch self {
     case .notifications:
       // A second request may show nothing, as an unanswered prompt keeps it undetermined: the pane then, whatever the
-      // status (S48).
+      // status.
       askedBefore || notificationsDetermined ? [.openSettings] : [.promptOrSettings]
     case .accessibility, .screenRecording:
       askedBefore ? [.openSettings] : [.promptOrSettings]
@@ -81,7 +81,7 @@ extension Permission {
   }
 }
 
-/// The permissions Vortex has requested, kept in DataFolder/permissions.json (S67), so QA mode's own data folder and
+/// The permissions Vortex has requested, kept in DataFolder/permissions.json, so QA mode's own data folder and
 /// its resets cover it: macOS can't tell "not asked" from "denied", and a request after the first one opens System
 /// Settings instead of the prompt. A file that is missing or can't be read counts as no request.
 struct AskedPermissions: Sendable {
@@ -121,7 +121,7 @@ struct AskedPermissions: Sendable {
   }
 }
 
-/// Whether macOS showed something after a request: if not, the request opens the pane (S48, S67).
+/// Whether macOS showed something after a request: if not, the request opens the pane.
 enum PromptWatch {
   /// The app that shows macOS's alert for Accessibility, Screen Recording and Input Monitoring (macOS 26.4,
   /// /System/Library/PrivateFrameworks/UniversalAccess.framework/…/universalAccessAuthWarn.app).
@@ -162,7 +162,7 @@ enum PromptWatch {
   }
 
   /// Notifications: `requestAuthorization` waits for the answer while its prompt shows. Back within about 1 s with
-  /// macOS still undetermined, it showed nothing (S48).
+  /// macOS still undetermined, it showed nothing.
   static func notificationsShowedNothing(returnedQuickly: Bool, authorization: UNAuthorizationStatus) -> Bool {
     returnedQuickly && authorization == .notDetermined
   }
@@ -232,7 +232,7 @@ enum WindowTitles: Equatable, Sendable {
 /// launch, so after launch a grant shows as other apps' titles becoming visible, confirmed by one probe with
 /// ScreenCaptureKit, which tells whether capture works now or only after a relaunch.
 ///
-/// The probe runs only after Vortex itself has requested Screen Recording (S58): it prompts if Vortex isn't listed,
+/// The probe runs only after Vortex itself has requested Screen Recording: it prompts if Vortex isn't listed,
 /// and titles alone must never lead to a prompt, should macOS ever show them without the permission. Until then,
 /// titles leave a `notGranted` status as it is; the grant shows after a relaunch, or after a request.
 struct ScreenRecordingDetector: Equatable, Sendable {

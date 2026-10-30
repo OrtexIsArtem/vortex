@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The yellow warning of a permission that is off (S22): a triangle next to a control or in a settings row, or a dot on
+/// The yellow warning of a permission that is off: a triangle next to a control or in a settings row, or a dot on
 /// a feature's icon in the sidebar. Given the permission, it says "Notifications are off" as a tooltip and to VoiceOver
 /// (`Permission.offLabel`); without one, VoiceOver reads "Needs a permission".
 public struct WarningMark: View {

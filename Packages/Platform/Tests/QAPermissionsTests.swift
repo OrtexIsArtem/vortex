@@ -66,7 +66,7 @@
       #expect(restarts == 1)
       #expect(throws: QAError.self) { try press(["press": "turnOn", "permission": "accessibility"], [.accessibility: .notGranted]) }
       #expect(try press(["press": "other"], [:]) == false)
-      // Settings › Features isn't showing: refused, whatever the row would show (R7).
+      // Settings › Features isn't showing: refused, whatever the row would show.
       #expect(throws: QAError.self) { try press(["press": "turnOn"], [.notifications: .notGranted], showing: false) }
       #expect(opened == [.notifications])
       // Before the shell says what shows, nothing does.

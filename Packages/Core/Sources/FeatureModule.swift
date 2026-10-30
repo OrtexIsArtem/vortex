@@ -31,11 +31,11 @@ public protocol FeatureModule {
   static func setEnabled(_ isEnabled: Bool)
   /// Files given to Vortex outside the feature's tab, see `acceptsFileDrops`. The window stays as it is.
   static func receiveFiles(_ urls: [URL])
-  /// The macOS permissions the feature needs, each with the reason the user reads next to it (S29, S33). While the
+  /// The macOS permissions the feature needs, each with the reason the user reads next to it. While the
   /// feature is on, the onboarding asks for them; the feature itself never asks macOS, it opens the shell's page with
   /// `@Dependency(\.permissionPage)`.
   static var permissionNeeds: [PermissionNeed] { get }
-  /// The feature's own page in the onboarding, after the permission pages (S17), if it has one.
+  /// The feature's own page in the onboarding, after the permission pages, if it has one.
   static func makeOnboardingStep() -> OnboardingStep?
 }
 

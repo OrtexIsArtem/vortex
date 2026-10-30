@@ -109,7 +109,7 @@ public enum ScreenCaptureError: Error, Equatable {
 
 /// Screenshots of a whole display. They need the Screen Recording permission, which also reveals other apps' window
 /// titles. Its status and the request live in `PermissionsClient`: a feature checks `permissionStatuses` before it
-/// captures and opens the shell's page instead of asking (S25).
+/// captures and opens the shell's page instead of asking.
 @DependencyClient
 public struct ScreenCaptureClient: Sendable {
   /// The display under the pointer as it looks now, without Vortex's own windows.

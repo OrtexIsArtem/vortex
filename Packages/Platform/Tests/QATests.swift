@@ -207,7 +207,7 @@ struct QASimulationTests {
 
     let before = simulation
     #expect(throws: QAError.self) { try simulation.set(["keyboardLockRefuses": "yes"]) }
-    // Gone: the simulated permissions (`perm`) are the one source of truth (R10).
+    // Gone: the simulated permissions (`perm`) are the one source of truth.
     for key in ["keyboardAccess", "screenAccess", "notificationsAllowed"] {
       #expect(throws: QAError.self) { try simulation.set([key: "true"]) }
     }

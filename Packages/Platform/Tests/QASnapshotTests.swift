@@ -5,7 +5,7 @@
   @testable import VortexPlatform
 
   /// QA's snapshots show what Core Animation tints with a `multiplyColor` filter in that tint, exactly where and as much
-  /// as the screen shows it: clipped, scrolled out, covered or faded like any other layer (B-B3, N3).
+  /// as the screen shows it: clipped, scrolled out, covered or faded like any other layer.
   ///
   /// Each case is drawn twice: as the screen shows it, a drawing already in its tint rendered plainly; and as a QA
   /// snapshot draws it, a white template under the filter, tinted in place. The two must match pixel for pixel.

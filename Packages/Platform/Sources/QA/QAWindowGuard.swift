@@ -102,9 +102,9 @@
   ///
   /// `cacheDisplay` draws layers without their Core Animation filters, which the screen applies. SwiftUI tints some SF
   /// Symbols that way: `timer`, `checklist` and `square.grid.2x2` become a white image under a `multiplyColor` filter,
-  /// while simpler ones are shapes filled with their colour (B-B3). So each such layer is tinted in place for the
+  /// while simpler ones are shapes filled with their colour. So each such layer is tinted in place for the
   /// snapshot: a stand-in holding its drawing multiplied by the tint takes its place in the tree, and the normal render
-  /// then applies every clip, mask, layer above it and opacity, as the screen does (N3).
+  /// then applies every clip, mask, layer above it and opacity, as the screen does.
   @MainActor
   enum QASnapshot {
     static func png(of window: NSWindow) throws -> (data: Data, size: CGSize, scale: CGFloat) {

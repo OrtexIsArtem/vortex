@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Where a permission that a feature needs shows in that feature (S22, S40): nothing while it works or before the first
+/// Where a permission that a feature needs shows in that feature: nothing while it works or before the first
 /// read, a yellow warning while it is off, and "Works after restart" once macOS granted it to the next launch.
 public enum PermissionMark: String, Codable, Sendable {
   case warning
   case afterRestart
 
-  /// The mark for a status; nil for granted, not needed, or unknown (no read yet: no flicker at launch, S22).
+  /// The mark for a status; nil for granted, not needed, or unknown (no read yet: no flicker at launch).
   public init?(_ status: PermissionStatus?) {
     switch status {
     case .notGranted?: self = .warning
@@ -17,17 +17,17 @@ public enum PermissionMark: String, Codable, Sendable {
 }
 
 extension Collection<PermissionNeed> {
-  /// The first of these permissions that is off: the one a sidebar dot names (S22.2, S39).
+  /// The first of these permissions that is off: the one a sidebar dot names.
   public func firstOff(in statuses: [Permission: PermissionStatus]) -> Permission? {
     first { PermissionMark(statuses[$0.permission]) == .warning }?.permission
   }
 }
 
-/// A feature's settings rows for the permissions it needs (S22.3, S40), one per permission that isn't working yet:
+/// A feature's settings rows for the permissions it needs, one per permission that isn't working yet:
 /// - off: the title with a warning, the reason, and "Turn on", which opens the shell's page;
 /// - granted for the next launch: "Works after restart" and "Restart Vortex", without yellow.
 ///
-/// The feature re-reads the statuses when its section appears (S47).
+/// The feature re-reads the statuses when its section appears.
 public struct PermissionRows: View {
   private let needs: [PermissionNeed]
   private let statuses: [Permission: PermissionStatus]

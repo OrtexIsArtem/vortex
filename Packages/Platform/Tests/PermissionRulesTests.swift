@@ -30,7 +30,7 @@ struct PermissionRulesTests {
     #expect(PermissionStatus(pasteboard: nil) == .notNeeded)
   }
 
-  // MARK: Requests (S4, S48, S67)
+  // MARK: Requests
 
   @Test
   func notificationsPromptOnlyTheFirstTimeAndOnlyIfMacOSNeverHadAnAnswer() {
@@ -39,14 +39,14 @@ struct PermissionRulesTests {
     #expect(Permission.notifications.requestSteps(askedBefore: false, notificationsDetermined: true) == [.openSettings])
   }
 
-  /// An unanswered prompt keeps notifications undetermined, and asking again would show nothing (S48).
+  /// An unanswered prompt keeps notifications undetermined, and asking again would show nothing.
   @Test
   func onceAskedNotificationsOpenTheirPaneWhateverTheStatus() {
     #expect(Permission.notifications.requestSteps(askedBefore: true, notificationsDetermined: false) == [.openSettings])
     #expect(Permission.notifications.requestSteps(askedBefore: true, notificationsDetermined: true) == [.openSettings])
   }
 
-  /// The first request: macOS's prompt, and the pane only if nothing came up, never both at once (S4, S67).
+  /// The first request: macOS's prompt, and the pane only if nothing came up, never both at once.
   @Test
   func aFirstRequestPromptsAndOpensThePaneOnlyIfNothingComesUp() {
     for permission in [Permission.accessibility, .screenRecording] {
@@ -87,7 +87,7 @@ struct PermissionRulesTests {
   }
 
   /// The alert app may be running already, from a request a moment before, or show its alert without becoming
-  /// active: its window on screen at the end counts too (S67).
+  /// active: its window on screen at the end counts too.
   @Test
   func withNothingLaunchedOrActivatedTheAlertsWindowDecides() async {
     let (apps, continuation) = AsyncStream.makeStream(of: String.self)
@@ -111,7 +111,7 @@ struct PermissionRulesTests {
   }
 
   /// `requestAuthorization` waits for the answer while its prompt shows; back at once with no answer, macOS showed
-  /// nothing and the pane opens (S48).
+  /// nothing and the pane opens.
   @Test
   func notificationsShowedNothingWhenTheRequestCameBackAtOnceWithNoAnswer() {
     #expect(PromptWatch.notificationsShowedNothing(returnedQuickly: true, authorization: .notDetermined))
@@ -276,7 +276,7 @@ struct ScreenRecordingDetectionTests {
     #expect(waiting.status == .grantedAfterRestart)
   }
 
-  /// The probe prompts if Vortex isn't listed, so titles alone never start it (S58): only a request of Vortex's own.
+  /// The probe prompts if Vortex isn't listed, so titles alone never start it: only a request of Vortex's own.
   @Test
   func titlesAloneNeitherProbeNorTurnTheStatusOn() {
     var detector = ScreenRecordingDetector(grantedAtLaunch: false)
