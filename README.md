@@ -2,28 +2,31 @@
 
 A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac without one. Hover over the notch and it opens with the tools you reach for a dozen times a day.
 
-- **Timer**: set the minutes on a drum, and watch the countdown in the notch. When time is up, it plays a sound, flashes and shows a notification.
-- **Clipboard**: your last copies plus pinned ones. Text, links, images and files.
+- **Timer**: set the minutes on a drum and watch the countdown in the notch. When time is up, it plays a sound, flashes and shows a notification.
+- **Clipboard**: your last copies plus pinned ones: text, links, images and files.
 - **Shelf**: put files aside and drag them out later, into any app. Unpinned files clear after a day.
-- **Tasks**: a shortcut freezes the screen; frame an area and press Return. You get a task with the screenshot, its recognized text and the page address from your browser.
-- **Keys for Claude**: keep database URLs, API tokens and passwords in the macOS keychain. Claude Code runs commands with `{{key}}` placeholders through a local MCP server, and never sees a value. Vortex asks you once per key per session.
+- **Tasks**: press «+» in the Tasks tab, or a shortcut you set, to freeze the screen. Frame an area and press Return. You get a task with the screenshot, its recognized text and the page address from your browser.
+- **Keys for Claude**: keep database URLs, API tokens and passwords in the macOS keychain. Claude Code runs commands with `{{key}}` placeholders through a local MCP server and never sees a value. Vortex asks you once per key per session.
 - **Keyboard cleaning**: lock every key while you wipe the keyboard.
 
 Vortex speaks English and Ukrainian, and follows light and dark mode.
 
 ## Privacy
-- Vortex works offline: no analytics, no auto-updates, no network access. Its only listener is the MCP server for Claude Code, on 127.0.0.1 only and guarded by a token.
-- Your data stays in `~/Library/Application Support/Vortex`. Secrets stay in your login keychain.
+- Vortex never goes online by itself: no analytics, no update checks. Network traffic comes only from commands that Claude runs through Keys, after you allow them.
+- Its only listener is the MCP server for Claude Code. It listens on this Mac's loopback interface and needs a token.
+- Your data stays in `~/Library/Application Support/Vortex`, and your secrets in your login keychain.
 - Text recognition runs on your Mac.
 
 ## Permissions
-On first launch, Vortex walks you through the permissions it can use. Every one of them is optional:
+On first launch, Vortex walks you through the permissions it can use. Every one of them is optional.
 
 | Permission | Used for |
 | --- | --- |
-| Notifications | the timer's end, Claude's key requests while the window is closed |
+| Notifications | the timer's end, and Claude's key requests while the window is closed |
 | Accessibility | keyboard cleaning |
 | Screen Recording | tasks from the screen |
+| Automation, per browser | a task's page address; macOS asks the first time |
+| Paste from Other Apps | clipboard history, only on macOS versions that ask |
 
 A feature whose permission is off shows a yellow warning. Click it to turn the permission on.
 
@@ -33,31 +36,42 @@ macOS 14 or later, on Apple silicon.
 ## Install
 
 ### Download a release (no Xcode needed)
-1. Download `Vortex-<version>.zip` from [Releases](https://github.com/OrtexIsArtem/vortex/releases), unzip it, and move **Vortex** to **Applications**.
-2. Open Vortex. macOS will say it can't verify the developer: Vortex isn't notarized by Apple, because that needs a paid developer account. Click **Done**.
-3. Open **System Settings › Privacy & Security**. Scroll to **Security** and click **Open Anyway** next to "Vortex was blocked". Confirm with your password.
+1. Download `Vortex-<version>.zip` from [Releases](https://github.com/OrtexIsArtem/vortex/releases) and unzip it. Move **Vortex.app** to **Applications**.
+2. Open Vortex. macOS refuses to open it, because Vortex isn't notarized by Apple: that needs a paid developer account. Click **Done**, or **Cancel** on macOS 14.
+3. Open **System Settings › Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the message about Vortex. Confirm with your password. On macOS 14 you can instead Control-click Vortex in Applications and choose **Open**.
 
-   In Terminal you can do the same in one line: `xattr -dr com.apple.quarantine /Applications/Vortex.app`.
-4. Vortex shows its setup. To have it start with your Mac, turn on **Open at login** there, or later in Settings.
+   Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/Vortex.app`
+4. Vortex shows its setup. To start it with your Mac, turn on **Open at login** there, or later in Settings.
 
-After an update, macOS may treat the new version as a different app for **Accessibility** and **Screen Recording**. If a yellow warning appears, open it and switch Vortex off and on again in System Settings.
+### Update a downloaded release
+1. Quit Vortex: right-click its menu bar icon › Quit, or use Settings › General.
+2. Replace Vortex.app in Applications with the new one, and open it with steps 2–3 above.
+3. Releases aren't signed by a developer account, so macOS treats each new version as a new app. It will ask you again to:
+   - turn on **Accessibility** and **Screen Recording**: open the yellow warning, then switch Vortex off and on in System Settings;
+   - allow each browser for page addresses;
+   - let Vortex read its own keychain items: click **Always Allow** when macOS asks about them.
+
+A build of your own, signed with your team, avoids all of this. See below.
 
 ### Build it yourself
-With Xcode installed:
+You need Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 ```sh
 brew install xcodegen
-git clone https://github.com/OrtexIsArtem/vortex.git && cd vortex
-cp Config/Local.xcconfig.example Config/Local.xcconfig   # put your team ID in it, or leave it as is
+git clone https://github.com/OrtexIsArtem/vortex.git
+cd vortex
 make install
 ```
-`make install` builds a release, puts it in **Applications** and opens it. With a team ID (a free Personal Team works), your permissions survive rebuilds. Without one, the build is signed ad hoc, so macOS asks for the permissions again after each rebuild.
+`make install` builds a release, puts it in **Applications** and opens it. As is, the build is signed ad hoc, and macOS asks for the permissions again after each rebuild.
 
-For daily use, prefer `make install` over a Run in Xcode. A debug session ends when the Mac sleeps for a while, and the app ends with it.
+To keep the permissions across rebuilds, sign the build with your Apple team. A free Personal Team works:
+1. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and put your team ID in it. [CONTRIBUTING.md](CONTRIBUTING.md) shows how to find it.
+2. Run `make open`, and build once in Xcode (⌘B). Xcode then creates your signing certificate.
+3. Run `make install`.
 
-[CONTRIBUTING.md](CONTRIBUTING.md) explains how to work on the code.
+For daily use, prefer `make install` over a Run in Xcode: a debug session ends when the Mac sleeps for a while, and the app with it.
 
 ## Claude Code
-In Vortex, open **Keys** and press **Connect**, or run the command it shows you once in Terminal. Claude Code then lists your keys by name and can use them in commands.
+During setup, press **Connect** on the Claude Code page. Later, open **Keys**, press **Copy**, and run the command once in Terminal. Claude Code then lists your keys by name and can use them in commands.
 
 ## License
-[MIT](LICENSE)
+[MIT](LICENSE). Release downloads include the licenses of the open-source packages Vortex uses.

@@ -1,7 +1,9 @@
-// Copy this file to Config/Local.xcconfig (git ignores it) and fill it in.
+// Copy this file to Config/Local.xcconfig (git ignores it) to sign your builds with your own team.
+// Left as is, every line is a comment and builds are signed ad hoc.
 
-// Your Apple developer team ID: Xcode › Settings › Accounts. A free Personal Team works.
-DEVELOPMENT_TEAM = ABCDE12345
+// Your Apple developer team ID. A free Personal Team works. CONTRIBUTING.md shows how to find it.
+// DEVELOPMENT_TEAM = ABCDE12345
 
-// A bundle id of your own, if Xcode says this one belongs to another team.
+// A bundle id of your own, only if Xcode says this one belongs to another team.
+// The `vortex` command (Tools/CLI) opens the default bundle id, so it won't reach a build with another one.
 // PRODUCT_BUNDLE_IDENTIFIER = com.example.vortex

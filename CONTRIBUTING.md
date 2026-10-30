@@ -6,7 +6,8 @@ Vortex is a native macOS app in Swift 6 with SwiftUI and [The Composable Archite
 1. Install Xcode (the version that ships the macOS 26 SDK or newer) and [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
 2. Clone the repository: `git clone https://github.com/OrtexIsArtem/vortex.git && cd vortex`.
 3. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig`, which git ignores, and set `DEVELOPMENT_TEAM` to your team ID.
-   - A free Personal Team works: Xcode › Settings › Accounts, add your Apple ID, and the team ID shows under the team.
+   - A free Personal Team works. Add your Apple ID in Xcode › Settings › Accounts, then build once in Xcode with your team chosen, so Xcode creates your certificate.
+   - To find your team ID, run `security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject` and read the value after `OU=`. The ID in parentheses in the certificate's name is not the team ID.
    - If Xcode says the bundle id belongs to another team, set `PRODUCT_BUNDLE_IDENTIFIER` there too.
 4. Run `make open`, then press Run in Xcode. The first build asks you to "Trust & Enable" the TCA macro packages once.
 5. Vortex starts with its onboarding. It sits in the notch; on a Mac without one it's the icon in the menu bar.
@@ -93,11 +94,11 @@ Read the module's README first. When a change contradicts a line in these docs, 
 
 ## Pull requests
 - Keep commits small, with clear English messages.
-- Before you open a pull request, run `make check` and `make test`. CI runs both on every push and pull request, and also builds the release configuration.
+- Before you open a pull request, run `make check` and `make test`. CI runs both on pushes to `main` and on every pull request, and also builds the release configuration.
 - If your change touches a screen, add a QA snapshot or a screenshot.
 
 ## Releasing
-1. Bump `MARKETING_VERSION` in `project.yml`, run `make project`, and commit.
-2. Tag the commit, for example `git tag v0.2.0`, and push the tag: `git push origin v0.2.0`.
-
-GitHub Actions (`.github/workflows/release.yml`) then builds the app, signs it ad hoc, and publishes `Vortex-v0.2.0.zip` as a GitHub Release. The release isn't notarized. README.md tells users how to open it.
+1. Bump `MARKETING_VERSION` in `project.yml`, run `make project`, commit, and push `main`, so the commit goes through CI.
+2. Tag that commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. GitHub Actions (`.github/workflows/release.yml`) runs the checks and tests, builds the app versioned by the tag, and signs it ad hoc. It zips the app with `LICENSE` and the third-party notices, and creates a **draft** GitHub Release.
+4. Download the zip, try it on your Mac, then publish the draft. The release isn't notarized; README.md tells users how to open it.
