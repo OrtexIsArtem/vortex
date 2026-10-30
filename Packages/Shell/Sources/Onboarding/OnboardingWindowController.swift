@@ -122,7 +122,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   /// centered on the pointer's display.
   private func windowFrame() -> CGRect {
     let size = Self.windowSize
-    if isQA { return QA.offscreen(CGRect(origin: .zero, size: size)) }
+    #if DEBUG
+      if isQA { return QA.offscreen(CGRect(origin: .zero, size: size)) }
+    #endif
     if let lastFrame, NSScreen.screens.contains(where: { $0.visibleFrame.intersects(lastFrame) }) {
       return lastFrame
     }
@@ -143,12 +145,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       let frames = await activeApp.windowFrames(OnboardingFeature.systemSettingsID)
       guard !Task.isCancelled else { return }
       let size = Self.panelSize
-      let frame: CGRect
-      if isQA {
-        frame = QA.offscreen(CGRect(origin: .zero, size: size))
-      } else {
-        frame = Self.panelFrame(next: frames.first, size: size, screens: NSScreen.screens.map(\.visibleFrame))
-      }
+      var frame = Self.panelFrame(next: frames.first, size: size, screens: NSScreen.screens.map(\.visibleFrame))
+      #if DEBUG
+        if isQA { frame = QA.offscreen(CGRect(origin: .zero, size: size)) }
+      #endif
       panel.setFrame(frame, display: false)
       panel.orderFrontRegardless()
       #if DEBUG
