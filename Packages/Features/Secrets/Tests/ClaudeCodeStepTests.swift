@@ -61,7 +61,7 @@ struct ClaudeCodeStepTests {
     await store.receive(\.connectFinished) { $0.connect = .notInstalled }
 
     // Relaunched after a success: the run's state is gone, the saved success isn't.
-    var relaunched = SecretsFeature.State()
+    let relaunched = SecretsFeature.State()
     relaunched.$settings.withLock { $0.addedToClaudeCode = true }
     #expect(relaunched.connect == .idle)
     #expect(relaunched.showsConnectAgain)
