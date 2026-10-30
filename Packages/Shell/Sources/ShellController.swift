@@ -124,7 +124,7 @@ public final class ShellController: NSObject {
     controller.onClose = { [store] in store.send(.onboarding(.closeTapped)) }
     controller.onEscape = { [store] in store.send(.onboarding(.escapePressed)) }
     controller.onQuit = { [store] in store.send(.quitButtonTapped) }
-    // «Продовжити налаштування» shows whenever the onboarding isn't completed, blocked or not.
+    // «Continue setup» shows whenever the onboarding isn't completed, blocked or not.
     continueSetupObservation = observe { [weak self] in
       guard let self else { return }
       self.continueSetupItem?.isHidden = self.store.onboarding.progress.completed

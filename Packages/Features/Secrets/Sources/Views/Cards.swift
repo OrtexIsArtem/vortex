@@ -2,7 +2,7 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Claude asking to use keys: who, which keys, the command and where it runs; «Відхилити» and «Дозволити».
+/// Claude asking to use keys: who, which keys, the command and where it runs; «Deny» and «Allow».
 struct ApprovalCard: View {
   let approval: Approval
   /// How tall the command may get before it scrolls.

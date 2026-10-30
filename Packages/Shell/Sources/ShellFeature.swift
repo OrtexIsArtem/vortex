@@ -236,7 +236,7 @@ struct ShellFeature {
     case permissionStatusesChanged([Permission: PermissionStatus])
     /// A feature asked for the page of one permission.
     case permissionPageRequested(Permission)
-    /// «Продовжити налаштування» in the menu bar menu, and QA's `onboarding open`.
+    /// «Continue setup» in the menu bar menu, and QA's `onboarding open`.
     case continueSetupTapped
     case onboarding(OnboardingFeature.Action)
     /// An app came to the front, or quit: the guide panel follows System Settings.
@@ -283,7 +283,7 @@ struct ShellFeature {
 
         case .keyboardCleaning(.accessLost), .keyboardCleaning(.lockFailed):
           // The lock ended by itself, and Home with its warning shows; blocked meanwhile, the blocking page takes over
-          // now, as after «Увімкнути клавіатуру».
+          // now, as after «Turn the keyboard back on».
           guard state.isBlocked else { return .none }
           return .merge(close(&state), .send(.onboarding(.blocked)))
 

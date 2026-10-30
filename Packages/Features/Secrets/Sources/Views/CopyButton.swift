@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A button that copies and then says «Скопійовано» for a moment; pressed again, the moment starts over.
+/// A button that copies and then says «Copied» for a moment; pressed again, the moment starts over.
 struct CopyButton<Style: ButtonStyle>: View {
   private let title: Text
   private let style: Style

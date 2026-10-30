@@ -544,7 +544,7 @@ struct OnboardingFeatureTests {
     await store.send(.pageRequested(.screenRecording, .request))
     #expect(await windowCalls.next() == "window+activate")
     #expect(store.state.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
-    // «Продовжити налаштування» replaces it with the onboarding at the saved page.
+    // «Continue setup» replaces it with the onboarding at the saved page.
     await store.send(.continueSetupTapped)
     #expect(await windowCalls.next() == "window+activate")
     #expect(store.state.presentation == .flow(.window))
@@ -553,7 +553,7 @@ struct OnboardingFeatureTests {
 
   // MARK: - The panel stepped aside, and the onboarding brought forward
 
-  /// «Продовжити налаштування» while another app is in front and the panel stepped aside: the window comes back, in
+  /// «Continue setup» while another app is in front and the panel stepped aside: the window comes back, in
   /// front, as the System Settings window the panel stood next to is behind that app.
   @Test
   func continueSetupWhileThePanelSteppedAsideBringsTheWindowBack() async {
@@ -893,7 +893,7 @@ struct OnboardingFeatureTests {
     #expect(store.state.page == .permission(.pasteboard))
   }
 
-  /// «Продовжити налаштування» while blocked before completion shows the page of the missing permission.
+  /// «Continue setup» while blocked before completion shows the page of the missing permission.
   @Test
   func continueSetupWhileBlockedShowsThePageOfTheMissingPermission() async {
     let store = makeStore(progress: .at(.basics), required: [.accessibility])

@@ -16,7 +16,7 @@ struct KeyboardCleaningFeature {
 
   enum Action: Equatable {
     case startTapped
-    /// «Увімкнути клавіатуру».
+    /// «Turn the keyboard back on».
     case stopTapped
     case lockFailed
     /// Accessibility went during the lock.

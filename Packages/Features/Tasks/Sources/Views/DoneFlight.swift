@@ -3,13 +3,13 @@ import VortexCore
 import VortexPlatform
 
 /// A task marked done in the list: its row crumples into a paper ball at the done mark, and the ball flies off into
-/// «Виконані». Only a picture over the list; the task has already left it.
+/// «Done». Only a picture over the list; the task has already left it.
 struct DoneFlight: Identifiable, Equatable {
   let id = UUID()
   let task: TaskItem
   /// The row, in the tab's coordinate space.
   let row: CGRect
-  /// Where the ball lands: the middle of «Виконані».
+  /// Where the ball lands: the middle of «Done».
   let target: CGPoint
 
   static let coordinateSpace = "tasks"
@@ -48,7 +48,7 @@ private struct FlightFrame {
   var ballScale = 0.25
   var ballOpacity = 0.0
   var spin = 0.0
-  /// 0 at the done mark, 1 at «Виконані».
+  /// 0 at the done mark, 1 at «Done».
   var travel = 0.0
   /// How far above the straight line the ball is, in points: the arc of the throw.
   var lift = 0.0
@@ -118,7 +118,7 @@ private struct DoneFlightView: View {
         LinearKeyframe(0, duration: 0.12)
         CubicKeyframe(600, duration: 0.68)
       }
-      // Thrown once it is a ball: along an arc up and over into «Виконані».
+      // Thrown once it is a ball: along an arc up and over into «Done».
       KeyframeTrack(\.travel) {
         LinearKeyframe(0, duration: 0.3)
         CubicKeyframe(1, duration: 0.5)

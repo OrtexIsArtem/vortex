@@ -94,7 +94,7 @@ public enum KeyKind: String, Codable, CaseIterable, Sendable {
     }
   }
 
-  /// For the list: «PostgreSQL», «Токен GitHub»…
+  /// For the list: «PostgreSQL», «GitHub token»…
   var title: Text {
     switch self {
     case .postgres: Text(verbatim: "PostgreSQL")

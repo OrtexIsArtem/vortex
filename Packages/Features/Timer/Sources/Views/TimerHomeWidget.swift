@@ -38,7 +38,7 @@ struct TimerHomeWidget: View {
     .onChange(of: isWindowOpen) { _, isOpen in
       if isOpen { setDrumBack() }
     }
-    // Set back when any run starts, also one from the notification's «+5 хв», so the drum shows 5 once it is over.
+    // Set back when any run starts, also one from the notification's «+5 min», so the drum shows 5 once it is over.
     .onChange(of: store.run == nil) { _, isIdle in
       if !isIdle { setDrumBack() }
     }
@@ -107,7 +107,7 @@ struct TimerHomeWidget: View {
   }
 }
 
-/// The time on the drum, «5 хв», or the time left of the run going, «8:42».
+/// The time on the drum, «5 min», or the time left of the run going, «8:42».
 private struct DrumTime: View {
   let store: StoreOf<TimerFeature>
   let minutes: Int

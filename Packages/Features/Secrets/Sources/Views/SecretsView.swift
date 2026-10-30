@@ -183,7 +183,7 @@ private struct DeletedToast: View {
     .padding(.horizontal, 16)
     .frame(height: 34)
     .background(Capsule().fill(VortexColor.raised))
-    // Only drawn: laid over «Скасувати», an outline takes its clicks.
+    // Only drawn: laid over «Undo», an outline takes its clicks.
     .overlay(Capsule().strokeBorder(VortexColor.line).allowsHitTesting(false))
     .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
   }

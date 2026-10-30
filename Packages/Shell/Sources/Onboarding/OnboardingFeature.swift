@@ -381,7 +381,7 @@ struct OnboardingFeature {
     case escapePressed
     /// The guide panel's "Back".
     case backTapped
-    /// «Продовжити налаштування».
+    /// «Continue setup».
     case continueSetupTapped
     /// An entry point while Vortex is blocked: a hover shows the window without activating it.
     case blockedEntry(activate: Bool)

@@ -81,7 +81,7 @@ public struct TimerView: View {
     .onChange(of: isWindowOpen) { _, isOpen in
       if isOpen { setDrumBack() }
     }
-    // Set back when any run starts, also one from the notification's «+5 хв», so the drum shows 5 once it is over.
+    // Set back when any run starts, also one from the notification's «+5 min», so the drum shows 5 once it is over.
     .onChange(of: store.run == nil) { _, isIdle in
       if !isIdle { setDrumBack() }
     }

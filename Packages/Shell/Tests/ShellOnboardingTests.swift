@@ -88,7 +88,7 @@ struct ShellOnboardingTests {
     await store.receive(\.onboarding.blockedEntry)
     #expect(store.state.openReason == nil)
     #expect(await onboardingWindow.next() == "window")
-    // «Вийти з Vortex» still works.
+    // «Quit Vortex» still works.
     await store.send(.quitButtonTapped)
     #expect(await quits.next() == "quit")
     // The notch window was asked to close each time, never to open.
@@ -169,7 +169,7 @@ struct ShellOnboardingTests {
 
   // MARK: - Pages
 
-  /// «Продовжити налаштування» closes the notch window before the onboarding comes forward.
+  /// «Continue setup» closes the notch window before the onboarding comes forward.
   @Test
   func continueSetupClosesTheNotchWindowFirst() async {
     let store = makeStore(progress: .at(.basics))
@@ -255,7 +255,7 @@ struct ShellOnboardingTests {
     #expect(store.state.keyboardCleaning.isLocked)
     #expect(store.state.openReason == .hotkey)
     #expect(store.state.onboarding.presentation == .hidden)
-    // «Увімкнути клавіатуру»: the window closes, and only now Vortex is blocked.
+    // «Turn the keyboard back on»: the window closes, and only now Vortex is blocked.
     await store.send(.keyboardCleaning(.stopTapped))
     #expect(store.state.openReason == nil)
     await store.receive(\.onboarding.blocked)

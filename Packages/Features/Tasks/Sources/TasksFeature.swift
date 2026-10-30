@@ -164,7 +164,7 @@ public struct TasksFeature: Sendable {
     case undoExpired
     /// The bin on a row or in the card.
     case deleteTapped(TaskItem.ID)
-    /// «Очистити список» in «Виконані»: deletes the done tasks the list shows.
+    /// «Clear the list» in «Done»: deletes the done tasks the list shows.
     case clearDoneTapped
     case openSourceTapped(TaskItem.ID)
     /// The whole screen of the task, over the display, with the framed part marked; again closes it.
@@ -616,7 +616,7 @@ public struct TasksFeature: Sendable {
       state.tasks.remove(id: task.id)
       if state.openTaskID == task.id { state.openTaskID = nil }
       if state.screen?.taskID == task.id { state.screen = nil }
-      // An emptied title comes back as «Задача N», as on leaving the card.
+      // An emptied title comes back as «Task N», as on leaving the card.
       task.title = task.displayTitle
       deleted.append(task)
       effects.append(.cancel(id: CancelID.titleSave(task.id)))

@@ -193,7 +193,7 @@
     }
 
     /// `keyboard press=start`: Home's keyboard button, on Home in the open window; `keyboard press=stop`:
-    /// «Увімкнути клавіатуру» on the lock screen.
+    /// «Turn the keyboard back on» on the lock screen.
     static func pressKeyboard(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
       switch arguments["press"] {
       case "start":

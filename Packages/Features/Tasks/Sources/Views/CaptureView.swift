@@ -254,7 +254,7 @@ private struct CaptureDetails: View {
     }
     .task {
       // SwiftUI drops a focus request while the drag that drew the frame winds down: it is asked again on the next
-      // frames until the title has the keyboard, with «Задача N» selected.
+      // frames until the title has the keyboard, with «Task N» selected.
       for _ in 0..<10 where !isTitleFocused && !Task.isCancelled {
         isTitleFocused = true
         try? await Task.sleep(for: .milliseconds(30))

@@ -45,7 +45,7 @@ struct Approval: Identifiable, Equatable, Sendable {
 
 /// Keys Claude uses by name without ever seeing them. Values live in the keychain; Claude reaches them through the
 /// local MCP server: `keys` lists them, `run` runs a command with {{name}} where a value goes and gets the output back
-/// with the values taken out. The first use of a key in a session waits for «Дозволити», asked in the notch and in a
+/// with the values taken out. The first use of a key in a session waits for «Allow», asked in the notch and in a
 /// notification. A key can live an hour, until the end of the day or for good; deleting one can be taken back for a
 /// moment. A key shows when a command last ran with it.
 @Reducer
@@ -56,7 +56,7 @@ struct SecretsFeature: Sendable {
   static let tokenAccount = "token"
   /// How long a deleted key can be taken back.
   static let undoTime: Duration = .seconds(5)
-  /// How long a call waits for «Дозволити». With the longest command it stays under the 5 minutes Claude Code waits
+  /// How long a call waits for «Allow». With the longest command it stays under the 5 minutes Claude Code waits
   /// for an answer.
   static let answerTime: Duration = .seconds(90)
   /// How long a value stays shown.
@@ -812,7 +812,7 @@ struct SecretsFeature: Sendable {
         }
       )
     case let .cancelled(call):
-      // Waiting for «Дозволити»: the request goes; running: the command stops. Either way Claude gets «Cancelled.», also
+      // Waiting for «Allow»: the request goes; running: the command stops. Either way Claude gets «Cancelled.», also
       // when it gives a call up before its command got going.
       if let approval = state.approvals.first(where: { $0.call.id == call }) {
         return turnDown(approval.id, because: .cancelled, &state)

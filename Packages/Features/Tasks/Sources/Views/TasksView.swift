@@ -9,14 +9,14 @@ public struct TasksView: View {
   @Environment(\.notchCutout) private var cutout
   @Environment(\.isWindowOpen) private var isWindowOpen
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  /// Rows marked done on their way into «Виконані».
+  /// Rows marked done on their way into «Done».
   @State private var flights: [DoneFlight] = []
   /// Tasks whose row is crumpling or flying: their row in the list stays hidden until the ball lands. Kept here, by task,
-  /// rather than in the row, whose state can outlive the task's move to «Виконані».
+  /// rather than in the row, whose state can outlive the task's move to «Done».
   @State private var thrown: Set<TaskItem.ID> = []
-  /// The middle of «Виконані», where they land.
+  /// The middle of «Done», where they land.
   @State private var doneTarget: CGPoint?
-  /// Counts the landings, so «Виконані» bumps at each.
+  /// Counts the landings, so «Done» bumps at each.
   @State private var landings = 0
 
   public init(store: StoreOf<TasksFeature>) {
@@ -36,8 +36,8 @@ public struct TasksView: View {
           .padding(.bottom, 10)
         TaskList(store: store, thrown: thrown, onDone: throwToDone)
       }
-      // Under the list rather than over it: laid over the scrolling list, the toast never got the click. In «Виконані»
-      // the place holds «Очистити список», which the toast takes once it is pressed.
+      // Under the list rather than over it: laid over the scrolling list, the toast never got the click. In «Done»
+      // the place holds «Clear the list», which the toast takes once it is pressed.
       if let undoable = store.undoable {
         UndoToast(undoable: undoable) { store.send(.undoTapped, animation: .snappy(duration: 0.22)) }
           .frame(maxWidth: .infinity)
@@ -65,7 +65,7 @@ public struct TasksView: View {
     }
   }
 
-  /// A row marked done crumples and flies into «Виконані», unless motion is reduced; false when it doesn't.
+  /// A row marked done crumples and flies into «Done», unless motion is reduced; false when it doesn't.
   private func throwToDone(_ task: TaskItem, row: CGRect) -> Bool {
     guard !reduceMotion, let doneTarget, row.width > 0, !thrown.contains(task.id) else { return false }
     thrown.insert(task.id)
@@ -160,11 +160,11 @@ private struct SearchField: View {
 /// Status, priority and period, one row.
 private struct TaskFilters: View {
   let store: StoreOf<TasksFeature>
-  /// Each new value bumps «Виконані»: a task marked done has just landed in it.
+  /// Each new value bumps «Done»: a task marked done has just landed in it.
   let landings: Int
-  /// Where «Виконані» is, in the tab's coordinate space.
+  /// Where «Done» is, in the tab's coordinate space.
   let onDoneTarget: (CGPoint) -> Void
-  /// «Виконані» is bumped by a landing. A plain animated scale: a keyframe animator here kept the undo toast from
+  /// «Done» is bumped by a landing. A plain animated scale: a keyframe animator here kept the undo toast from
   /// taking clicks.
   @State private var isBumped = false
 
@@ -180,7 +180,7 @@ private struct TaskFilters: View {
         }
       }
       .frame(width: 150)
-      // Two equal segments: «Виконані» is the right one.
+      // Two equal segments: «Done» is the right one.
       .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneFlight.coordinateSpace)) } action: { frame in
         onDoneTarget(CGPoint(x: frame.minX + frame.width * 0.75, y: frame.midY))
       }
@@ -307,7 +307,7 @@ private struct TaskRow: View {
   let store: StoreOf<TasksFeature>
   /// Crumpling or flying over the list: the row keeps its place, unseen, until the task leaves the list.
   let isThrown: Bool
-  /// The task is being marked done: its row, in the tab's coordinate space, takes off for «Виконані»; false when it
+  /// The task is being marked done: its row, in the tab's coordinate space, takes off for «Done»; false when it
   /// stays put (motion reduced).
   let onDone: (TaskItem, _ row: CGRect) -> Bool
   @State private var isHovered = false
@@ -386,7 +386,7 @@ private struct TaskRow: View {
     .accessibilityAction(named: Text("Delete the task", bundle: .module)) {
       store.send(.deleteTapped(task.id), animation: .snappy(duration: 0.22))
     }
-    // Hidden only while it is still active (crumpling, or fading out of the list): in «Виконані» it shows at once.
+    // Hidden only while it is still active (crumpling, or fading out of the list): in «Done» it shows at once.
     .opacity(isThrown && !task.isDone ? 0 : 1)
     .onHover { isHovered = $0 }
     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DoneFlight.coordinateSpace)) } action: { frame = $0 }
@@ -420,7 +420,7 @@ struct DoneMark: View {
   }
 }
 
-/// «Очистити список» under the done tasks: deletes the ones the list shows.
+/// «Clear the list» under the done tasks: deletes the ones the list shows.
 private struct ClearListButton: View {
   let action: () -> Void
 
@@ -457,7 +457,7 @@ private struct UndoToast: View {
     .padding(.horizontal, 16)
     .frame(height: 34)
     .background(Capsule().fill(VortexColor.raised))
-    // Only drawn: laid over «Скасувати», the outline took its clicks.
+    // Only drawn: laid over «Undo», the outline took its clicks.
     .overlay(Capsule().strokeBorder(VortexColor.line).allowsHitTesting(false))
     .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
   }

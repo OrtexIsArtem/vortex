@@ -298,7 +298,7 @@ struct SecretsFeatureTests {
     }
     await start(store)
     await addKey(store)
-    // Waiting for «Дозволити»: it never ran.
+    // Waiting for «Allow»: it never ran.
     let waiting = call(.run, ["command": "psql \"{{prod-db}}\""], id: 1)
     events.continuation.yield(.call(waiting))
     await store.receive(\.server.call)

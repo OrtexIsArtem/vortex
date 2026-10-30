@@ -110,7 +110,7 @@ public enum TasksModule: FeatureModule {
       on("taskScreen") { info in if let id = task(info) { store.send(.screenTapped(id)) } }
       on("taskSource") { info in if let id = task(info) { store.send(.openSourceTapped(id)) } }
       on("taskDelete") { info in if let id = task(info) { store.send(.deleteTapped(id)) } }
-      // `…taskClearDone` presses «Очистити список» in «Виконані», `…taskUndo` the toast's «Скасувати».
+      // `…taskClearDone` presses «Clear the list» in «Done», `…taskUndo` the toast's «Undo».
       on("taskClearDone") { _ in store.send(.clearDoneTapped) }
       on("taskUndo") { _ in store.send(.undoTapped) }
       // `…taskState` writes what the feature holds to the file at userInfo `path`, as JSON.
