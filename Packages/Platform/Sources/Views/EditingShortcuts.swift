@@ -22,8 +22,8 @@ public enum EditingShortcuts {
     }
   }
 
-  /// The key as a lowercased Latin character: as typed, or, when the layout types something else (⌘С in Russian), as
-  /// the Latin layout the Mac uses for shortcuts (ABC, U.S.) types it.
+  /// The key as a lowercased Latin character: as typed, or, when the layout types something else (⌘С in a Cyrillic
+  /// layout), as the Latin layout the Mac uses for shortcuts (ABC, U.S.) types it.
   static func latinKey(of event: NSEvent) -> String? {
     if let typed = event.charactersIgnoringModifiers?.lowercased(), !typed.isEmpty, typed.unicodeScalars.allSatisfy(\.isASCII) {
       return typed
