@@ -31,7 +31,7 @@ public enum SecretsModule: FeatureModule {
     AnyView(SecretsSettingsView(store: store))
   }
 
-  /// The onboarding's Claude Code step (S17, S27): done once Connect worked or Claude Code connected.
+  /// The onboarding's Claude Code step: done once Connect worked or Claude Code connected.
   public static func makeOnboardingStep() -> OnboardingStep? {
     OnboardingStep(id: id, title: LocalizedStringResource(stringLiteral: "Claude Code"), view: ClaudeCodeStepView(store: store))
   }

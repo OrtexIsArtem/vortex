@@ -6,7 +6,7 @@ import VortexPlatform
 
 @testable import FeatureSecrets
 
-/// The onboarding's Claude Code step (S27, S28, S78): Connect through a fake command client.
+/// The onboarding's Claude Code step: Connect through a fake command client.
 @MainActor
 struct ClaudeCodeStepTests {
   static let token = "tok3n-0123456789abcdef"
@@ -50,7 +50,7 @@ struct ClaudeCodeStepTests {
   }
 
   /// "Connect again" runs as Connect does, with the spinner and the result shown under it; after a relaunch the step
-  /// still reads as added (R5).
+  /// still reads as added.
   @Test
   func connectAgainShowsItsRunAndARelaunchKeepsTheSuccess() async {
     let store = makeStore([CommandClient.Output(exitCode: 1)])
@@ -67,7 +67,7 @@ struct ClaudeCodeStepTests {
     #expect(relaunched.showsConnectAgain)
   }
 
-  /// 30 s on the clock end the step, however long the runs' own limits are: the shell's first start counts too (R1).
+  /// 30 s on the clock end the step, however long the runs' own limits are: the shell's first start counts too.
   @Test
   func thirtySecondsOnTheClockEndConnectAsAFailureAndStopTheRun() async {
     let stopped = LockIsolated(false)
@@ -105,7 +105,7 @@ struct ClaudeCodeStepTests {
     #expect(store.state.connect == .added)
   }
 
-  /// The check asks the shell only for its PATH, in plain commands zsh, bash and fish all run (N1).
+  /// The check asks the shell only for its PATH, in plain commands zsh, bash and fish all run.
   @Test
   func theCheckIsPlainCommandsEveryShellRuns() {
     let check = SecretsFeature.pathCommand
@@ -117,7 +117,7 @@ struct ClaudeCodeStepTests {
   }
 
   /// What zsh, bash and fish print for the check reads the same; what a startup file prints first is never read, and
-  /// without both markers there is no PATH (N1, N2).
+  /// without both markers there is no PATH.
   @Test
   func theMarkedPathIsReadFromEveryShellsOutput() {
     let marker = SecretsFeature.pathMarker
@@ -148,7 +148,7 @@ struct ClaudeCodeStepTests {
   }
 
   /// A greeting before the PATH changes nothing: Vortex runs the executable it found on the PATH, by its absolute
-  /// path, never a line of output (N2).
+  /// path, never a line of output.
   @Test
   func noiseBeforeThePathIsNeverRun() async {
     installClaude(at: "/opt/homebrew/bin/claude")
@@ -176,7 +176,7 @@ struct ClaudeCodeStepTests {
   }
 
   /// `claude` that only .zshrc puts on the PATH, or reaches by an alias, is found at the places its installers use,
-  /// and run by its path, quoted as one word (R4).
+  /// and run by its path, quoted as one word.
   @Test
   func claudeOutsideTheShellsPathIsFoundWhereItsInstallersPutIt() async {
     let local = URL.homeDirectory.appending(path: ".claude/local/claude").path
@@ -223,7 +223,7 @@ struct ClaudeCodeStepTests {
     // The token is in the environment only: never in the command, which logs and QA show.
     #expect(runs.value.allSatisfy { !$0.command.contains(Self.token) })
     #expect(runs.value[1].environment == [SecretsFeature.tokenVariable: Self.token])
-    // At most 30 s in all (S78).
+    // At most 30 s in all.
     #expect(runs.value.map(\.timeout).reduce(.zero, +) <= .seconds(30))
     #expect(store.state.settings.addedToClaudeCode)
     #expect(isStepDone)
@@ -253,7 +253,7 @@ struct ClaudeCodeStepTests {
     #expect(!isStepDone)
   }
 
-  /// The 30 s limit ends as any other failure (S78).
+  /// The 30 s limit ends as any other failure.
   @Test
   func reachingTheTimeLimitIsAFailure() async {
     installClaude(at: "/opt/homebrew/bin/claude")
@@ -265,7 +265,7 @@ struct ClaudeCodeStepTests {
   }
 
   /// With the server down, the step shows the Keys card's message, which names the port and says what to do, never
-  /// Settings' raw status line (A-B3); Connect is hidden and Skip stays.
+  /// Settings' raw status line; Connect is hidden and Skip stays.
   @Test
   func withTheServerDownTheStepShowsTheKeysCardsMessageWithThePort() {
     var state = SecretsFeature.State()
@@ -294,7 +294,7 @@ struct ClaudeCodeStepTests {
     #expect(runs.value.isEmpty)
   }
 
-  /// Done also when Claude Code connected before, or connects now (S27).
+  /// Done also when Claude Code connected before, or connects now.
   @Test
   func theStepIsDoneOnceClaudeCodeConnects() async {
     let store = makeStore([])
@@ -305,7 +305,7 @@ struct ClaudeCodeStepTests {
 }
 
 extension SecretsFeatureTests {
-  /// Done at start when Claude Code connected in an earlier launch (S27, S78).
+  /// Done at start when Claude Code connected in an earlier launch.
   @Test
   func theClaudeCodeStepIsDoneAtStartAfterAnEarlierConnection() async {
     @Shared(.secretsSettings) var settings

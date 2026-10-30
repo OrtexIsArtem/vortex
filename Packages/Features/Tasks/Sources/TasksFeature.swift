@@ -75,16 +75,16 @@ public struct TasksFeature: Sendable {
     var capture: CaptureFeature.State?
     /// The shortcut was pressed and the screen is being taken: another press waits for it.
     var isStartingCapture = false
-    /// What macOS says about Screen Recording, read by the shell; the status decides whether «+» captures (S56).
+    /// What macOS says about Screen Recording, read by the shell; the status decides whether «+» captures.
     @SharedReader(.permissionStatuses) var permissionStatuses
-    /// A required permission is off: the shortcut opens the shell's blocking page instead (S43).
+    /// A required permission is off: the shortcut opens the shell's blocking page instead.
     @SharedReader(.appBlocked) var appBlocked
 
     public init() {}
 
     var openTask: TaskItem? { openTaskID.flatMap { tasks[id: $0] } }
 
-    /// «+» shows a yellow warning: Screen Recording reads off (S22.1). Not before the first read, nor for ↻ (S40).
+    /// «+» shows a yellow warning: Screen Recording reads off. Not before the first read, nor for ↻.
     var showsScreenRecordingWarning: Bool {
       PermissionMark(permissionStatuses[.screenRecording]) == .warning
     }
@@ -176,11 +176,11 @@ public struct TasksFeature: Sendable {
     case queryChanged(String)
     /// The tab became visible: the window opened on it, or the user switched to it.
     case tabShown
-    /// The section in Settings › Features appeared: the statuses are read again (S47).
+    /// The section in Settings › Features appeared: the statuses are read again.
     case settingsShown
-    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    /// "Turn on" in the settings row of a permission that is off: the shell's page.
     case turnOnTapped(Permission)
-    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    /// "Restart Vortex" in the row of a permission that works after a relaunch.
     case restartTapped
   }
 
@@ -246,10 +246,10 @@ public struct TasksFeature: Sendable {
 
       case .captureRequested:
         guard state.isEnabled, state.capture == nil, !state.isStartingCapture else { return .none }
-        // While Vortex is blocked, the shell shows its blocking page whatever is asked for (S43).
+        // While Vortex is blocked, the shell shows its blocking page whatever is asked for.
         guard !state.appBlocked else { return openPage(.screenRecording) }
         guard let status = state.permissionStatuses[.screenRecording] else {
-          // Before the shell's first read (S64): wait for it, then decide again, blocked mode included, as the shell
+          // Before the shell's first read: wait for it, then decide again, blocked mode included, as the shell
           // writes the statuses and `appBlocked` together.
           return .run { [statuses = state.$permissionStatuses] send in
             for await value in statuses.publisher.values where !value.isEmpty {
@@ -259,8 +259,8 @@ public struct TasksFeature: Sendable {
           }
           .cancellable(id: CancelID.startCapture, cancelInFlight: true)
         }
-        // The status decides (S56): off, or granted only from the next launch, the page opens and nothing is taken;
-        // Vortex never asks macOS itself (S23, S25, S40).
+        // The status decides: off, or granted only from the next launch, the page opens and nothing is taken;
+        // Vortex never asks macOS itself.
         guard Self.canCapture(status) else { return openPage(.screenRecording) }
         state.isStartingCapture = true
         // A whole screen shown now would lie under the frozen one.
@@ -464,7 +464,7 @@ public struct TasksFeature: Sendable {
     status == .granted || status == .notNeeded
   }
 
-  /// The shell's page for a permission, instead of asking macOS (S23, S24).
+  /// The shell's page for a permission, instead of asking macOS.
   private func openPage(_ permission: Permission) -> Effect<Action> {
     .run { _ in await permissionPage.open(permission) }
   }

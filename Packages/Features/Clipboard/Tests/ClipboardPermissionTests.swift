@@ -6,7 +6,7 @@ import VortexPlatform
 
 @testable import FeatureClipboard
 
-/// Paste from Other Apps: the settings row (S22.3, S40, S47) and nothing read or recorded while it is off (S57).
+/// Paste from Other Apps: the settings row and nothing read or recorded while it is off.
 @MainActor
 struct ClipboardPermissionTests {
   let pages = LockIsolated<[Permission]>([])

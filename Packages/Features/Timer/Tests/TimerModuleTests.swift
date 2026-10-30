@@ -5,7 +5,7 @@ import VortexCore
 
 @MainActor
 struct TimerModuleTests {
-  /// The notification when time is up (S33).
+  /// The notification when time is up.
   @Test
   func theTimerNeedsNotifications() {
     #expect(TimerModule.permissionNeeds.map(\.permission) == [.notifications])

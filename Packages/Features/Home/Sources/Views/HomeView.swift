@@ -91,7 +91,7 @@ private struct Dock: View {
 private struct KeyboardCleaningButton: View {
   let action: @MainActor () -> Void
   @State private var isHovered = false
-  /// Accessibility off: a yellow warning on the button (S22.1); what a click does is the shell's.
+  /// Accessibility off: a yellow warning on the button; what a click does is the shell's.
   @SharedReader(.permissionStatuses) private var permissionStatuses
 
   var body: some View {

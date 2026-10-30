@@ -36,7 +36,7 @@ public struct TimerFeature: Sendable {
     var isAlarming = false
     /// System sounds, for the settings.
     var sounds: [String] = []
-    /// What macOS says about Notifications, read by the shell: the settings row (S22.3).
+    /// What macOS says about Notifications, read by the shell: the settings row.
     @SharedReader(.permissionStatuses) var permissionStatuses
 
     public init() {}
@@ -78,9 +78,9 @@ public struct TimerFeature: Sendable {
     /// Plays the sound and starts the flashes three seconds later, so the window can be closed first.
     case testTapped
     case testAlarm
-    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    /// "Turn on" in the settings row of a permission that is off: the shell's page.
     case turnOnTapped(Permission)
-    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    /// "Restart Vortex" in the row of a permission that works after a relaunch.
     case restartTapped
   }
 
@@ -171,7 +171,7 @@ public struct TimerFeature: Sendable {
       case .settingsShown:
         return .merge(
           .run { send in await send(.soundsLoaded(await sounds.names())) },
-          // The permission row shows what macOS says now (S47).
+          // The permission row shows what macOS says now.
           .run { _ in await permissions.refresh() }
         )
 
@@ -225,7 +225,7 @@ public struct TimerFeature: Sendable {
     state.now = now
     state.isAlarming = false
     state.$run.withLock { $0 = TimerRun.started(minutes: minutes, at: now) }
-    // Never asks whether Vortex may notify (S25): without Notifications the end shows in the notch only, and the
+    // Never asks whether Vortex may notify: without Notifications the end shows in the notch only, and the
     // settings row offers the page.
     return .merge(tick(state), saveRun(state))
   }

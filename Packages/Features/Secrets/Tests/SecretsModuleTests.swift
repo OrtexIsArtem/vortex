@@ -5,7 +5,7 @@ import VortexCore
 
 @MainActor
 struct SecretsModuleTests {
-  /// Claude's key requests show as notifications while the window is closed (S33).
+  /// Claude's key requests show as notifications while the window is closed.
   @Test
   func keysNeedNotifications() {
     #expect(SecretsModule.permissionNeeds.map(\.permission) == [.notifications])

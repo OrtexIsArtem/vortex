@@ -6,7 +6,7 @@ import VortexPlatform
 
 @testable import FeatureTimer
 
-/// The Notifications row in the timer's settings (S22.3, S40, S47); a run never asks macOS (S25).
+/// The Notifications row in the timer's settings; a run never asks macOS.
 @MainActor
 struct TimerPermissionTests {
   let pages = LockIsolated<[Permission]>([])

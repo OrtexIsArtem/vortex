@@ -5,7 +5,7 @@ import VortexCore
 
 @MainActor
 struct ClipboardModuleTests {
-  /// The history reads other apps' copies (S33).
+  /// The history reads other apps' copies.
   @Test
   func theClipboardNeedsPasteFromOtherApps() {
     #expect(ClipboardModule.permissionNeeds.map(\.permission) == [.pasteboard])

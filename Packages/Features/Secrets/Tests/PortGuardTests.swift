@@ -6,7 +6,7 @@ import VortexPlatform
 
 @testable import FeatureSecrets
 
-/// A QA run never serves on the user's port (review-2 R3), and the place QA seeds its own port stays where it is.
+/// A QA run never serves on the user's port, and the place QA seeds its own port stays where it is.
 @MainActor
 struct PortGuardTests {
   /// QA's bootstrap writes `port` into DataFolder/secrets.json before Keys starts: both names are pinned.

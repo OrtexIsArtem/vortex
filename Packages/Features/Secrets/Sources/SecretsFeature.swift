@@ -69,7 +69,7 @@ struct SecretsFeature: Sendable {
   static let allowButtonID = "secrets.allow"
   static let denyButtonID = "secrets.deny"
 
-  /// Where the onboarding's "Connect" stands (S27, S78).
+  /// Where the onboarding's "Connect" stands.
   enum ConnectStatus: Equatable, Sendable {
     case idle
     case running
@@ -81,7 +81,7 @@ struct SecretsFeature: Sendable {
     case failed(exitCode: Int32)
   }
 
-  /// Connect's wall-clock limit (S78): reached, the run stops and the step shows the failure line.
+  /// Connect's wall-clock limit: reached, the run stops and the step shows the failure line.
   static let connectLimit: Duration = .seconds(30)
   /// Each run's own limit inside it: checking for `claude`, then adding.
   static let checkTime: Duration = .seconds(5)
@@ -172,11 +172,11 @@ struct SecretsFeature: Sendable {
     var alarms = 0
     @Shared(.secretsSettings) var settings
     @Shared(.notchIndicators) var indicators
-    /// What macOS says about Notifications, read by the shell: the settings row (S22.3).
+    /// What macOS says about Notifications, read by the shell: the settings row.
     @SharedReader(.permissionStatuses) var permissionStatuses
-    /// The onboarding's Claude Code step (S27, S78).
+    /// The onboarding's Claude Code step.
     var connect = ConnectStatus.idle
-    /// Ports this Vortex never serves on: in a QA run, the user's own Vortex's default port (review-2 R3), as two
+    /// Ports this Vortex never serves on: in a QA run, the user's own Vortex's default port, as two
     /// listeners may share a port and Claude Code's requests would then reach the run.
     var takenPorts = SecretsFeature.qaTakenPorts
 
@@ -257,11 +257,11 @@ struct SecretsFeature: Sendable {
     case commandEnded(MCPCall.ID, ran: Bool)
     case copyConnectCommandTapped
     case portChanged(Int)
-    /// The section in Settings › Features appeared: the statuses are read again (S47).
+    /// The section in Settings › Features appeared: the statuses are read again.
     case settingsShown
-    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    /// "Turn on" in the settings row of a permission that is off: the shell's page.
     case turnOnTapped(Permission)
-    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    /// "Restart Vortex" in the row of a permission that works after a relaunch.
     case restartTapped
     /// "Connect" or "Connect again" in the onboarding's Claude Code step.
     case connectTapped
@@ -315,7 +315,7 @@ struct SecretsFeature: Sendable {
         guard !state.isEnabled else { return .none }
         state.isEnabled = true
         state.server = .starting
-        // Done before this launch: Connect worked, or Claude Code connected (S78).
+        // Done before this launch: Connect worked, or Claude Code connected.
         markClaudeStep(state.isClaudeStepDone)
         // Requests from before, such as a run Vortex quit in, are over: so are their notifications.
         guard state.isLoaded else { return .merge(load(), listenToNotificationButtons(), forgetNotifications()) }
@@ -525,7 +525,7 @@ struct SecretsFeature: Sendable {
         return .run { _ in await system.relaunch() }
 
       case .connectTapped:
-        // Only while the server listens, so the command names a port Claude can reach (S78).
+        // Only while the server listens, so the command names a port Claude can reach.
         guard case .listening = state.server, let token = state.token, state.connect != .running else { return .none }
         state.connect = .running
         return .merge(
@@ -536,7 +536,7 @@ struct SecretsFeature: Sendable {
             await send(.connectFinished(.failed(exitCode: -1)))
           }
           .cancellable(id: CancelID.connect, cancelInFlight: true),
-          // One wall-clock limit for the whole step: the shell's first start, the check and the connect (S78).
+          // One wall-clock limit for the whole step: the shell's first start, the check and the connect.
           .run { send in
             try await clock.sleep(for: Self.connectLimit)
             await send(.connectTimeLimitReached)
@@ -553,7 +553,7 @@ struct SecretsFeature: Sendable {
         return .cancel(id: CancelID.connectLimit)
 
       case .connectTimeLimitReached:
-        // The whole step, the shell's first start included, never waits longer (S78): the run is stopped, which
+        // The whole step, the shell's first start included, never waits longer: the run is stopped, which
         // stops everything it started, and it ends as any other failure.
         guard state.connect == .running else { return .none }
         state.connect = .failed(exitCode: 143)
@@ -571,7 +571,7 @@ struct SecretsFeature: Sendable {
     }
   }
 
-  /// The onboarding offers Next instead of Skip once the step is done (S19, S27).
+  /// The onboarding offers Next instead of Skip once the step is done.
   private func markClaudeStep(_ isDone: Bool) {
     guard isDone else { return }
     @Shared(.onboardingStepsDone) var done
@@ -758,7 +758,7 @@ struct SecretsFeature: Sendable {
   private func serve(_ state: State) -> Effect<Action> {
     guard state.isEnabled, let token = state.token else { return .none }
     let port = state.settings.port
-    // A port that is taken is never served on, however it got into the settings (review-2 R3).
+    // A port that is taken is never served on, however it got into the settings.
     guard !state.takenPorts.contains(port) else {
       return .send(.server(.failed(String(localized: "Port \(port) is taken", bundle: .module))))
     }
@@ -888,7 +888,7 @@ struct SecretsFeature: Sendable {
       NotificationClient.Button(id: Self.denyButtonID, title: String(localized: "Deny", bundle: .module)),
     ]
     let id = Self.notificationID(approval.id)
-    // Never asks whether Vortex may notify (S25): without Notifications macOS drops it, and the request waits in the tab.
+    // Never asks whether Vortex may notify: without Notifications macOS drops it, and the request waits in the tab.
     return .run { _ in await notifications.post(id, title, body, buttons) }
     .cancellable(id: CancelID.notification(approval.id), cancelInFlight: true)
   }

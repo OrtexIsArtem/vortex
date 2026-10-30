@@ -28,7 +28,8 @@ public struct ClipboardFeature: Sendable {
     /// Running apps, offered when the user adds an app to ignore.
     var runningApps: [AppInfo] = []
     @Shared(.clipboardSettings) var settings
-    /// What macOS says about Paste from Other Apps, read by the shell: the settings row and S57.
+    /// What macOS says about Paste from Other Apps, read by the shell: the settings row, and no recording while it
+    /// reads `notGranted`.
     @SharedReader(.permissionStatuses) var permissionStatuses
 
     public init() {}
@@ -62,9 +63,9 @@ public struct ClipboardFeature: Sendable {
     case chooseAppTapped
     case appChosen(AppInfo?)
     case stopIgnoringAppTapped(bundleID: String)
-    /// "Turn on" in the settings row of a permission that is off: the shell's page (S22.3, S23).
+    /// "Turn on" in the settings row of a permission that is off: the shell's page.
     case turnOnTapped(Permission)
-    /// "Restart Vortex" in the row of a permission that works after a relaunch (S40).
+    /// "Restart Vortex" in the row of a permission that works after a relaunch.
     case restartTapped
   }
 
@@ -281,7 +282,7 @@ public struct ClipboardFeature: Sendable {
       case .settingsShown:
         return .merge(
           .run { send in await send(.runningAppsLoaded(apps.running())) },
-          // The permission row shows what macOS says now (S47).
+          // The permission row shows what macOS says now.
           .run { _ in await permissions.refresh() }
         )
 
@@ -387,7 +388,7 @@ public struct ClipboardFeature: Sendable {
     return nil
   }
 
-  /// Records copies, except while Paste from Other Apps reads `notGranted` (S57): macOS then enforces pasteboard
+  /// Records copies, except while Paste from Other Apps reads `notGranted`: macOS then enforces pasteboard
   /// privacy and Vortex isn't allowed, so reading a copy could make macOS alert. The pasteboard isn't read at all then,
   /// nothing is recorded, and watching starts again when the status changes.
   private func watch(_ state: State) -> Effect<Action> {

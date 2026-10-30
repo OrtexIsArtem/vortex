@@ -80,7 +80,7 @@ struct TasksFeatureTests {
       $0.textRecognitionClient.recognize = { image in image.size.width < 40 ? "Fix the pay button\nsecond line" : "whole screen #mobile-team" }
       $0.hotkeyClient.presses = { [shortcut] _ in shortcut.stream }
       $0.notificationClient.requestAuthorization = {
-        Issue.record("Tasks never asks whether Vortex may notify (S25)")
+        Issue.record("Tasks never asks whether Vortex may notify")
         return false
       }
       $0.notificationClient.post = { [posted] id, _, _, _ in posted.withValue { $0.append(id) } }
@@ -242,7 +242,7 @@ struct TasksFeatureTests {
   }
 
   /// «+» and the shortcut without Screen Recording: the shell's page, never macOS's prompt, no notification, nothing
-  /// taken (S23, S25, S56); the mark shows on «+» (S22.1).
+  /// taken; the mark shows on «+».
   @Test
   func withScreenRecordingOffANewTaskOpensThePageAndNeverAsksMacOS() async {
     simulated.set(.screenRecording, to: .denied)
@@ -265,7 +265,7 @@ struct TasksFeatureTests {
     await store.send(.stop)
   }
 
-  /// Granted for the next launch only: «+» starts nothing and opens the page in its ↻ state, without yellow (S40).
+  /// Granted for the next launch only: «+» starts nothing and opens the page in its ↻ state, without yellow.
   @Test
   func screenRecordingThatWorksAfterARestartOpensThePageWithoutAMark() async {
     simulated.set(.screenRecording, to: .notAsked)
@@ -283,7 +283,7 @@ struct TasksFeatureTests {
     await store.send(.stop)
   }
 
-  /// While Vortex is blocked, the shortcut asks for the page and the shell shows its blocking page (S43).
+  /// While Vortex is blocked, the shortcut asks for the page and the shell shows its blocking page.
   @Test
   func whileBlockedTheShortcutOpensThePageInsteadOfCapturing() async {
     readStatuses(simulated.statuses)
@@ -301,7 +301,7 @@ struct TasksFeatureTests {
     await store.send(.stop)
   }
 
-  /// Before the shell's first read there is no mark, and a press reads the status once, which never prompts (S5, S64).
+  /// Before the shell's first read there is no mark, and a press reads the status once, which never prompts.
   @Test
   func beforeTheFirstReadAPressWaitsForItAndDecidesBlockedModeToo() async {
     readStatuses(nil)
@@ -313,7 +313,7 @@ struct TasksFeatureTests {
     #expect(pages.value.isEmpty)
     #expect(screenshots.value == 0)
 
-    // The shell's first read: Screen Recording on, but Vortex blocked (R2): the page, no capture.
+    // The shell's first read: Screen Recording on, but Vortex blocked: the page, no capture.
     @Shared(.appBlocked) var appBlocked
     $appBlocked.withLock { $0 = true }
     readStatuses(simulated.statuses)
@@ -340,7 +340,7 @@ struct TasksFeatureTests {
     await store.send(.stop)
   }
 
-  /// The settings row: "Turn on" opens the page, "Restart Vortex" relaunches, and the section re-reads (S22.3, S40, S47).
+  /// The settings row: "Turn on" opens the page, "Restart Vortex" relaunches, and the section re-reads.
   @Test
   func theSettingsRowOpensThePageRestartsAndReadsAgain() async {
     let store = makeStore()
@@ -353,7 +353,7 @@ struct TasksFeatureTests {
     #expect(simulated.state.events.isEmpty)
   }
 
-  /// The mark on «+» follows the status: only `notGranted` is yellow (S22, S40).
+  /// The mark on «+» follows the status: only `notGranted` is yellow.
   @Test
   func theMarkOnPlusShowsOnlyWhileScreenRecordingIsOff() {
     for (status, shows) in [(PermissionStatus?.none, false), (.granted, false), (.grantedAfterRestart, false), (.notNeeded, false), (.notGranted, true)] {

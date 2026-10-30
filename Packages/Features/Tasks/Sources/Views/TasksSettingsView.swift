@@ -3,7 +3,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The Tasks section in Settings › Features: the shortcut, and a row while Screen Recording isn't working (S22.3, S40).
+/// The Tasks section in Settings › Features: the shortcut, and a row while Screen Recording isn't working.
 struct TasksSettingsView: View {
   let store: StoreOf<TasksFeature>
 

@@ -5,7 +5,7 @@ import VortexCore
 
 @MainActor
 struct TasksModuleTests {
-  /// A capture takes a screenshot of the display (S33).
+  /// A capture takes a screenshot of the display.
   @Test
   func tasksNeedScreenRecording() {
     #expect(TasksModule.permissionNeeds.map(\.permission) == [.screenRecording])

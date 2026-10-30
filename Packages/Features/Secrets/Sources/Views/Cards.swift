@@ -150,7 +150,7 @@ struct ConnectCard: View {
 }
 
 /// Why Claude can't reach the keys: the port the server couldn't listen on, the reason, and what to do. The Keys tab's
-/// card and the onboarding's Claude Code step (S27, S78) show the same text.
+/// card and the onboarding's Claude Code step show the same text.
 struct ServerFailureMessage: View {
   let failure: SecretsFeature.ServerFailure
 

@@ -90,7 +90,7 @@ public struct TasksView: View {
           .background(Circle().fill(VortexColor.raised))
           .contentShape(Circle())
           .overlay(alignment: .topTrailing) {
-            // Screen Recording is off: a click opens its page instead of capturing (S22.1, S23).
+            // Screen Recording is off: a click opens its page instead of capturing.
             if store.showsScreenRecordingWarning {
               WarningMark(.screenRecording, size: 9)
                 .offset(x: 3, y: -2)

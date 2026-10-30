@@ -14,7 +14,7 @@ public struct SecretsSettings: Codable, Equatable, Sendable {
   public var port = Self.defaultPort
   /// Claude Code connected at least once, so the tab stops showing how to connect it.
   public var hasConnected = false
-  /// The onboarding's "Connect" added Vortex to Claude Code (S78): the step stays done after a relaunch.
+  /// The onboarding's "Connect" added Vortex to Claude Code: the step stays done after a relaunch.
   public var addedToClaudeCode = false
 
   private enum CodingKeys: String, CodingKey {

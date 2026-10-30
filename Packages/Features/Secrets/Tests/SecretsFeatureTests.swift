@@ -51,7 +51,7 @@ struct SecretsFeatureTests {
       $0.mcpServer.serve = { [events] _, _ in events.stream }
       $0.mcpServer.reply = { [replies] _, result in replies.withValue { $0.append(result) } }
       $0.notificationClient.requestAuthorization = {
-        Issue.record("A request never asks whether Vortex may notify (S25)")
+        Issue.record("A request never asks whether Vortex may notify")
         return false
       }
       $0.notificationClient.post = { [posted, bodies] id, title, body, _ in
@@ -509,7 +509,7 @@ struct SecretsFeatureTests {
   }
 }
 
-/// The Notifications row in Keys' settings (S22.3, S40, S47).
+/// The Notifications row in Keys' settings.
 @MainActor
 struct SecretsPermissionTests {
   @Test

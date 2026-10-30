@@ -2,7 +2,7 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// The onboarding's Claude Code step (S27, S78), hosted by the shell: "Connect" adds Vortex to Claude Code with the
+/// The onboarding's Claude Code step, hosted by the shell: "Connect" adds Vortex to Claude Code with the
 /// same command as the tab's card, run in the user's login shell. The token never shows: the command reads it from the
 /// environment, and only a fixed line with the exit code is shown on a failure.
 struct ClaudeCodeStepView: View {
@@ -68,7 +68,7 @@ struct ClaudeCodeStepView: View {
     }
   }
 
-  /// What the last run gave, under either button; after a relaunch, an earlier success (S27, S78).
+  /// What the last run gave, under either button; after a relaunch, an earlier success.
   @ViewBuilder
   private var result: some View {
     switch store.connect {
@@ -138,7 +138,7 @@ extension SecretsFeature.State {
     serverFailure.map { .serverFailure($0) } ?? .connect
   }
 
-  /// "Connect" works only while the server listens (S78), and once at a time.
+  /// "Connect" works only while the server listens, and once at a time.
   var canConnect: Bool {
     guard case .listening = server, token != nil else { return false }
     return connect != .running
