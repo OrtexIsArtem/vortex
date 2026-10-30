@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Monochrome palette from the design canvas. Every color adapts to light and dark appearance.
+/// The monochrome palette. Every color adapts to light and dark appearance.
 public enum VortexColor {
   public static let windowBackground = dynamic(dark: 0x050505, light: 0xFBFBFC)
   public static let raised = dynamic(dark: 0x1A1A1D, light: 0xEDEDF0)

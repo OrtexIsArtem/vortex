@@ -1,6 +1,6 @@
 import AppKit
 
-/// The Vortex spiral from the design, drawn in code so it stays crisp at any scale.
+/// The Vortex spiral, drawn in code so it stays crisp at any scale.
 enum VortexGlyph {
   /// Quarter arcs of the spiral in a 24×24 box with the y axis pointing down: center, radius, start and end angle.
   /// Each arc starts where the previous one ends.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Where a feature's widget sits on Home (variant B «Вуха» of the design).
+/// Where a feature's widget sits on Home.
 public enum HomeSlot: Sendable {
   /// The row next to the notch. Home shows one: the first such widget in sidebar order.
   case header

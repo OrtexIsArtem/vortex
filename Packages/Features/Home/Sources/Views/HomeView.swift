@@ -2,7 +2,7 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Home, variant B «Вуха»: a widget in the row next to the notch, the middle, and a dock at the bottom.
+/// Home: a widget in the row next to the notch, the middle, and a dock at the bottom.
 struct HomeView: View {
   @Environment(\.homeWidgets) private var widgets
   @Environment(\.keyboardCleaning) private var keyboardCleaning
