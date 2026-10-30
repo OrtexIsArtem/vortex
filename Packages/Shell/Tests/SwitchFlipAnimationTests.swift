@@ -4,7 +4,7 @@ import Testing
 
 @testable import VortexShell
 
-/// A-B5: the illustration's pointer and switch move by Core Animation, so the app does no per-frame work while a page
+/// The illustration's pointer and switch move by Core Animation, so the app does no per-frame work while a page
 /// or the panel shows. The window is created but never ordered in: nothing reaches a display.
 @MainActor
 struct SwitchFlipAnimationTests {

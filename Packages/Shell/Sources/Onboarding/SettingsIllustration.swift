@@ -3,7 +3,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// A drawn mock of the System Settings pane for a permission, never a screenshot (S36): a sidebar hint, the
+/// A drawn mock of the System Settings pane for a permission, never a screenshot: a sidebar hint, the
 /// breadcrumb, two faded rows with no real names, and Vortex's row with its icon and a switch. Every ~3 s a pointer
 /// moves to the switch and turns it on, played by Core Animation (`SwitchFlipAnimation`), so the page costs no CPU
 /// while it shows; with Reduce Motion the switch is on, with an arrow pointing at it.
@@ -113,7 +113,7 @@ struct SettingsIllustration: View {
   }
 }
 
-/// The illustration's words, as System Settings on macOS 26 names its panes (S36, S75).
+/// The illustration's words, as System Settings on macOS 26 names its panes.
 enum IllustrationText {
   static func breadcrumb(_ permission: Permission) -> LocalizedStringResource {
     switch permission {

@@ -68,7 +68,7 @@ private struct SidebarView: View {
           symbol: feature.symbol,
           title: Text(feature.title),
           isSelected: store.selectedTab == .feature(feature.id),
-          // A permission the feature needs is off (S22.2, S39).
+          // A permission the feature needs is off.
           warning: feature.permissionNeeds.firstOff(in: store.permissionStatuses)
         ) {
           store.send(.tabSelected(.feature(feature.id)))
@@ -97,7 +97,7 @@ private struct SidebarButton: View {
   let title: Text
   let isSelected: Bool
   /// A yellow dot on the icon: decoration with its own tooltip ("Notifications are off"); a click on it opens the tab
-  /// like the icon (S39).
+  /// like the icon.
   var warning: Permission?
   let action: () -> Void
   @State private var isHovered = false

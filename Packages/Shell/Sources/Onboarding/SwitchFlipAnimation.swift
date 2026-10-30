@@ -3,7 +3,7 @@ import QuartzCore
 import SwiftUI
 import VortexCore
 
-/// The illustration's moving parts: the pointer goes to Vortex's switch and the switch turns on, every ~3 s (S36).
+/// The illustration's moving parts: the pointer goes to Vortex's switch and the switch turns on, every ~3 s.
 ///
 /// They are Core Animation layers with one repeating explicit animation each. The render server plays it, so Vortex
 /// does no work for it, during the moves or between them: an animation SwiftUI drives costs the app a frame of work

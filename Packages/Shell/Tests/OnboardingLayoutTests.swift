@@ -7,7 +7,7 @@ import VortexPlatform
 
 @testable import VortexShell
 
-/// No text is cut short (S31; A-B2, B-B1): with every text at its full length, each page's title and content fit the
+/// No text is cut short: with every text at its full length, each page's title and content fit the
 /// window above its footer, in their longest states. A page that grew past it would scroll (`FittingPage`), but no
 /// page should need to in English; Ukrainian is checked on QA snapshots, as `swift test` doesn't build the catalogs.
 @MainActor
@@ -42,7 +42,7 @@ struct OnboardingLayoutTests {
     print("layout \(page): \(Int(height)) of \(Int(space)) pt")
   }
 
-  /// The pasteboard's single page, still off after "Restart to check": S59's hint and the relaunch note.
+  /// The pasteboard's single page, still off after "Restart to check": the recheck hint and the relaunch note.
   @Test
   func thePasteboardsSinglePageWithItsHintFits() {
     let store = store(presentation: .single(.init(permission: .pasteboard, kind: .afterRelaunch), .window)) {

@@ -100,7 +100,7 @@ struct OnboardingFeatureTests {
     await store.send(.statusesChanged(old: old))
   }
 
-  /// Waits out the 300 ms the navigation buttons ignore after a page change (S70).
+  /// Waits out the 300 ms the navigation buttons ignore after a page change.
   func settle(_ store: TestStoreOf<OnboardingFeature>) async {
     await clock.advance(by: .milliseconds(300))
     await store.receive(\.navigationUnlocked)
@@ -126,7 +126,7 @@ struct OnboardingFeatureTests {
     #expect(await windowCalls.next() == "panel")
   }
 
-  // MARK: - When the window shows (S7, S8, S21, S71)
+  // MARK: - When the window shows
 
   @Test
   func aFreshInstallShowsWelcomeAtLaunchAndChecksEverySecondWhileItShows() async {
@@ -173,7 +173,7 @@ struct OnboardingFeatureTests {
   }
 
   /// Steps sit in the order of their features in the sidebar: a step whose feature was turned off resumes at the next
-  /// step, not at Done (S71).
+  /// step, not at Done.
   @Test
   func aSavedStepWhoseFeatureIsOffResumesAtTheNextStep() {
     var state = makeStore(progress: .at(.step("secrets")), steps: ["tasks"]).state
@@ -197,18 +197,18 @@ struct OnboardingFeatureTests {
       .welcome, .basics, .permission(.accessibility), .permission(.screenRecording), .permission(.pasteboard),
       .step("secrets"), .done,
     ])
-    // A permission macOS doesn't ask for here has no page and no row (S1).
+    // A permission macOS doesn't ask for here has no page and no row.
     write([.notifications: .granted, .accessibility: .granted, .screenRecording: .granted, .pasteboard: .notNeeded])
     #expect(!store.state.pages.contains(.permission(.pasteboard)))
     #expect(store.state.doneRows == [.notifications, .accessibility, .screenRecording])
   }
 
-  // MARK: - Skip and Next (S19, S72, S78)
+  // MARK: - Skip and Next
 
   @Test
   func skipAndNextFollowTheStatusesOnThePage() {
     let store = makeStore(progress: .at(.basics), statuses: nil)
-    // Before the first read: no checkbox state, no Skip, no Next (S72).
+    // Before the first read: no checkbox state, no Skip, no Next.
     #expect(store.state.rowState(.notifications) == .unknown)
     #expect(store.state.buttons == .init(nextVisible: false, nextEnabled: false, skipVisible: false))
 
@@ -218,12 +218,12 @@ struct OnboardingFeatureTests {
     #expect(store.state.buttons == .init(nextVisible: true, nextEnabled: true, skipVisible: false))
   }
 
-  /// Basics with Notifications off: the row reads "Optional", and Skip is there beside the disabled Next (S19).
+  /// Basics with Notifications off: the row reads "Optional", and Skip is there beside the disabled Next.
   @Test
   func aPermissionThatCanBeSkippedReadsOptionalWithSkipBesideIt() async {
     let store = makeStore(progress: .at(.basics), statuses: nil)
     await store.send(.launched)
-    // Before the first read: no tag, no buttons (S72).
+    // Before the first read: no tag, no buttons.
     #expect(store.state.rowTag(.notifications) == nil)
     write(OnboardingNeeds.allOff)
     #expect(store.state.rowTag(.notifications) == .optional)
@@ -300,7 +300,7 @@ struct OnboardingFeatureTests {
     let store = makeStore(steps: ["secrets"])
     await store.send(.launched)
     await store.send(.getStartedTapped)
-    // Within 300 ms of the change, buttons do nothing (S70).
+    // Within 300 ms of the change, buttons do nothing.
     await store.send(.skipTapped)
     #expect(store.state.page == .basics)
     await settle(store)
@@ -318,7 +318,7 @@ struct OnboardingFeatureTests {
     #expect(store.state.page == .done)
   }
 
-  // MARK: - Turn on (S2, S4, S13, S70)
+  // MARK: - Turn on
 
   @Test
   func turnOnAsksMacOSOnceUntilTheStatusChangesOrTwoSecondsPass() async {
@@ -331,14 +331,14 @@ struct OnboardingFeatureTests {
     await clock.advance(by: .seconds(2))
     await store.receive(\.turnOnUnlocked)
     #expect(!store.state.turnOnIgnored.contains(.accessibility))
-    // A click on a checkbox that is on does nothing (S2).
+    // A click on a checkbox that is on does nothing.
     write([.accessibility: .granted])
     await store.send(.turnOnTapped(.accessibility))
     #expect(!store.state.turnOnIgnored.contains(.accessibility))
     #expect(asked.untaken.isEmpty)
   }
 
-  /// The pasteboard's ↻ checkbox reads as on while its check waits for the relaunch: a click asks nothing (S2).
+  /// The pasteboard's ↻ checkbox reads as on while its check waits for the relaunch: a click asks nothing.
   @Test
   func thePasteboardsCheckboxThatWaitsForTheRelaunchDoesNothing() async {
     let store = makeStore(progress: .at(.permission(.pasteboard)))
@@ -372,7 +372,7 @@ struct OnboardingFeatureTests {
     #expect(!store.state.turnOnIgnored.contains(.notifications))
   }
 
-  // MARK: - Pasteboard and restarts (S16, S18, S20, S68)
+  // MARK: - Pasteboard and restarts
 
   @Test
   func openingThePasteboardPaneMarksItCheckedAfterRestartAndEnablesNext() async {
@@ -414,7 +414,7 @@ struct OnboardingFeatureTests {
     #expect(relaunches.untaken.isEmpty)
   }
 
-  /// A second press before the process is gone neither completes the onboarding nor relaunches again (S18, S70).
+  /// A second press before the process is gone neither completes the onboarding nor relaunches again.
   @Test
   func aSecondPressOfRestartAndStartDoesNothing() async {
     let store = makeStore(progress: .at(.done), statuses: [
@@ -464,7 +464,7 @@ struct OnboardingFeatureTests {
     #expect(!store.state.progress.restarted)
   }
 
-  // MARK: - Done (S18, S53, S75, S77)
+  // MARK: - Done
 
   @Test
   func doneShowsARowPerNeededPermissionAndASkippedRowOpensItsPageWhichReturnsToDone() async {
@@ -480,7 +480,7 @@ struct OnboardingFeatureTests {
     #expect(store.state.page == .done)
     #expect(!store.state.progress.returnToDone)
 
-    // The notifications row opens Basics, which returns to Done as well (S77).
+    // The notifications row opens Basics, which returns to Done as well.
     await go(store, .doneRowTapped(.notifications))
     #expect(store.state.page == .basics)
     await go(store, .skipTapped)
@@ -528,7 +528,7 @@ struct OnboardingFeatureTests {
     await store.receive(\.openShortcutLoaded) { $0.openShortcut = "⌥⌘V" }
   }
 
-  // MARK: - Closing and continuing (S10, S69, S80)
+  // MARK: - Closing and continuing
 
   @Test
   func closingBeforeCompletionKeepsTheProgressAndContinueSetupReopensAtTheSavedPage() async {
@@ -540,18 +540,18 @@ struct OnboardingFeatureTests {
     #expect(store.state.presentation == .hidden)
     #expect(store.state.progress.page == "permission:accessibility")
     #expect(!store.state.progress.completed)
-    // A request now shows a single page, and the saved page stays (S52).
+    // A request now shows a single page, and the saved page stays.
     await store.send(.pageRequested(.screenRecording, .request))
     #expect(await windowCalls.next() == "window+activate")
     #expect(store.state.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
-    // «Продовжити налаштування» replaces it with the onboarding at the saved page (S80).
+    // «Продовжити налаштування» replaces it with the onboarding at the saved page.
     await store.send(.continueSetupTapped)
     #expect(await windowCalls.next() == "window+activate")
     #expect(store.state.presentation == .flow(.window))
     #expect(store.state.page == .permission(.accessibility))
   }
 
-  // MARK: - The panel stepped aside, and the onboarding brought forward (S9, S52, S63, S69)
+  // MARK: - The panel stepped aside, and the onboarding brought forward
 
   /// «Продовжити налаштування» while another app is in front and the panel stepped aside: the window comes back, in
   /// front, as the System Settings window the panel stood next to is behind that app.
@@ -594,7 +594,7 @@ struct OnboardingFeatureTests {
     await openPanel(store, for: .accessibility)
     await store.send(.appActivated("com.apple.Safari"))
     #expect(await windowCalls.next() == "panelHidden")
-    // A hover shows the window without activating Vortex (S46).
+    // A hover shows the window without activating Vortex.
     await store.send(.blockedEntry(activate: false))
     #expect(await windowCalls.next() == "window")
     #expect(store.state.presentation == .flow(.window))
@@ -612,7 +612,7 @@ struct OnboardingFeatureTests {
     #expect(await windowCalls.next() == "window+activate")
   }
 
-  // MARK: - The single page (S11, S24, S49–S52, S55)
+  // MARK: - The single page
 
   @Test
   func aRequestWhileTheOnboardingShowsBringsItForwardWithoutJumping() async {
@@ -639,7 +639,7 @@ struct OnboardingFeatureTests {
     #expect(await windowCalls.next() == "hide+front")
   }
 
-  /// A pasteboard grant reads `notNeeded` (report-1, concern 1): the page closes on it as on `granted` (S50).
+  /// A pasteboard grant reads `notNeeded`: the page closes on it as on `granted`.
   @Test
   func thePasteboardsSinglePageClosesOnceItReadsNotNeeded() async {
     var pending = OnboardingProgress.finished
@@ -685,7 +685,7 @@ struct OnboardingFeatureTests {
     #expect(stillOff.state.presentation == .single(.init(permission: .accessibility, kind: .afterRelaunch), .window))
   }
 
-  /// Blocked at launch, the blocking page opens even though a page waits for this relaunch (S41).
+  /// Blocked at launch, the blocking page opens even though a page waits for this relaunch.
   @Test
   func aPageWaitingForTheRelaunchGivesWayToTheBlockingPage() async {
     var pending = OnboardingProgress.finished
@@ -719,7 +719,7 @@ struct OnboardingFeatureTests {
     await store.send(.laterTapped)
     #expect(await windowCalls.next() == "hide+front")
 
-    // Esc does nothing in the onboarding itself (S79).
+    // Esc does nothing in the onboarding itself.
     let flow = makeStore()
     await flow.send(.launched)
     await flow.send(.escapePressed)
@@ -751,7 +751,7 @@ struct OnboardingFeatureTests {
     #expect(mac.state.events.last == .settings(.accessibility))
   }
 
-  /// B-B4: turned off again within the 1.5 s, the page stays open with its checkbox off (S2, S24, S26).
+  /// Turned off again within the 1.5 s, the page stays open with its checkbox off.
   @Test
   func aRevokeWithinTheCloseDelayKeepsTheSinglePageOpen() async {
     let store = makeStore(progress: .finished)
@@ -791,10 +791,10 @@ struct OnboardingFeatureTests {
     #expect(store.state.presentation == .single(.init(permission: .accessibility, kind: .blocked), .window))
   }
 
-  // MARK: - The pasteboard's page (S16, S59, S68; PM's decision on A-B1)
+  // MARK: - The pasteboard's page
 
   /// Before the relaunch that can check it, the page says only "Checked after restart" and offers "Restart to check";
-  /// S59's hint comes only once that relaunch still reads it off.
+  /// the recheck hint comes only once that relaunch still reads it off.
   @Test
   func thePasteboardPageGivesTheRecheckHintOnlyAfterARelaunchStillReadsItOff() async {
     let store = makeStore(progress: .at(.permission(.pasteboard)))
@@ -816,7 +816,7 @@ struct OnboardingFeatureTests {
     #expect(relaunched.state.rowState(.pasteboard) == .afterRestart)
     #expect(!relaunched.state.showsRecheckHint(.pasteboard))
 
-    // Another permission keeps S59 as it was: after System Settings, on return, while off.
+    // Another permission keeps its recheck hint as it was: after System Settings, on return, while off.
     let accessibility = makeStore(progress: .at(.permission(.accessibility)))
     await accessibility.send(.launched)
     await accessibility.send(.turnOnTapped(.accessibility))
@@ -825,7 +825,7 @@ struct OnboardingFeatureTests {
     #expect(accessibility.state.showsRecheckHint(.accessibility))
   }
 
-  /// The single page after "Restart to check": still off, it shows the hint with the pane button (S50, S59).
+  /// The single page after "Restart to check": still off, it shows the hint with the pane button.
   @Test
   func thePasteboardsSinglePageAfterRestartToCheckStillOffGivesTheHint() async {
     let store = makeStore(progress: .finished)
@@ -841,7 +841,7 @@ struct OnboardingFeatureTests {
     #expect(relaunched.state.showsRecheckHint(.pasteboard))
   }
 
-  // MARK: - Blocked (S9, S41, S46, S65)
+  // MARK: - Blocked
 
   @Test
   func blockedAfterCompletionShowsTheFirstMissingRequiredPageWithCloseOnly() async {
@@ -854,7 +854,7 @@ struct OnboardingFeatureTests {
     await store.send(.closeTapped)
     #expect(await windowCalls.next() == "hide+front")
     #expect(store.state.presentation == .hidden)
-    // A hover shows it again without activating; another hover leaves it; a click activates (S46).
+    // A hover shows it again without activating; another hover leaves it; a click activates.
     await store.send(.blockedEntry(activate: false))
     #expect(await windowCalls.next() == "window")
     await store.send(.blockedEntry(activate: false))
@@ -893,7 +893,7 @@ struct OnboardingFeatureTests {
     #expect(store.state.page == .permission(.pasteboard))
   }
 
-  /// «Продовжити налаштування» while blocked before completion shows the page of the missing permission (S65).
+  /// «Продовжити налаштування» while blocked before completion shows the page of the missing permission.
   @Test
   func continueSetupWhileBlockedShowsThePageOfTheMissingPermission() async {
     let store = makeStore(progress: .at(.basics), required: [.accessibility])
@@ -902,7 +902,7 @@ struct OnboardingFeatureTests {
     #expect(store.state.page == .permission(.accessibility))
   }
 
-  // MARK: - The guide panel (S15, S59, S63, S73)
+  // MARK: - The guide panel
 
   @Test
   func systemSettingsInFrontSoonAfterTurnOnShrinksTheWindowToThePanel() async {
@@ -912,7 +912,7 @@ struct OnboardingFeatureTests {
     await openPanel(store, for: .accessibility)
     #expect(store.state.guided == .accessibility)
     #expect(store.state.mode == "guide")
-    // Another app in front hides it; System Settings or Vortex brings it back (S63).
+    // Another app in front hides it; System Settings or Vortex brings it back.
     await store.send(.appActivated("com.apple.finder"))
     #expect(await windowCalls.next() == "panelHidden")
     #expect(store.state.isPanelHidden)
@@ -934,10 +934,10 @@ struct OnboardingFeatureTests {
     await store.send(.backTapped)
     #expect(await windowCalls.next() == "window+activate")
     #expect(!store.state.isPanel)
-    // Back cancels shrinking until the next request (S73).
+    // Back cancels shrinking until the next request.
     await store.send(.appActivated(OnboardingFeature.systemSettingsID))
     #expect(!store.state.isPanel)
-    // Still off on return: "Already on in System Settings? Turn it off and on again." (S59).
+    // Still off on return: "Already on in System Settings? Turn it off and on again."
     #expect(store.state.showsRecheckHint(.screenRecording))
 
     await store.send(.turnOnUnlocked(.screenRecording))
@@ -958,7 +958,7 @@ struct OnboardingFeatureTests {
     #expect(!store.state.isPanel)
   }
 
-  // MARK: - Open at login (S13, S74, S81)
+  // MARK: - Open at login
 
   @Test
   func onAFreshInstallTheUntouchedSwitchShowsOnAndRegistersWhenLeavingBasics() async {
@@ -984,7 +984,7 @@ struct OnboardingFeatureTests {
     #expect(loginStatus.value == .disabled)
   }
 
-  /// An install from before stage 7 registered at its first launch; the user turns it off on Basics (S13, S74).
+  /// An install from a release without the onboarding registered at its first launch; the user turns it off on Basics.
   @Test
   func anExistingRegisteredLoginItemTurnedOffOnBasicsGoesOff() async {
     loginSetUp.setValue(true)
@@ -1000,7 +1000,7 @@ struct OnboardingFeatureTests {
     #expect(loginStatus.value == .disabled)
   }
 
-  /// An install that turned the login item off earlier shows it off, and turned on on Basics, it goes on (S74).
+  /// An install that turned the login item off earlier shows it off, and turned on on Basics, it goes on.
   @Test
   func anEarlierOffShowsOffAndTurnedOnOnBasicsGoesOn() async {
     loginSetUp.setValue(true)
@@ -1052,7 +1052,7 @@ struct OnboardingFeatureTests {
     #expect(loginItem.untaken.isEmpty)
   }
 
-  // MARK: - QA and the saved progress (S71)
+  // MARK: - QA and the saved progress
 
   @Test
   func resetStartsTheOnboardingOver() async {
@@ -1075,7 +1075,7 @@ struct OnboardingFeatureTests {
     #expect(OnboardingPage(id: "nonsense") == nil)
   }
 
-  /// One unknown or broken value takes its default; `completed` and the rest stay (S71).
+  /// One unknown or broken value takes its default; `completed` and the rest stay.
   @Test
   func progressReadsEachFieldOnItsOwn() throws {
     let old = try JSONDecoder().decode(OnboardingProgress.self, from: Data(#"{"page":"basics"}"#.utf8))
@@ -1115,7 +1115,7 @@ struct OnboardingFeatureTests {
     #expect(client.load().completed)
   }
 
-  // MARK: - Where the panel goes (S15)
+  // MARK: - Where the panel goes
 
   @Test
   func thePanelGoesRightOfSystemSettingsThenLeftThenBottomRight() {

@@ -35,7 +35,7 @@ struct ShellFeature {
     var keyboardCleaning = KeyboardCleaningFeature.State()
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
-    /// Some connected display has a notch, so the notch is a way in (S75).
+    /// Some connected display has a notch, so the notch is a way in.
     var hasNotchScreen = true
     var launchAtLogin: LaunchAtLoginStatus = .disabled
     /// The launch has switched every feature on or off; a QA run says it is ready only after this.
@@ -43,17 +43,17 @@ struct ShellFeature {
     var language: AppLanguage
     /// Language the app was started with; another choice needs a relaunch.
     let launchLanguage: AppLanguage
-    /// What macOS says about each permission, as last read (S1); empty until the first read. Only the shell writes it.
+    /// What macOS says about each permission, as last read; empty until the first read. Only the shell writes it.
     @Shared(.permissionStatuses) var permissionStatuses
-    /// A required permission that something enabled needs reads `notGranted` (S9); follows `isBlocked`.
+    /// A required permission that something enabled needs reads `notGranted`; follows `isBlocked`.
     @Shared(.appBlocked) var appBlocked
-    /// The permissions Vortex can't be used without; QA mode may change them per run (S30).
+    /// The permissions Vortex can't be used without; QA mode may change them per run.
     var requiredPermissions = OnboardingConfig.requiredPermissions
-    /// The first-run onboarding and the single permission page, in their own window (S6, S24).
+    /// The first-run onboarding and the single permission page, in their own window.
     var onboarding: OnboardingFeature.State
-    /// Features that bring their own onboarding step (S17), whether on or off.
+    /// Features that bring their own onboarding step, whether on or off.
     var stepFeatures: Set<FeatureID>
-    /// An entry point used before the first status read; it is decided once the statuses are in (S64).
+    /// An entry point used before the first status read; it is decided once the statuses are in.
     var pendingEntry: OpenReason?
 
     init(
@@ -74,7 +74,7 @@ struct ShellFeature {
       onboardingContext.apply(to: &self.onboarding)
     }
 
-    /// What Done's hint names, from the settings and screens (S75): the notch only while a notch display is
+    /// What Done's hint names, from the settings and screens: the notch only while a notch display is
     /// connected, by hover if that opens Vortex, else by click; the menu bar icon as it shows once the onboarding is
     /// done.
     var doneHint: OnboardingFeature.DoneHint {
@@ -106,7 +106,7 @@ struct ShellFeature {
       !everyScreenHasNotch || !(settings.openOnHover || settings.openOnClick)
     }
 
-    /// While blocked, or while the onboarding is unfinished, the icon shows even if the user hid it (S42).
+    /// While blocked, or while the onboarding is unfinished, the icon shows even if the user hid it.
     var isMenuBarIconVisible: Bool {
       settings.showMenuBarIcon || isMenuBarIconRequired || isBlocked || !onboarding.progress.completed
     }
@@ -125,7 +125,7 @@ struct ShellFeature {
       PermissionCatalog(features: sidebarFeatures, required: requiredPermissions)
     }
 
-    /// A required permission that something enabled needs reads `notGranted`; never before the first read (S9, S66).
+    /// A required permission that something enabled needs reads `notGranted`; never before the first read.
     /// Checked after every action, so with nothing required it builds no catalog.
     var isBlocked: Bool {
       !requiredPermissions.isEmpty && !permissionCatalog.missingRequired(permissionStatuses).isEmpty
@@ -133,7 +133,7 @@ struct ShellFeature {
 
     /// What the onboarding needs to know about the shell; kept current after every action.
     var onboardingContext: OnboardingContext {
-      // Features with their own step, on or off, in sidebar order (S17, S71).
+      // Features with their own step, on or off, in sidebar order.
       let stepOrder = orderedFeatures.map(\.id).filter(stepFeatures.contains)
       let enabled = Set(sidebarFeatures.map(\.id))
       return OnboardingContext(
@@ -146,7 +146,7 @@ struct ShellFeature {
 
     /// Whether Vortex is blocked, and whether the statuses were read yet: the first read is the launch's, which the
     /// onboarding's `launched` decides; any later change to blocked is a revoke, a feature turned on or a new required
-    /// set (S9, S45).
+    /// set.
     var blockState: BlockState {
       BlockState(isRead: !permissionStatuses.isEmpty, isBlocked: isBlocked)
     }
@@ -232,14 +232,14 @@ struct ShellFeature {
     case restartButtonTapped
     case quitButtonTapped
     case keyboardCleaning(KeyboardCleaningFeature.Action)
-    /// macOS's statuses, at the first read and on every change (S3).
+    /// macOS's statuses, at the first read and on every change.
     case permissionStatusesChanged([Permission: PermissionStatus])
-    /// A feature asked for the page of one permission (S24).
+    /// A feature asked for the page of one permission.
     case permissionPageRequested(Permission)
-    /// «Продовжити налаштування» in the menu bar menu, and QA's `onboarding open` (S69, S80).
+    /// «Продовжити налаштування» in the menu bar menu, and QA's `onboarding open`.
     case continueSetupTapped
     case onboarding(OnboardingFeature.Action)
-    /// An app came to the front, or quit: the guide panel follows System Settings (S15, S63).
+    /// An app came to the front, or quit: the guide panel follows System Settings.
     case appActivated(String)
     case appTerminated(String)
   }
@@ -277,18 +277,18 @@ struct ShellFeature {
 
         case .keyboardCleaning(.stopTapped):
           // The keyboard is back on: the window closes, and the keys go back to the app the user was in. A required
-          // permission that went during the lock blocks only now (S38).
+          // permission that went during the lock blocks only now.
           let effect = close(&state)
           return state.isBlocked ? .merge(effect, .send(.onboarding(.blocked))) : effect
 
         case .keyboardCleaning(.accessLost), .keyboardCleaning(.lockFailed):
           // The lock ended by itself, and Home with its warning shows; blocked meanwhile, the blocking page takes over
-          // now, as after «Увімкнути клавіатуру» (S38).
+          // now, as after «Увімкнути клавіатуру».
           guard state.isBlocked else { return .none }
           return .merge(close(&state), .send(.onboarding(.blocked)))
 
         case let .keyboardCleaning(.delegate(.openPage(lockRefused))):
-          // Opening a page closes the notch window first (S37).
+          // Opening a page closes the notch window first.
           return .merge(
             close(&state),
             .send(.onboarding(.pageRequested(.accessibility, lockRefused ? .lockRefused : .request)))
@@ -333,7 +333,7 @@ struct ShellFeature {
               for (id, isEnabled) in featureSwitches {
                 await features.setEnabled(id, isEnabled)
               }
-              // No silent registration at launch: the onboarding's Basics applies "Open at login" (S13, S74).
+              // No silent registration at launch: the onboarding's Basics applies "Open at login".
               await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
               await send(.started)
             },
@@ -447,13 +447,13 @@ struct ShellFeature {
           let old = state.permissionStatuses
           state.$permissionStatuses.withLock { $0 = statuses }
           var effects: [Effect<Action>] = [.send(.onboarding(.statusesChanged(old: old)))]
-          // While the keyboard is locked, losing Accessibility ends the lock at once; no page opens by itself (S38).
+          // While the keyboard is locked, losing Accessibility ends the lock at once; no page opens by itself.
           if state.keyboardCleaning.isLocked, statuses[.accessibility] == .notGranted {
             effects.append(.send(.keyboardCleaning(.accessLost)))
           }
           if old.isEmpty {
-            // The first read: the onboarding shows if it isn't done (S7), and an entry point waiting for it goes on (S64).
-            // A notch window opened before it closes first when the onboarding window shows (S37).
+            // The first read: the onboarding shows if it isn't done, and an entry point waiting for it goes on.
+            // A notch window opened before it closes first when the onboarding window shows.
             if state.onboarding.showsAtLaunch { effects.append(close(&state)) }
             effects.append(.send(.onboarding(.launched)))
             if let reason = state.pendingEntry {
@@ -464,12 +464,12 @@ struct ShellFeature {
           return .merge(effects)
 
         case .continueSetupTapped:
-          // Bringing the onboarding forward closes the notch window first, as every other way does (S37).
+          // Bringing the onboarding forward closes the notch window first, as every other way does.
           guard !state.onboarding.progress.completed else { return .none }
           return .merge(close(&state), .send(.onboarding(.continueSetupTapped)))
 
         case let .permissionPageRequested(permission):
-          // The page opens in the onboarding's window; the notch window closes first, except over the lock (S37).
+          // The page opens in the onboarding's window; the notch window closes first, except over the lock.
           return .merge(close(&state), .send(.onboarding(.pageRequested(permission, .request))))
         }
       }
@@ -478,7 +478,7 @@ struct ShellFeature {
       Reduce { state, _ in
         state.$appBlocked.withLock { $0 = new.isBlocked }
         // Becoming blocked after the launch's read, however it happened: the notch window closes and the blocking page
-        // opens (S9, S41, S45). During a lock this waits for the lock to end (S38).
+        // opens. During a lock this waits for the lock to end.
         guard new.isBlocked, !old.isBlocked, old.isRead, !state.keyboardCleaning.isLocked else { return .none }
         return .merge(close(&state), .send(.onboarding(.blocked)))
       }
@@ -592,12 +592,12 @@ struct ShellFeature {
   }
 
   private func open(_ reason: OpenReason, _ state: inout State) -> Effect<Action> {
-    // Entry points wait for the first status read before deciding (S64).
+    // Entry points wait for the first status read before deciding.
     if !state.requiredPermissions.isEmpty, state.permissionStatuses.isEmpty {
       state.pendingEntry = reason
       return .cancel(id: CancelID.hoverOpen)
     }
-    // Blocked: every entry point opens the blocking page instead; a hover shows it without activating (S9, S46).
+    // Blocked: every entry point opens the blocking page instead; a hover shows it without activating.
     if state.isBlocked {
       return .merge(
         .cancel(id: CancelID.hoverOpen),
@@ -611,7 +611,7 @@ struct ShellFeature {
     return .merge(
       .cancel(id: CancelID.hoverOpen),
       .run { _ in await window.present(reason) },
-      // Notifications send no signal when they change, and the window opening activates no app: read again (S47).
+      // Notifications send no signal when they change, and the window opening activates no app: read again.
       .run { _ in await permissions.refresh() }
     )
   }

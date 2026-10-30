@@ -3,7 +3,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The guide panel next to System Settings (S15): the permission's title, a smaller illustration, the live checkbox and
+/// The guide panel next to System Settings: the permission's title, a smaller illustration, the live checkbox and
 /// "Back". It never takes focus and has no close control.
 struct GuidePanelView: View {
   let store: StoreOf<OnboardingFeature>

@@ -1,15 +1,15 @@
 import Foundation
 import VortexCore
 
-/// A page of the onboarding, in its order (S12–S18): Welcome, Basics, one page per hard permission, the features' own
+/// A page of the onboarding, in its order: Welcome, Basics, one page per hard permission, the features' own
 /// steps, Done.
 enum OnboardingPage: Hashable, Sendable {
   case welcome
-  /// Notifications and the login item, which macOS grants in place (S13).
+  /// Notifications and the login item, which macOS grants in place.
   case basics
-  /// Accessibility, Screen Recording or the pasteboard, which need System Settings (S14).
+  /// Accessibility, Screen Recording or the pasteboard, which need System Settings.
   case permission(Permission)
-  /// A feature's own step (S17).
+  /// A feature's own step.
   case step(FeatureID)
   case done
 
@@ -47,12 +47,12 @@ enum OnboardingPage: Hashable, Sendable {
   }
 }
 
-/// What a permission's checkbox shows (S2, S68, S72).
+/// What a permission's checkbox shows.
 enum PermissionRowState: String, Equatable, Sendable, Encodable {
-  /// Before the first read: no checkbox state (S72).
+  /// Before the first read: no checkbox state.
   case unknown
   case off
   case on
-  /// On, with "Works after restart"; also the pasteboard once its pane was opened, "Checked after restart" (S68).
+  /// On, with "Works after restart"; also the pasteboard once its pane was opened, "Checked after restart".
   case afterRestart
 }

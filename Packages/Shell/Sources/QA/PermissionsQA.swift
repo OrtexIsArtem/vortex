@@ -8,7 +8,7 @@
   /// set of this run, and the `permissions` section of the state with each feature's marks.
   @MainActor
   enum PermissionsQA {
-    /// The required set of the run (S30), kept in DataFolder/.qa/required.json so a relaunch keeps it.
+    /// The required set of the run, kept in DataFolder/.qa/required.json so a relaunch keeps it.
     static var requiredFile: URL { DataFolder.url.appending(path: ".qa/required.json") }
 
     static func install(store: StoreOf<ShellFeature>) {
@@ -57,10 +57,10 @@
       }
     }
 
-    /// Where a permission shows in a feature (S22): the control (Home's keyboard button, Tasks' «+»), the sidebar
+    /// Where a permission shows in a feature: the control (Home's keyboard button, Tasks' «+»), the sidebar
     /// dot, and the settings rows.
     struct Marks: Encodable, Equatable {
-      /// `warning` or nil: only the controls S22.1 names have one.
+      /// `warning` or nil: only the controls in `controls` have one.
       var control: PermissionMark?
       /// The permission the dot names, or nil.
       var sidebar: Permission?
@@ -68,7 +68,7 @@
       var settings: [Permission: PermissionMark]
     }
 
-    /// The controls of S22.1, by feature, with the permission each can't work without.
+    /// The controls that show a yellow warning, by feature, with the permission each can't work without.
     nonisolated static let controls: [FeatureID: Permission] = ["home": .accessibility, "tasks": .screenRecording]
 
     nonisolated static func marks(of feature: FeatureDescriptor, _ statuses: [Permission: PermissionStatus]) -> Marks {

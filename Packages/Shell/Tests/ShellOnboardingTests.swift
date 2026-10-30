@@ -6,9 +6,9 @@ import VortexPlatform
 
 @testable import VortexShell
 
-/// The shell around the onboarding: entry points while blocked (S9, S43, S46, S64), becoming blocked by any route (S9,
-/// S45), the notch window giving way to a page (S37), keyboard cleaning during a revoke (S38), the menu bar icon (S42),
-/// the first read (S7) and Done's hint (S75).
+/// The shell around the onboarding: entry points while blocked, becoming blocked by any route,
+/// the notch window giving way to a page, keyboard cleaning during a revoke, the menu bar icon,
+/// the first read and Done's hint.
 @MainActor
 struct ShellOnboardingTests {
   let clock = TestClock()
@@ -58,7 +58,7 @@ struct ShellOnboardingTests {
     return store
   }
 
-  // MARK: - Blocked (S9, S43, S46)
+  // MARK: - Blocked
 
   @Test
   func whileBlockedEveryEntryPointOpensTheBlockingPageAndNeverTheNotchWindow() async {
@@ -79,9 +79,9 @@ struct ShellOnboardingTests {
     await entry(.menuSettingsTapped)
     await entry(.featureHotkeyPressed("timer"))
     await entry(.window(.notchClicked(feature: nil)))
-    // A file dragged onto the notch too (S43).
+    // A file dragged onto the notch too.
     await entry(.window(.fileDragEnteredNotch))
-    // A hover shows the page without activating Vortex (S46).
+    // A hover shows the page without activating Vortex.
     await store.send(.window(.notchHoverChanged(isInside: true)))
     await clock.advance(by: .milliseconds(300))
     await store.receive(\.hoverDelayElapsed)
@@ -121,7 +121,7 @@ struct ShellOnboardingTests {
   }
 
   /// Turning on a feature that needs a required permission that is off blocks at once: the notch window closes and the
-  /// blocking page opens (S9, S45).
+  /// blocking page opens.
   @Test
   func turningOnAFeatureThatNeedsAMissingRequiredPermissionClosesTheWindowAndOpensThePage() async {
     let store = makeStore(required: [.screenRecording], disabled: ["tasks"])
@@ -137,8 +137,7 @@ struct ShellOnboardingTests {
     #expect(await onboardingWindow.next() == "window+activate")
   }
 
-  /// A new required set blocks the same way, and an unfinished onboarding jumps to the page of the missing permission
-  /// (S65).
+  /// A new required set blocks the same way, and an unfinished onboarding jumps to the page of the missing permission.
   @Test
   func aNewRequiredSetBlocksAndTheOnboardingJumpsToThePage() async {
     let store = makeStore(progress: .at(.basics))
@@ -168,9 +167,9 @@ struct ShellOnboardingTests {
     #expect(blocked.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .blocked), .window))
   }
 
-  // MARK: - Pages (S7, S37)
+  // MARK: - Pages
 
-  /// A-B4: «Продовжити налаштування» closes the notch window before the onboarding comes forward (S37).
+  /// «Продовжити налаштування» closes the notch window before the onboarding comes forward.
   @Test
   func continueSetupClosesTheNotchWindowFirst() async {
     let store = makeStore(progress: .at(.basics))
@@ -190,7 +189,7 @@ struct ShellOnboardingTests {
     #expect(done.state.openReason == .hotkey)
   }
 
-  /// A notch window opened before the first read closes when the onboarding window shows then (S7, S37).
+  /// A notch window opened before the first read closes when the onboarding window shows then.
   @Test
   func aNotchWindowOpenAtTheFirstReadClosesWhenTheOnboardingShows() async {
     let store = makeStore(progress: .at(.welcome), statuses: nil)
@@ -238,7 +237,7 @@ struct ShellOnboardingTests {
     #expect(store.state.onboarding.pages.contains(.permission(.screenRecording)))
   }
 
-  // MARK: - Keyboard cleaning (S38)
+  // MARK: - Keyboard cleaning
 
   @Test
   func anotherRequiredLossDuringTheLockWaitsForTheKeyboard() async {
@@ -279,7 +278,7 @@ struct ShellOnboardingTests {
     #expect(store.state.onboarding.presentation == .hidden)
   }
 
-  /// Required Accessibility lost during a lock: the lock ends at once, and Vortex is blocked then (S9, S38).
+  /// Required Accessibility lost during a lock: the lock ends at once, and Vortex is blocked then.
   @Test
   func losingRequiredAccessibilityDuringTheLockEndsItAndOpensTheBlockingPage() async {
     let store = makeStore(required: [.accessibility], statuses: OnboardingNeeds.allOn)
@@ -310,7 +309,7 @@ struct ShellOnboardingTests {
     #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .request), .window))
   }
 
-  // MARK: - The menu bar icon (S42) and Done's hint (S75)
+  // MARK: - The menu bar icon and Done's hint
 
   @Test
   func theMenuBarIconShowsWhileTheOnboardingIsUnfinishedOrVortexIsBlocked() {

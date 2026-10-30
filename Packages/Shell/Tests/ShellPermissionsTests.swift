@@ -41,7 +41,7 @@ struct PermissionCatalogTests {
     #expect(catalog.entry(for: .pasteboard)?.needs.map(\.owner) == [.feature("clipboard")])
   }
 
-  /// The keyboard button is on Home: without it, keyboard cleaning needs nothing (S54).
+  /// The keyboard button is on Home: without it, keyboard cleaning needs nothing.
   @Test
   func withoutHomeKeyboardCleaningNeedsNothing() {
     let catalog = PermissionCatalog(features: [Needing.timer], required: [])
@@ -58,7 +58,7 @@ struct PermissionCatalogTests {
     #expect(state.permissionCatalog.entry(for: .notifications)?.needs.map(\.owner) == [.feature("secrets")])
   }
 
-  /// A required permission nothing enabled needs has no page, so it can never block (S45, S66).
+  /// A required permission nothing enabled needs has no page, so it can never block.
   @Test
   func requiredCountsOnlyForWhatIsNeeded() {
     let catalog = PermissionCatalog(features: [Needing.timer], required: [.accessibility, .screenRecording, .notifications])
@@ -67,7 +67,7 @@ struct PermissionCatalogTests {
     #expect(catalog.missingRequired(allOff) == [.notifications])
   }
 
-  /// `grantedAfterRestart` counts as on (S82), `notNeeded` as satisfied (S66), and a status not read yet as nothing.
+  /// `grantedAfterRestart` counts as on, `notNeeded` as satisfied, and a status not read yet as nothing.
   @Test
   func onlyARequiredPermissionThatReadsNotGrantedIsMissing() {
     let catalog = PermissionCatalog(features: Needing.all, required: Set(Permission.allCases))
@@ -159,7 +159,7 @@ struct ShellPermissionsTests {
       await launch.cancel()
     }
 
-    /// A request shows the permission's page and asks macOS nothing by itself (S24, S25).
+    /// A request shows the permission's page and asks macOS nothing by itself.
     @Test
     func aPageRequestShowsThePageAndAsksMacOSNothing() async {
       let mac = SimulatedPermissions()
@@ -194,9 +194,9 @@ struct ShellPermissionsTests {
     await launch.cancel()
   }
 
-  // MARK: Blocked (S9, S43)
+  // MARK: Blocked
 
-  /// Blocked at the first read: the launch opens the blocking page; the grant closes it after ✓ (S9, S41).
+  /// Blocked at the first read: the launch opens the blocking page; the grant closes it after ✓.
   @Test
   func vortexIsBlockedWhileARequiredPermissionSomethingNeedsIsOff() async {
     let store = makeStore(required: [.accessibility])
@@ -239,7 +239,7 @@ struct ShellPermissionsTests {
   }
 
   /// Turning on a feature that needs a required permission that is off blocks at once, and opens the blocking page;
-  /// turned off again, it unblocks, and the page stays until it is closed (S45, S54).
+  /// turned off again, it unblocks, and the page stays until it is closed.
   @Test
   func turningOnAFeatureThatNeedsAMissingRequiredPermissionBlocksAtOnce() async {
     let store = makeStore(disabled: ["tasks"], required: [.screenRecording])
@@ -260,7 +260,7 @@ struct ShellPermissionsTests {
     await store.finish()
   }
 
-  /// Keyboard cleaning's Accessibility counts only while Home, with its button, is on (S54).
+  /// Keyboard cleaning's Accessibility counts only while Home, with its button, is on.
   @Test
   func keyboardCleaningBlocksOnlyWhileHomeIsOn() async {
     let store = makeStore(disabled: ["home"], required: [.accessibility])
@@ -276,7 +276,7 @@ struct ShellPermissionsTests {
     await store.finish()
   }
 
-  /// A permission macOS doesn't ask for, or one granted for after a relaunch, never blocks (S66, S82).
+  /// A permission macOS doesn't ask for, or one granted for after a relaunch, never blocks.
   @Test
   func notNeededAndGrantedAfterRestartNeverBlock() async {
     let store = makeStore(required: [.pasteboard, .screenRecording])

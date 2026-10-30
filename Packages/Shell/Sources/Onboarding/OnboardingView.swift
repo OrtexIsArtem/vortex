@@ -3,10 +3,10 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The onboarding window's content: a page of the onboarding, or a single permission's page (S12–S19, S24).
+/// The onboarding window's content: a page of the onboarding, or a single permission's page.
 struct OnboardingView: View {
   let store: StoreOf<OnboardingFeature>
-  /// The features' own steps, made once at launch (S17).
+  /// The features' own steps, made once at launch.
   let steps: [FeatureID: OnboardingStep]
 
   var body: some View {
@@ -18,14 +18,14 @@ struct OnboardingView: View {
         SinglePermissionPage(store: store, single: single)
       case .hidden, .flow(.panel), .single(_, .panel):
         // Nothing stays mounted while the window is hidden or the panel stands in for it, so the illustration's loop
-        // stops (S35: no CPU once settled).
+        // stops (no CPU once settled).
         Color.clear
       }
     }
     .frame(width: OnboardingWindowController.windowSize.width, height: OnboardingWindowController.windowSize.height)
     .background(VortexColor.windowBackground)
     // The whole window, the transparent title bar's strip included: pages leave room for it at the top themselves,
-    // and Welcome's dark backdrop reaches the top edge (S76).
+    // and Welcome's dark backdrop reaches the top edge.
     .ignoresSafeArea()
   }
 
@@ -122,7 +122,7 @@ struct PageScaffold<Content: View>: View {
 }
 
 /// A page's title and content, above its footer: laid out in full when they fit, scrolling when a long translation
-/// doesn't, so no text is ever cut short (S31). Content that ends with a `Spacer` keeps it while it fits.
+/// doesn't, so no text is ever cut short. Content that ends with a `Spacer` keeps it while it fits.
 struct FittingPage<Content: View>: View {
   /// The width and height a page's column gets in full, above the footer and its hairline and the space kept under it.
   static var columnSpace: CGSize {
@@ -151,7 +151,7 @@ struct FittingPage<Content: View>: View {
   }
 }
 
-/// A quiet text link: "Restart now", "Restart to check" (S20, S68).
+/// A quiet text link: "Restart now", "Restart to check".
 struct QuietLinkStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -165,7 +165,7 @@ struct QuietLinkStyle: ButtonStyle {
 
 // MARK: - Rows
 
-/// The checkbox that shows macOS's real status (S2): empty before the first read (S72), off, on, or on with ↻.
+/// The checkbox that shows macOS's real status: empty before the first read, off, on, or on with ↻.
 struct PermissionCheckbox: View {
   let state: PermissionRowState
   let action: () -> Void
@@ -197,7 +197,7 @@ struct PermissionCheckbox: View {
   private var isOn: Bool { state == .on || state == .afterRestart }
 }
 
-/// "Required" next to a permission that can't be skipped (S19).
+/// "Required" next to a permission that can't be skipped.
 struct RequiredTag: View {
   var body: some View {
     Text("Required", bundle: .module)
@@ -209,7 +209,7 @@ struct RequiredTag: View {
   }
 }
 
-/// "Optional" next to a permission that is off and can be skipped, so a disabled Next doesn't read as a must (S19).
+/// "Optional" next to a permission that is off and can be skipped, so a disabled Next doesn't read as a must.
 struct OptionalTag: View {
   var body: some View {
     Text("Optional", bundle: .module)
@@ -221,7 +221,7 @@ struct OptionalTag: View {
   }
 }
 
-/// A permission's row: its title, the reasons of every feature that needs it (S62), and the live checkbox.
+/// A permission's row: its title, the reasons of every feature that needs it, and the live checkbox.
 struct PermissionRowView: View {
   let store: StoreOf<OnboardingFeature>
   let permission: Permission
@@ -341,7 +341,7 @@ struct BasicsContent: View {
 
 // MARK: - Hard permission
 
-/// A page for a permission that needs System Settings (S14, S16, S59): reasons, the illustration and "Turn on".
+/// A page for a permission that needs System Settings: reasons, the illustration and "Turn on".
 struct HardPermissionContent: View {
   let store: StoreOf<OnboardingFeature>
   let permission: Permission
@@ -405,7 +405,7 @@ struct HardPermissionContent: View {
   }
 }
 
-/// "Already on in System Settings? Turn it off and on again." with the pane button (S55, S59).
+/// "Already on in System Settings? Turn it off and on again." with the pane button.
 struct RecheckHint: View {
   let store: StoreOf<OnboardingFeature>
   let permission: Permission
@@ -528,7 +528,7 @@ struct DonePage: View {
     }
   }
 
-  /// Built from the settings, the screens and the "Open Vortex" shortcut (S18, S75).
+  /// Built from the settings, the screens and the "Open Vortex" shortcut.
   private var hint: Text {
     switch store.state.doneHintText {
     case .hoverOrIcon:
@@ -551,7 +551,7 @@ struct DonePage: View {
 
 // MARK: - Single page
 
-/// One permission's page outside the onboarding (S24, S41, S49, S55): Close instead of Skip and Next.
+/// One permission's page outside the onboarding: Close instead of Skip and Next.
 struct SinglePermissionPage: View {
   let store: StoreOf<OnboardingFeature>
   let single: OnboardingFeature.SinglePage

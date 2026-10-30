@@ -2,23 +2,23 @@ import ComposableArchitecture
 import Foundation
 import VortexCore
 
-/// What the onboarding remembers across launches (S21, S71), in DataFolder/onboarding.json, never in UserDefaults: QA
+/// What the onboarding remembers across launches, in DataFolder/onboarding.json, never in UserDefaults: QA
 /// runs share one defaults domain. A missing file means a fresh install, or one from before this stage: the onboarding
-/// shows once (S7).
+/// shows once.
 struct OnboardingProgress: Codable, Equatable, Sendable {
   /// The page the onboarding shows, by `OnboardingPage.id`.
   var page = OnboardingPage.welcome.id
-  /// A page opened from one of Done's rows goes back to Done on Next or Skip (S18, S77).
+  /// A page opened from one of Done's rows goes back to Done on Next or Skip.
   var returnToDone = false
-  /// Permissions whose check waits for a relaunch: the pasteboard once its pane was opened from its page (S16, S68).
+  /// Permissions whose check waits for a relaunch: the pasteboard once its pane was opened from its page.
   var pendingChecks: Set<Permission> = []
-  /// A single page to show once after the relaunch it started (S50).
+  /// A single page to show once after the relaunch it started.
   var pendingSingle: Permission?
-  /// The final button on Done was pressed (S8).
+  /// The final button on Done was pressed.
   var completed = false
-  /// Vortex relaunched during the onboarding; it never offers a second restart (S68).
+  /// Vortex relaunched during the onboarding; it never offers a second restart.
   var restarted = false
-  /// The user's "Open at login" choice was applied when they left Basics (S74); from then on the row shows the real state.
+  /// The user's "Open at login" choice was applied when they left Basics; from then on the row shows the real state.
   var loginItemApplied = false
 
   init() {}
@@ -41,7 +41,7 @@ struct OnboardingProgress: Codable, Equatable, Sendable {
 }
 
 /// Reads and writes DataFolder/onboarding.json. Writes are synchronous, so a forced quit right after a page change
-/// still resumes there (S21, S71).
+/// still resumes there.
 @DependencyClient
 struct OnboardingProgressClient: Sendable {
   var load: @Sendable () -> OnboardingProgress = { OnboardingProgress() }

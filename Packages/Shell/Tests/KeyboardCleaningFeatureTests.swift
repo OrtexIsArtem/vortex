@@ -23,7 +23,7 @@ struct KeyboardCleaningFeatureTests {
     }
   }
 
-  /// Without Accessibility the click opens its page and locks nothing; macOS is never asked (S23, S25).
+  /// Without Accessibility the click opens its page and locks nothing; macOS is never asked.
   @Test
   func withoutAccessTheClickOpensThePageAndLocksNothing() async {
     let store = makeStore(accessibility: .notGranted)
@@ -32,7 +32,7 @@ struct KeyboardCleaningFeatureTests {
     #expect(holds.value.isEmpty)
   }
 
-  /// A tap macOS refuses while the status reads granted opens the page in S55's mode.
+  /// A tap macOS refuses while the status reads granted opens the page that says to turn the switch off and on again.
   @Test
   func aTapMacOSRefusesLetsTheKeyboardGoAndOpensThePageThatSaysToFlipTheSwitch() async {
     let store = makeStore(accessibility: .granted)
@@ -54,7 +54,7 @@ struct KeyboardCleaningFeatureTests {
     await store.receive(\.delegate, .openPage(lockRefused: false))
   }
 
-  /// Accessibility lost during the lock: the tap goes at once and no page opens (S38).
+  /// Accessibility lost during the lock: the tap goes at once and no page opens.
   @Test
   func losingAccessDuringTheLockEndsItWithoutAPage() async {
     let store = makeStore(accessibility: .granted)

@@ -4,7 +4,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The onboarding's own standard window and its guide panel (S6, S15, S34, S60, S61, S79). In a QA run both stay off
+/// The onboarding's own standard window and its guide panel. In a QA run both stay off
 /// the displays, never take the keyboard and never bring Vortex to the front.
 @MainActor
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
@@ -15,15 +15,15 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 
   private(set) var window: OnboardingWindow?
   private(set) var panel: OnboardingPanel?
-  /// The close button and ⌘W (S10, S60).
+  /// The close button and ⌘W.
   var onClose: () -> Void = {}
-  /// Esc; it closes only a single page (S79).
+  /// Esc; it closes only a single page.
   var onEscape: () -> Void = {}
-  /// ⌘Q quits Vortex (S42).
+  /// ⌘Q quits Vortex.
   var onQuit: () -> Void = {}
-  /// The app in front before the window showed; it gets the front back after a single page closes (S61).
+  /// The app in front before the window showed; it gets the front back after a single page closes.
   private var appBefore: NSRunningApplication?
-  /// Where the window was before it turned into the panel (S61).
+  /// Where the window was before it turned into the panel.
   private var lastFrame: CGRect?
   private var placementTask: Task<Void, Never>?
   private let isQA: Bool
@@ -85,7 +85,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   // MARK: - NSWindowDelegate
 
   func windowShouldClose(_ sender: NSWindow) -> Bool {
-    // The reducer decides: hide and keep the progress (S10), or close a single page (S60).
+    // The reducer decides: hide and keep the progress, or close a single page.
     onClose()
     return false
   }
@@ -113,13 +113,13 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       // panel): the window still comes to the front.
       window.orderFrontRegardless()
     } else {
-      // A hover shows the window without making it key (S46).
+      // A hover shows the window without making it key.
       window.orderFrontRegardless()
     }
   }
 
   /// Back from the panel: its last place on its display, or the pointer's display if that one is gone. From hidden:
-  /// centered on the pointer's display (S61, S79).
+  /// centered on the pointer's display.
   private func windowFrame() -> CGRect {
     let size = Self.windowSize
     if isQA { return QA.offscreen(CGRect(origin: .zero, size: size)) }
@@ -133,8 +133,8 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       .integral
   }
 
-  /// Right of System Settings' window, or left of it, or at the bottom right of its display (S15); placed again on
-  /// each activation (S73).
+  /// Right of System Settings' window, or left of it, or at the bottom right of its display; placed again on
+  /// each activation.
   private func placePanel() {
     guard let panel else { return }
     placementTask?.cancel()
@@ -176,7 +176,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   }
 }
 
-/// A standard window with only the close button, a fixed size and no full screen (S60, S79).
+/// A standard window with only the close button, a fixed size and no full screen.
 final class OnboardingWindow: NSWindow {
   var onEscape: (() -> Void)?
   var onQuit: (() -> Void)?
@@ -247,7 +247,7 @@ final class OnboardingWindow: NSWindow {
   }
 }
 
-/// The guide panel: floats next to System Settings, never takes focus and has no close control (S15, S73).
+/// The guide panel: floats next to System Settings, never takes focus and has no close control.
 final class OnboardingPanel: NSPanel {
   init(content: some View) {
     super.init(

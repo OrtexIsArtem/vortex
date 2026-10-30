@@ -3,7 +3,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// Welcome (S12, S35, S76): a vortex of thin curves converges into the notch, then "Vortex", the text and the button
+/// Welcome: a vortex of thin curves converges into the notch, then "Vortex", the text and the button
 /// fade in. A dark backdrop in both appearances. With Reduce Motion only the final frame shows.
 struct WelcomePage: View {
   let store: StoreOf<OnboardingFeature>
@@ -16,7 +16,7 @@ struct WelcomePage: View {
 
   var body: some View {
     ZStack(alignment: .top) {
-      // Dark in both appearances, up to the window's top edge (S76).
+      // Dark in both appearances, up to the window's top edge.
       Color(white: 0.035)
         .ignoresSafeArea()
       // The notch hangs from the window's top edge.
@@ -88,8 +88,8 @@ private struct WelcomeButtonStyle: ButtonStyle {
   }
 }
 
-/// About 30 thin white curves spiralling in towards the top center, where they gather into the notch's silhouette
-/// (S35). Each curve is a shape SwiftUI animates by `progress`, so nothing runs once it settles.
+/// About 30 thin white curves spiralling in towards the top center, where they gather into the notch's silhouette.
+/// Each curve is a shape SwiftUI animates by `progress`, so nothing runs once it settles.
 struct VortexSwirl: View {
   var progress: Double
   nonisolated static let curves = 30
@@ -100,7 +100,7 @@ struct VortexSwirl: View {
         SpiralCurve(index: index, progress: progress)
           .stroke(Color.white.opacity(Self.opacity(index) * (1 - progress * 0.9)), lineWidth: 1)
       }
-      // The notch, shown by its edge (S76).
+      // The notch, shown by its edge.
       HangingShape(width: 132, height: 28, cornerRadius: 10, shoulder: 7)
         .fill(Color.black)
         .overlay(

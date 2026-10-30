@@ -2,14 +2,14 @@ import Foundation
 import VortexCore
 import VortexPlatform
 
-/// The onboarding's configuration, in one place (S30).
+/// The onboarding's configuration, in one place.
 enum OnboardingConfig {
-  /// Permissions Vortex can't be used without (S9). One counts only while an enabled feature or the shell needs it
-  /// (S66). None for now; QA mode may change the shell's copy per run, `ShellFeature.State.requiredPermissions`.
+  /// Permissions Vortex can't be used without. One counts only while an enabled feature or the shell needs it.
+  /// None for now; QA mode may change the shell's copy per run, `ShellFeature.State.requiredPermissions`.
   static let requiredPermissions: Set<Permission> = []
 
   /// Release builds apply "Open at login" when the user leaves Basics, and so do QA runs with release behavior; debug
-  /// builds never register themselves (S13, S74).
+  /// builds never register themselves.
   static var appliesLoginItem: Bool {
     #if DEBUG
       QA.releaseBehavior
@@ -19,8 +19,8 @@ enum OnboardingConfig {
   }
 }
 
-/// The permissions Vortex needs now and why (S29, S62): what the enabled features declare, plus the shell's own
-/// Accessibility for keyboard cleaning, which counts only while Home, where its button is, is on (S54).
+/// The permissions Vortex needs now and why: what the enabled features declare, plus the shell's own
+/// Accessibility for keyboard cleaning, which counts only while Home, where its button is, is on.
 struct PermissionCatalog: Equatable, Sendable {
   /// Who needs a permission.
   enum Owner: Equatable, Sendable {
@@ -38,7 +38,7 @@ struct PermissionCatalog: Equatable, Sendable {
     var permission: Permission
     /// Everyone who needs it, features in sidebar order, keyboard cleaning last.
     var needs: [Need]
-    /// Configured as required, and needed (S45, S66).
+    /// Configured as required, and needed.
     var isRequired: Bool
 
     var reasons: [LocalizedStringResource] { needs.map(\.reason) }
@@ -74,7 +74,7 @@ struct PermissionCatalog: Equatable, Sendable {
   }
 
   /// The required permissions macOS says are off, in the catalog's order. A status not read yet doesn't count, nor does
-  /// `notNeeded`; `grantedAfterRestart` counts as on (S66, S82).
+  /// `notNeeded`; `grantedAfterRestart` counts as on.
   func missingRequired(_ statuses: [Permission: PermissionStatus]) -> [Permission] {
     entries.filter { $0.isRequired && statuses[$0.permission] == .notGranted }.map(\.permission)
   }

@@ -8,7 +8,7 @@ import VortexPlatform
 @MainActor
 public final class ShellController: NSObject {
   private let store: StoreOf<ShellFeature>
-  /// The features' own onboarding steps, made once (S17).
+  /// The features' own onboarding steps, made once.
   private let onboardingSteps: [FeatureID: OnboardingStep]
   private var continueSetupItem: NSMenuItem?
   private var continueSetupObservation: ObserveToken?
@@ -105,7 +105,7 @@ public final class ShellController: NSObject {
 
   /// Called as the app is asked to quit, from `applicationShouldTerminate`, while the quit's Apple event is current.
   /// A quit System Settings asked for, by its «Quit & Reopen» after a permission that needs a relaunch, opens Vortex
-  /// again by itself, as System Settings does only while it still runs; the onboarding then resumes at its page (S20).
+  /// again by itself, as System Settings does only while it still runs; the onboarding then resumes at its page.
   /// Vortex's own Quit, ⌘Q, logout and every other sender just quit (`QuitRequest`).
   public func prepareToTerminate() {
     @Dependency(\.systemClient) var system
@@ -113,7 +113,7 @@ public final class ShellController: NSObject {
     system.reopenAfterQuit()
   }
 
-  /// The onboarding's window and guide panel, driven by the shell's store (S6, S15).
+  /// The onboarding's window and guide panel, driven by the shell's store.
   private func installOnboarding() {
     let onboarding = store.scope(state: \.onboarding, action: \.onboarding)
     let controller = OnboardingWindowController.shared
@@ -124,7 +124,7 @@ public final class ShellController: NSObject {
     controller.onClose = { [store] in store.send(.onboarding(.closeTapped)) }
     controller.onEscape = { [store] in store.send(.onboarding(.escapePressed)) }
     controller.onQuit = { [store] in store.send(.quitButtonTapped) }
-    // «Продовжити налаштування» shows whenever the onboarding isn't completed, blocked or not (S10, S69).
+    // «Продовжити налаштування» shows whenever the onboarding isn't completed, blocked or not.
     continueSetupObservation = observe { [weak self] in
       guard let self else { return }
       self.continueSetupItem?.isHidden = self.store.onboarding.progress.completed
@@ -198,7 +198,7 @@ public final class ShellController: NSObject {
         object: nil,
         queue: .main
       ) { _ in
-        // Automation of each running browser; the system asks once for each. Screen Recording has its page (S24).
+        // Automation of each running browser; the system asks once for each. Screen Recording has its page.
         MainActor.assumeIsolated { FrontWindowClient.askForBrowserAutomation() }
       }
       center.addObserver(

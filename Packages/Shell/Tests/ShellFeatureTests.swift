@@ -105,7 +105,7 @@ struct ShellFeatureTests {
     #expect(presented.value.isEmpty)
   }
 
-  /// Notifications send no signal when they change, and the window opening activates no app (S47).
+  /// Notifications send no signal when they change, and the window opening activates no app.
   @Test
   func everyOpeningReadsThePermissionsAgainClosingDoesNot() async {
     let store = makeStore()
@@ -531,7 +531,7 @@ struct ShellFeatureTests {
   @Test
   func menuBarIconStaysOnWhileADisplayHasNoNotch() async {
     let store = makeStore { $0.showMenuBarIcon = false }
-    // Done's hint follows the screens too: the icon shows, and the notch display is still a way in (S75).
+    // Done's hint follows the screens too: the icon shows, and the notch display is still a way in.
     await store.send(.window(.screensChanged(everyScreenHasNotch: false))) {
       $0.everyScreenHasNotch = false
       $0.onboarding.doneHint.menuBarIcon = true
@@ -572,7 +572,7 @@ struct ShellFeatureTests {
     #expect(applied.value == [.english])
   }
 
-  /// The launch no longer registers the login item by itself: Basics does, when the user leaves it (S13, S74).
+  /// The launch no longer registers the login item by itself: Basics does, when the user leaves it.
   @Test
   func launchStartsFeaturesAndSetsUpTheShell() async {
     let firstLaunchSetUps = LockIsolated(0)

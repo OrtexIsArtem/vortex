@@ -5,7 +5,7 @@
 
   @testable import VortexShell
 
-  /// The marks QA's state lists per feature (S22): control, sidebar dot and settings rows.
+  /// The marks QA's state lists per feature: control, sidebar dot and settings rows.
   struct PermissionsQATests {
     static let home = FeatureDescriptor(id: "home", title: "Home", symbol: "house")
     static let tasks = FeatureDescriptor(
@@ -18,7 +18,7 @@
     )
 
     @Test
-    func everythingSkippedMarksOnlyWhereS22PutsThem() {
+    func everythingSkippedMarksOnlyWhereEachFeatureShowsItsPermissions() {
       let statuses: [Permission: PermissionStatus] = [
         .notifications: .notGranted, .accessibility: .notGranted, .screenRecording: .notGranted, .pasteboard: .notNeeded,
       ]
@@ -37,7 +37,7 @@
     }
 
     /// A press needs its control on screen: the window open on the tab or on Settings › Features, and not covered by
-    /// keyboard cleaning's lock screen (R7).
+    /// keyboard cleaning's lock screen.
     @Test
     func aControlShowsOnlyInTheOpenWindowAndNeverUnderTheLockScreen() {
       var state = ShellFeature.State(features: [Self.home, Self.tasks, Self.timer])
