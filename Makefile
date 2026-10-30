@@ -12,16 +12,23 @@ open: project ## Regenerate and open in Xcode
 build: ## Compile the app without signing (for checks), into build/ and under a bundle id of its own, so nothing opens it for the signed app
 	xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Debug -destination "$(DESTINATION)" -derivedDataPath build/DerivedData PRODUCT_BUNDLE_IDENTIFIER=io.github.ortexisartem.vortex.check CODE_SIGNING_ALLOWED=NO -skipMacroValidation -quiet build
 
-# The team in Config/Local.xcconfig signs `make install`; without one the build is signed ad hoc.
-TEAM := $(shell sed -n 's/^DEVELOPMENT_TEAM *= *\([A-Z0-9]\{10\}\).*/\1/p' Config/Local.xcconfig 2>/dev/null)
+# The team in Config/Local.xcconfig signs `make install`. Without one, or with the example's placeholder, the build
+# is signed ad hoc.
+TEAM := $(filter-out ABCDE12345,$(shell sed -nE 's/^[[:space:]]*DEVELOPMENT_TEAM(\[config=Release\])?[[:space:]]*=[[:space:]]*([A-Z0-9]{10}).*/\2/p' Config/Local.xcconfig 2>/dev/null | head -1))
 INSTALL_SIGNING := $(if $(TEAM),,CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=)
-APP := /Applications/Vortex.app
+INSTALL_DIR ?= /Applications
+BUILT_APP := build/Release/Build/Products/Release/Vortex.app
 
 install: ## Build a release, put it in /Applications and open it: for daily use, unlike a debug run from Xcode
-	xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Release -destination "$(DESTINATION)" -derivedDataPath build/Release $(INSTALL_SIGNING) -skipMacroValidation -quiet build
-	rm -rf "$(APP)"
-	ditto build/Release/Build/Products/Release/Vortex.app "$(APP)"
-	open -n "$(APP)"
+	xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Release -destination "$(DESTINATION)" -derivedDataPath build/Release ARCHS=arm64 $(INSTALL_SIGNING) -skipMacroValidation -quiet build
+	@[ -n "$(TEAM)" ] || echo "No team in Config/Local.xcconfig: signed ad hoc, so macOS asks for Vortex's permissions again after each rebuild."
+	@set -e; app="$(INSTALL_DIR)/Vortex.app"; \
+	id=$$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$(BUILT_APP)/Contents/Info.plist"); \
+	if [ -e "$$app" ]; then \
+	  old=$$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$$app/Contents/Info.plist" 2>/dev/null || true); \
+	  if [ "$$old" != "$$id" ]; then echo "$$app is not this Vortex ($$old), so it stays; remove it yourself." >&2; exit 1; fi; \
+	fi; \
+	rm -rf "$$app.new"; ditto "$(BUILT_APP)" "$$app.new"; rm -rf "$$app"; mv "$$app.new" "$$app"; open -n "$$app"
 
 test: ## Run package tests
 	swift test --package-path Packages

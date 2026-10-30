@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag such as v0.1.0 to build Vortex and publish it as a GitHub Release.
+# Push main first, then a tag such as v0.1.0. This builds Vortex and creates a draft GitHub Release to check and publish.
 on:
   push:
     tags: ['v*']
@@ -11,19 +11,46 @@ permissions:
 jobs:
   release:
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Use the newest released Xcode
-        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | grep -vi -e beta -e rc | sort -V | tail -1)" && xcodebuild -version
-      - name: Build, signed ad hoc
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -E '/Xcode_[0-9]+(\.[0-9]+)*\.app$' | sort -V | tail -1)
+          sudo xcode-select -s "${XCODE:-/Applications/Xcode.app}"
+          xcodebuild -version
+      - name: Checks and tests
+        run: make check && swift test --package-path Packages
+      - name: Build, signed ad hoc, versioned by the tag
         # Not notarized: that needs a paid Apple Developer account. See "Install" in README.md.
         run: >
           xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Release
           -destination "platform=macOS,arch=arm64" -derivedDataPath build/Release
-          -skipMacroValidation CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
+          -skipMacroValidation ARCHS=arm64 CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
+          MARKETING_VERSION="${GITHUB_REF_NAME#v}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" build
+      - name: Third-party notices
+        run: |
+          {
+            echo "Vortex includes the following open-source software, under the licenses below."
+            for dir in build/Release/SourcePackages/checkouts/*/; do
+              license=$(ls "$dir" | grep -iE '^(LICENSE|LICENCE|COPYING)' | head -1)
+              [ -n "$license" ] || continue
+              printf '\n==== %s ====\n\n' "$(basename "$dir")"
+              cat "$dir$license"
+            done
+          } > THIRD-PARTY-NOTICES.txt
       - name: Zip
-        run: ditto -c -k --keepParent build/Release/Build/Products/Release/Vortex.app "Vortex-${GITHUB_REF_NAME}.zip"
-      - name: Publish
+        run: |
+          mkdir -p dist/Vortex
+          ditto build/Release/Build/Products/Release/Vortex.app dist/Vortex/Vortex.app
+          cp LICENSE THIRD-PARTY-NOTICES.txt dist/Vortex/
+          (cd dist && ditto -c -k --keepParent Vortex "../Vortex-${GITHUB_REF_NAME}.zip")
+      - name: Draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "Vortex-${GITHUB_REF_NAME}.zip" --title "Vortex ${GITHUB_REF_NAME#v}" --generate-notes
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "Vortex-${GITHUB_REF_NAME}.zip" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "Vortex-${GITHUB_REF_NAME}.zip" --draft --title "Vortex ${GITHUB_REF_NAME#v}" --generate-notes
+          fi
