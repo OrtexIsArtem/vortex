@@ -31,21 +31,21 @@
 - After the window closes under the pointer, hovering the notch counts again only once the pointer has left it.
 
 ## Keyboard cleaning
-- Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. Mouse and trackpad keep working. The window then shows only «Режим очищення клавіатури», «Усі клавіші заблоковано» and «Увімкнути клавіатуру».
+- Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. Mouse and trackpad keep working. The window then shows only "Keyboard cleaning mode", "All keys are locked" and "Turn the keyboard back on".
 - While the keys are locked, nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut. New displays move it there. Vortex comes to the front with the lock and drops any key that still reaches it.
-- «Увімкнути клавіатуру» lets the keys go at once and closes the window; the app that was in front gets the front and the keys back.
+- "Turn the keyboard back on" lets the keys go at once and closes the window; the app that was in front gets the front and the keys back.
 - Without Accessibility the button opens Accessibility's page and locks nothing, never asking macOS itself; a lock macOS refuses opens that page too, which says to turn the switch off and on again when the status reads granted, and never closes by itself.
 - Accessibility lost during a lock ends it at once and opens no page of its own; a required permission lost during a lock blocks Vortex only once the lock ends.
 - macOS never lets an app lock the Touch ID (power) button or Caps Lock: Caps Lock may stay on after cleaning. If Vortex quits or crashes, the keys come back.
 
 ## Sidebar, features and permissions
 - The sidebar shows enabled features in the user's order, with Settings at the bottom.
-- A yellow dot on a feature's icon while a permission it needs reads `notGranted` (S22.2, S39): decoration with the tooltip "<Permission> is off"; a click on it, as on the icon, opens the tab. None before the first read, for ↻, or on Home and Settings.
+- A yellow dot on a feature's icon while a permission it needs reads `notGranted`: decoration with the tooltip "<Permission> is off"; a click on it, as on the icon, opens the tab. None before the first read, for ↻, or on Home and Settings.
 - Dropping a feature's icon or settings row onto another moves it to that place; other drags are refused.
 - Turning a feature off stops it (`setEnabled(false)`) and switches away from its tab; turning it on starts it again. At launch every feature is started or stopped according to the settings.
 - Permission statuses are read at launch, then again on macOS's change signal, when any app becomes active and each time the window opens.
 - Vortex is blocked while a required permission that an enabled feature, or keyboard cleaning with Home on, needs reads `notGranted`; becoming blocked after the launch's read (a revoke, a feature turned on, a new required set) closes the notch window and opens the blocking page.
-- A feature asking for a permission's page gets the single page in the onboarding window (onboarding.md); the notch window closes first, as it does for «Продовжити налаштування».
+- A feature asking for a permission's page gets the single page in the onboarding window (onboarding.md); the notch window closes first, as it does for "Continue setup".
 
 ## Settings
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.

@@ -7,7 +7,7 @@
 - Puts `keyboardCleaning` there too: the action behind Home's keyboard button.
 - `@Shared(.permissionStatuses)`: what macOS says, from `PermissionsClient.updates()` at launch on, and re-read each time the window opens (`refresh()`). Only the shell writes it.
 - `@Shared(.appBlocked)`: true while a permission that is required and needed reads `notGranted`; false before the first read. `notNeeded` and `grantedAfterRestart` count as on. Only the shell writes it.
-- Needed (`PermissionCatalog`): the `permissionNeeds` of enabled features in sidebar order, plus Accessibility for keyboard cleaning while Home (id `home`, which has the button) is on, with the reason «Блокує клавіатуру, поки ти її чистиш.».
+- Needed (`PermissionCatalog`): the `permissionNeeds` of enabled features in sidebar order, plus Accessibility for keyboard cleaning while Home (id `home`, which has the button) is on, with the reason "Locks the keyboard while you clean it."
 - Required: `OnboardingConfig.requiredPermissions`, empty now, copied into the state, where QA mode may change it. It counts only for needed permissions.
 - Takes the requests of `PermissionPage` from launch on and shows each as the single page in the onboarding window.
 - Hosts `FeatureModule.makeOnboardingStep()` of enabled features after the permission pages; Skip shows until the feature puts its id in `@Shared(.onboardingStepsDone)`.

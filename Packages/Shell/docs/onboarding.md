@@ -1,11 +1,11 @@
 # Onboarding
 
 ## When it shows
-- At launch, after the first status read, an onboarding that isn't completed opens at its saved page; a fresh install, or one from before stage 7, opens at Welcome.
+- At launch, after the first status read, an onboarding that isn't completed opens at its saved page; a fresh install, or one from a release without the onboarding, opens at Welcome.
 - It lives in its own standard window, centered on the pointer's screen, about 560×620 pt, with only a close button; never in the notch window.
 - Only Done's final button completes it; after that no launch shows it unless Vortex is blocked.
-- Closing it (close button or ⌘W) hides it and keeps the page; the menu bar menu then has «Продовжити налаштування», which closes the notch window and reopens it at the saved page, even over a single page.
-- «Продовжити налаштування» shows whenever the onboarding isn't completed, blocked or not; the menu bar icon shows then too, even if hidden.
+- Closing it (close button or ⌘W) hides it and keeps the page; the menu bar menu then has "Continue setup", which closes the notch window and reopens it at the saved page, even over a single page.
+- "Continue setup" shows whenever the onboarding isn't completed, blocked or not; the menu bar icon shows then too, even if hidden.
 - ⌘Q in the window quits Vortex; Esc closes only a single page; Return presses the page's main button.
 
 ## Pages
@@ -46,7 +46,7 @@
 
 ## Blocked
 - While a required permission is off, every entry point (hover, notch and ear clicks, the menu bar icon, its menu, the shortcuts, files dragged onto the notch) opens the blocking page instead of the notch window, which closes.
-- Before completion that is the onboarding, jumped to the first page with a missing required permission, also from «Продовжити налаштування»; after it, the single page of that permission, with Close only.
+- Before completion that is the onboarding, jumped to the first page with a missing required permission, also from "Continue setup"; after it, the single page of that permission, with Close only.
 - It opens by itself at launch, before a page waiting for that relaunch, and whenever Vortex becomes blocked after it.
 - A hover shows the blocking page without activating Vortex; entry points used before the first status read wait for it.
 - On the grant the blocking page shows ✓, then the next missing required page, or closes.
@@ -55,5 +55,5 @@
 - System Settings in front within 10 s of "Turn on" (once per click) turns the window into a 340×300 panel next to System Settings: right of it, left of it, or bottom right of its display.
 - It holds the title, a smaller mock, the live checkbox and "Back"; it never takes focus and has no close control.
 - It turns back into the window, in front, on the grant, on "Back" or when System Settings quits; it hides while another app is in front.
-- «Продовжити налаштування», a blocked entry point or a request brings a showing panel forward as a panel; one that hid behind another app turns back into the window, in front.
+- "Continue setup", a blocked entry point or a request brings a showing panel forward as a panel; one that hid behind another app turns back into the window, in front.
 - Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again." and "Not in the list? Click + and choose Vortex.", with the pane button. For the pasteboard only after a relaunch still reads it off: before one, its page says "Checked after restart" and offers "Restart to check".
