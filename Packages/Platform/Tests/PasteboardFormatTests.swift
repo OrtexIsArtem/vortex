@@ -126,7 +126,8 @@ struct PasteboardFormatTests {
     #expect(NSBitmapImageRep(data: tiff)?.pixelsWide == 2)
   }
 
-  @Test
+  // Bounded, so a runner without a pasteboard server fails instead of hanging.
+  @Test(.timeLimit(.minutes(1)))
   func theWatcherReportsNewCopiesOnly() async {
     pasteboard.clearContents()
     pasteboard.setString("before", forType: .string)
