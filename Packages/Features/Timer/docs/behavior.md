@@ -25,22 +25,22 @@
 - Start, the quick starts and «+5» «+10» give way to pause and stop.
 - Pause keeps the time left; Resume goes on from there; Space pauses and resumes in the Timer tab.
 - Stop ends the run without a sound.
-- The Timer tab shows the time in large digits and «з 25 хв · до 14:57», paused «Пауза · з 25 хв».
+- The Timer tab shows the time in large digits and "of 25 min · until 14:57", paused "Paused · of 25 min".
 - The closed notch shows a ring of the time left and the time; paused, a pause sign instead of the ring.
 - Next to shelf files the timer takes the left ear.
 - The time reads 25:00, 8:42, 0:05; an hour or more 1:05:00. It changes exactly at each whole second.
 
 ## When time is up
 - The chosen sound plays once.
-- A notification «Час вийшов» appears with a «+5 хв» button.
+- A notification "Time's up" appears with a "+5 min" button.
 - The notch flashes, one flash after another, until the pointer comes or moves over it or the window opens; with the window open, three times.
-- Starting a run, also with «+5 хв» on the notification, stops the flashes.
-- «+5 хв» on the notification starts a five-minute run.
-- A run never asks macOS for permission to notify (S25); without Notifications everything else still happens, and the settings row offers the page.
+- Starting a run, also with "+5 min" on the notification, stops the flashes.
+- "+5 min" on the notification starts a five-minute run.
+- A run never asks macOS for permission to notify; without Notifications everything else still happens, and the settings row offers the page.
 
 ## Lifetime
 - A run goes on while the window is closed and after Vortex relaunches; one that ran out while Vortex was closed is dropped quietly.
 - A run changed from outside (another Vortex, the run file edited or deleted) is followed at once: the notch shows it and it ticks, or stops.
 - Turning the feature off ends the run and the flashes.
 - Test in the settings plays the sound and starts the flashes three seconds later, without a notification.
-- While Vortex is blocked (a required permission is off), a run goes on and its end still sounds and flashes (S44).
+- While Vortex is blocked (a required permission is off), a run goes on and its end still sounds and flashes.

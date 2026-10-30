@@ -6,8 +6,8 @@
 - A notch indicator while a request waits: a key and the names, flashing (priority 20).
 - `makeOnboardingStep()`: the Claude Code step; it inserts `secrets` into `@Shared(.onboardingStepsDone)` once done.
 - QA mode: `keys press=connect|connectAgain|copyCommand|getClaudeCode|turnOn|restart`, and the `keys` state section (the step's status, never the token or the command).
-- `permissionNeeds`: notifications, «Показує запити Claude на ключ, коли вікно закрите.»
-- Debug builds outside QA mode: distributed notifications `…debug.secretsAdd`, `…secretsDeny`, `…secretsState` (see SecretsModule); a QA run (VortexPlatform's `QA`) listens to none. None approves a request: «Дозволити» is pressed by a person, in every build.
+- `permissionNeeds`: notifications, "Shows Claude's key requests when the window is closed."
+- Debug builds outside QA mode: distributed notifications `…debug.secretsAdd`, `…secretsDeny`, `…secretsState` (see SecretsModule); a QA run (VortexPlatform's `QA`) listens to none. None approves a request: "Allow" is pressed by a person, in every build.
 
 ## Uses
 - VortexCore: `FeatureModule`, `DataFolder`, `database`, `databaseIsOnDisk`, `@Shared(.fileStorage)`, `@Shared(.notchIndicators)`, design system (`PermissionRows`); `@SharedReader(.permissionStatuses)` and `permissionPage.open` for the Notifications row.

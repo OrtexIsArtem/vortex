@@ -32,6 +32,6 @@
 - Dropping something the history already holds copies that item again, with its own marks, so a secret stays one; Vortex's own files and temporary ones (a screenshot dragged from its floating thumbnail) are copied as their image, never as a reference (a PNG becomes the image, any other is ignored); any other file, also a text or picture file from Finder, is copied as the file.
 - Of several images dropped together (shelf tiles), only the first is copied.
 - A drop before the history has been read (right after launch) is ignored.
-- While Paste from Other Apps reads `notGranted`, the pasteboard isn't read at all and nothing is recorded (S57); watching starts again when the status changes. Unknown, granted and `notNeeded` read it as always.
+- While Paste from Other Apps reads `notGranted`, the pasteboard isn't read at all and nothing is recorded; watching starts again when the status changes. Unknown, granted and `notNeeded` read it as always.
 - macOS's `.default` pasteboard access counts as `notNeeded` (Platform's mapping, PermissionRules.swift): revisit this on macOS 27, which may start asking.
-- While Vortex is blocked (a required permission is off), copies are still recorded (S44).
+- While Vortex is blocked (a required permission is off), copies are still recorded.

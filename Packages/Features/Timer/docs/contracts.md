@@ -7,14 +7,14 @@
   - a ring (or a pause sign) and the time left;
   - no ears without a run;
   - an alarm when time is up and on Test, in the chosen color: the shell flashes the notch until the user sees it; a new run ends it.
-- `permissionNeeds`: notifications, «Повідомляє, коли таймер закінчився.»
+- `permissionNeeds`: notifications, "Tells you when a timer ends."
 
 ## Uses
 - VortexCore: `FeatureModule`, `HomeWidget`, `notchCutout`, `notchIndicators`, `ColorValue`, `DataFolder`, design system (`PermissionRows`); `@SharedReader(.permissionStatuses)` and `permissionPage.open` for the Notifications row.
 - VortexPlatform: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex".
 - VortexPlatform:
   - `SoundClient`: the system sounds;
-  - `NotificationClient`: the notification with «+5 хв» and its button presses;
+  - `NotificationClient`: the notification with "+5 min" and its button presses;
   - `ScrollDragArea`: scrolls, drags and clicks on the drum;
   - `ColorWell`.
 - SwiftUI `sensoryFeedback(.alignment)`: the drum's ticks; macOS plays them only to a finger on a Force Touch trackpad, with «Force Click and haptic feedback» on.
