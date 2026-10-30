@@ -30,13 +30,31 @@ A feature whose permission is off shows a yellow warning. Click it to turn the p
 ## Requirements
 macOS 14 or later, on Apple silicon.
 
-## Build from source
+## Install
+
+### Download a release (no Xcode needed)
+1. Download `Vortex-<version>.zip` from [Releases](https://github.com/OrtexIsArtem/vortex/releases), unzip it, and move **Vortex** to **Applications**.
+2. Open Vortex. macOS will say it can't verify the developer: Vortex isn't notarized by Apple, because that needs a paid developer account. Click **Done**.
+3. Open **System Settings › Privacy & Security**. Scroll to **Security** and click **Open Anyway** next to "Vortex was blocked". Confirm with your password.
+
+   In Terminal you can do the same in one line: `xattr -dr com.apple.quarantine /Applications/Vortex.app`.
+4. Vortex shows its setup. To have it start with your Mac, turn on **Open at login** there, or later in Settings.
+
+After an update, macOS may treat the new version as a different app for **Accessibility** and **Screen Recording**. If a yellow warning appears, open it and switch Vortex off and on again in System Settings.
+
+### Build it yourself
+With Xcode installed:
 ```sh
 brew install xcodegen
-cp Config/Local.xcconfig.example Config/Local.xcconfig
-make open
+git clone https://github.com/OrtexIsArtem/vortex.git && cd vortex
+cp Config/Local.xcconfig.example Config/Local.xcconfig   # put your team ID in it, or leave it as is
+make install
 ```
-Set your team ID in `Config/Local.xcconfig` (a free Personal Team works), then press Run in Xcode. [CONTRIBUTING.md](CONTRIBUTING.md) has the commands, the architecture and the QA mode.
+`make install` builds a release, puts it in **Applications** and opens it. With a team ID (a free Personal Team works), your permissions survive rebuilds. Without one, the build is signed ad hoc, so macOS asks for the permissions again after each rebuild.
+
+For daily use, prefer `make install` over a Run in Xcode. A debug session ends when the Mac sleeps for a while, and the app ends with it.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) explains how to work on the code.
 
 ## Claude Code
 In Vortex, open **Keys** and press **Connect**, or run the command it shows you once in Terminal. Claude Code then lists your keys by name and can use them in commands.

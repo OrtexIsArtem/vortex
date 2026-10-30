@@ -13,6 +13,7 @@ A macOS utility that lives in the notch and the menu bar. Setup, commands, the m
 - `make project`: regenerate Vortex.xcodeproj from project.yml.
 - `make build`: compile the app without signing, into build/ and as `io.github.ortexisartem.vortex.check`, so it never replaces the signed app.
 - `make test`: run the package tests.
+- `make install`: build a release, put it in /Applications and open it. It's for daily use: a debug run from Xcode ends when the Mac sleeps.
 - `make check`: allows network APIs only in Secrets, and processes only in Platform's CommandClient and SystemClient. It also runs as a build phase.
 - `make hooks`: run `make check` and the package tests before every push.
 - `scripts/strings.py <Localizable.xcstrings> <entries.json>`: add keys with their uk translations to a String Catalog.

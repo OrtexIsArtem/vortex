@@ -2,11 +2,26 @@
 
 Vortex is a native macOS app in Swift 6 with SwiftUI and [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture), built for macOS 14+ on Apple silicon. Every module lives in one local Swift package, `Packages/`.
 
-## Setup
-1. Install Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
-2. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig`, which git ignores, and set `DEVELOPMENT_TEAM` to your team ID. A free Personal Team works. If Xcode says the bundle id belongs to another team, set `PRODUCT_BUNDLE_IDENTIFIER` there too.
-3. Run `make open`, then Run in Xcode. The first build asks you to "Trust & Enable" the TCA macro packages once.
-4. Optional: `make hooks` runs the checks and the tests before every push.
+## Run the project
+1. Install Xcode (the version that ships the macOS 26 SDK or newer) and [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
+2. Clone the repository: `git clone https://github.com/OrtexIsArtem/vortex.git && cd vortex`.
+3. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig`, which git ignores, and set `DEVELOPMENT_TEAM` to your team ID.
+   - A free Personal Team works: Xcode › Settings › Accounts, add your Apple ID, and the team ID shows under the team.
+   - If Xcode says the bundle id belongs to another team, set `PRODUCT_BUNDLE_IDENTIFIER` there too.
+4. Run `make open`, then press Run in Xcode. The first build asks you to "Trust & Enable" the TCA macro packages once.
+5. Vortex starts with its onboarding. It sits in the notch; on a Mac without one it's the icon in the menu bar.
+6. Optional: `make hooks` runs the checks and the tests before every push.
+
+For daily use, run `make install` instead of a debug session. A debug session ends when the Mac sleeps for a while.
+
+## Where to start in the code
+- **The app's startup:** `App/Sources/main.swift` → `AppDelegate` → `ShellController` in `Packages/Shell/Sources/` → `ShellFeature`. `ShellFeature` is the root reducer for the window, onboarding and permissions.
+- **The feature contract:** `Packages/Core/Sources/FeatureModule.swift` is the contract every feature implements. `Packages/Features/Registry` lists the features in sidebar order.
+- **A feature from start to end:** `Packages/Features/Timer` is the smallest complete feature. `Packages/Features/_Template` is the one to copy.
+- **System APIs:** `Packages/Platform/Sources/Clients/` has one client per system API.
+- **Permissions:** `Packages/Core/Sources/Permissions.swift` holds the contract, and `Packages/Platform/Sources/Permissions/` reads what macOS says.
+- **The onboarding:** `Packages/Shell/Sources/Onboarding/`.
+- **Each module's `docs/README.md`:** a 15-line map of the module.
 
 `project.yml` is the source of truth for `Vortex.xcodeproj`. Change `project.yml`, run `make project`, and commit both. Changes made in the Xcode UI are lost on the next `make project`.
 
@@ -15,6 +30,7 @@ Vortex is a native macOS app in Swift 6 with SwiftUI and [The Composable Archite
 | `make project` | regenerate Vortex.xcodeproj from project.yml |
 | `make open` | regenerate and open in Xcode |
 | `make build` | compile the app without signing, into `build/`, under a bundle id of its own |
+| `make install` | build a release, put it in /Applications and open it |
 | `make test` | run the package tests |
 | `make check` | no network code outside Secrets, and no processes outside Platform's command and system clients |
 | `make hooks` | run `make check` and the tests before every push |
@@ -77,5 +93,11 @@ Read the module's README first. When a change contradicts a line in these docs, 
 
 ## Pull requests
 - Keep commits small, with clear English messages.
-- Before you open a pull request, run `make check` and `make test`.
+- Before you open a pull request, run `make check` and `make test`. CI runs both on every push and pull request, and also builds the release configuration.
 - If your change touches a screen, add a QA snapshot or a screenshot.
+
+## Releasing
+1. Bump `MARKETING_VERSION` in `project.yml`, run `make project`, and commit.
+2. Tag the commit, for example `git tag v0.2.0`, and push the tag: `git push origin v0.2.0`.
+
+GitHub Actions (`.github/workflows/release.yml`) then builds the app, signs it ad hoc, and publishes `Vortex-v0.2.0.zip` as a GitHub Release. The release isn't notarized. README.md tells users how to open it.
