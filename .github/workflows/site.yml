@@ -1,0 +1,69 @@
+name: Site
+
+# The landing page in site/: checked and built on every change to it. A pull request gets a preview link; main goes
+# live on Firebase Hosting (vortex-notch). Pull requests from forks are checked but not deployed: they get no secrets.
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/site.yml']
+  pull_request:
+    paths: ['site/**', '.github/workflows/site.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  # A newer push replaces a pull request's preview; a deploy to the live site always finishes.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # The preview link, as a comment on the pull request.
+      pull-requests: write
+      checks: write
+    defaults:
+      run:
+        working-directory: site
+    env:
+      ASTRO_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - name: Types
+        run: npm run check
+      - name: Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          # Canonical links, hreflang, the sitemap and social previews point here, previews included.
+          SITE_URL: https://vortex-notch.web.app
+      - name: Preview
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: FirebaseExtended/action-hosting-deploy@v0.11.0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VORTEX_NOTCH }}
+          projectId: vortex-notch
+          entryPoint: site
+          expires: 7d
+          firebaseToolsVersion: 15.34.0
+      - name: Live
+        if: github.event_name == 'push'
+        uses: FirebaseExtended/action-hosting-deploy@v0.11.0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VORTEX_NOTCH }}
+          projectId: vortex-notch
+          entryPoint: site
+          channelId: live
+          firebaseToolsVersion: 15.34.0
