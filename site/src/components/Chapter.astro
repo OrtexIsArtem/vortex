@@ -1,0 +1,205 @@
+---
+// A feature's chapter: its tab's icon and name, a two-tone heading, a paragraph and three facts beside a scene the
+// visitor can try.
+import { copyFor } from '../copy';
+import { appLangOf, headingGap, localeOf } from '../copy/locales';
+import type { IconName } from '../lib/icons';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+const gap = headingGap(Astro.url.pathname);
+// The label is the tab's name in the app, in the app's language.
+const appLang = appLangOf(localeOf(Astro.url.pathname));
+
+interface Props {
+  id: string;
+  icon: IconName;
+  label: string;
+  title: string;
+  titleQuiet: string;
+  body: string;
+  facts: readonly string[];
+  tryIt: string;
+  /** The same invitation for a touch screen, where it differs (a tap instead of a drag). */
+  tryItTouch?: string;
+  /** A line of small print under the facts. */
+  note?: string;
+  /** Keeps the scene in view while the copy beside it is read: for a chapter whose copy runs much longer. */
+  stickyScene?: boolean;
+}
+
+const { id, icon, label, title, titleQuiet, body, facts, tryIt, tryItTouch, note, stickyScene = false } = Astro.props;
+---
+
+<section class="chapter" id={id} aria-labelledby={`${id}-title`} data-chapter={id}>
+  <div class="container chapter__grid">
+    <div class="chapter__copy" data-reveal>
+      <p class="chapter__label" lang={appLang}><Icon name={icon} size={15} />{label}</p>
+      <h2 class="chapter__title" id={`${id}-title`}>{title}{gap}<span>{titleQuiet}</span></h2>
+      <p class="chapter__body">{body}</p>
+      <ul class="chapter__facts">
+        {facts.map((fact) => <li>{fact}</li>)}
+      </ul>
+      {note && <p class="chapter__note">{note}</p>}
+      <slot name="aside" />
+    </div>
+    <div class:list={['chapter__scene', { 'chapter__scene--sticky': stickyScene }]} data-reveal="later">
+      <slot />
+      <p class="chapter__try">
+        <span class="chapter__try-label">{copy.chapter.tryIt}</span>
+        {
+          tryItTouch ? (
+            <>
+              <span class="chapter__try-pointer">{tryIt}</span>
+              <span class="chapter__try-touch">{tryItTouch}</span>
+            </>
+          ) : (
+            tryIt
+          )
+        }
+      </p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .chapter {
+    position: relative;
+    z-index: 1;
+    padding: clamp(96px, 15vh, 170px) 0;
+  }
+
+  /* Top-aligned: a scene that grows (a task saved, a file dropped) grows downwards and never jumps under the pointer. */
+  .chapter__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+    gap: 0 var(--gutter);
+  }
+
+  .chapter__copy {
+    grid-column: 1 / span 5;
+  }
+
+  .chapter__scene {
+    grid-column: 6 / span 7;
+    min-width: 0;
+  }
+
+  /* Beside a long column of copy, the scene stays in view below the menu bar while that copy is read: on screens wide
+     enough for both columns and tall enough for the whole scene. */
+  @media (min-width: 1024px) and (min-height: 720px) {
+    .chapter__scene--sticky {
+      position: sticky;
+      top: calc(var(--menubar-h) + 32px);
+    }
+  }
+
+  .chapter__label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 20px;
+    color: var(--text-2);
+    font: 500 13px/1 var(--mono);
+  }
+
+  .chapter__title {
+    margin: 0;
+    font: 600 clamp(32px, 3.5vw, 48px) / 1.08 var(--font-display);
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .chapter__title span {
+    color: var(--text-2);
+  }
+
+  .chapter__body {
+    max-width: 520px;
+    margin: 22px 0 0;
+    color: var(--text-2);
+    font-size: 18px;
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+    text-wrap: pretty;
+  }
+
+  .chapter__facts {
+    max-width: 520px;
+    margin: 30px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chapter__facts li {
+    padding: 13px 0;
+    box-shadow: inset 0 var(--hair) 0 var(--line);
+    font: 400 13.5px/1.4 var(--mono);
+  }
+
+  .chapter__facts li:last-child {
+    box-shadow:
+      inset 0 var(--hair) 0 var(--line),
+      inset 0 calc(var(--hair) * -1) 0 var(--line);
+  }
+
+  .chapter__note {
+    max-width: 520px;
+    margin: 14px 0 0;
+    color: var(--text-3);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  .chapter__try {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 10px;
+    margin: 18px 0 0;
+    color: var(--text-3);
+    font: 400 13px/1.5 var(--mono);
+    text-align: center;
+  }
+
+  .chapter__try-label {
+    padding: 3px 9px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--track);
+    color: var(--text-2);
+  }
+
+  /* A touch screen has no pointer to drag with: its own words, as the notch's hint does. */
+  .chapter__try-touch {
+    display: none;
+  }
+
+  @media (hover: none) {
+    .chapter__try-pointer {
+      display: none;
+    }
+
+    .chapter__try-touch {
+      display: inline;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .chapter__copy,
+    .chapter__scene {
+      grid-column: 1 / -1;
+    }
+
+    .chapter__scene {
+      margin-top: 44px;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .chapter {
+      padding: 72px 0;
+    }
+  }
+</style>

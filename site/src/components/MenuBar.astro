@@ -1,0 +1,343 @@
+---
+import { copyFor } from '../copy';
+import { repoUrl } from '../lib/app';
+import { githubMark } from '../lib/icons';
+import Glyph from './Glyph.astro';
+import Icon from './Icon.astro';
+import LanguagePicker from './LanguagePicker.astro';
+
+const copy = copyFor(Astro.url);
+---
+
+<header class="menubar" data-menubar>
+  <div class="menubar__side">
+    <a class="menubar__brand" href="#top" aria-label={copy.menu.home}>
+      <Glyph size={15} />
+      <span>Vortex</span>
+    </a>
+    <nav class="menubar__nav" aria-label={copy.menu.navLabel}>
+      {copy.menu.nav.map((item) => <a class="menubar__item" href={item.href}>{item.label}</a>)}
+    </nav>
+  </div>
+
+  <div class="menubar__side menubar__side--end">
+    <LanguagePicker variant="menu" />
+    <a class="menubar__item menubar__github" href={repoUrl}>
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d={githubMark}></path></svg>
+      <span>{copy.menu.github}</span>
+    </a>
+    <span class="menubar__clock" data-clock aria-hidden="true"></span>
+    <a class="menubar__download" href="#download">{copy.menu.download}</a>
+    <details class="menubar__menu">
+      <summary class="menubar__menu-button" aria-label={copy.menu.open}>
+        <Icon name="menu" size={18} />
+      </summary>
+      <nav class="menubar__sheet" aria-label={copy.menu.navLabel}>
+        {copy.menu.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+        <a href={repoUrl}>{copy.menu.github}</a>
+        <LanguagePicker variant="sheet" />
+        <a class="menubar__sheet-download" href="#download">{copy.menu.download}</a>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<style>
+  .menubar {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--menubar-h);
+    padding: 0 10px;
+    box-shadow: inset 0 calc(var(--hair) * -1) 0 transparent;
+    font-size: 13px;
+    line-height: 1;
+    transition:
+      box-shadow 300ms var(--ease-out),
+      opacity 900ms var(--ease-out);
+  }
+
+  /* The bar's frosted glass, on a layer of its own: a blur on the bar itself would keep its menus from blurring the
+     page under them. */
+  .menubar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: rgb(10 10 11 / 0.72);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  :global(.is-scrolled) .menubar {
+    box-shadow: inset 0 calc(var(--hair) * -1) 0 var(--line);
+  }
+
+  :global(.js:not(.is-lit):not(.intro-done)) .menubar {
+    opacity: 0;
+  }
+
+  .menubar__side {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    /* Never under the notch or its ears. */
+    max-width: calc(50% - var(--notch-w) / 2 - var(--ear-w) - 22px);
+    transition: max-width 300ms var(--ease-out);
+  }
+
+  .menubar__side--end {
+    justify-content: flex-end;
+  }
+
+  .menubar__brand,
+  .menubar__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: background-color 120ms linear;
+  }
+
+  .menubar__brand {
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
+
+  .menubar__brand:hover,
+  .menubar__item:hover {
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  /* Items that don't fit beside the notch drop out whole, as macOS hides menus behind the notch: they wrap onto a
+     line that is clipped away. */
+  .menubar__nav {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+    align-items: center;
+    gap: 0 2px;
+    height: 26px;
+    overflow: hidden;
+  }
+
+  /* An empty first item as tall as the line: a line always keeps one item, so this way even the first menu can drop
+     out onto the clipped line. */
+  .menubar__nav::before {
+    content: '';
+    height: 26px;
+    margin-right: -2px;
+  }
+
+  /* The menu clips what doesn't fit, so its items draw their focus ring inside. */
+  .menubar__nav .menubar__item:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .menubar__clock {
+    padding: 0 10px 0 6px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    min-width: 9.5em;
+    text-align: right;
+  }
+
+  .menubar__download {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    margin-left: 4px;
+    padding: 0 12px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--track);
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      background-color 300ms var(--ease-out),
+      color 300ms var(--ease-out),
+      box-shadow 300ms var(--ease-out);
+  }
+
+  .menubar__download:hover {
+    background: var(--raised);
+  }
+
+  /* Between the hero's own Download and the Download section's, this one is the screen's single filled action. */
+  .menubar.is-lead .menubar__download {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: none;
+  }
+
+  .menubar.is-lead .menubar__download:hover {
+    background: var(--accent-hover);
+  }
+
+  /* The open window covers the middle of the bar, as it does on a Mac: the items it would cut drop out whole. The
+     menu's own items already make room (--ear-w); on the right, only Download stays, where there is room for it. */
+  .menubar.has-window .menubar__side--end > :global(:not(.menubar__download, .menubar__menu)) {
+    display: none;
+  }
+
+  .menubar__menu {
+    position: relative;
+    display: none;
+  }
+
+  .menubar__menu-button {
+    display: grid;
+    place-items: center;
+    width: var(--hit);
+    height: var(--hit);
+    list-style: none;
+    cursor: pointer;
+    border-radius: 10px;
+  }
+
+  .menubar__menu-button::-webkit-details-marker {
+    display: none;
+  }
+
+  .menubar__sheet {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgb(26 26 29 / 0.92);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    box-shadow:
+      0 0 0 var(--hair) rgb(255 255 255 / 0.1),
+      0 18px 40px rgb(0 0 0 / 0.5);
+  }
+
+  .menubar__sheet a {
+    display: flex;
+    align-items: center;
+    min-height: var(--hit);
+    padding: 0 14px;
+    border-radius: 9px;
+    font-size: 16px;
+  }
+
+  .menubar__sheet a:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .menubar__sheet .menubar__sheet-download {
+    justify-content: center;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  @media (max-width: 1099px) {
+    .menubar__github span,
+    .menubar__clock {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1279px) {
+    :global(.has-ears) .menubar__clock {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1099px) {
+    .menubar.has-window .menubar__download {
+      display: none;
+    }
+  }
+
+  @media (max-width: 959px) {
+    /* The languages move into the menu, so the notch's ears have room beside it. */
+    .menubar__nav,
+    .menubar__github,
+    .menubar__side--end > :global(.langs) {
+      display: none;
+    }
+
+    .menubar__menu {
+      display: block;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .menubar {
+      padding: 0 4px 0 8px;
+    }
+
+    .menubar__brand {
+      font-size: 15px;
+    }
+
+    .menubar__download {
+      display: none;
+    }
+
+    /* Ears leave no room beside the notch: the spiral alone says Vortex. */
+    :global(.has-ears) .menubar__brand span {
+      display: none;
+    }
+
+    /* The open window spans the screen: nothing of the bar peeks out beside it. */
+    .menubar.has-window .menubar__side {
+      visibility: hidden;
+    }
+  }
+</style>
+
+<script>
+  import '../scripts/clock';
+
+  const root = document.documentElement;
+  const bar = document.querySelector<HTMLElement>('[data-menubar]');
+  const menu = document.querySelector<HTMLDetailsElement>('.menubar__menu');
+
+  const onScroll = () => root.classList.toggle('is-scrolled', window.scrollY > 8);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // A screen has one filled action: the hero's, or the Download section's, while on screen; between them, the menu
+  // bar's takes over.
+  const actions = document.querySelectorAll('[data-page-action]');
+  const shown = new Set<Element>();
+  const watch = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) shown.add(entry.target);
+      else shown.delete(entry.target);
+    }
+    bar?.classList.toggle('is-lead', shown.size === 0);
+  });
+  actions.forEach((action) => watch.observe(action));
+
+  // The menu closes on a pick, on a click elsewhere, when focus moves on to something else (a click in Safari leaves
+  // focus nowhere, and must still reach its link), and on Esc, which brings focus back to its button only from inside.
+  menu?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => menu.removeAttribute('open')));
+  document.addEventListener('pointerdown', (event) => {
+    if (menu?.open && !menu.contains(event.target as Node)) menu.removeAttribute('open');
+  });
+  menu?.addEventListener('focusout', (event) => {
+    if (menu.open && event.relatedTarget instanceof Node && !menu.contains(event.relatedTarget)) menu.removeAttribute('open');
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !menu?.open) return;
+    const inside = menu.contains(document.activeElement);
+    menu.removeAttribute('open');
+    if (inside) menu.querySelector('summary')?.focus();
+  });
+</script>

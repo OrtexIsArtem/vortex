@@ -1,0 +1,110 @@
+---
+// The page's end: the spiral and the line, the project's links, and what the site doesn't do.
+import { copyFor } from '../copy';
+import { contributingUrl, licenseUrl, releasesUrl, repoUrl } from '../lib/app';
+import Glyph from './Glyph.astro';
+import LanguagePicker from './LanguagePicker.astro';
+
+const copy = copyFor(Astro.url);
+
+const t = copy.footer;
+---
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__brand">
+      <Glyph size={20} />
+      <p class="footer__tagline">{t.tagline}</p>
+    </div>
+    <nav class="footer__nav" aria-label={t.nav}>
+      <a href={repoUrl}>{t.github}</a>
+      <a href={releasesUrl}>{t.releases}</a>
+      <a href={contributingUrl}>{t.contributing}</a>
+      <a href={licenseUrl}>{t.license}</a>
+    </nav>
+    <div class="footer__langs">
+      <LanguagePicker variant="row" />
+    </div>
+    <div class="footer__fine">
+      <p>{t.copyright}</p>
+      <p>{t.tracking}</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    position: relative;
+    z-index: 1;
+    padding: 56px 0 64px;
+    box-shadow: inset 0 var(--hair) 0 var(--line);
+  }
+
+  .footer__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 28px var(--gutter);
+  }
+
+  .footer__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .footer__tagline {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .footer__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+  }
+
+  .footer__nav a {
+    color: var(--text-2);
+    font-size: 14px;
+    transition: color 200ms linear;
+  }
+
+  .footer__nav a:hover {
+    color: var(--text-1);
+  }
+
+  .footer__langs {
+    grid-column: 1 / -1;
+  }
+
+  .footer__fine {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 24px;
+    grid-column: 1 / -1;
+    padding: 24px 0 0;
+    box-shadow: inset 0 var(--hair) 0 var(--line);
+    color: var(--text-3);
+    font: 12.5px/1.5 var(--mono);
+  }
+
+  .footer__fine p {
+    margin: 0;
+  }
+
+  @media (max-width: 767px) {
+    .footer__inner {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* Links a finger can hit. */
+    .footer__nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+    }
+  }
+</style>

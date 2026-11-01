@@ -1,0 +1,159 @@
+---
+// Questions people ask, answered from the README and the module docs. The same answers go out as FAQPage structured
+// data, in plain text.
+import { copyFor } from '../copy';
+import { headingGap, localeByCode, localeOf, urlFor } from '../copy/locales';
+import { contributingUrl, issuesUrl } from '../lib/app';
+import { inlineHtml, inlineText } from '../lib/inline';
+
+const copy = copyFor(Astro.url);
+const gap = headingGap(Astro.url.pathname);
+
+const q = copy.faq;
+const items = q.items(contributingUrl);
+const code = localeOf(Astro.url.pathname);
+const page = urlFor(code, Astro.site);
+const structured = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  '@id': `${page}#faq`,
+  inLanguage: localeByCode(code).tag,
+  isPartOf: { '@id': `${page}#webpage` },
+  mainEntity: items.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: inlineText(item.a) },
+  })),
+}).replace(/</g, '\\u003c');
+---
+
+<section class="section faq" id="faq" aria-labelledby="faq-title">
+  <div class="container faq__grid">
+    <div class="faq__head" data-reveal>
+      <h2 class="h2" id="faq-title">{q.title}{gap}<span>{q.titleQuiet}</span></h2>
+      <p class="faq__more rich" set:html={inlineHtml(q.more(issuesUrl))} />
+    </div>
+    <div class="faq__list" data-reveal="later">
+      {
+        items.map((item) => (
+          <details class="faq__item">
+            <summary>
+              <h3>{item.q}</h3>
+            </summary>
+            <p class="faq__answer rich" set:html={inlineHtml(item.a)} />
+          </details>
+        ))
+      }
+    </div>
+  </div>
+  <script type="application/ld+json" set:html={structured} />
+</section>
+
+<style>
+  .faq__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+    gap: 40px var(--gutter);
+  }
+
+  .faq__head {
+    position: sticky;
+    top: calc(var(--menubar-h) + 48px);
+    grid-column: 1 / span 4;
+  }
+
+  .faq__more {
+    margin: 18px 0 0;
+    color: var(--text-2);
+    font-size: 16px;
+  }
+
+  .faq__list {
+    grid-column: 6 / span 7;
+  }
+
+  .faq__item {
+    box-shadow: inset 0 var(--hair) 0 var(--line);
+  }
+
+  .faq__item:last-child {
+    box-shadow:
+      inset 0 var(--hair) 0 var(--line),
+      inset 0 calc(var(--hair) * -1) 0 var(--line);
+  }
+
+  .faq__item summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 64px;
+    padding: 14px 0;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .faq__item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* The marker is drawn, not read: the alternative text after the slash is empty (the first line is for browsers
+     without it). */
+  .faq__item summary::after {
+    content: '+';
+    content: '+' / '';
+    flex: none;
+    color: var(--text-3);
+    font: 400 18px/1 var(--mono);
+    transition: color 200ms linear;
+  }
+
+  .faq__item[open] summary::after {
+    content: '−';
+    content: '−' / '';
+  }
+
+  .faq__item summary:hover::after {
+    color: var(--text-1);
+  }
+
+  .faq__item h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .faq__answer {
+    max-width: 640px;
+    margin: 0;
+    padding: 0 40px 22px 0;
+    color: var(--text-2);
+    font-size: 15.5px;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  @media (max-width: 1023px) {
+    .faq__head {
+      position: static;
+      grid-column: 1 / -1;
+    }
+
+    .faq__list {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .faq__item h3 {
+      font-size: 16px;
+    }
+
+    .faq__answer {
+      padding-right: 0;
+      font-size: 15px;
+    }
+  }
+</style>

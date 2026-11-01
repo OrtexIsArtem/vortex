@@ -1,0 +1,84 @@
+---
+// The page hosts show for an address that isn't there: kept out of search, and a way back in every language.
+import '../styles/tokens.css';
+import '../styles/global.css';
+import Glyph from '../components/Glyph.astro';
+import { basePath, locales, pathFor } from '../copy/locales';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Page not found · Vortex</title>
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0a0b" />
+    <link rel="icon" href={`${basePath}favicon.svg`} type="image/svg+xml" />
+  </head>
+  <body>
+    <main class="lost">
+      <Glyph size={40} />
+      <h1 class="lost__title">This page isn't here.</h1>
+      <p class="lost__text">The address may have changed, or it was never part of the site.</p>
+      <a class="btn btn--primary" href={pathFor('en')}>Go to Vortex</a>
+      <ul class="lost__langs">
+        {
+          locales.map((locale) => (
+            <li>
+              <a href={pathFor(locale.code)} hreflang={locale.tag} lang={locale.tag}>
+                {locale.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </main>
+  </body>
+</html>
+
+<style>
+  .lost {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px var(--gutter);
+    text-align: center;
+  }
+
+  .lost__title {
+    margin: 28px 0 0;
+    font: 600 clamp(30px, 4vw, 44px) / 1.1 var(--font-display);
+    letter-spacing: -0.025em;
+  }
+
+  .lost__text {
+    max-width: 420px;
+    margin: 14px 0 30px;
+    color: var(--text-2);
+    font-size: 17px;
+    line-height: 1.5;
+  }
+
+  .lost__langs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 18px;
+    margin: 36px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lost__langs a {
+    color: var(--text-3);
+    font-size: 13px;
+  }
+
+  .lost__langs a:hover {
+    color: var(--text-1);
+  }
+</style>

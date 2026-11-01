@@ -1,0 +1,80 @@
+---
+// The small things that fit Vortex to a visitor's Mac and habits: six quiet cards (Packages/Shell/docs, the README).
+import { copyFor } from '../copy';
+import { headingGap } from '../copy/locales';
+import { inlineHtml } from '../lib/inline';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+const gap = headingGap(Astro.url.pathname);
+
+const m = copy.more;
+---
+
+<section class="section more" id="more" aria-labelledby="more-title">
+  <div class="container">
+    <h2 class="h2" id="more-title" data-reveal>{m.title}{gap}<span>{m.titleQuiet}</span></h2>
+    <ul class="more__grid">
+      {
+        m.items.map((item, index) => (
+          <li class="more__card" data-reveal={index % 3 === 0 ? '' : 'later'}>
+            <Icon name={item.icon} size={20} />
+            <h3 class="more__title">{item.title}</h3>
+            <p class="more__text rich" set:html={inlineHtml(item.text)} />
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .more__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin: 48px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .more__card {
+    padding: 26px 26px 28px;
+    border-radius: 24px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+    color: var(--text-2);
+  }
+
+  .more__title {
+    margin: 18px 0 0;
+    color: var(--text-1);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .more__text {
+    margin: 8px 0 0;
+    font-size: 15px;
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  @media (max-width: 1023px) {
+    .more__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 599px) {
+    .more__grid {
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: 36px;
+    }
+
+    .more__card {
+      padding: 22px;
+    }
+  }
+</style>

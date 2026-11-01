@@ -1,0 +1,407 @@
+---
+import { copyFor } from '../copy';
+import { appLangOf, localeOf } from '../copy/locales';
+import { hangingPath, metrics } from '../lib/shape';
+import DemoWindow from './DemoWindow.astro';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+const appLang = appLangOf(localeOf(Astro.url.pathname));
+
+// The closed notch as the page first paints it; the script takes over from here.
+const notch = { width: 186, height: 32, radius: metrics.notchRadius, shoulder: 0 };
+const shape = hangingPath(notch);
+const outline = hangingPath(notch, false);
+---
+
+<div class="vx" data-vx data-nosnippet>
+  <div class="vx-glow" aria-hidden="true">
+    <div class="vx-glow__wash"></div>
+    <svg class="vx-glow__halo" width="100%" height="100%">
+      <svg x="50%" overflow="visible"><path d={shape}></path></svg>
+    </svg>
+  </div>
+
+  <button
+    class="vx-notch"
+    type="button"
+    aria-expanded="false"
+    aria-controls="vx-window"
+    aria-label={copy.notch.open}
+    data-label-open={copy.notch.open}
+    data-label-close={copy.notch.close}
+  >
+    <span class="vx-ear" data-ear="left" lang={appLang}></span>
+    <span class="vx-ear" data-ear="right" lang={appLang}></span>
+  </button>
+
+  <svg class="vx-layer vx-layer--back" width="100%" height="460" aria-hidden="true">
+    <svg x="50%" overflow="visible">
+      <path class="vx-shape__fill" d={shape}></path>
+      <path class="vx-shape__flash" d={shape}></path>
+    </svg>
+  </svg>
+
+  <div class="vx-frame">
+    <div class="vx-window" id="vx-window" role="group" aria-label={copy.notch.window} inert>
+      <DemoWindow />
+    </div>
+  </div>
+
+  <svg class="vx-layer vx-layer--front" width="100%" height="460" aria-hidden="true">
+    <svg x="50%" overflow="visible">
+      <path class="vx-shape__core" d={shape}></path>
+      <circle class="vx-shape__lens" cx="0" cy="16" r="3"></circle>
+      <path class="vx-shape__edge" d={outline}></path>
+    </svg>
+  </svg>
+
+  <div class="vx-drop" aria-hidden="true" data-state="off">
+    <div class="vx-drop__frame">
+      <Icon name="tray" size={17} />
+      <span class="vx-drop__idle">{copy.shelfChapter.dropHere}</span>
+      <span class="vx-drop__over">{copy.shelfChapter.release}</span>
+    </div>
+  </div>
+
+
+  <p class="vx-hint" aria-hidden="true">
+    <Icon name="arrowUp" size={12} />
+    <span class="vx-hint__pointer">{copy.notch.hint}</span>
+    <span class="vx-hint__touch">{copy.notch.hintTouch}</span>
+  </p>
+</div>
+
+<style>
+  .vx {
+    --glow: rgb(255 255 255);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    height: 0;
+    pointer-events: none;
+  }
+
+  /* The intro reveals the notch; without scripts, or with Reduce Motion, it is simply there. */
+  :global(.js) .vx:not(.is-ready) {
+    --intro: 0;
+  }
+
+  :global(.intro-done) :is(.vx-layer, .vx-notch) {
+    --intro: 1 !important;
+  }
+
+  .vx-layer,
+  .vx-notch {
+    opacity: var(--intro, 1);
+  }
+
+  .vx-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+  }
+
+  .vx-layer--back {
+    z-index: 2;
+  }
+
+  .vx-layer--front {
+    z-index: 4;
+  }
+
+  .vx-shape__fill {
+    fill: var(--notch);
+    transition: fill 300ms linear;
+  }
+
+  .vx.is-open .vx-shape__fill {
+    fill: var(--window);
+  }
+
+  .vx-shape__flash {
+    fill: var(--glow);
+    opacity: 0;
+  }
+
+  .vx-shape__core {
+    fill: var(--notch);
+  }
+
+  .vx-shape__lens {
+    fill: var(--lens);
+    stroke: #1a2132;
+    stroke-width: 0.8;
+  }
+
+  .vx-shape__edge {
+    fill: none;
+    stroke: var(--edge);
+    stroke-width: 1;
+    transition: stroke 1600ms var(--ease-out) 200ms;
+  }
+
+  /* The outline catches the light as the notch arrives, then settles. */
+  :global(.js) .vx:not(.is-ready) .vx-shape__edge {
+    stroke: rgb(255 255 255 / 0.55);
+  }
+
+  .vx-glow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 1;
+    width: var(--glow-w, 446px);
+    max-width: 100%;
+    height: var(--glow-h, 132px);
+    transform: translateX(-50%);
+    opacity: 0;
+  }
+
+  .vx.is-open .vx-glow {
+    z-index: 5;
+  }
+
+  .vx-glow__wash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      50% 100% at 50% 0,
+      color-mix(in srgb, var(--glow) 95%, transparent) 0%,
+      color-mix(in srgb, var(--glow) 45%, transparent) 50%,
+      transparent 100%
+    );
+  }
+
+  .vx-glow__halo {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    filter: blur(8px);
+  }
+
+  .vx-glow__halo path {
+    fill: var(--glow);
+  }
+
+  .vx-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    height: 460px;
+    overflow: hidden;
+  }
+
+  .vx-window {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 680px;
+    height: 440px;
+    margin-left: -340px;
+    transform: scale(var(--window-scale));
+    transform-origin: 50% 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: auto;
+    transition:
+      opacity 100ms ease-in,
+      visibility 0s linear 100ms;
+  }
+
+  /* As the app does: the content fades in a moment after the shape starts to grow. */
+  .vx.is-open .vx-window {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 200ms ease-out 100ms,
+      visibility 0s;
+  }
+
+  .vx-notch {
+    --hit-w: 186px;
+    --hit-h: 32px;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 6;
+    display: flex;
+    justify-content: space-between;
+    width: var(--hit-w);
+    height: var(--hit-h);
+    transform: translateX(-50%);
+    border-radius: 0 0 12px 12px;
+    pointer-events: auto;
+  }
+
+  .vx-notch:focus-visible {
+    outline-offset: 4px;
+  }
+
+  .vx-ear {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--ear-w);
+    height: var(--notch-h);
+    overflow: hidden;
+    color: var(--text-1);
+    font: 500 13px/1 var(--font);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transition: opacity 200ms var(--ease-out);
+  }
+
+  .vx.is-open .vx-ear {
+    opacity: 0;
+  }
+
+  .vx-ear :global(.vx-ear__row) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .vx-ear :global(.vx-ear__item) {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .vx-ear :global(.is-mono) {
+    font: 500 11.5px/1 var(--mono);
+  }
+
+  /* The drop zone: a dashed frame under the notch, as the app's "Drop files here". */
+  .vx-drop {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 5;
+    display: flex;
+    width: calc(380px * var(--drop-scale, 1));
+    height: calc(104px * var(--drop-scale, 1));
+    padding: calc(var(--notch-h) + 8px) 12px 12px;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 140ms linear;
+    pointer-events: none;
+  }
+
+  .vx.is-drop .vx-drop {
+    opacity: 1;
+    transition: opacity 200ms linear 160ms;
+  }
+
+  .vx-drop__frame {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1.5px dashed #3a3a3f;
+    border-radius: 16px;
+    color: var(--text-2);
+    font-size: 13px;
+    white-space: nowrap;
+    transition:
+      border-color 150ms linear,
+      background-color 150ms linear,
+      color 150ms linear;
+  }
+
+  .vx.is-drop-hover .vx-drop__frame {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.05);
+    color: var(--text-1);
+  }
+
+  .vx-drop__over,
+  .vx.is-drop-hover .vx-drop__idle {
+    display: none;
+  }
+
+  .vx.is-drop-hover .vx-drop__over {
+    display: inline;
+  }
+
+  .vx.is-drop .vx-ear,
+  .vx.is-drop .vx-hint {
+    opacity: 0;
+  }
+
+  .vx.is-drop .vx-shape__fill {
+    fill: var(--window);
+  }
+
+  .vx-hint {
+    position: absolute;
+    top: calc(var(--notch-h) + 18px);
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    transform: translateX(-50%);
+    color: var(--text-3);
+    font: 500 12px/1 var(--mono);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 600ms var(--ease-out);
+  }
+
+  /* Only at the top of the page, until the visitor has opened the notch once. */
+  :global(html:not(.is-scrolled)) .vx.is-ready:not(.hint-seen):not(.is-open) .vx-hint {
+    opacity: 1;
+    transition-delay: 900ms;
+  }
+
+  /* It nudges twice, and only while it shows: under opacity 0 the animation would still draw a frame every refresh,
+     and nothing on the page moves by itself for long. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html:not(.is-scrolled)) .vx.is-ready:not(.hint-seen):not(.is-open) .vx-hint svg {
+      animation: vx-nudge 2.4s var(--ease-in-out) 2;
+    }
+  }
+
+  @keyframes vx-nudge {
+    0%,
+    60%,
+    100% {
+      transform: translateY(0);
+    }
+    30% {
+      transform: translateY(-3px);
+    }
+  }
+
+  @media (hover: none) {
+    .vx-hint__pointer {
+      display: none;
+    }
+  }
+
+  @media (hover: hover) {
+    .vx-hint__touch {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vx-window,
+    .vx.is-open .vx-window {
+      transition-duration: 150ms;
+      transition-delay: 0s;
+    }
+  }
+</style>
+
+<script>
+  import '../scripts/notch';
+</script>

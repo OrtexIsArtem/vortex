@@ -1,0 +1,85 @@
+---
+// Development only: puts the notch in each of its states, to review them without the scenes that will drive them.
+---
+
+<aside class="dev" aria-label="Notch states (development only)">
+  <button type="button" data-state="idle">Idle</button>
+  <button type="button" data-state="timer">Timer ear</button>
+  <button type="button" data-state="shelf">Shelf ear</button>
+  <button type="button" data-state="both">Both</button>
+  <button type="button" data-state="key">Key</button>
+  <button type="button" data-state="freeze">Freeze</button>
+  <button type="button" data-state="flash-1">Flash 1</button>
+  <button type="button" data-state="flash-2">Flash 2</button>
+  <button type="button" data-state="flash-3">Flash 3</button>
+  <button type="button" data-state="alarm">Alarm</button>
+  <button type="button" data-state="alarm-5s">Timer 5 s</button>
+  <button type="button" data-state="open">Open</button>
+</aside>
+
+<style>
+  .dev {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    z-index: 90;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 340px;
+    padding: 6px;
+    border-radius: 12px;
+    background: rgb(26 26 29 / 0.9);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+    font: 500 11px/1 var(--mono);
+  }
+
+  .dev button {
+    padding: 6px 8px;
+    border-radius: 7px;
+    background: rgb(255 255 255 / 0.06);
+    color: var(--text-2);
+  }
+
+  .dev button:hover {
+    color: var(--text-1);
+  }
+</style>
+
+<script>
+  import { alarm, flash, open, setIndicator, type EarItem } from '../scripts/notch';
+  import { startSeconds } from '../scripts/timer';
+
+  const timer: EarItem[] = [{ kind: 'ring', value: 0.65 }, { kind: 'text', text: '8:42' }];
+  const shelf: EarItem[] = [{ kind: 'icon', name: 'tray' }, { kind: 'text', text: '2' }];
+  const states: Record<string, () => void> = {
+    idle: () => {
+      for (const id of ['dev-timer', 'dev-shelf', 'dev-key', 'dev-freeze']) setIndicator(id, null);
+    },
+    timer: () => setIndicator('dev-timer', { left: timer, priority: 10 }),
+    shelf: () => setIndicator('dev-shelf', { right: shelf, priority: 5 }),
+    both: () => {
+      setIndicator('dev-timer', { left: timer, priority: 10 });
+      setIndicator('dev-shelf', { right: shelf, priority: 5 });
+    },
+    key: () => {
+      setIndicator('dev-key', { right: [{ kind: 'icon', name: 'key' }, { kind: 'text', text: 'prod-db', mono: true }], priority: 20 });
+      flash('white');
+    },
+    freeze: () => setIndicator('dev-freeze', { left: [{ kind: 'text', text: 'Freeze frame' }], right: [{ kind: 'text', text: 'Esc' }], priority: 30 }),
+    'flash-1': () => flash('glow-1'),
+    'flash-2': () => flash('glow-2'),
+    'flash-3': () => flash('white'),
+    alarm: () => alarm(),
+    'alarm-5s': () => startSeconds(5),
+    open: () => open('click'),
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('.dev button').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      states[button.dataset.state ?? '']?.();
+    });
+    button.addEventListener('pointerdown', (event) => event.stopPropagation());
+  });
+</script>

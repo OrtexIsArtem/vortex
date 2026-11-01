@@ -1,0 +1,332 @@
+---
+// The app's Timer tab: the minutes in large digits, the drum under them and Start, then the quick starts; while a run
+// goes, the time left, pause and stop. It drives the same timer as the window, one at a time.
+import { copyFor } from '../../copy';
+import { appLangOf, localeByCode, localeOf } from '../../copy/locales';
+import Icon from '../Icon.astro';
+
+const copy = copyFor(Astro.url);
+// The tab is the app's, in the app's language; what the page adds to it (quick-start names, the alarm test) is in
+// the page's.
+const code = localeOf(Astro.url.pathname);
+const appLang = appLangOf(code);
+const pageLang = appLang ? localeByCode(code).tag : undefined;
+
+const t = copy.timerChapter;
+const quickStarts = [5, 10, 15, 30, 60];
+---
+
+<div class="scene tscene" data-timer-scene tabindex="-1" data-nosnippet lang={appLang}>
+  <div class="tscene__digits" aria-hidden="true">
+    <span class="tscene__value" data-tscene-value>5</span>
+    <span class="tscene__unit" data-tscene-unit>{t.minutes}</span>
+  </div>
+  <p class="tscene__caption" data-tscene-caption aria-live="off"></p>
+  <canvas class="tscene__drum" data-tscene-drum title={copy.demo.drumHint}></canvas>
+  <div class="tscene__controls">
+    <button class="tscene__start" type="button" data-tscene-start>
+      <Icon name="play" size={10} />{t.start}
+    </button>
+    <div class="tscene__run">
+      <button class="tscene__round tscene__round--prominent" type="button" data-tscene-toggle aria-label={copy.demo.pause}>
+        <Icon name="pause" size={14} class="tscene__when-running" />
+        <Icon name="play" size={14} class="tscene__when-paused" />
+      </button>
+      <button class="tscene__round" type="button" data-tscene-stop aria-label={copy.demo.stop}>
+        <Icon name="stop" size={13} />
+      </button>
+    </div>
+  </div>
+  <div class="tscene__quick" data-tscene-quick lang={pageLang}>
+    {
+      quickStarts.map((minutes) => (
+        <button type="button" data-quick={minutes} aria-label={t.quickStart(minutes)} title={t.quickStart(minutes)}>
+          {minutes}
+        </button>
+      ))
+    }
+  </div>
+  <button class="tscene__alarm" type="button" data-tscene-alarm lang={pageLang}>{t.alarm}</button>
+</div>
+
+<style>
+  .tscene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 56px 28px 44px;
+    outline: none;
+  }
+
+  .tscene__digits {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    height: 104px;
+  }
+
+  .tscene__value {
+    font: 200 clamp(76px, 8vw, 104px) / 1 var(--font-display);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .tscene.is-paused .tscene__value {
+    color: var(--text-2);
+  }
+
+  .tscene__unit {
+    color: var(--text-2);
+    font-size: 17px;
+  }
+
+  .tscene.is-running .tscene__unit {
+    display: none;
+  }
+
+  .tscene__caption {
+    height: 20px;
+    margin: 10px 0 0;
+    color: var(--text-3);
+    font-size: 13.5px;
+  }
+
+  .tscene__drum {
+    width: min(400px, 100%);
+    height: 56px;
+    margin-top: 14px;
+    border-radius: 8px;
+    cursor: grab;
+    /* A sideways drag turns the drum; a swipe up or down still scrolls the page. */
+    touch-action: pan-y;
+  }
+
+  .tscene__drum:active {
+    cursor: grabbing;
+  }
+
+  .tscene__drum:global(.is-running) {
+    cursor: default;
+  }
+
+  .tscene__controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    margin-top: 22px;
+  }
+
+  .tscene__start {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .tscene__start:hover {
+    background: var(--accent-hover);
+  }
+
+  .tscene__run,
+  .tscene.is-running .tscene__start {
+    display: none;
+  }
+
+  .tscene.is-running .tscene__run {
+    display: flex;
+    gap: 10px;
+  }
+
+  /* As the app's RoundButton: the main one on a raised disc, the other bare. */
+  .tscene__round {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--text-2);
+  }
+
+  .tscene__round:hover {
+    color: var(--text-1);
+  }
+
+  .tscene__round--prominent {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .tscene__round :global(.tscene__when-paused),
+  .tscene.is-paused .tscene__round :global(.tscene__when-running) {
+    display: none;
+  }
+
+  .tscene.is-paused .tscene__round :global(.tscene__when-paused) {
+    display: block;
+  }
+
+  .tscene__quick {
+    display: flex;
+    gap: 6px;
+    margin-top: 14px;
+    transition: opacity 200ms linear;
+  }
+
+  /* Hidden while a run goes, but its room is kept, so nothing moves. */
+  .tscene.is-running .tscene__quick {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .tscene__quick button {
+    min-width: 44px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--raised);
+    font-size: 12.5px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tscene__quick button:hover {
+    background: var(--track);
+  }
+
+  .tscene__alarm {
+    position: absolute;
+    right: 18px;
+    bottom: 16px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: var(--text-3);
+    font: 400 12px/1 var(--mono);
+  }
+
+  /* The alarm's color shows only as the notch's light. */
+  .tscene__alarm:hover {
+    color: var(--text-1);
+  }
+
+  .tscene__alarm.is-waiting {
+    color: var(--text-2);
+    pointer-events: none;
+  }
+
+  /* On touch screens the small buttons take a finger's width beyond what they show. */
+  @media (pointer: coarse) {
+    .tscene__quick button {
+      position: relative;
+    }
+
+    .tscene__quick button::after,
+    .tscene__alarm::after {
+      content: '';
+      position: absolute;
+      inset: -7px -3px;
+    }
+
+    .tscene__alarm::after {
+      inset: -10px -4px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .tscene {
+      padding: 40px 18px 56px;
+    }
+
+    .tscene__alarm {
+      right: 50%;
+      transform: translateX(50%);
+    }
+  }
+</style>
+
+<script>
+  import { copy } from '../../scripts/copy';
+  import { clockText, defaultMinutes, isPaused, remaining, secondsLeft, totalMinutes } from '../../lib/timer-run';
+  import { DrumControl, drumStyles } from '../../scripts/drum';
+  import { alarm } from '../../scripts/notch';
+  import { onTimer, start, stop, togglePause } from '../../scripts/timer';
+
+  const scene = document.querySelector<HTMLElement>('[data-timer-scene]');
+  const canvas = scene?.querySelector<HTMLCanvasElement>('[data-tscene-drum]');
+  const value = scene?.querySelector<HTMLElement>('[data-tscene-value]');
+  const caption = scene?.querySelector<HTMLElement>('[data-tscene-caption]');
+  const toggle = scene?.querySelector<HTMLButtonElement>('[data-tscene-toggle]');
+  const alarmButton = scene?.querySelector<HTMLButtonElement>('[data-tscene-alarm]');
+
+  if (scene && canvas && value && caption && toggle && alarmButton) {
+    const t = copy.timerChapter;
+    let running = false;
+    const drum = new DrumControl(canvas, drumStyles.tab, {
+      label: copy.demo.drum,
+      unit: copy.demo.minutes,
+      onChange: (minutes) => {
+        if (!running) value.textContent = String(minutes);
+      },
+    });
+
+    scene.querySelector('[data-tscene-start]')?.addEventListener('click', () => start(drum.minutes));
+    toggle.addEventListener('click', togglePause);
+    scene.querySelector('[data-tscene-stop]')?.addEventListener('click', stop);
+    scene.querySelectorAll<HTMLButtonElement>('[data-quick]').forEach((button) =>
+      button.addEventListener('click', () => start(Number(button.dataset.quick))),
+    );
+
+    // Return starts, Space pauses and resumes, as in the app's tab.
+    scene.addEventListener('keydown', (event) => {
+      if (event.target instanceof HTMLButtonElement) return;
+      if (event.key === 'Enter' && !running) start(drum.minutes);
+      else if (event.key === ' ' && running) togglePause();
+      else return;
+      event.preventDefault();
+    });
+
+    // As the app's Test: the flashes three seconds later, without a notification.
+    alarmButton.addEventListener('click', () => {
+      alarmButton.classList.add('is-waiting');
+      alarmButton.textContent = t.alarmSoon;
+      window.setTimeout(() => {
+        alarm('alarm');
+        alarmButton.classList.remove('is-waiting');
+        alarmButton.textContent = t.alarm;
+      }, 3000);
+    });
+
+    const timeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+    onTimer(({ run, now }) => {
+      const wasRunning = running;
+      running = run !== null;
+      scene.classList.toggle('is-running', running);
+      if (run) {
+        const paused = isPaused(run);
+        scene.classList.toggle('is-paused', paused);
+        drum.showRun(remaining(run, now) / 60, Math.ceil(run.total / 60));
+        value.textContent = clockText(secondsLeft(run, now));
+        const total = t.of(totalMinutes(run));
+        caption.textContent = paused
+          ? `${t.paused} · ${total}`
+          : `${total} · ${t.until(timeFormat.format(new Date((now + remaining(run, now)) * 1000)))}`;
+        toggle.setAttribute('aria-label', paused ? copy.demo.resume : copy.demo.pause);
+      } else {
+        scene.classList.remove('is-paused');
+        caption.textContent = '';
+        if (wasRunning) {
+          // The drum stands at five minutes again once a run is over.
+          drum.showRun(null);
+          drum.setMinutes(defaultMinutes, false);
+        }
+        value.textContent = String(drum.minutes);
+      }
+    });
+  }
+</script>

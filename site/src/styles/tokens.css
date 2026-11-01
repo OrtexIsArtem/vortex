@@ -1,0 +1,62 @@
+/* The Vortex app's own palette and metrics (Packages/Core/Sources/DesignSystem/Theme.swift), dark only.
+   Monochrome: color appears on this page only as light from the notch. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0a0a0b;            /* the page: a dark wallpaper, a step lighter than the notch so the notch reads */
+  --notch: #000000;
+  --window: #050505;        /* VortexColor.windowBackground */
+  --surface: #111113;       /* VortexColor.card */
+  --raised: #1a1a1d;        /* VortexColor.raised */
+  --dock: #0e0e10;          /* VortexColor.dock */
+  --thumb: #18181b;         /* VortexColor.thumbnail */
+  --line: #1b1b1e;          /* VortexColor.line */
+  --track: #2a2a2e;         /* VortexColor.track */
+  --edge: rgb(255 255 255 / 0.12);
+  --lens: #0d111b;
+
+  --text-1: #f5f5f7;
+  --text-2: #8e8e93;
+  --text-3: #7c7c82;
+  --text-dim: #1c1c1f;      /* text before the light comes on */
+  --accent: #f5f5f7;
+  --accent-hover: #d2d2d7;  /* a visible step down from the accent, as a pressed key dims */
+  --on-accent: #0a0a0a;
+
+  /* The app's flash colors, as r g b for rgb(var(--…) / alpha). */
+  --glow-1: 90 200 250;     /* #5AC8FA: the first new file on the shelf */
+  --glow-2: 74 222 128;     /* #4ADE80: the second */
+  --glow-alarm: 255 159 67; /* #FF9F43: time's up */
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --menubar-h: 36px;
+  --notch-w: 186px;
+  --notch-h: 32px;
+  /* Set by the notch while it shows ears. */
+  --ear-w: 0px;
+  /* Set by the notch: the open window's scale on this screen. */
+  --window-scale: 1;
+  --hit: 44px;
+  --gutter: 24px;
+  --max: 1200px;
+  --hair: 1px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (min-resolution: 2dppx) {
+  :root { --hair: 0.5px; }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --menubar-h: 44px;
+    --notch-w: 124px;
+    --notch-h: 30px;
+    --gutter: 16px;
+  }
+}

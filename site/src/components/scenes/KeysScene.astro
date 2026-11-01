@@ -1,0 +1,727 @@
+---
+// Keys for Claude Code, as they work in the app: Claude writes {{github}} where the value goes, the first use in a
+// session waits for Allow (the notch shows the key and flashes), Vortex runs the command and takes the value back out
+// of the output, here out of curl's verbose Authorization line.
+import { copyFor } from '../../copy';
+import { appLangOf, localeOf } from '../../copy/locales';
+import Icon from '../Icon.astro';
+
+const copy = copyFor(Astro.url);
+const code = localeOf(Astro.url.pathname);
+/** The request card is the app's: English on pages in a language the app doesn't speak. */
+const appLang = appLangOf(code);
+/** The command is the terminal's English on every page in another language, Ukrainian too. */
+const english = code === 'en' ? undefined : 'en';
+
+const k = copy.keysChapter;
+---
+
+<div class="scene keys" data-keys-scene data-nosnippet>
+  <div class="keys__stage">
+    <div class="term">
+      <div class="term__bar">
+        <span class="term__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="term__title">{k.folder} — claude</span>
+      </div>
+      {/* Not live: the demo types here by itself. It scrolls once it is full, so the keyboard can reach it. */}
+      <div class="term__body" data-ks-log role="region" aria-label={k.terminalLabel} tabindex="0"></div>
+    </div>
+
+    <div class="req" data-ks-request lang={appLang} hidden>
+      <div class="req__head">
+        <Icon name="key" size={15} />
+        <p class="req__title">{k.request}</p>
+      </div>
+      <p class="req__folder">{k.folder}</p>
+      <code class="req__command" lang={english}>{k.command}</code>
+      <div class="req__actions">
+        <button class="req__deny" type="button" data-ks-deny>{k.deny}</button>
+        <button class="req__allow" type="button" data-ks-allow>{k.allow}</button>
+      </div>
+    </div>
+  </div>
+
+  <ol class="flow" aria-label={k.flowLabel}>
+    {
+      k.flow.map((step, index) => (
+        <li class="flow__step" style={`--i: ${index}`}>
+          {step}
+        </li>
+      ))
+    }
+  </ol>
+  <p class="keys__caption">{k.caption}</p>
+  <button class="keys__again" type="button" data-ks-again>{k.replay}</button>
+  {/* What the visitor's own runs come to, for a screen reader; the demo playing by itself stays silent. */}
+  <p class="visually-hidden" role="status" data-ks-status></p>
+</div>
+
+<style>
+  .keys {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px;
+  }
+
+  /* The terminal and the request share one fixed height: the request takes its room from the terminal, so the scene
+     keeps its size through every round of the loop. */
+  .keys__stage {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 356px;
+  }
+
+  .term {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #0c0c0e;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+
+  /* Focus rings the whole window: the terminal's own ring would be cut off at the window's rounded edge. */
+  .term:has(.term__body:focus-visible) {
+    outline: 2px solid var(--text-1);
+    outline-offset: 3px;
+  }
+
+  @supports selector(:has(*)) {
+    .term__body:focus-visible {
+      outline: none;
+    }
+  }
+
+  .term__bar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding: 0 10px;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .term__lights {
+    display: flex;
+    gap: 5px;
+  }
+
+  .term__lights i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3a3a40;
+  }
+
+  .term__title {
+    color: var(--text-3);
+    font: 11.5px var(--mono);
+  }
+
+  /* Once it is full (a narrow screen, larger text or spacing) it scrolls, as a terminal does, and keeps its newest line
+     in view; the stage keeps its height either way. */
+  .term__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 14px 14px;
+    font: 12px/1.6 var(--mono);
+    scrollbar-color: var(--track) transparent;
+    scrollbar-width: thin;
+  }
+
+  .term__body :global(p) {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .term__body :global(.is-you) {
+    color: var(--text-1);
+  }
+
+  .term__body :global(.is-claude) {
+    color: var(--text-2);
+  }
+
+  .term__body :global(.is-run) {
+    color: var(--text-1);
+  }
+
+  .term__body :global(.is-out) {
+    color: var(--text-3);
+    padding-left: 2ch;
+  }
+
+  .term__body :global(.is-wait) {
+    color: var(--text-3);
+    padding-left: 2ch;
+  }
+
+  .term__body :global(.tag) {
+    color: var(--text-3);
+  }
+
+  .term__body :global(.ref) {
+    padding: 0 3px;
+    border-radius: 4px;
+    background: rgb(255 255 255 / 0.1);
+    color: var(--text-1);
+  }
+
+  /* A ring, turned by the compositor: braille spinner glyphs would send the browser looking for a fallback font. It
+     turns while the demo goes round by itself and rests once the visitor has it. */
+  .term__body :global(.spin) {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 4px;
+    border: 1.5px solid var(--track);
+    border-top-color: var(--text-2);
+    border-radius: 50%;
+    vertical-align: -1px;
+  }
+
+  .keys.is-looping .term__body :global(.spin) {
+    animation: spin 800ms linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  .req {
+    display: grid;
+    flex: none;
+    gap: 6px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1);
+    animation: req-in 360ms var(--ease-out);
+  }
+
+  @keyframes req-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  .req__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .req__title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .req__folder {
+    margin: 0;
+    color: var(--text-3);
+    font: 11.5px var(--mono);
+  }
+
+  .req__command {
+    display: block;
+    padding: 8px 10px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #0c0c0e;
+    color: var(--text-2);
+    font: 11.5px/1.5 var(--mono);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .req__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .req__deny,
+  .req__allow {
+    height: 32px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .req__deny {
+    background: var(--raised);
+  }
+
+  .req__allow {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  /* Where the key goes, in hairlines; a dot runs along while a command runs. */
+  .flow {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .flow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 8%;
+    left: 8%;
+    height: var(--hair);
+    background: var(--track);
+  }
+
+  .flow__step {
+    position: relative;
+    z-index: 1;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: var(--window);
+    box-shadow: inset 0 0 0 1px var(--track);
+    color: var(--text-3);
+    font: 10.5px/1.2 var(--mono);
+    white-space: nowrap;
+    transition:
+      color 200ms linear,
+      box-shadow 200ms linear;
+  }
+
+  .keys.is-running .flow__step {
+    animation: flow-step 1.6s var(--ease-in-out) infinite;
+    animation-delay: calc(var(--i) * 160ms);
+  }
+
+  @keyframes flow-step {
+    0%,
+    60%,
+    100% {
+      color: var(--text-3);
+      box-shadow: inset 0 0 0 1px var(--track);
+    }
+    25% {
+      color: var(--text-1);
+      box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6);
+    }
+  }
+
+  .keys__caption {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 12.5px;
+    text-align: center;
+  }
+
+  /* Pause while the demo goes round by itself, Again once it rests; its room is kept, so showing it moves nothing. */
+  .keys__again {
+    visibility: hidden;
+    justify-self: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text-3);
+    font: 400 12px/1 var(--mono);
+  }
+
+  .keys__again.is-shown {
+    visibility: visible;
+  }
+
+  .keys__again:hover {
+    color: var(--text-1);
+  }
+
+  /* A fingertip gets 44 points: the buttons keep their size and take taps from just around them too. */
+  @media (pointer: coarse) {
+    .req__deny,
+    .req__allow,
+    .keys__again {
+      position: relative;
+    }
+
+    .req__deny::after,
+    .req__allow::after,
+    .keys__again::after {
+      content: '';
+      position: absolute;
+      inset: -6px -4px;
+    }
+
+    .keys__again::after {
+      inset: -12px -8px;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .keys {
+      padding: 12px;
+    }
+
+    .keys__stage {
+      height: 420px;
+    }
+
+    .flow {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .flow::before {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .req,
+    .keys.is-looping .term__body :global(.spin),
+    .keys.is-running .flow__step {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  import { appLang, copy } from '../../scripts/copy';
+  import { flash, setIndicator } from '../../scripts/notch';
+
+  const scene = document.querySelector<HTMLElement>('[data-keys-scene]');
+  const log = scene?.querySelector<HTMLElement>('[data-ks-log]');
+  const request = scene?.querySelector<HTMLElement>('[data-ks-request]');
+  const again = scene?.querySelector<HTMLButtonElement>('[data-ks-again]');
+  const status = scene?.querySelector<HTMLElement>('[data-ks-status]');
+
+  if (scene && log && request && again && status) {
+    const k = copy.keysChapter;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    /** The terminal's own English (its prompts, the command, curl's output), marked on every page in another language. */
+    const english = document.documentElement.lang.startsWith('en') ? undefined : 'en';
+    /** A made-up token: what curl would print if Vortex didn't take it out. */
+    const token = 'ghp_7Qx2LmT9vK4nB8sW1pZ6rY3cH0dF5gJ2aE';
+    let run = 0;
+    let state: 'idle' | 'playing' | 'asking' | 'done' = 'idle';
+    let autoAllow = 0;
+    /** The visitor has played with it: the loop waits until the scene has left the screen. */
+    let touched = false;
+    /** The visitor has paused the demo: it doesn't go round by itself again. */
+    let paused = false;
+    /** The pointer is over the scene, maybe on its way to Allow. */
+    let hovered = false;
+    let inView = false;
+    let loopTimer = 0;
+    /** What the button under the scene offers. */
+    let offer: 'pause' | 'again' | null = null;
+    /** The terminal follows its newest line, unless the visitor has scrolled back to read. */
+    let pinned = true;
+    const keyEar = { right: [{ kind: 'icon' as const, name: 'key' as const }, { kind: 'text' as const, text: 'github', mono: true }], priority: 20 };
+
+    /** It goes round by itself: nobody has played with it or paused it, and motion is welcome. */
+    const looping = () => !touched && !paused && !reduceMotion;
+    /** The visitor's pointer or focus is in the scene: nothing is ever pressed for them then. */
+    const present = () => hovered || scene.contains(document.activeElement);
+
+    /** Keeps the newest line in view, as a terminal does once it is full. */
+    const follow = () => {
+      if (pinned) log.scrollTop = log.scrollHeight;
+    };
+    log.addEventListener(
+      'scroll',
+      () => {
+        pinned = log.scrollHeight - log.scrollTop - log.clientHeight < 8;
+      },
+      { passive: true },
+    );
+
+    const escape = (text: string) =>
+      text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+    const refs = (text: string) => escape(text).replace(/\{\{([a-z0-9._-]+)\}\}/gi, '<span class="ref">{{$1}}</span>');
+    /** Words in another language than the page's, so a screen reader reads them in the right voice. */
+    const inLang = (html: string, lang: string | undefined) => (lang ? `<span lang="${lang}">${html}</span>` : html);
+    /** A prompt's tag, in the terminal's English. */
+    const tag = (name: string) => `<span class="tag"${english ? ` lang="${english}"` : ''}>${name} ›</span>`;
+    const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, reduceMotion ? 0 : ms));
+
+    const line = (kind: string, html: string, lang?: string) => {
+      const p = document.createElement('p');
+      p.className = `is-${kind}`;
+      if (lang) p.lang = lang;
+      p.innerHTML = html;
+      log.append(p);
+      follow();
+      return p;
+    };
+
+    /** Types a line out, a few characters a frame. */
+    const type = async (kind: string, name: string, text: string, current: number, lang?: string) => {
+      const p = line(kind, `${tag(name)} `, lang);
+      const body = document.createElement('span');
+      p.append(body);
+      if (reduceMotion) {
+        body.innerHTML = refs(text);
+        follow();
+        return;
+      }
+      for (let index = 0; index <= text.length; index += 3) {
+        if (current !== run) return;
+        body.textContent = text.slice(0, index);
+        follow();
+        await wait(16);
+      }
+      body.innerHTML = refs(text);
+      follow();
+    };
+
+    /** The value scrambles, then settles into its name: what Vortex does to it before Claude sees the output. */
+    const scrub = async (element: HTMLElement, current: number) => {
+      const glyphs = 'abcdefghijklmnopqrstuvwxyz0123456789_{}';
+      const target = '{{github}}';
+      if (!reduceMotion) {
+        await wait(700);
+        for (let step = 0; step < 14; step++) {
+          if (current !== run) return;
+          const keep = Math.max(target.length, Math.round(token.length * (1 - step / 14)));
+          element.textContent = Array.from({ length: keep }, () => glyphs[Math.floor(Math.random() * glyphs.length)]).join('');
+          follow();
+          await wait(45);
+        }
+      }
+      element.innerHTML = '<span class="ref">{{github}}</span>';
+    };
+
+    /** curl's verbose output, with `secret` where the token is. */
+    const curl = (secret: string) => [
+      escape('> GET /user/repos?visibility=private HTTP/2'),
+      escape('> Host: api.github.com'),
+      `${escape('> Authorization: Bearer ')}${secret}`,
+      escape('< HTTP/2 200'),
+      escape('[{"name":"shop-ios","private":true},{"name":"shop-android","private":true}]'),
+    ];
+
+    /** One polite message for a screen reader, about a run the visitor took part in. */
+    const say = (html: string) => {
+      status.innerHTML = html;
+    };
+
+    /** The button under the scene: Pause while the demo goes round by itself, Again once it rests. */
+    const offerSlot = (next: typeof offer) => {
+      offer = next;
+      again.textContent = next === 'pause' ? copy.chapter.pause : k.replay;
+      again.classList.toggle('is-shown', next !== null);
+    };
+
+    /** Brings the spinner and the slot in line with whether the demo goes round by itself. The slot never changes under
+     * the visitor's focus: only pressing it does. */
+    const sync = () => {
+      scene.classList.toggle('is-looping', looping());
+      if (document.activeElement === again) return;
+      if (state !== 'idle' && looping()) offerSlot('pause');
+      else offerSlot(state === 'done' ? 'again' : null);
+    };
+
+    /** For a visitor who only watches, Allow is pressed after a while; never while their pointer or focus is in the
+     * scene. */
+    const armAutoAllow = () => {
+      window.clearTimeout(autoAllow);
+      autoAllow = 0;
+      if (state !== 'asking' || touched || paused || !inView || present()) return;
+      autoAllow = window.setTimeout(() => {
+        autoAllow = 0;
+        if (!touched && !paused && !present()) void answer(true, false);
+      }, 4000);
+    };
+
+    const play = async () => {
+      const current = ++run;
+      state = 'playing';
+      window.clearTimeout(loopTimer);
+      loopTimer = 0;
+      window.clearTimeout(autoAllow);
+      autoAllow = 0;
+      scene.classList.remove('is-running');
+      request.hidden = true;
+      status.textContent = '';
+      log.replaceChildren();
+      pinned = true;
+      sync();
+      await type('you', 'you', k.ask, current);
+      await wait(300);
+      if (current !== run) return;
+      line('claude', `${tag('claude')} ${escape(k.claudeAsk)}`);
+      await wait(400);
+      if (current !== run) return;
+      await type('run', 'run', k.command, current, english);
+      if (current !== run) return;
+      line('wait', `<span class="spin" aria-hidden="true"></span>${escape(k.waiting)}`, appLang);
+      // The first use of a key in a session waits for Allow: the notch shows the key and flashes.
+      setIndicator('keys', keyEar);
+      flash('white');
+      request.hidden = false;
+      // The card takes its room from the terminal, which keeps its newest line in view.
+      follow();
+      state = 'asking';
+      // A visitor who has the scene hears that the request came; the demo playing by itself stays silent.
+      if (touched && present()) say(inLang(escape(k.request), appLang));
+      armAutoAllow();
+    };
+
+    /** `chosen`: the visitor pressed it, so a screen reader hears what came of it. */
+    const answer = async (allowed: boolean, chosen: boolean) => {
+      if (state !== 'asking') return;
+      const current = run;
+      window.clearTimeout(autoAllow);
+      autoAllow = 0;
+      state = 'playing';
+      // The card goes; focus on its buttons moves to the terminal, where the answer shows, instead of dropping out.
+      if (request.contains(document.activeElement)) log.focus({ preventScroll: true });
+      request.hidden = true;
+      setIndicator('keys', null);
+      log.querySelector('.is-wait')?.remove();
+      if (!allowed) {
+        line('out', escape(k.denied), appLang);
+        await wait(300);
+        if (current !== run) return;
+        line('claude', `${tag('claude')} ${escape(k.claudeDenied)}`);
+        if (chosen) say(`${inLang(escape(k.denied), appLang)} ${escape(k.claudeDenied)}`);
+        finish();
+        return;
+      }
+      scene.classList.add('is-running');
+      for (const html of curl(`<span data-secret>${token}</span>`)) {
+        await wait(260);
+        if (current !== run) return;
+        const p = line('out', html, english);
+        const secret = p.querySelector<HTMLElement>('[data-secret]');
+        if (secret) void scrub(secret, current);
+      }
+      await wait(1100);
+      if (current !== run) return;
+      scene.classList.remove('is-running');
+      line('claude', `${tag('claude')} ${escape(k.claudeAnswer)}`);
+      if (chosen) say(escape(k.claudeAnswer));
+      finish();
+    };
+
+    /** The answer holds; then, for a visitor who only watches, it all starts over, as a new session would ask again. */
+    function finish() {
+      state = 'done';
+      sync();
+      if (looping() && inView)
+        loopTimer = window.setTimeout(() => {
+          loopTimer = 0;
+          void play();
+        }, 4500);
+    }
+
+    /** Where a paused demo rests: the end of a pass, drawn at once, with nothing moving. */
+    const still = () => {
+      run++;
+      state = 'done';
+      window.clearTimeout(loopTimer);
+      loopTimer = 0;
+      window.clearTimeout(autoAllow);
+      autoAllow = 0;
+      scene.classList.remove('is-running');
+      request.hidden = true;
+      setIndicator('keys', null);
+      status.textContent = '';
+      log.replaceChildren();
+      pinned = true;
+      line('you', `${tag('you')} ${escape(k.ask)}`);
+      line('claude', `${tag('claude')} ${escape(k.claudeAsk)}`);
+      line('run', `${tag('run')} ${refs(k.command)}`, english);
+      for (const html of curl('<span class="ref">{{github}}</span>')) line('out', html, english);
+      line('claude', `${tag('claude')} ${escape(k.claudeAnswer)}`);
+    };
+
+    // Any touch hands the scene to the visitor: no more rounds on their own, nothing pressed for them, and what the
+    // loop set moving (the spinner, the path the key takes) stops with it.
+    const takeOver = (event?: Event) => {
+      if (!touched) scene.classList.remove('is-running');
+      touched = true;
+      window.clearTimeout(loopTimer);
+      loopTimer = 0;
+      window.clearTimeout(autoAllow);
+      autoAllow = 0;
+      // A press on the slot lands on what it showed: only its click changes it.
+      if (event?.target instanceof Node && again.contains(event.target)) scene.classList.remove('is-looping');
+      else sync();
+    };
+    scene.addEventListener('pointerdown', takeOver);
+    scene.addEventListener('keydown', takeOver);
+    scene.addEventListener('focusin', takeOver);
+    again.addEventListener('blur', sync);
+
+    // The pointer over the scene holds Allow back for a visitor who may be about to press it; leaving lets it go on.
+    scene.addEventListener('pointerenter', () => {
+      hovered = true;
+      window.clearTimeout(autoAllow);
+      autoAllow = 0;
+    });
+    scene.addEventListener('pointerleave', () => {
+      hovered = false;
+      armAutoAllow();
+    });
+
+    scene.querySelector('[data-ks-allow]')?.addEventListener('click', () => {
+      takeOver();
+      void answer(true, true);
+    });
+    scene.querySelector('[data-ks-deny]')?.addEventListener('click', () => {
+      takeOver();
+      void answer(false, true);
+    });
+    // Pause stops the demo at once and rests it on a still frame; Again then plays one pass for the visitor.
+    again.addEventListener('click', () => {
+      if (offer === 'pause') {
+        paused = true;
+        still();
+        sync();
+        offerSlot('again');
+        return;
+      }
+      touched = true;
+      void play();
+    });
+
+    // It starts when it comes into view and goes round while it stays there. Off screen it rests, and the visitor's
+    // turn ends unless their focus is still in it; the request waits for them to come back.
+    new IntersectionObserver(
+      ([entry]) => {
+        inView = entry?.isIntersecting ?? false;
+        if (!inView) {
+          if (!scene.contains(document.activeElement)) touched = false;
+          window.clearTimeout(loopTimer);
+          loopTimer = 0;
+          window.clearTimeout(autoAllow);
+          autoAllow = 0;
+          if (state === 'asking') setIndicator('keys', null);
+          return;
+        }
+        if (state === 'asking') {
+          setIndicator('keys', keyEar);
+          armAutoAllow();
+        }
+        const ready = state === 'idle' || (state === 'done' && !loopTimer && !touched && !paused);
+        if ((entry?.intersectionRatio ?? 0) >= 0.5 && ready) void play();
+        else sync();
+      },
+      { threshold: [0, 0.5] },
+    ).observe(scene);
+  }
+</script>

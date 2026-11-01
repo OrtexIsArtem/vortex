@@ -1,0 +1,342 @@
+---
+// Free and open source: how to build it, and a drawing of the features as modules. While it shows, one module at a
+// time is taken out and put back, and the build succeeds either way, as CLAUDE.md promises.
+import { copyFor } from '../copy';
+import { headingGap } from '../copy/locales';
+import { buildUrl, contributingUrl, repoUrl } from '../lib/app';
+import { githubMark } from '../lib/icons';
+import { inlineHtml } from '../lib/inline';
+import CopyCommand from './CopyCommand.astro';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+const gap = headingGap(Astro.url.pathname);
+
+const o = copy.openSource;
+const f = o.figure;
+---
+
+<section class="section oss" id="open-source" aria-labelledby="oss-title">
+  <div class="container oss__grid">
+    <div class="oss__copy" data-reveal>
+      <h2 class="h2" id="oss-title">{o.title}{gap}<span>{o.titleQuiet}</span></h2>
+      <p class="lead">{o.body}</p>
+      <div class="oss__build">
+        <CopyCommand lines={o.commands} />
+        <p class="oss__note rich" set:html={inlineHtml(o.note(buildUrl))} />
+      </div>
+      <div class="oss__links">
+        <a class="btn btn--quiet" href={repoUrl}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d={githubMark}></path></svg>
+          {o.code}
+        </a>
+        <a class="oss__contribute" href={contributingUrl}>{o.contribute}</a>
+      </div>
+    </div>
+
+    <figure class="mods" data-reveal="later" data-mods>
+      <div class="mods__frame" role="img" aria-label={f.label}>
+        <div class="mods__bar">
+          <span class="mods__lights"><i></i><i></i><i></i></span>
+          <span class="mods__folder">{f.folder}</span>
+        </div>
+        <ul class="mods__grid">
+          {
+            f.modules.map((module) => (
+              <li class="mods__slot">
+                <span class="mods__tile" data-module={module.name}>
+                  <Icon name={module.icon} size={18} />
+                  {module.name}
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="mods__status">
+          <span class="mods__command"><span class="mods__prompt">$</span> {f.build}</span>
+          <span class="mods__spin"></span>
+          <span class="mods__result" data-mods-result>
+            <Icon name="check" size={13} />
+            <span data-mods-text>{f.built(f.modules.length)}</span>
+          </span>
+        </p>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .oss__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: center;
+    gap: 56px var(--gutter);
+  }
+
+  .oss__copy {
+    grid-column: 1 / span 6;
+  }
+
+  .mods {
+    grid-column: 7 / span 6;
+    margin: 0;
+  }
+
+  .oss__build {
+    max-width: 560px;
+    margin: 30px 0 0;
+  }
+
+  .oss__note {
+    margin: 12px 0 0;
+    color: var(--text-3);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  .oss__links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 22px;
+    margin: 28px 0 0;
+  }
+
+  .oss__contribute {
+    color: var(--text-2);
+    font-size: 15px;
+    text-decoration: underline;
+    text-decoration-color: var(--track);
+    text-underline-offset: 4px;
+    transition: color 200ms linear;
+  }
+
+  .oss__contribute:hover {
+    color: var(--text-1);
+  }
+
+  .mods__frame {
+    overflow: hidden;
+    border-radius: 24px;
+    background: var(--window);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+
+  .mods__bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 40px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .mods__lights {
+    display: flex;
+    gap: 6px;
+  }
+
+  .mods__lights i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #3a3a40;
+  }
+
+  .mods__folder {
+    color: var(--text-3);
+    font: 12px var(--mono);
+  }
+
+  .mods__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 20px;
+    list-style: none;
+  }
+
+  /* The slot stays when its module is out: a dashed outline where it was. */
+  .mods__slot {
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgb(255 255 255 / 0.025) 6px 7px);
+  }
+
+  .mods__tile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 58px;
+    padding: 0 16px;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+    color: var(--text-1);
+    font-size: 14px;
+    font-weight: 500;
+    transition:
+      opacity 420ms var(--ease-out),
+      transform 520ms var(--ease-out);
+  }
+
+  .mods__tile :global(svg) {
+    color: var(--text-2);
+  }
+
+  .mods__tile.is-out {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.94);
+  }
+
+  .mods__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    min-height: 48px;
+    margin: 0;
+    padding: 0 20px 4px;
+    color: var(--text-1);
+    font: 12.5px var(--mono);
+  }
+
+  .mods__command {
+    white-space: nowrap;
+  }
+
+  .mods__prompt {
+    color: var(--text-3);
+  }
+
+  .mods__spin {
+    display: none;
+    width: 10px;
+    height: 10px;
+    margin-left: 4px;
+    border: 1.5px solid var(--track);
+    border-top-color: var(--text-2);
+    border-radius: 50%;
+    animation: mods-spin 800ms linear infinite;
+  }
+
+  .mods.is-building .mods__spin {
+    display: inline-block;
+  }
+
+  @keyframes mods-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  .mods__result {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    color: var(--text-2);
+    transition: opacity 240ms var(--ease-out);
+  }
+
+  .mods.is-building .mods__result {
+    opacity: 0;
+  }
+
+  @media (max-width: 1023px) {
+    .oss__copy,
+    .mods {
+      grid-column: 1 / -1;
+    }
+
+    .mods {
+      max-width: 620px;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .mods__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      padding: 14px;
+    }
+
+    .mods__tile {
+      height: 50px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    .mods__status {
+      padding: 0 14px 4px;
+      font-size: 11.5px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mods__tile,
+    .mods__result {
+      transition: none;
+    }
+
+    .mods__spin {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  import { copy } from '../scripts/copy';
+
+  const figure = document.querySelector<HTMLElement>('[data-mods]');
+  const text = figure?.querySelector<HTMLElement>('[data-mods-text]');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (figure && text && !reduceMotion) {
+    const f = copy.openSource.figure;
+    const tiles = new Map([...figure.querySelectorAll<HTMLElement>('[data-module]')].map((tile) => [tile.dataset.module, tile]));
+    // Which modules leave, in turn; Keys and Home stay, the ones a visitor would miss least go.
+    const order = ['Timer', 'Shelf', 'Tasks', 'Clipboard'];
+    let round = 0;
+    let run = 0;
+    const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+    /** One build: the spinner, then the result for this many features. */
+    const build = async (current: number, features: number) => {
+      figure.classList.add('is-building');
+      await wait(900);
+      if (current !== run) return false;
+      text.textContent = f.built(features);
+      figure.classList.remove('is-building');
+      return true;
+    };
+
+    /** One round, under five seconds: a module leaves and the app still builds, then it comes back. */
+    const playRound = async () => {
+      const current = ++run;
+      const tile = tiles.get(order[round++ % order.length]);
+      if (!tile) return;
+      await wait(900);
+      if (current !== run) return;
+      tile.classList.add('is-out');
+      if (!(await build(current, tiles.size - 1))) return;
+      await wait(1700);
+      tile.classList.remove('is-out');
+      if (current !== run) return;
+      await build(current, tiles.size);
+    };
+
+    // A round each time it comes into view, the next module in turn, so nothing moves by itself for long; leaving
+    // puts every module back.
+    new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        void playRound();
+        return;
+      }
+      run++;
+      figure.classList.remove('is-building');
+      for (const tile of tiles.values()) tile.classList.remove('is-out');
+      text.textContent = f.built(tiles.size);
+    }).observe(figure);
+  }
+</script>

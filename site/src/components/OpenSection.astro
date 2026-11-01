@@ -1,0 +1,163 @@
+---
+import { copyFor } from '../copy';
+import { headingGap } from '../copy/locales';
+import { hangingPath, metrics } from '../lib/shape';
+
+const copy = copyFor(Astro.url);
+const gap = headingGap(Astro.url.pathname);
+
+const o = copy.open;
+// The window's outline, drawn faintly where it will open: the room is kept for it from the start.
+const ghost = hangingPath(metrics.window, false);
+const { width, height, shoulder } = metrics.window;
+const ghostBox = `${-(width / 2 + shoulder + 2)} -2 ${width + shoulder * 2 + 4} ${height + 4}`;
+---
+
+<!--
+  The room the window takes comes first, with its outline and the vortex pouring into the notch, so it is clear that
+  something will happen there; the text sits under it. Both pin together, and the window opens out of the notch into
+  exactly that outline on the app's own spring; a stretch of scroll later it folds back and the scene moves on.
+-->
+<section class="open" aria-labelledby="open-title" data-open-section>
+  <div class="open__track" data-open-scene>
+    <span class="open__mark" id="features" aria-hidden="true"></span>
+    <div class="open__pinned" data-open-pinned>
+      <div class="open__stage" data-open-stage aria-hidden="true">
+        <canvas class="open__vortex" data-open-vortex></canvas>
+        <svg class="open__ghost" viewBox={ghostBox}>
+          <path d={ghost} vector-effect="non-scaling-stroke"></path>
+        </svg>
+      </div>
+      <div class="container open__copy">
+        <h2 class="open__title" id="open-title">
+          {o.title}{gap}<span>{o.titleQuiet}</span>
+        </h2>
+        <p class="open__body">{o.body}</p>
+        <p class="open__note">{o.noNotch}</p>
+      </div>
+    </div>
+    <div class="open__hold" aria-hidden="true"></div>
+  </div>
+</section>
+
+<style>
+  .open {
+    /* The room the window takes: its height at the current scale, and a gap before the text. */
+    --open-stage: calc(440px * var(--window-scale, 1) + clamp(28px, 6vh, 64px));
+    /* How long the scene stays pinned, in scroll: the window is open for almost all of it. */
+    --open-hold: clamp(460px, 75vh, 760px);
+    position: relative;
+    z-index: 1;
+  }
+
+  .open__track {
+    position: relative;
+  }
+
+  /* A link to #features lands a third of the way in, with the window open. */
+  .open__mark {
+    position: absolute;
+    top: calc(var(--open-hold) * 0.3);
+    left: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .open__pinned {
+    position: sticky;
+    top: 0;
+  }
+
+  .open__stage {
+    position: relative;
+    height: var(--open-stage);
+  }
+
+  .open__vortex {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 260ms linear;
+  }
+
+  .open__ghost {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: calc(704px * var(--window-scale, 1));
+    height: calc(444px * var(--window-scale, 1));
+    overflow: visible;
+    transform: translateX(-50%);
+    transition: opacity 260ms linear;
+  }
+
+  .open__ghost path {
+    fill: none;
+    stroke: rgb(255 255 255 / 0.16);
+    stroke-width: 1;
+    stroke-dasharray: 2 6;
+    stroke-linecap: round;
+  }
+
+  /* The window covers the room once it opens. */
+  .open.is-window-open :is(.open__vortex, .open__ghost) {
+    opacity: 0;
+  }
+
+  .open__copy {
+    max-width: 880px;
+    text-align: center;
+  }
+
+  .open__hold {
+    height: var(--open-hold);
+  }
+
+  .open__title {
+    margin: 0;
+    font: 600 clamp(32px, 4.4vw, 58px) / 1.06 var(--font-display);
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .open__title span {
+    color: var(--text-2);
+  }
+
+  .open__body {
+    max-width: 620px;
+    margin: 24px auto 0;
+    color: var(--text-2);
+    font-size: clamp(17px, 1.4vw, 20px);
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
+  }
+
+  .open__note {
+    margin: 20px 0 0;
+    color: var(--text-3);
+    font: 400 13px/1.4 var(--mono);
+  }
+
+  /* Short screens, a MacBook's browser window among them: the text takes less room under the window. */
+  @media (max-height: 900px) {
+    .open__title {
+      font-size: clamp(26px, 3.2vw, 40px);
+    }
+
+    .open__body {
+      margin-top: 14px;
+      font-size: 16px;
+    }
+
+    .open__note {
+      margin-top: 12px;
+    }
+  }
+</style>
+
+<script>
+  import '../scripts/open-scene';
+</script>

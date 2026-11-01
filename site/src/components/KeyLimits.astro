@@ -1,0 +1,70 @@
+---
+// What keys for Claude don't guard against, said plainly (Packages/Features/Secrets/docs/behavior.md).
+import { copyFor } from '../copy';
+
+const copy = copyFor(Astro.url);
+
+const k = copy.keysChapter;
+---
+
+<details class="limits">
+  <summary>{k.limitsTitle}</summary>
+  <ul>
+    {k.limits.map((limit) => <li>{limit}</li>)}
+  </ul>
+</details>
+
+<style>
+  .limits {
+    max-width: 520px;
+    margin-top: 18px;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+
+  .limits summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 14px;
+    color: var(--text-2);
+    font-size: 14px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .limits summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* The sign is drawn, not read: the disclosure tells a screen reader itself whether it is open. The first `content` is
+     for browsers without alt text for generated content. */
+  .limits summary::after {
+    content: '+';
+    content: '+' / '';
+    color: var(--text-3);
+    font: 400 16px/1 var(--mono);
+  }
+
+  .limits[open] summary::after {
+    content: '−';
+    content: '−' / '';
+  }
+
+  .limits summary:hover {
+    color: var(--text-1);
+  }
+
+  .limits ul {
+    margin: 0;
+    padding: 0 14px 12px 32px;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .limits li + li {
+    margin-top: 6px;
+  }
+</style>
