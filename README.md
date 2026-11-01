@@ -2,6 +2,8 @@
 
 A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac without one. Hover over the notch and it opens with the tools you reach for a dozen times a day.
 
+**Website:** [vortex-notch.web.app](https://vortex-notch.web.app), where you can try every feature in your browser. **Download:** [the latest release](https://github.com/OrtexIsArtem/vortex/releases/latest).
+
 - **Timer**: set the minutes on a drum and watch the countdown in the notch. When time is up, it plays a sound, flashes and shows a notification.
 - **Clipboard**: your last copies plus pinned ones: text, links, images and files.
 - **Shelf**: put files aside and drag them out later, into any app. Unpinned files clear after a day.
