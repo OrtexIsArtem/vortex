@@ -1,9 +1,12 @@
 name: CI
 
+# The app's checks; changes to the website alone have their own (site.yml).
 on:
   push:
     branches: [main]
+    paths-ignore: ['site/**', '.github/workflows/site.yml']
   pull_request:
+    paths-ignore: ['site/**', '.github/workflows/site.yml']
 
 permissions:
   contents: read
