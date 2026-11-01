@@ -4,7 +4,7 @@ export const en = {
   meta: {
     title: 'Vortex — Free, Open-Source Notch App for Mac',
     description:
-      "Vortex turns your MacBook's notch into a toolbox: timer, clipboard history, file shelf, screen tasks with OCR and keys for Claude Code. Free and offline.",
+      'Free, open-source notch app for MacBook: a focus timer, clipboard history, a shelf that catches .ipa and .apk builds, OCR screen tasks and keys for Claude Code.',
     imageAlt: 'The Vortex wordmark under a MacBook notch, with streaks of light spiralling into it',
   },
   skip: 'Skip to content',
@@ -373,7 +373,7 @@ export const en = {
     items: (contributing: string) => [
       { q: 'Is Vortex free?', a: 'Yes. Vortex is free and open source under the MIT license, with no subscription and no account.' },
       {
-        q: 'Does it work on a Mac without a notch?',
+        q: 'Does it work on a Mac without a notch, like the MacBook Neo?',
         a: 'Yes. On a Mac without a notch, or on an external display, Vortex opens under its menu bar icon, and the timer and other indicators show next to the icon.',
       },
       {

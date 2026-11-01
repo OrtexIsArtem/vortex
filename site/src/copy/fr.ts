@@ -6,7 +6,7 @@ export const fr: Copy = {
   meta: {
     title: 'Vortex — app gratuite et open source pour l’encoche du Mac',
     description:
-      'Vortex\u00a0: minuteur, historique du presse-papiers, étagère à fichiers, tâches avec OCR et clés pour Claude Code dans l’encoche du MacBook. Gratuit et hors ligne.',
+      'Minuteur, historique du presse-papiers, étagère à fichiers, tâches avec OCR et clés pour Claude Code dans l’encoche (notch) du MacBook. Gratuit et hors ligne.',
     imageAlt: 'Le nom Vortex sous l’encoche d’un MacBook, vers laquelle des traits de lumière tourbillonnent',
   },
   skip: 'Aller au contenu',
@@ -270,7 +270,7 @@ export const fr: Copy = {
     items: (contributing: string) => [
       { q: 'Vortex est-il gratuit\u202f?', a: 'Oui. Vortex est gratuit et open source, sous licence MIT, sans abonnement ni compte.' },
       {
-        q: 'Vortex fonctionne-t-il sur un Mac sans encoche\u202f?',
+        q: 'Vortex fonctionne-t-il sur un Mac sans encoche, comme le MacBook Neo\u202f?',
         a: 'Oui. Sur un Mac sans encoche, ou sur un écran externe, Vortex s’ouvre sous son icône de la barre des menus, et le minuteur et les autres indicateurs s’affichent à côté de l’icône.',
       },
       {

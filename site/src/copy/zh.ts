@@ -4,7 +4,7 @@ import type { Copy } from './types';
 
 export const zh: Copy = {
   meta: {
-    title: 'Vortex：免费开源的 Mac 刘海应用（灵动岛风格）',
+    title: 'Vortex：免费开源的 Mac 刘海软件（灵动岛风格）',
     description:
       'Vortex 把 MacBook 的刘海变成工具箱：计时器、剪贴板历史、文件暂存架、带 OCR 文字识别的截屏任务，以及给 Claude Code 用的密钥。免费开源，离线运行。',
     imageAlt: 'MacBook 的刘海，光线以螺旋状汇入其中，下方是 Vortex 字标',
@@ -32,7 +32,7 @@ export const zh: Copy = {
     hintTouch: '轻点刘海',
   },
   hero: {
-    eyebrow: '免费开源的 Mac 刘海应用 · macOS 14+ · Apple 芯片',
+    eyebrow: '免费开源的 Mac 刘海软件 · macOS 14+ · Apple 芯片',
     wordmark: en.hero.wordmark,
     tagline: '让 MacBook 的刘海派上用场。',
     lead: '计时器、剪贴板历史、文件暂存架、从屏幕截取的任务，还有 Claude Code 能用却看不到的密钥。悬停即开，天生离线。',
@@ -269,7 +269,7 @@ export const zh: Copy = {
     items: (contributing: string) => [
       { q: 'Vortex 免费吗？', a: '是的。Vortex 免费开源，采用 MIT 许可证，无需订阅，也无需账户。' },
       {
-        q: '没有刘海的 Mac 能用 Vortex 吗？',
+        q: '没有刘海的 Mac（比如 MacBook Neo）能用 Vortex 吗？',
         a: '能。在没有刘海的 Mac 或外接显示器上，Vortex 会在菜单栏图标下方打开，计时器和其他状态指示显示在图标旁边。',
       },
       {

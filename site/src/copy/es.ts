@@ -269,7 +269,7 @@ export const es: Copy = {
     items: (contributing: string) => [
       { q: '¿Vortex es gratis?', a: 'Sí. Vortex es gratis y de código abierto con licencia MIT, sin suscripción y sin cuenta.' },
       {
-        q: '¿Funciona si mi Mac no tiene notch?',
+        q: '¿Funciona si mi Mac no tiene notch, como el MacBook Neo?',
         a: 'Sí. Si tu Mac no tiene notch o usas una pantalla externa, Vortex se abre bajo su icono de la barra de menús, y el temporizador y los demás indicadores aparecen junto al icono.',
       },
       {

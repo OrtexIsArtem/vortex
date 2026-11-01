@@ -270,7 +270,7 @@ export const de: Copy = {
     items: (contributing: string) => [
       { q: 'Ist Vortex kostenlos?', a: 'Ja. Vortex ist kostenlos und Open Source unter der MIT-Lizenz, ohne Abo und ohne Konto.' },
       {
-        q: 'Funktioniert Vortex auch auf einem Mac ohne Notch?',
+        q: 'Funktioniert Vortex auch auf einem Mac ohne Notch, etwa dem MacBook Neo?',
         a: 'Ja. Auf einem Mac ohne Notch oder auf einem externen Display öffnet sich Vortex unter seinem Symbol in der Menüleiste, und der Timer und andere Anzeigen erscheinen neben dem Symbol.',
       },
       {

@@ -271,7 +271,7 @@ export const ptBr: Copy = {
     items: (contributing: string) => [
       { q: 'O Vortex é grátis?', a: 'Sim. O Vortex é grátis e de código aberto, sob a licença MIT, sem assinatura e sem conta.' },
       {
-        q: 'Funciona em um Mac sem notch?',
+        q: 'Funciona em um Mac sem notch, como o MacBook Neo?',
         a: 'Sim. Em um Mac sem notch, ou em uma tela externa, o Vortex abre abaixo do ícone dele na barra de menus, e o timer e outros indicadores aparecem ao lado do ícone.',
       },
       {
