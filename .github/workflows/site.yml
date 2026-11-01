@@ -1,13 +1,17 @@
 name: Site
 
 # The landing page in site/: checked and built on every change to it. A pull request gets a preview link; main goes
-# live on Firebase Hosting (vortex-notch). Pull requests from forks are checked but not deployed: they get no secrets.
+# live on Firebase Hosting (vortex-notch), and so does a newly published release, which the page then offers.
+# Pull requests from forks are checked but not deployed: they get no secrets.
 on:
   push:
     branches: [main]
     paths: ['site/**', '.github/workflows/site.yml']
   pull_request:
     paths: ['site/**', '.github/workflows/site.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,13 +36,28 @@ jobs:
     env:
       ASTRO_TELEMETRY_DISABLED: 1
     steps:
+      # A release redeploys the site as it is on main: its tag may be older than the newest page.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'release' && 'main' || '' }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: site/package-lock.json
       - run: npm ci
+      - name: Latest release
+        # The version and the zip the page offers: the newest published release, never a version not out yet.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
+          zip=$(gh release view --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[] | select(.name | endswith(".zip")) | .url][0] // empty' 2>/dev/null || true)
+          if [ -n "$tag" ] && [ -n "$zip" ]; then
+            echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
+            echo "RELEASE_ZIP=$zip" >> "$GITHUB_ENV"
+          fi
+          echo "Offering: ${tag:-no release yet} ${zip}"
       - name: Types
         run: npm run check
       - name: Tests
@@ -59,7 +78,7 @@ jobs:
           expires: 7d
           firebaseToolsVersion: 15.34.0
       - name: Live
-        if: github.event_name == 'push'
+        if: github.event_name == 'release' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
         uses: FirebaseExtended/action-hosting-deploy@v0.11.0
         with:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VORTEX_NOTCH }}

@@ -8,3 +8,4 @@ The landing page at https://vortex-notch.web.app: a static Astro site, in Englis
 - Words: `src/copy/<language>.ts`, shaped like the English one (`src/copy/types.ts`). The app's own words stay English on languages the app doesn't speak.
 - Social preview and icons: `node og/render.mjs` redraws them from `og/` with Google Chrome.
 - Deploy: `.github/workflows/site.yml` checks and builds every change to `site/`. A pull request gets a preview link; `main` goes live on Firebase Hosting (`firebase.json`).
+- Download: CI reads the newest published release from GitHub before each build, and publishing a release rebuilds the site, so the button always fetches the latest zip. A local build shows `project.yml`'s version and links to the README's install steps.
