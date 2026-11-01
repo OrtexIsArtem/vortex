@@ -296,7 +296,7 @@ export const ptBr: Copy = {
       },
       {
         q: 'Qual a diferença entre o Vortex e o NotchNook, o Boring Notch e outros apps estilo Dynamic Island?',
-        a: 'O Vortex é pensado para o trabalho: uma prateleira para builds e arquivos, tarefas a partir da tela, chaves para o Claude Code, um timer e histórico da área de transferência. Ele nunca acessa a internet sozinho e é de código aberto, sob a licença MIT. Não tem controles de música nem calendário.',
+        a: 'O Vortex é pensado para o trabalho: uma prateleira para builds e arquivos, tarefas a partir da tela, chaves para o Claude Code, um timer e histórico da área de transferência. Ele nunca acessa a internet sozinho e é de código aberto, sob a licença MIT. Não tem controles de música nem calendário. [Compare os três lado a lado](../notchnook-alternative/) (em inglês).',
       },
       {
         q: 'Como atualizar o Vortex?',

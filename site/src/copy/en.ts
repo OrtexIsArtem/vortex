@@ -398,7 +398,7 @@ export const en = {
       },
       {
         q: 'How is Vortex different from NotchNook, Boring Notch and other Dynamic Island apps?',
-        a: "Vortex is built around work: a shelf for builds and files, tasks from your screen, keys for Claude Code, a timer and clipboard history. It never goes online by itself, and it's open source under MIT. It has no music controls or calendar.",
+        a: "Vortex is built around work: a shelf for builds and files, tasks from your screen, keys for Claude Code, a timer and clipboard history. It never goes online by itself, and it's open source under MIT. It has no music controls or calendar. [Compare the three side by side](notchnook-alternative/).",
       },
       {
         q: 'How do I update Vortex?',

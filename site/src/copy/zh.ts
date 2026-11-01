@@ -294,7 +294,7 @@ export const zh: Copy = {
       },
       {
         q: 'Vortex 和 NotchNook、Boring Notch 等 Mac 灵动岛应用有什么区别？',
-        a: 'Vortex 围绕工作而设计：存放安装包和文件的暂存架、从屏幕截取的任务、给 Claude Code 用的密钥、计时器和剪贴板历史。它从不自行联网，并以 MIT 许可证开源。它没有音乐控制，也没有日历。',
+        a: 'Vortex 围绕工作而设计：存放安装包和文件的暂存架、从屏幕截取的任务、给 Claude Code 用的密钥、计时器和剪贴板历史。它从不自行联网，并以 MIT 许可证开源。它没有音乐控制，也没有日历。另见[三款应用的对比](../notchnook-alternative/)（英文）。',
       },
       {
         q: '如何更新 Vortex？',

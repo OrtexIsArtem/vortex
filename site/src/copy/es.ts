@@ -294,7 +294,7 @@ export const es: Copy = {
       },
       {
         q: '¿En qué se diferencia Vortex de NotchNook, Boring Notch y otras apps tipo Dynamic Island?',
-        a: 'Vortex está pensado para el trabajo: un estante para compilaciones y archivos, tareas desde tu pantalla, claves para Claude Code, un temporizador y el historial del portapapeles. Nunca se conecta a internet por su cuenta y es de código abierto con licencia MIT. No tiene controles de música ni calendario.',
+        a: 'Vortex está pensado para el trabajo: un estante para compilaciones y archivos, tareas desde tu pantalla, claves para Claude Code, un temporizador y el historial del portapapeles. Nunca se conecta a internet por su cuenta y es de código abierto con licencia MIT. No tiene controles de música ni calendario. [Compara las tres lado a lado](../notchnook-alternative/) (en inglés).',
       },
       {
         q: '¿Cómo actualizo Vortex?',

@@ -295,7 +295,7 @@ export const fr: Copy = {
       },
       {
         q: 'En quoi Vortex diffère-t-il de NotchNook, de Boring Notch et des autres apps façon Dynamic Island\u202f?',
-        a: 'Vortex est pensé pour le travail\u00a0: une étagère pour les builds et les fichiers, des tâches tirées de l’écran, des clés pour Claude Code, un minuteur et l’historique du presse-papiers. Il ne se connecte jamais de lui-même, et il est open source sous licence MIT. Il n’a ni commandes de musique ni calendrier.',
+        a: 'Vortex est pensé pour le travail\u00a0: une étagère pour les builds et les fichiers, des tâches tirées de l’écran, des clés pour Claude Code, un minuteur et l’historique du presse-papiers. Il ne se connecte jamais de lui-même, et il est open source sous licence MIT. Il n’a ni commandes de musique ni calendrier. [Comparez les trois côte à côte](../notchnook-alternative/) (en anglais).',
       },
       {
         q: 'Comment mettre à jour Vortex\u202f?',

@@ -295,7 +295,7 @@ export const de: Copy = {
       },
       {
         q: 'Was unterscheidet Vortex von NotchNook, Boring Notch und anderen Dynamic-Island-Apps?',
-        a: 'Vortex ist auf die Arbeit ausgelegt: eine Ablage für Builds und Dateien, Aufgaben vom Bildschirm, Schlüssel für Claude Code, ein Timer und ein Zwischenablage-Verlauf. Vortex geht nie von selbst online und ist Open Source unter MIT. Musiksteuerung und Kalender gibt es nicht.',
+        a: 'Vortex ist auf die Arbeit ausgelegt: eine Ablage für Builds und Dateien, Aufgaben vom Bildschirm, Schlüssel für Claude Code, ein Timer und ein Zwischenablage-Verlauf. Vortex geht nie von selbst online und ist Open Source unter MIT. Musiksteuerung und Kalender gibt es nicht. [Die drei im Vergleich](../notchnook-alternative/) (auf Englisch).',
       },
       {
         q: 'Wie aktualisiere ich Vortex?',
