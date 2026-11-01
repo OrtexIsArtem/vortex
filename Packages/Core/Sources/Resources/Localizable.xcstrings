@@ -40,7 +40,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Універсальний доступ"
+            "value" : "Доступність"
           }
         }
       }
@@ -51,7 +51,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Універсальний доступ вимкнено"
+            "value" : "Доступність вимкнено"
           }
         }
       }
