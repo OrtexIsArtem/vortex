@@ -596,7 +596,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вийти"
+            "value" : "Завершити"
           }
         }
       }
@@ -607,7 +607,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вийти з Vortex"
+            "value" : "Завершити Vortex"
           }
         }
       }
