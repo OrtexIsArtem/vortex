@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- The site's icons: the Vortex spiral (VortexGlyph.swift) in white on black. Rendered at the size the page asks for
+     (?size=180 for apple-touch-icon.png, ?size=64 for favicon-64.png) by og/render.mjs. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      .tile {
+        display: grid;
+        place-items: center;
+        background: #000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tile" id="tile"></div>
+    <script>
+      const size = Number(new URLSearchParams(location.search).get('size') ?? 180);
+      const tile = document.getElementById('tile');
+      tile.style.width = tile.style.height = `${size}px`;
+      // A favicon sits on a light or a dark tab bar, so it gets rounded corners of its own; the touch icon is squared
+      // off by the system.
+      if (size < 100) tile.style.borderRadius = `${size * 0.22}px`;
+      const glyph = Math.round(size * 0.6);
+      tile.innerHTML = `<svg width="${glyph}" height="${glyph}" viewBox="-0.75 -0.75 24 24" fill="none">
+        <path d="M12 12A1.5 1.5 0 0 1 13.5 10.5A3 3 0 0 1 16.5 13.5A4.5 4.5 0 0 1 12 18A6 6 0 0 1 6 12A7.5 7.5 0 0 1 13.5 4.5"
+          stroke="#F5F5F7" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      document.body.setAttribute('data-ready', '');
+    </script>
+  </body>
+</html>

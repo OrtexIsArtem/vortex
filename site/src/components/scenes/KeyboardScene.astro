@@ -1,0 +1,409 @@
+---
+// Keyboard cleaning, drawn: a MacBook keyboard that lights the keys the visitor presses. Locking dims every key in a
+// wave, except Touch ID and Caps Lock, which macOS never lets an app lock; the pointer can wipe the keys meanwhile.
+// The page never holds back the visitor's own keys.
+import { copyFor } from '../../copy';
+import { appLangOf, localeOf } from '../../copy/locales';
+
+const copy = copyFor(Astro.url);
+
+const b = copy.keyboardChapter;
+// The panel is the app's cleaning mode, in the app's language.
+const appLang = appLangOf(localeOf(Astro.url.pathname));
+
+interface Key {
+  label: string;
+  code?: string;
+  /** Width in key units; a row is 15 units. */
+  w?: number;
+  free?: boolean;
+}
+
+const letters = (keys: string) => keys.split('').map((label) => ({ label, code: `Key${label.toUpperCase()}` }));
+const rows: { keys: Key[]; short?: boolean }[] = [
+  {
+    short: true,
+    keys: [
+      { label: 'esc', code: 'Escape', w: 1.5 },
+      ...Array.from({ length: 12 }, (_, i) => ({ label: `F${i + 1}`, code: `F${i + 1}` })),
+      { label: '', w: 1.5, free: true },
+    ],
+  },
+  {
+    keys: [
+      { label: '`', code: 'Backquote' },
+      ...'1234567890'.split('').map((label) => ({ label, code: `Digit${label}` })),
+      { label: '-', code: 'Minus' },
+      { label: '=', code: 'Equal' },
+      { label: 'delete', code: 'Backspace', w: 2 },
+    ],
+  },
+  {
+    keys: [
+      { label: 'tab', code: 'Tab', w: 1.5 },
+      ...letters('qwertyuiop'),
+      { label: '[', code: 'BracketLeft' },
+      { label: ']', code: 'BracketRight' },
+      { label: '\\', code: 'Backslash', w: 1.5 },
+    ],
+  },
+  {
+    keys: [
+      { label: '⇪', code: 'CapsLock', w: 1.75, free: true },
+      ...letters('asdfghjkl'),
+      { label: ';', code: 'Semicolon' },
+      { label: "'", code: 'Quote' },
+      { label: 'return', code: 'Enter', w: 2.25 },
+    ],
+  },
+  {
+    keys: [
+      { label: '⇧', code: 'ShiftLeft', w: 2.25 },
+      ...letters('zxcvbnm'),
+      { label: ',', code: 'Comma' },
+      { label: '.', code: 'Period' },
+      { label: '/', code: 'Slash' },
+      { label: '⇧', code: 'ShiftRight', w: 2.75 },
+    ],
+  },
+  {
+    keys: [
+      { label: 'fn' },
+      { label: '⌃', code: 'ControlLeft' },
+      { label: '⌥', code: 'AltLeft' },
+      { label: '⌘', code: 'MetaLeft', w: 1.25 },
+      { label: '', code: 'Space', w: 5.5 },
+      { label: '⌘', code: 'MetaRight', w: 1.25 },
+      { label: '⌥', code: 'AltRight' },
+      { label: '←', code: 'ArrowLeft' },
+      { label: '↑↓', code: 'ArrowUp ArrowDown' },
+      { label: '→', code: 'ArrowRight' },
+    ],
+  },
+];
+---
+
+<div class="scene board" data-kbd-scene data-nosnippet>
+  <div class="kbd" data-kbd aria-hidden="true">
+    {
+      rows.map((row) => (
+        <div class:list={['kbd__row', { 'is-short': row.short }]}>
+          {row.keys.map((key) => (
+            <span
+              class:list={['kbd__key', { 'is-free': key.free, 'is-touch': key.free && !key.label }]}
+              style={`--w: ${key.w ?? 1}`}
+              data-codes={key.code ?? ''}
+            >
+              {key.label}
+            </span>
+          ))}
+        </div>
+      ))
+    }
+    <canvas class="kbd__wipe" data-kbd-wipe></canvas>
+  </div>
+
+  <div class="board__panel" lang={appLang}>
+    <div class="board__state" data-kbd-state>
+      <p class="board__mode">{b.mode}</p>
+      <p class="board__locked">{b.locked}</p>
+    </div>
+    <button class="board__lock" type="button" data-kbd-lock>
+      <span class="board__lock-on">{b.lock}</span>
+      <span class="board__lock-off">{b.unlock}</span>
+    </button>
+    <span class="visually-hidden" aria-live="polite" data-kbd-status></span>
+  </div>
+</div>
+
+<style>
+  .board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 22px;
+  }
+
+  .kbd {
+    position: relative;
+    display: grid;
+    gap: 5px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #141416;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  }
+
+  .kbd__row {
+    display: flex;
+    gap: 5px;
+  }
+
+  .kbd__key {
+    display: flex;
+    flex: var(--w) 1 0;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 0;
+    height: 34px;
+    padding-bottom: 5px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #1f1f23;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.05),
+      0 1px 0 rgb(0 0 0 / 0.6);
+    color: var(--text-2);
+    font-size: 10px;
+    white-space: nowrap;
+    transition:
+      opacity 320ms var(--ease-out) var(--delay, 0ms),
+      background-color 160ms linear,
+      color 160ms linear,
+      transform 120ms var(--ease-out);
+  }
+
+  .kbd__row.is-short .kbd__key {
+    height: 20px;
+    padding-bottom: 3px;
+    font-size: 9px;
+  }
+
+  .kbd__key.is-touch {
+    border-radius: 50% / 70%;
+    background: #18181b;
+  }
+
+  .kbd__key.is-pressed {
+    background: #3a3a40;
+    color: var(--text-1);
+    transform: translateY(1px);
+  }
+
+  /* Locked: every key fades out from the button outwards; Touch ID and Caps Lock stay, as macOS keeps them. */
+  .board.is-locked .kbd__key:not(.is-free) {
+    opacity: 0.22;
+  }
+
+  .board.is-locked .kbd__key.is-free {
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.35),
+      0 1px 0 rgb(0 0 0 / 0.6);
+  }
+
+  .board.is-locked .kbd__key.is-pressed:not(.is-free) {
+    opacity: 0.35;
+    background: #1f1f23;
+    transform: translateX(1px);
+  }
+
+  .kbd__wipe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .board__panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+  }
+
+  /* Unlocked, the panel is the button alone: the state takes no room, and screen readers don't read it. */
+  .board__state {
+    transition:
+      opacity 300ms var(--ease-out),
+      display 300ms allow-discrete;
+  }
+
+  .board:not(.is-locked) .board__state {
+    display: none;
+    opacity: 0;
+  }
+
+  @starting-style {
+    .board.is-locked .board__state {
+      opacity: 0;
+    }
+  }
+
+  .board__mode {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .board__locked {
+    margin: 2px 0 0;
+    color: var(--text-2);
+    font-size: 12.5px;
+  }
+
+  .board__lock {
+    height: 40px;
+    margin-left: auto;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .board__lock:hover {
+    background: #ffffff;
+  }
+
+  .board__lock-off,
+  .board.is-locked .board__lock-on {
+    display: none;
+  }
+
+  .board.is-locked .board__lock-off {
+    display: inline;
+  }
+
+  @media (max-width: 599px) {
+    .board {
+      padding: 12px;
+    }
+
+    .kbd {
+      gap: 3px;
+      padding: 8px;
+    }
+
+    .kbd__row {
+      gap: 3px;
+    }
+
+    .kbd__key {
+      height: 26px;
+      padding-bottom: 4px;
+      font-size: 8.5px;
+    }
+
+    .kbd__row.is-short .kbd__key {
+      height: 14px;
+      padding-bottom: 2px;
+      font-size: 7.5px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kbd__key {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { copy } from '../../scripts/copy';
+  import { setIndicator } from '../../scripts/notch';
+
+  const scene = document.querySelector<HTMLElement>('[data-kbd-scene]');
+  const board = scene?.querySelector<HTMLElement>('[data-kbd]');
+  const button = scene?.querySelector<HTMLButtonElement>('[data-kbd-lock]');
+  const status = scene?.querySelector<HTMLElement>('[data-kbd-status]');
+  const wipe = scene?.querySelector<HTMLCanvasElement>('[data-kbd-wipe]');
+  const context = wipe?.getContext('2d');
+
+  if (scene && board && button && wipe && context) {
+    const b = copy.keyboardChapter;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const keys = Array.from(board.querySelectorAll<HTMLElement>('.kbd__key'));
+    const byCode = new Map<string, HTMLElement>();
+    for (const key of keys) for (const code of (key.dataset.codes ?? '').split(' ').filter(Boolean)) byCode.set(code, key);
+    let locked = false;
+    let onScreen = false;
+
+    // The keys the visitor presses light up; nothing is held back, the page only listens.
+    const press = (key: HTMLElement) => {
+      key.classList.add('is-pressed');
+      window.setTimeout(() => key.classList.remove('is-pressed'), 160);
+    };
+    document.addEventListener('keydown', (event) => {
+      const key = onScreen ? byCode.get(event.code) : undefined;
+      if (key) press(key);
+    });
+    // A click or a tap on a drawn key presses it too, for a visitor with no keyboard at hand.
+    board.addEventListener('pointerdown', (event) => {
+      const key = (event.target as Element).closest<HTMLElement>('.kbd__key');
+      if (key) press(key);
+    });
+
+    const setLocked = (next: boolean) => {
+      locked = next;
+      if (next) {
+        // The wave starts at the button, as the keys fall quiet one after another.
+        const origin = button.getBoundingClientRect();
+        for (const key of keys) {
+          const r = key.getBoundingClientRect();
+          const distance = Math.hypot(r.left + r.width / 2 - (origin.left + origin.width / 2), r.top - origin.top);
+          key.style.setProperty('--delay', reduceMotion ? '0ms' : `${Math.round(distance * 0.9)}ms`);
+        }
+        setIndicator('keyboard', { left: [{ kind: 'icon', name: 'keyboard' }], right: [{ kind: 'text', text: b.ear }], priority: 40 });
+      } else {
+        for (const key of keys) key.style.setProperty('--delay', '0ms');
+        setIndicator('keyboard', null);
+        context.clearRect(0, 0, boardW, boardH);
+      }
+      scene.classList.toggle('is-locked', next);
+      // The button's words say what it does next; the state is read out once.
+      if (status) status.textContent = next ? `${b.mode}. ${b.locked}` : '';
+    };
+    button.addEventListener('click', () => setLocked(!locked));
+
+    // Wiping: while the keys are locked, the pointer leaves a soft sheen that fades. The fading runs only until the
+    // sheen is gone, so a locked keyboard nobody touches draws nothing.
+    let fading = 0;
+    let fadeFrames = 0;
+    let boardW = 0;
+    let boardH = 0;
+    const size = () => {
+      const ratio = Math.min(2, window.devicePixelRatio || 1);
+      boardW = board.clientWidth;
+      boardH = board.clientHeight;
+      wipe.width = Math.round(boardW * ratio);
+      wipe.height = Math.round(boardH * ratio);
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    const fade = () => {
+      fading = 0;
+      context.save();
+      context.globalCompositeOperation = 'destination-out';
+      context.fillStyle = 'rgba(0, 0, 0, 0.06)';
+      context.fillRect(0, 0, boardW, boardH);
+      context.restore();
+      fadeFrames--;
+      if (locked && fadeFrames > 0) fading = requestAnimationFrame(fade);
+      else context.clearRect(0, 0, boardW, boardH);
+    };
+    board.addEventListener('pointermove', (event) => {
+      if (!locked || reduceMotion) return;
+      const box = board.getBoundingClientRect();
+      const x = event.clientX - box.left;
+      const y = event.clientY - box.top;
+      const sheen = context.createRadialGradient(x, y, 0, x, y, 34);
+      sheen.addColorStop(0, 'rgba(255, 255, 255, 0.10)');
+      sheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      context.fillStyle = sheen;
+      context.fillRect(x - 34, y - 34, 68, 68);
+      fadeFrames = 90;
+      if (!fading) fading = requestAnimationFrame(fade);
+    });
+    new ResizeObserver(size).observe(board);
+
+    // Leaving the scene turns the keyboard back on, so the notch never stays "Locked" for nothing.
+    new IntersectionObserver(([entry]) => {
+      onScreen = entry?.isIntersecting ?? false;
+      if (!onScreen && locked) setLocked(false);
+    }).observe(scene);
+  }
+</script>

@@ -1,0 +1,806 @@
+---
+// The shelf's reference case, without Finder: a build lands on the shelf by itself or is dropped on the notch, then is
+// dragged into an uploader, a browser window of the visitor's own, apart from the shelf: Vortex only hands files over
+// and never uploads them. Files on the "desktop" drag up to the notch, or go there with a tap; real files from the
+// visitor's desktop drag there too.
+import { copyFor } from '../../copy';
+import { appLangOf, localeOf } from '../../copy/locales';
+import Icon from '../Icon.astro';
+
+const copy = copyFor(Astro.url);
+const code = localeOf(Astro.url.pathname);
+/** The shelf is the app's: its own words are English on pages in a language the app doesn't speak. */
+const appLang = appLangOf(code);
+/** The terminal is English on every page in another language, Ukrainian too: Gradle's words are never translated. */
+const english = code === 'en' ? undefined : 'en';
+
+const s = copy.shelfChapter;
+const desk = [
+  { name: 'app-release.aab', size: 48_213_504, ext: 'AAB' },
+  { name: 'Build 42.ipa', size: 61_734_912, ext: 'IPA' },
+  { name: 'mockup.png', size: 2_114_560, ext: 'PNG' },
+];
+// On a narrow screen the command wraps between its two commands first, then between words, never inside one.
+const command = s.command.split(' && ').map((part, index, parts) => {
+  const words = part.split(' ');
+  if (index < parts.length - 1) words[words.length - 1] += ' &&';
+  return words;
+});
+---
+
+<div class="scene sscene" data-shelf-scene data-nosnippet>
+  <div class="sscene__desk">
+    <p class="sscene__label">{s.desktop}</p>
+    <div class="sscene__files">
+      {
+        desk.map((file) => (
+          <button class="sscene__file" type="button" data-desk-file data-name={file.name} data-size={file.size} aria-label={s.putOnShelf(file.name)}>
+            <span class:list={['sscene__page', { 'is-image': file.ext === 'PNG' }]} aria-hidden="true">
+              {file.ext === 'PNG' ? (
+                <span class="sscene__pic">
+                  <i />
+                  <i />
+                </span>
+              ) : (
+                <span class="sscene__ext">{file.ext}</span>
+              )}
+            </span>
+            <span class="sscene__name">{file.name}</span>
+          </button>
+        ))
+      }
+    </div>
+  </div>
+
+  {/* Focus lands on the shelf itself when its last file goes. */}
+  <div class="sscene__shelf" role="group" aria-labelledby="sscene-shelf" tabindex="-1" data-sscene-shelf>
+    <p class="sscene__label"><span id="sscene-shelf" lang={appLang}>{s.shelf}</span> <span class="sscene__count" data-sscene-count></span></p>
+    <ul class="sscene__tiles" role="list" data-sscene-tiles></ul>
+    <p class="sscene__empty">
+      <Icon name="arrowUp" size={13} />
+      <span class="sscene__pointer">{s.empty}</span>
+      <span class="sscene__touch">{s.emptyTouch}</span>
+    </p>
+  </div>
+
+  <div class="sscene__browser" role="group" aria-labelledby="sscene-uploader" data-sscene-browser>
+    <div class="sscene__bar">
+      <span class="sscene__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="sscene__address" id="sscene-uploader">{s.uploader}</span>
+    </div>
+    <div class="sscene__drop" data-sscene-upload data-state="idle">
+      <Icon name="upload" size={16} class="sscene__idle" />
+      <Icon name="check" size={16} class="sscene__done" />
+      <span class="sscene__drop-text" data-sscene-upload-text>{s.upload}</span>
+    </div>
+  </div>
+
+  <div class="sscene__term">
+    <div class="sscene__line">
+      <span class="sscene__prompt" aria-hidden="true">$</span>
+      <code class="sscene__command" lang={english}
+        >{
+          command.map((words, index) => (
+            <>
+              {index > 0 && ' '}
+              <span class="sscene__part">
+                {words.map((word, at) => (
+                  <>
+                    {at > 0 && ' '}
+                    <span class="sscene__word">{word}</span>
+                  </>
+                ))}
+              </span>
+            </>
+          ))
+        }</code
+      >
+      <button class="sscene__run" type="button" data-sscene-run>{s.run}</button>
+    </div>
+    <p class="sscene__out" data-sscene-out lang={english}></p>
+  </div>
+  {/* One sentence per outcome for a screen reader: a file on the shelf, a file in the uploader. */}
+  <p class="visually-hidden" role="status" data-sscene-status></p>
+</div>
+
+<style>
+  .sscene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 22px;
+  }
+
+  .sscene__label {
+    display: flex;
+    gap: 6px;
+    margin: 0 4px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .sscene__count {
+    color: var(--text-3);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sscene__files {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* A vertical swipe that starts on a file still scrolls the page; a tap sends the file, a sideways drag carries it. */
+  .sscene__file {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 104px;
+    padding: 10px 4px 8px;
+    border-radius: 12px;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  .sscene__file:hover {
+    background: rgb(255 255 255 / 0.04);
+  }
+
+  .sscene__file.is-dragged {
+    opacity: 0.35;
+  }
+
+  :global(.drag-ghost) {
+    cursor: grabbing;
+  }
+
+  /* A document drawn in the page's monochrome: a sheet with a folded corner. */
+  .sscene__page {
+    position: relative;
+    display: grid;
+    place-items: end center;
+    width: 46px;
+    height: 58px;
+    padding-bottom: 9px;
+    border-radius: 5px 13px 5px 5px;
+    background: linear-gradient(225deg, transparent 9px, #d9d9de 9px);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+  }
+
+  .sscene__page::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 13px;
+    height: 13px;
+    border-radius: 0 0 0 4px;
+    background: #a1a1a6;
+  }
+
+  .sscene__ext {
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: #1d1d1f;
+    color: var(--text-1);
+    font: 600 9px/1 var(--mono);
+    letter-spacing: 0.04em;
+  }
+
+  .sscene__page.is-image {
+    place-items: center;
+    padding: 0;
+  }
+
+  .sscene__pic {
+    display: grid;
+    gap: 4px;
+    width: 30px;
+  }
+
+  .sscene__pic i {
+    height: 10px;
+    border-radius: 3px;
+    background: #6e6e73;
+  }
+
+  .sscene__pic i:last-child {
+    width: 70%;
+    height: 6px;
+    background: #8e8e93;
+  }
+
+  .sscene__name {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--text-2);
+    font-size: 11.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sscene__shelf {
+    padding: 16px 16px 14px;
+    border-radius: 18px;
+    background: var(--dock);
+  }
+
+  .sscene__tiles {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sscene__tiles:empty {
+    display: none;
+  }
+
+  .sscene__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1.5px dashed #3a3a3f;
+    border-radius: 14px;
+    color: var(--text-3);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .sscene__empty :global(svg) {
+    flex: none;
+  }
+
+  .sscene__tiles:not(:empty) + .sscene__empty {
+    display: none;
+  }
+
+  /* The hint names the gesture the visitor has: a drag with a pointer, a tap on a touch screen. */
+  @media (hover: none) {
+    .sscene__pointer {
+      display: none;
+    }
+  }
+
+  @media (hover: hover) {
+    .sscene__touch {
+      display: none;
+    }
+  }
+
+  .sscene__tiles :global(.tile) {
+    position: relative;
+    min-width: 0;
+  }
+
+  .sscene__tiles :global(.tile.is-new) {
+    animation: tile-in 480ms var(--ease-out);
+  }
+
+  @keyframes tile-in {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.94);
+    }
+  }
+
+  /* A tile, and the copy of it that follows a drag: that one is drawn outside the list, so it is styled by itself. */
+  .sscene__tiles :global(.tile__main),
+  :global(.drag-ghost.tile__main) {
+    display: block;
+    width: 100%;
+    border-radius: 14px;
+    color: var(--text-1);
+    text-align: left;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  .sscene__tiles :global(.tile__main.is-dragged) {
+    opacity: 0.35;
+  }
+
+  .sscene__tiles :global(.tile__preview),
+  :global(.drag-ghost .tile__preview) {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 88px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--thumb);
+  }
+
+  .sscene__tiles :global(.tile__preview img),
+  :global(.drag-ghost .tile__preview img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .sscene__tiles :global(.tile__ext),
+  :global(.drag-ghost .tile__ext) {
+    color: var(--text-2);
+    font: 300 16px/1 var(--mono);
+  }
+
+  .sscene__tiles :global(.tile__dot) {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    display: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-1);
+  }
+
+  .sscene__tiles :global(.tile.is-fresh .tile__dot) {
+    display: block;
+  }
+
+  .sscene__tiles :global(.tile__name),
+  :global(.drag-ghost .tile__name) {
+    display: block;
+    margin: 8px 0 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sscene__tiles :global(.tile__details),
+  :global(.drag-ghost .tile__details) {
+    display: block;
+    margin: 2px 0 0;
+    color: var(--text-3);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  /* Its own button beside the tile's, not inside it; shown on hover and to the keyboard, always on a touch screen. */
+  .sscene__tiles :global(.tile__off) {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgb(17 17 19 / 0.85);
+    color: var(--text-2);
+    opacity: 0;
+    transition: opacity 120ms linear;
+  }
+
+  .sscene__tiles :global(.tile:hover .tile__off),
+  .sscene__tiles :global(.tile:has(:focus-visible) .tile__off) {
+    opacity: 1;
+  }
+
+  .sscene__tiles :global(.tile__off:hover) {
+    color: var(--text-1);
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    .sscene__tiles :global(.tile__off) {
+      opacity: 1;
+    }
+  }
+
+  /* The visitor's own uploader, a browser window apart from the shelf: the shelf only hands files to it. */
+  .sscene__browser {
+    overflow: hidden;
+    border-radius: 14px;
+    background: #0c0c0e;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+
+  .sscene__bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 10px;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .sscene__lights {
+    display: flex;
+    gap: 5px;
+  }
+
+  .sscene__lights i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3a3a40;
+  }
+
+  /* Centred in the bar: as wide as the room the lights leave on both sides. */
+  .sscene__address {
+    position: absolute;
+    left: 50%;
+    max-width: calc(100% - 104px);
+    overflow: hidden;
+    padding: 2px 12px;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 0.05);
+    color: var(--text-3);
+    font-size: 11.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+
+  .sscene__drop {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 54px;
+    margin: 12px;
+    padding: 0 12px;
+    border: 1.5px dashed #3a3a3f;
+    border-radius: 12px;
+    color: var(--text-3);
+    font-size: 13px;
+    transition:
+      border-color 150ms linear,
+      background-color 150ms linear,
+      color 150ms linear;
+  }
+
+  .sscene__drop :global(svg) {
+    flex: none;
+  }
+
+  .sscene__drop-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sscene__drop.is-over {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.05);
+    color: var(--text-1);
+  }
+
+  .sscene__drop[data-state='done'] {
+    border-style: solid;
+    border-color: var(--track);
+    color: var(--text-1);
+  }
+
+  .sscene__drop :global(.sscene__done),
+  .sscene__drop[data-state='done'] :global(.sscene__idle) {
+    display: none;
+  }
+
+  .sscene__drop[data-state='done'] :global(.sscene__done) {
+    display: block;
+  }
+
+  /* What arrives comes in with a small rise. */
+  @media (prefers-reduced-motion: no-preference) {
+    .sscene__drop[data-state='done'] > :global(*) {
+      animation: drop-in 360ms var(--ease-out);
+    }
+  }
+
+  @keyframes drop-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  .sscene__term {
+    padding: 4px 4px 0;
+    font: 12.5px/1.5 var(--mono);
+  }
+
+  .sscene__line {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .sscene__prompt {
+    color: var(--text-3);
+  }
+
+  .sscene__command {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+  }
+
+  /* Each command keeps together while it fits on a line; a word never breaks. */
+  .sscene__part {
+    display: inline-block;
+  }
+
+  .sscene__word {
+    white-space: nowrap;
+  }
+
+  .sscene__run {
+    flex: none;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--raised);
+    font: 500 12px/1 var(--font);
+  }
+
+  .sscene__run:hover {
+    background: var(--track);
+  }
+
+  /* While the build runs it stays where it is, so focus stays on it; it just takes no click. */
+  .sscene__run[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .sscene__out {
+    min-height: 19px;
+    margin: 6px 0 0 18px;
+    color: var(--text-2);
+  }
+
+  /* A fingertip gets 44 points: the small buttons keep their size and take taps from just around them too. */
+  @media (pointer: coarse) {
+    .sscene__run {
+      position: relative;
+    }
+
+    .sscene__run::after,
+    .sscene__tiles :global(.tile__off::after) {
+      content: '';
+      position: absolute;
+      inset: -8px -4px;
+    }
+
+    .sscene__tiles :global(.tile__off::after) {
+      inset: -10px;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .sscene {
+      padding: 14px;
+    }
+
+    .sscene__files {
+      justify-content: space-between;
+    }
+
+    .sscene__file {
+      width: 31%;
+    }
+
+    .sscene__tiles {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sscene__tiles :global(.tile.is-new) {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  import { appLang, copy } from '../../scripts/copy';
+  import { iconSvg } from '../../lib/icons';
+  import { makeDraggable, type DropTarget } from '../../scripts/drag';
+  import '../../scripts/file-drop';
+  import { dropPoint, inDropZone, setDropZone } from '../../scripts/notch';
+  import { extension, lookedAtShelf, onShelf, putOnShelf, sizeText, takeOff, type ShelfItem } from '../../scripts/shelf';
+
+  const scene = document.querySelector<HTMLElement>('[data-shelf-scene]');
+  const shelf = scene?.querySelector<HTMLElement>('[data-sscene-shelf]');
+  const list = scene?.querySelector<HTMLElement>('[data-sscene-tiles]');
+  const count = scene?.querySelector<HTMLElement>('[data-sscene-count]');
+  const browser = scene?.querySelector<HTMLElement>('[data-sscene-browser]');
+  const upload = scene?.querySelector<HTMLElement>('[data-sscene-upload]');
+  const uploadText = scene?.querySelector<HTMLElement>('[data-sscene-upload-text]');
+  const run = scene?.querySelector<HTMLButtonElement>('[data-sscene-run]');
+  const out = scene?.querySelector<HTMLElement>('[data-sscene-out]');
+  const status = scene?.querySelector<HTMLElement>('[data-sscene-status]');
+
+  if (scene && shelf && list && count && browser && upload && uploadText && run && out && status) {
+    const s = copy.shelfChapter;
+    /** The tiles on screen, by item. They stay from one redraw to the next, so focus and a screen reader stay put. */
+    const tiles = new Map<number, HTMLElement>();
+    const seen = new Set<number>();
+    /** Every file the shelf has held, to tell what just landed. */
+    const known = new Set<number>();
+    let items: ShelfItem[] = [];
+    let drawnOnce = false;
+    // The shelf's own words (sizes, ages, Remove) are the app's: English on the pages the app doesn't speak.
+    const appWords = appLang ? ` lang="${appLang}"` : '';
+
+    const escape = (text: string) =>
+      text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+
+    let quiet = 0;
+    /** Tells a screen reader what came of an action; the same words twice are said twice. */
+    const announce = (text: string) => {
+      window.clearTimeout(quiet);
+      status.textContent = '';
+      quiet = window.setTimeout(() => (status.textContent = text), 60);
+    };
+
+    // Files on the desktop drag up to the notch; a tap sends one there by itself.
+    const notchTarget = (name: string, size: number): DropTarget => ({
+      contains: (x, y) => inDropZone(x, y),
+      enter: () => setDropZone('hover'),
+      leave: () => setDropZone('shown'),
+      drop: () => putOnShelf([{ name, size }]),
+      point: () => dropPoint(),
+    });
+    scene.querySelectorAll<HTMLElement>('[data-desk-file]').forEach((file) => {
+      const name = file.dataset.name ?? '';
+      const size = Number(file.dataset.size);
+      makeDraggable(file, () => ({
+        targets: [notchTarget(name, size)],
+        tapTarget: notchTarget(name, size),
+        onStart: () => setDropZone('shown'),
+        onEnd: () => setDropZone('off'),
+      }));
+      // From the keyboard, Return or Space puts it on the shelf.
+      file.addEventListener('click', (event) => {
+        if (event.detail === 0) putOnShelf([{ name, size }]);
+      });
+    });
+
+    // A tile dropped anywhere on the uploader's window goes into it, and stays on the shelf, as files dragged off the
+    // shelf do. The uploader shows what it got; uploading it would be the uploader's business, and nothing is sent.
+    let uploadTimer = 0;
+    const uploadTarget = (name: string): DropTarget => ({
+      contains: (x, y) => {
+        const box = browser.getBoundingClientRect();
+        return x >= box.left && x <= box.right && y >= box.top - 12 && y <= box.bottom + 12;
+      },
+      enter: () => upload.classList.add('is-over'),
+      leave: () => upload.classList.remove('is-over'),
+      drop: () => {
+        window.clearTimeout(uploadTimer);
+        upload.dataset.state = 'idle';
+        // Back to idle for a frame, so the next file's arrival plays again.
+        void upload.offsetWidth;
+        upload.dataset.state = 'done';
+        uploadText.textContent = s.added(name);
+        announce(s.added(name));
+        uploadTimer = window.setTimeout(() => {
+          upload.dataset.state = 'idle';
+          uploadText.textContent = s.upload;
+        }, 3200);
+      },
+      point: () => {
+        const box = upload.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+      },
+    });
+
+    const create = (item: ShelfItem, isNew: boolean) => {
+      const element = document.createElement('li');
+      element.className = 'tile';
+      element.dataset.id = String(item.id);
+      const preview = item.preview
+        ? `<img src="${item.preview}" alt="" draggable="false">`
+        : `<span class="tile__ext">${escape(extension(item.name) || '—')}</span>`;
+      element.innerHTML = `<button class="tile__main" type="button" title="${escape(item.name)}" aria-label="${escape(s.toUploader(item.name))}" aria-describedby="sscene-tile-${item.id}"><span class="tile__preview">${preview}<span class="tile__dot"></span></span><span class="tile__name">${escape(item.name)}</span><span class="tile__details" id="sscene-tile-${item.id}"${appWords}></span></button><button class="tile__off" type="button" data-off aria-label="${escape(s.takeOff(item.name))}"${appWords}>${iconSvg('close', 12)}</button>`;
+      const main = element.querySelector<HTMLElement>('.tile__main');
+      if (main) {
+        makeDraggable(main, () => ({ targets: [uploadTarget(item.name)], tapTarget: uploadTarget(item.name) }));
+        // From the keyboard, Return or Space hands it to the uploader.
+        main.addEventListener('click', (event) => {
+          if (event.detail === 0) uploadTarget(item.name).drop();
+        });
+      }
+      if (isNew) {
+        element.classList.add('is-new');
+        // Only its arrival plays: a tile that moves later must not come in again.
+        element.addEventListener('animationend', () => element.classList.remove('is-new'), { once: true });
+      }
+      return element;
+    };
+
+    /** Brings a tile up to date where it is: its buttons stay the same elements. */
+    const update = (element: HTMLElement, item: ShelfItem) => {
+      element.classList.toggle('is-fresh', item.fresh);
+      const details = element.querySelector('.tile__details');
+      const size = item.size === null ? s.folder : sizeText(item.size);
+      const text = `${size} · ${copy.demo.ago(Math.floor((Date.now() - item.addedAt) / 60_000))}`;
+      if (details && details.textContent !== text) details.textContent = text;
+    };
+
+    const render = () => {
+      const visible = items.slice(0, 8);
+      // A tile that goes takes the focus along: it moves to the tile in its place, or to the shelf.
+      const focused = document.activeElement instanceof HTMLElement && list.contains(document.activeElement) ? document.activeElement : null;
+      const place = focused ? Array.from(list.children).findIndex((tile) => tile.contains(focused)) : -1;
+      for (const [id, element] of tiles) {
+        if (visible.some((item) => item.id === id)) continue;
+        element.remove();
+        tiles.delete(id);
+      }
+      visible.forEach((item, index) => {
+        let element = tiles.get(item.id);
+        if (!element) {
+          element = create(item, drawnOnce && !seen.has(item.id));
+          tiles.set(item.id, element);
+        }
+        update(element, item);
+        if (list.children[index] !== element) list.insertBefore(element, list.children[index] ?? null);
+        seen.add(item.id);
+      });
+      drawnOnce = true;
+      count.textContent = items.length ? String(items.length) : '';
+      if (!focused || document.activeElement === focused) return;
+      if (focused.isConnected) focused.focus();
+      else {
+        const neighbour = list.children[Math.min(place, list.children.length - 1)];
+        (neighbour?.querySelector<HTMLElement>('button') ?? shelf).focus();
+      }
+    };
+
+    onShelf((next) => {
+      // What just landed, in the order it came: from the desktop, the notch, a build or the visitor's own files.
+      const landed = next.filter((item) => !known.has(item.id)).reverse();
+      for (const item of next) known.add(item.id);
+      if (landed.length) announce(landed.map((item) => s.landed(item.name)).join(' '));
+      items = next;
+      render();
+    });
+
+    list.addEventListener('click', (event) => {
+      const off = (event.target as Element).closest('[data-off]');
+      const element = off?.closest<HTMLElement>('.tile');
+      if (element) takeOff(Number(element.dataset.id));
+    });
+
+    // A finished build lands on the shelf by itself, as from a watched folder or `open -a Vortex`.
+    let building = false;
+    run.addEventListener('click', () => {
+      if (building) return;
+      building = true;
+      run.setAttribute('aria-disabled', 'true');
+      out.textContent = '…';
+      window.setTimeout(() => {
+        out.textContent = s.built;
+        putOnShelf([{ name: 'app-release.aab', size: 48_213_504 }]);
+        building = false;
+        run.removeAttribute('aria-disabled');
+      }, 1100);
+    });
+
+    // Looking at the shelf starts the flash colors over, as leaving the app's Shelf tab does.
+    new IntersectionObserver(([entry]) => {
+      if (entry && !entry.isIntersecting) lookedAtShelf();
+    }).observe(scene);
+    document.addEventListener('vx:close', lookedAtShelf);
+
+    // Ages move on.
+    window.setInterval(render, 60_000);
+  }
+</script>

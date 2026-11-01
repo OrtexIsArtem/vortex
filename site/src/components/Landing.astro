@@ -1,0 +1,65 @@
+---
+// The landing page, in the language of its URL: every component reads its words from the page's path.
+import DevStates from './DevStates.astro';
+import Chapter from './Chapter.astro';
+import Download from './Download.astro';
+import Faq from './Faq.astro';
+import Footer from './Footer.astro';
+import Hero from './Hero.astro';
+import MenuBar from './MenuBar.astro';
+import Notch from './Notch.astro';
+import OpenSection from './OpenSection.astro';
+import OpenSource from './OpenSource.astro';
+import Privacy from './Privacy.astro';
+import SmallThings from './SmallThings.astro';
+import KeyKinds from './KeyKinds.astro';
+import KeyLimits from './KeyLimits.astro';
+import ClipboardScene from './scenes/ClipboardScene.astro';
+import KeyboardScene from './scenes/KeyboardScene.astro';
+import KeysScene from './scenes/KeysScene.astro';
+import TasksScene from './scenes/TasksScene.astro';
+import ShelfScene from './scenes/ShelfScene.astro';
+import TimerScene from './scenes/TimerScene.astro';
+import Toast from './Toast.astro';
+import { copyFor } from '../copy';
+import Base from '../layouts/Base.astro';
+
+const copy = copyFor(Astro.url);
+---
+
+<Base title={copy.meta.title} description={copy.meta.description}>
+  <MenuBar />
+  <Notch />
+  <Toast />
+  <main id="main" tabindex="-1">
+    <Hero />
+    <OpenSection />
+    <Chapter id="timer" icon="timer" {...copy.timerChapter}>
+      <TimerScene />
+    </Chapter>
+    <Chapter id="clipboard" icon="clipboard" {...copy.clipboardChapter}>
+      <ClipboardScene />
+    </Chapter>
+    <Chapter id="shelf" icon="tray" {...copy.shelfChapter}>
+      <ShelfScene />
+    </Chapter>
+    <Chapter id="tasks" icon="checklist" {...copy.tasksChapter}>
+      <TasksScene />
+    </Chapter>
+    <Chapter id="keys" icon="key" stickyScene {...copy.keysChapter}>
+      <KeysScene />
+      <KeyKinds slot="aside" />
+      <KeyLimits slot="aside" />
+    </Chapter>
+    <Chapter id="keyboard" icon="keyboard" {...copy.keyboardChapter}>
+      <KeyboardScene />
+    </Chapter>
+    <SmallThings />
+    <Privacy />
+    <OpenSource />
+    <Download />
+    <Faq />
+  </main>
+  <Footer />
+  {import.meta.env.DEV && <DevStates />}
+</Base>

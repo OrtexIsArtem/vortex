@@ -1,0 +1,148 @@
+---
+import '../styles/tokens.css';
+import '../styles/global.css';
+import { copyFor } from '../copy';
+import { basePath, defaultLocale, localeByCode, localeOf, locales, urlFor } from '../copy/locales';
+import { appVersion, downloadUrl, licenseUrl, repoUrl } from '../lib/app';
+import { fromSearch, pickLocale } from '../lib/pick-locale';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const code = localeOf(Astro.url.pathname);
+const locale = localeByCode(code);
+const copy = copyFor(Astro.url);
+
+const page = urlFor(code, Astro.site);
+const home = urlFor(defaultLocale, Astro.site);
+const image = Astro.site ? new URL(`${basePath}og.png`, Astro.site).href : `${basePath}og.png`;
+// Other apps are called Vortex too: the names people may look this one up by.
+const alternateName = ['Vortex for Mac', 'Vortex notch app'];
+
+// What search engines read about the app, beside the FAQ (components/Faq.astro): the site, this page, the app and its
+// source. The app is one thing in every language, so it keeps the English page as its address.
+const structured = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'WebSite', '@id': `${home}#website`, name: 'Vortex', alternateName, url: home, inLanguage: locales.map((l) => l.tag) },
+    {
+      '@type': 'WebPage',
+      '@id': `${page}#webpage`,
+      url: page,
+      name: title,
+      description,
+      inLanguage: locale.tag,
+      isPartOf: { '@id': `${home}#website` },
+      about: { '@id': `${home}#app` },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${home}#app`,
+      name: 'Vortex',
+      alternateName,
+      description,
+      url: home,
+      image,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'macOS 14 or later',
+      processorRequirements: 'Apple silicon',
+      softwareVersion: appVersion,
+      downloadUrl,
+      license: licenseUrl,
+      isAccessibleForFree: true,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      author: { '@type': 'Person', name: 'Artem Pronenko', url: 'https://github.com/OrtexIsArtem' },
+      sameAs: [repoUrl],
+    },
+    {
+      '@type': 'SoftwareSourceCode',
+      '@id': `${home}#source`,
+      name: 'Vortex',
+      codeRepository: repoUrl,
+      programmingLanguage: 'Swift',
+      runtimePlatform: 'macOS',
+      license: licenseUrl,
+      targetProduct: { '@id': `${home}#app` },
+    },
+  ],
+}).replace(/</g, '\\u003c');
+
+// The root page sends a visitor arriving from elsewhere to their language: one they picked on this site before, or the
+// first their browser asks for that the site has. Moving around the site never redirects, and the other languages'
+// pages never move anyone. Search engines pick the page's language for each search themselves (hreflang), so a visitor
+// from search results stays unless they picked a language here before; crawlers always stay.
+const detect =
+  code === defaultLocale
+    ? `(function () {
+  try {
+    var codes = ${JSON.stringify(locales.map((locale) => locale.code))};
+    var from = document.referrer;
+    if (from && new URL(from).origin === location.origin) return;
+    var saved = null;
+    try { saved = localStorage.getItem('vortex-locale'); } catch (error) {}
+    if (saved && codes.indexOf(saved) < 0) saved = null;
+    if (!saved && (/bot|crawl|spider|slurp/i.test(navigator.userAgent) || (from && (${fromSearch.toString()})(from)))) return;
+    var asked = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+    var code = saved || (${pickLocale.toString()})(asked, codes, ${JSON.stringify(defaultLocale)});
+    if (code !== ${JSON.stringify(defaultLocale)}) location.replace(${JSON.stringify(basePath)} + code + '/' + location.search + location.hash);
+  } catch (error) {}
+})();`
+    : null;
+---
+
+<!doctype html>
+<html lang={locale.tag} data-locale={code}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {detect && <script is:inline set:html={detect} />}
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={page} />
+    {locales.map((other) => <link rel="alternate" hreflang={other.tag} href={urlFor(other.code, Astro.site)} />)}
+    <link rel="alternate" hreflang="x-default" href={home} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Vortex" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={page} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={copy.meta.imageAlt} />
+    <meta property="og:locale" content={locale.og} />
+    {locales.filter((other) => other.code !== code).map((other) => <meta property="og:locale:alternate" content={other.og} />)}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image:alt" content={copy.meta.imageAlt} />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0a0b" />
+    <link rel="icon" href={`${basePath}favicon.svg`} type="image/svg+xml" />
+    <link rel="icon" href={`${basePath}favicon-64.png`} type="image/png" sizes="64x64" />
+    <link rel="apple-touch-icon" href={`${basePath}apple-touch-icon.png`} />
+    <script type="application/ld+json" set:html={structured} />
+    <script is:inline>
+      // Lets the intro hide what it reveals; if a script fails, everything shows after a few seconds anyway.
+      document.documentElement.classList.add('js');
+      (function () {
+        function arm() {
+          setTimeout(function () {
+            document.documentElement.classList.add('intro-done');
+          }, 4000);
+        }
+        if (document.visibilityState === 'visible') arm();
+        else document.addEventListener('visibilitychange', arm, { once: true });
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">{copy.skip}</a>
+    <slot />
+    <script>
+      import '../scripts/reveal';
+    </script>
+  </body>
+</html>

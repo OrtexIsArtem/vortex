@@ -1,0 +1,517 @@
+---
+// The app's Clipboard tab: cards in three columns, pinned first, newest first. A click copies a card again; hover shows
+// Pin and Delete (a touch screen shows them above the card touched last); a secret stays dots until the eye. Copy
+// anything on this page and it lands here.
+import { copyFor } from '../../copy';
+import { appLangOf, localeOf } from '../../copy/locales';
+
+const copy = copyFor(Astro.url);
+/** The tab is the app's: English on pages in a language the app doesn't speak. */
+const appLang = appLangOf(localeOf(Astro.url.pathname));
+
+const c = copy.clipboardChapter;
+---
+
+<div class="scene cscene" data-clipboard-scene data-nosnippet>
+  <div class="cscene__head">
+    <span id="cscene-label" lang={appLang}>{c.label}</span>
+    <span class="cscene__count" data-cscene-count></span>
+  </div>
+  {/* Focus lands on the list itself when its last card goes. */}
+  <ul class="cscene__grid" role="list" aria-labelledby="cscene-label" tabindex="-1" data-cscene-grid></ul>
+  <p class="visually-hidden" role="status" lang={appLang} data-cscene-status></p>
+</div>
+
+<style>
+  .cscene {
+    padding: 22px 22px 26px;
+  }
+
+  .cscene__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 20px;
+    margin: 0 4px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .cscene__count {
+    color: var(--text-3);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cscene__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    min-height: 234px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cscene__grid :global(.ccard) {
+    position: relative;
+    height: 112px;
+    border-radius: 16px;
+    background: var(--surface);
+  }
+
+  .cscene__grid :global(.ccard.is-new) {
+    animation: ccard-in 420ms var(--ease-out);
+  }
+
+  @keyframes ccard-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.97);
+    }
+  }
+
+  .cscene__grid :global(.ccard__body) {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    padding: 12px 14px;
+    border-radius: inherit;
+    text-align: left;
+  }
+
+  .cscene__grid :global(button.ccard__body:hover) {
+    background: rgb(255 255 255 / 0.03);
+  }
+
+  .cscene__grid :global(.ccard__text) {
+    display: -webkit-box;
+    margin: 2px 0 0;
+    overflow: hidden;
+    font: 11.5px/1.45 var(--mono);
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow-wrap: anywhere;
+  }
+
+  .cscene__grid :global(.ccard__secret) {
+    display: block;
+    margin: 2px 0 0;
+    font: 500 13px/1.4 var(--mono);
+    letter-spacing: 0.06em;
+    overflow-wrap: anywhere;
+  }
+
+  .cscene__grid :global(.ccard__link) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .cscene__grid :global(.ccard__link svg) {
+    margin-bottom: 8px;
+    color: var(--text-3);
+  }
+
+  .cscene__grid :global(.ccard__title) {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cscene__grid :global(.ccard__detail) {
+    color: var(--text-3);
+    font-size: 12px;
+  }
+
+  .cscene__grid :global(.ccard__thumb) {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    height: 66px;
+    margin: -4px -6px 0;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--thumb);
+  }
+
+  .cscene__grid :global(.ccard__thumb i) {
+    height: 7px;
+    border-radius: 3px;
+    background: #2e2e33;
+  }
+
+  .cscene__grid :global(.ccard__thumb i:first-child) {
+    width: 45%;
+    height: 9px;
+    background: #4a4a50;
+  }
+
+  .cscene__grid :global(.ccard__thumb i:last-child) {
+    width: 70%;
+  }
+
+  .cscene__grid :global(.ccard__file) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .cscene__grid :global(.ccard__file svg) {
+    flex: none;
+    color: var(--text-2);
+  }
+
+  .cscene__grid :global(.ccard__file span) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cscene__grid :global(.ccard__meta) {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: auto;
+    color: var(--text-3);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .cscene__grid :global(.ccard__tools) {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 10px;
+    background: rgb(17 17 19 / 0.9);
+    opacity: 0;
+    transition: opacity 120ms linear;
+  }
+
+  /* Hover shows a card's tools where there is hover; the keyboard shows them on every screen. */
+  @media (hover: hover) and (pointer: fine) {
+    .cscene__grid :global(.ccard:hover .ccard__tools) {
+      opacity: 1;
+    }
+  }
+
+  .cscene__grid :global(.ccard:has(:focus-visible) .ccard__tools) {
+    opacity: 1;
+  }
+
+  .cscene__grid :global(.ccard__tools button) {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    color: var(--text-2);
+  }
+
+  .cscene__grid :global(.ccard__tools button:hover) {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .cscene__grid :global(.ccard__tools [aria-pressed='true']) {
+    color: var(--text-1);
+  }
+
+  .cscene__grid :global(.ccard__copied) {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity 160ms linear,
+      transform 160ms var(--ease-out);
+    pointer-events: none;
+  }
+
+  .cscene__grid :global(.ccard.is-copied .ccard__copied) {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* A touch screen has no hover: the card touched last shows its tools above itself, clear of its words, each a
+     fingertip wide. The other cards' tools neither show nor take a touch. */
+  @media (hover: none), (pointer: coarse) {
+    .cscene__grid :global(.ccard__tools) {
+      top: auto;
+      right: 4px;
+      bottom: calc(100% - 10px);
+      z-index: 2;
+      padding: 0;
+      border-radius: 14px;
+      background: var(--raised);
+      box-shadow:
+        0 8px 24px rgb(0 0 0 / 0.55),
+        inset 0 0 0 1px rgb(255 255 255 / 0.08);
+      transform: translateY(6px);
+      transition:
+        opacity 140ms linear,
+        transform 200ms var(--ease-out);
+      pointer-events: none;
+    }
+
+    .cscene__grid :global(.ccard.is-active .ccard__tools),
+    .cscene__grid :global(.ccard:has(:focus-visible) .ccard__tools) {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    .cscene__grid :global(.ccard__tools button) {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+    }
+
+    .cscene__grid :global(.ccard__tools button:hover) {
+      background: var(--track);
+    }
+  }
+
+  @media (max-width: 599px) {
+    .cscene {
+      padding: 16px 14px 20px;
+    }
+
+    .cscene__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cscene__grid :global(.ccard.is-new) {
+      animation: none;
+    }
+
+    .cscene__grid :global(.ccard__tools) {
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  import { appLang, copy } from '../../scripts/copy';
+  import { iconSvg } from '../../lib/icons';
+  import { age, copyAgain, onClipboard, remove, togglePin, type CopyItem } from '../../scripts/clipboard';
+
+  const scene = document.querySelector<HTMLElement>('[data-clipboard-scene]');
+  const grid = scene?.querySelector<HTMLElement>('[data-cscene-grid]');
+  const count = scene?.querySelector<HTMLElement>('[data-cscene-count]');
+  const status = scene?.querySelector<HTMLElement>('[data-cscene-status]');
+
+  if (scene && grid && count && status) {
+    const c = copy.clipboardChapter;
+    /** Secrets shown with the eye; they hide again whenever the scene leaves the screen, as the app's tab does. */
+    const revealed = new Set<number>();
+    const seen = new Set<number>();
+    /** The cards on screen, by item. They stay from one redraw to the next, so focus and a screen reader stay put. */
+    const cards = new Map<number, HTMLElement>();
+    /** What each part of a card was last drawn with. */
+    const drawn = new WeakMap<Element, string>();
+    let items: CopyItem[] = [];
+    /** The card touched last: on a touch screen its tools show. */
+    let activeId: number | null = null;
+    const shown = 6;
+    // The card is the app's, in English on the other pages; what was copied and the apps it came from keep the page's
+    // language inside it.
+    const own = appLang ? ` lang="${document.documentElement.lang}"` : '';
+
+    const escape = (text: string) =>
+      text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+
+    /** How a card's buttons name it: its words, cut short when long, and never a secret's. */
+    const quote = (item: CopyItem) => {
+      if (item.kind === 'secret') return null;
+      const text = item.text.replace(/\s+/g, ' ').trim();
+      return text.length > 60 ? `${text.slice(0, 60).trimEnd()}…` : text;
+    };
+
+    const content = (item: CopyItem) => {
+      switch (item.kind) {
+        case 'link':
+          return `<span class="ccard__link"${own}>${iconSvg('link', 15)}<span class="ccard__title">${escape(item.text)}</span><span class="ccard__detail">${escape(item.detail ?? '')}</span></span>`;
+        case 'image':
+          return '<span class="ccard__thumb" aria-hidden="true"><i></i><i></i><i></i></span>';
+        case 'file':
+          return `<span class="ccard__file"${own}>${iconSvg('file', 26)}<span>${escape(item.text)}</span></span>`;
+        case 'secret':
+          return `<span class="ccard__secret"${own}>${revealed.has(item.id) ? escape(item.text) : '••••••••'}</span>`;
+        default:
+          return `<span class="ccard__text"${own}>${escape(item.text)}</span>`;
+      }
+    };
+
+    const meta = (item: CopyItem) =>
+      `<span class="ccard__meta">${item.pinned ? iconSvg('pin', 11) : ''}<span${own}>${escape(item.app)}</span> · ${age(item.copiedAt)}</span>`;
+
+    const fill = (element: Element, html: string) => {
+      if (drawn.get(element) === html) return;
+      drawn.set(element, html);
+      element.innerHTML = html;
+    };
+
+    const set = (element: Element | null, name: string, value: string) => {
+      if (element && element.getAttribute(name) !== value) element.setAttribute(name, value);
+    };
+
+    const create = (item: CopyItem, isNew: boolean) => {
+      const element = document.createElement('li');
+      element.className = 'ccard';
+      element.dataset.id = String(item.id);
+      if (appLang) element.lang = appLang;
+      const body = item.value
+        ? '<button class="ccard__body" type="button" data-action="copy"></button>'
+        : '<div class="ccard__body"></div>';
+      const eye = item.kind === 'secret' ? `<button type="button" data-action="eye">${iconSvg('eye', 13)}</button>` : '';
+      element.innerHTML = `${body}<div class="ccard__tools">${eye}<button type="button" data-action="pin">${iconSvg('pin', 13)}</button><button type="button" data-action="remove">${iconSvg('close', 12)}</button></div><span class="ccard__copied" aria-hidden="true">${iconSvg('check', 11)}${c.copied}</span>`;
+      if (isNew) {
+        element.classList.add('is-new');
+        // Only its arrival plays: a card that moves later (pinned, copied again) must not come in again.
+        element.addEventListener('animationend', () => element.classList.remove('is-new'), { once: true });
+      }
+      return element;
+    };
+
+    /** Brings a card up to date where it is: its buttons stay the same elements. */
+    const update = (element: HTMLElement, item: CopyItem) => {
+      const name = quote(item);
+      const body = element.querySelector('.ccard__body');
+      if (body) {
+        if (item.value) set(body, 'aria-label', name === null ? c.copyHidden : c.copyItem(name));
+        fill(body, content(item) + meta(item));
+      }
+      const eye = element.querySelector('[data-action="eye"]');
+      set(eye, 'aria-label', c.show);
+      set(eye, 'aria-pressed', String(revealed.has(item.id)));
+      const pin = element.querySelector('[data-action="pin"]');
+      set(pin, 'aria-label', c.pin(name));
+      set(pin, 'aria-pressed', String(item.pinned));
+      set(element.querySelector('[data-action="remove"]'), 'aria-label', c.remove(name));
+      element.classList.toggle('is-active', item.id === activeId);
+    };
+
+    const render = () => {
+      const visible = items.slice(0, shown);
+      // Moving a card takes the focus off the button in it, and a card that goes takes it along.
+      const focused = document.activeElement instanceof HTMLElement && grid.contains(document.activeElement) ? document.activeElement : null;
+      const place = focused ? Array.from(grid.children).findIndex((card) => card.contains(focused)) : -1;
+      for (const [id, element] of cards) {
+        if (visible.some((item) => item.id === id)) continue;
+        element.remove();
+        cards.delete(id);
+      }
+      const arriving = seen.size > 0;
+      visible.forEach((item, index) => {
+        let element = cards.get(item.id);
+        if (!element) {
+          element = create(item, arriving && !seen.has(item.id));
+          cards.set(item.id, element);
+        }
+        update(element, item);
+        if (grid.children[index] !== element) grid.insertBefore(element, grid.children[index] ?? null);
+        seen.add(item.id);
+      });
+      count.textContent = String(items.length);
+      if (!focused || document.activeElement === focused) return;
+      // A card that only moved gets its focus back; a card that went hands it to the one in its place, or to the list.
+      if (focused.isConnected) focused.focus();
+      else {
+        const neighbour = grid.children[Math.min(place, grid.children.length - 1)];
+        (neighbour?.querySelector<HTMLElement>('button') ?? grid).focus();
+      }
+    };
+
+    let quiet = 0;
+    /** Tells a screen reader what a click did; the same words twice are said twice. */
+    const announce = (text: string) => {
+      window.clearTimeout(quiet);
+      status.textContent = '';
+      quiet = window.setTimeout(() => {
+        status.textContent = text;
+        quiet = window.setTimeout(() => (status.textContent = ''), 1300);
+      }, 60);
+    };
+
+    const activate = (id: number | null) => {
+      if (id === activeId) return;
+      activeId = id;
+      for (const [cardId, element] of cards) element.classList.toggle('is-active', cardId === id);
+    };
+
+    onClipboard((next) => {
+      items = next;
+      render();
+    });
+
+    grid.addEventListener('click', async (event) => {
+      const button = (event.target as Element).closest<HTMLElement>('[data-action]');
+      const cardElement = button?.closest<HTMLElement>('.ccard');
+      if (!button || !cardElement) return;
+      const id = Number(cardElement.dataset.id);
+      switch (button.dataset.action) {
+        case 'copy':
+          if (await copyAgain(id)) {
+            const copied = cards.get(id);
+            copied?.classList.add('is-copied');
+            announce(c.copied);
+            window.setTimeout(() => copied?.classList.remove('is-copied'), 1300);
+          }
+          break;
+        case 'eye':
+          if (revealed.has(id)) revealed.delete(id);
+          else revealed.add(id);
+          render();
+          break;
+        case 'pin':
+          togglePin(id);
+          break;
+        case 'remove':
+          remove(id);
+          break;
+      }
+    });
+
+    // A touch screen has no hover: the card touched last shows its tools; a touch anywhere else puts them away.
+    document.addEventListener('pointerdown', (event) => {
+      const card = event.target instanceof Element ? event.target.closest<HTMLElement>('.ccard') : null;
+      activate(card && grid.contains(card) ? Number(card.dataset.id) : null);
+    });
+
+    new IntersectionObserver(([entry]) => {
+      if (!entry || entry.isIntersecting) return;
+      activate(null);
+      if (revealed.size) {
+        revealed.clear();
+        render();
+      }
+    }).observe(scene);
+
+    // Ages move on, as the cards' "2m" would.
+    window.setInterval(render, 60_000);
+  }
+</script>

@@ -1,0 +1,597 @@
+---
+// Home in the app's chosen layout, «Вуха»: the timer flanks the notch, the shelf and the clipboard share the dock.
+// Sizes follow the app: a 680 × 440 window, a 56 pt sidebar, a 52 pt row beside a 186 × 32 notch.
+import { copyFor } from '../copy';
+import { appLangOf, localeOf } from '../copy/locales';
+import type { IconName } from '../lib/icons';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+
+const d = copy.demo;
+// The window shows the app, in the app's language.
+const appLang = appLangOf(localeOf(Astro.url.pathname));
+const features: { icon: IconName; label: string; href: string }[] = [
+  { icon: 'grid', label: d.sidebar[0], href: '#top' },
+  { icon: 'timer', label: d.sidebar[1], href: '#timer' },
+  { icon: 'clipboard', label: d.sidebar[2], href: '#clipboard' },
+  { icon: 'tray', label: d.sidebar[3], href: '#shelf' },
+  { icon: 'checklist', label: d.sidebar[4], href: '#tasks' },
+  { icon: 'key', label: d.sidebar[5], href: '#keys' },
+];
+---
+
+<div class="dw" lang={appLang}>
+  <nav class="dw-side" aria-label="Vortex">
+    {
+      features.map((feature, index) => (
+        <a class:list={['dw-side__item', { 'is-selected': index === 0 }]} href={feature.href} aria-label={feature.label} title={feature.label}>
+          <Icon name={feature.icon} size={17} />
+        </a>
+      ))
+    }
+    <span class="dw-side__item dw-side__settings" title={d.settings}>
+      <Icon name="gear" size={17} />
+    </span>
+  </nav>
+
+  <div class="dw-row">
+    <div class="dw-lead">
+      <canvas class="dw-drum" data-demo-drum title={copy.demo.drumHint}></canvas>
+      <span class="dw-minutes" data-demo-minutes><b>5</b> {d.minutes}</span>
+    </div>
+    <div class="dw-trail dw-trail--idle">
+      <button class="dw-quiet" type="button" data-add="5" aria-label={d.add5}>+5</button>
+      <button class="dw-quiet" type="button" data-add="10" aria-label={d.add10}>+10</button>
+      <button class="dw-primary" type="button" data-start><Icon name="play" size={9} />{d.start}</button>
+    </div>
+    <div class="dw-trail dw-trail--run">
+      <button class="dw-round dw-round--prominent" type="button" data-toggle aria-label={d.pause} data-label-pause={d.pause} data-label-resume={d.resume}>
+        <Icon name="pause" size={13} class="dw-when-running" />
+        <Icon name="play" size={13} class="dw-when-paused" />
+      </button>
+      <button class="dw-round" type="button" data-stop aria-label={d.stop}><Icon name="stop" size={12} /></button>
+    </div>
+  </div>
+
+  <div class="dw-dock">
+    <section class="dw-shelf" aria-label={d.shelf}>
+      <p class="dw-title">{d.shelf} <span data-dw-shelf-count>{d.files.length}</span></p>
+      <ul class="dw-tiles" data-dw-tiles>
+        {
+          d.files.map((file) => (
+            <li class="dw-tile" data-sample>
+              <span class:list={['dw-tile__preview', { 'is-image': file.kind === 'image' }]}>
+                {file.kind === 'image' ? (
+                  <span class="dw-mock" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                ) : (
+                  <span class="dw-tile__ext">.{file.kind}</span>
+                )}
+              </span>
+              <span class="dw-tile__name">{file.name}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+    <span class="dw-hairline" aria-hidden="true"></span>
+    <section class="dw-clip" aria-label={d.clipboard}>
+      <p class="dw-title">{d.clipboard}</p>
+      <ul class="dw-rows" data-dw-rows></ul>
+    </section>
+    <a class="dw-kbd" href="#keyboard" aria-label={d.keyboard} title={d.keyboard}>
+      <Icon name="keyboard" size={15} />
+    </a>
+  </div>
+  <span class="visually-hidden" aria-live="polite" data-copy-status></span>
+</div>
+
+<style>
+  .dw {
+    position: relative;
+    width: 680px;
+    height: 440px;
+    color: var(--text-1);
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .dw-side {
+    position: absolute;
+    top: 52px;
+    bottom: 16px;
+    left: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dw-side__item {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    color: var(--text-3);
+    transition: color 120ms linear;
+  }
+
+  a.dw-side__item:hover {
+    color: var(--text-2);
+  }
+
+  .dw-side__item.is-selected {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .dw-side__settings {
+    margin-top: auto;
+  }
+
+  /* The row beside the notch: the cutout spans 247–433, the groups keep 12 pt from it. */
+  .dw-row {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 680px;
+    height: 52px;
+  }
+
+  .dw-lead {
+    position: absolute;
+    top: 9px;
+    right: calc(680px - 235px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+  }
+
+  .dw-drum {
+    width: 116px;
+    height: 34px;
+  }
+
+  .dw-minutes {
+    min-width: 46px;
+    color: var(--text-2);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .dw-minutes b {
+    color: var(--text-1);
+    font-size: 15px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dw-trail {
+    position: absolute;
+    top: 9px;
+    left: 445px;
+    display: flex;
+    gap: 6px;
+  }
+
+  .dw-quiet,
+  .dw-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .dw-quiet {
+    background: var(--raised);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dw-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  .dw-quiet:active,
+  .dw-primary:active,
+  .dw-round:active {
+    opacity: 0.75;
+  }
+
+  .dw-trail--run,
+  .dw.is-running .dw-trail--idle {
+    display: none;
+  }
+
+  .dw.is-running .dw-trail--run {
+    display: flex;
+  }
+
+  .dw-round {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--raised);
+  }
+
+  .dw-round {
+    background: transparent;
+    color: var(--text-2);
+  }
+
+  .dw-round--prominent {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .dw-round :global(.dw-when-paused),
+  .dw-round.is-paused :global(.dw-when-running) {
+    display: none;
+  }
+
+  .dw-round.is-paused :global(.dw-when-paused) {
+    display: block;
+  }
+
+  .dw-drum {
+    cursor: grab;
+    touch-action: none;
+    border-radius: 6px;
+  }
+
+  .dw-drum:active {
+    cursor: grabbing;
+  }
+
+  .dw-drum:global(.is-running) {
+    cursor: default;
+  }
+
+  .dw-minutes.is-paused b {
+    color: var(--text-2);
+  }
+
+  .dw-dock {
+    position: absolute;
+    top: 56px;
+    right: 12px;
+    bottom: 12px;
+    left: 60px;
+    display: flex;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: var(--dock);
+  }
+
+  .dw-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 18px;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .dw-title span {
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dw-shelf {
+    flex: none;
+    width: 352px;
+  }
+
+  .dw-tiles {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px 8px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-tiles :global(.dw-tile) {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .dw-tiles :global(.dw-tile__preview) {
+    display: grid;
+    place-items: center;
+    height: 72px;
+    border-radius: 12px;
+    background: var(--thumb);
+  }
+
+  .dw-tiles :global(.dw-tile__ext) {
+    color: var(--text-2);
+    font: 300 15px/1 var(--mono);
+  }
+
+  .dw-tiles :global(.dw-tile__preview img) {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    object-fit: cover;
+  }
+
+  /* The visitor's own files take the samples' place. */
+  .dw-tiles.has-own :global([data-sample]),
+  .dw-tiles :global(.dw-tile:nth-child(n + 9)) {
+    display: none;
+  }
+
+  .dw-tiles :global(.dw-mock) {
+    display: grid;
+    gap: 4px;
+    width: 46px;
+    padding: 6px;
+    border-radius: 6px;
+    background: #2a2a2e;
+  }
+
+  .dw-tiles :global(.dw-mock i) {
+    height: 5px;
+    border-radius: 2px;
+    background: #4a4a50;
+  }
+
+  .dw-tiles :global(.dw-mock i:first-child) {
+    width: 60%;
+    height: 7px;
+    background: #6e6e73;
+  }
+
+  .dw-tiles :global(.dw-mock i:last-child) {
+    width: 80%;
+  }
+
+  .dw-tiles :global(.dw-tile__name) {
+    overflow: hidden;
+    color: var(--text-2);
+    font-size: 11px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dw-hairline {
+    flex: none;
+    width: 1px;
+    background: var(--line);
+  }
+
+  .dw-clip {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dw-rows {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dw-rows :global(li:nth-child(n + 10)) {
+    display: none;
+  }
+
+  .dw-rows :global(.dw-copy) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 34px;
+    text-align: left;
+  }
+
+  .dw-rows :global(button.dw-copy) {
+    border-radius: 6px;
+  }
+
+  .dw-rows :global(button.dw-copy:hover .dw-copy__text) {
+    color: #ffffff;
+  }
+
+  .dw-rows :global(.dw-copy__check),
+  .dw-rows :global(.dw-copy.is-copied .dw-copy__kind) {
+    display: none;
+  }
+
+  .dw-rows :global(.dw-copy.is-copied .dw-copy__check) {
+    display: block;
+    color: var(--text-1);
+  }
+
+  .dw-rows :global(li + li .dw-copy::before) {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 24px;
+    height: var(--hair);
+    background: var(--line);
+  }
+
+  .dw-rows :global(.dw-copy__icon) {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 14px;
+    color: var(--text-3);
+  }
+
+  .dw-rows :global(.dw-copy__text) {
+    overflow: hidden;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dw-rows :global(.dw-copy__text.is-mono) {
+    font: 11.5px/1.2 var(--mono);
+  }
+
+  .dw-kbd {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    color: var(--text-3);
+    transition:
+      background-color 120ms linear,
+      color 120ms linear;
+  }
+
+  .dw-kbd:hover {
+    background: var(--track);
+    color: var(--text-1);
+  }
+</style>
+
+<script>
+  import { copy } from '../scripts/copy';
+  import { clockText, defaultMinutes, isPaused, remaining, secondsLeft } from '../lib/timer-run';
+  import { DrumControl, drumStyles } from '../scripts/drum';
+  import { iconSvg } from '../lib/icons';
+  import { copyAgain, onClipboard } from '../scripts/clipboard';
+  import { holdOpen } from '../scripts/notch';
+  import { extension, onShelf } from '../scripts/shelf';
+  import { onTimer, start, stop, togglePause } from '../scripts/timer';
+
+  const root = document.querySelector<HTMLElement>('.dw');
+  const canvas = root?.querySelector<HTMLCanvasElement>('[data-demo-drum]');
+  const minutesLabel = root?.querySelector<HTMLElement>('[data-demo-minutes]');
+  const toggle = root?.querySelector<HTMLButtonElement>('[data-toggle]');
+
+  if (root && canvas && minutesLabel && toggle) {
+    let running = false;
+    const showMinutes = (minutes: number) => {
+      minutesLabel.innerHTML = `<b>${minutes}</b> ${copy.demo.minutes}`;
+    };
+    const drum = new DrumControl(canvas, drumStyles.home, {
+      label: copy.demo.drum,
+      unit: copy.demo.minutes,
+      onChange: (minutes) => {
+        if (!running) showMinutes(minutes);
+      },
+      // A drag released outside the window waits for the pointer to come back, as in the app.
+      onRelease: () => holdOpen(1500),
+    });
+
+    root.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((button) =>
+      button.addEventListener('click', () => drum.setMinutes(drum.minutes + Number(button.dataset.add))),
+    );
+    root.querySelector('[data-start]')?.addEventListener('click', () => start(drum.minutes));
+    toggle.addEventListener('click', togglePause);
+    root.querySelector('[data-stop]')?.addEventListener('click', stop);
+
+    onTimer(({ run, now }) => {
+      const wasRunning = running;
+      running = run !== null;
+      root.classList.toggle('is-running', running);
+      if (run) {
+        const paused = isPaused(run);
+        drum.showRun(remaining(run, now) / 60, Math.ceil(run.total / 60));
+        minutesLabel.innerHTML = `<b>${clockText(secondsLeft(run, now))}</b>`;
+        minutesLabel.classList.toggle('is-paused', paused);
+        toggle.classList.toggle('is-paused', paused);
+        toggle.setAttribute('aria-label', (paused ? toggle.dataset.labelResume : toggle.dataset.labelPause) ?? '');
+      } else if (wasRunning) {
+        // Once a run is over the drum stands at five minutes again.
+        drum.showRun(null);
+        drum.setMinutes(defaultMinutes, false);
+        showMinutes(defaultMinutes);
+        minutesLabel.classList.remove('is-paused');
+      }
+    });
+
+    // The drum stands at five minutes whenever the window opens.
+    document.addEventListener('vx:open', () => {
+      if (!running) {
+        drum.setMinutes(defaultMinutes, false);
+        showMinutes(defaultMinutes);
+      }
+      drum.redraw();
+    });
+
+    const escape = (text: string) =>
+      text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+
+    // The shelf in the dock shows the visitor's files once there are any; until then, a few samples.
+    const tiles = root.querySelector<HTMLElement>('[data-dw-tiles]');
+    const shelfCount = root.querySelector<HTMLElement>('[data-dw-shelf-count]');
+    const samples = tiles?.querySelectorAll('[data-sample]').length ?? 0;
+    onShelf((items) => {
+      if (!tiles || !shelfCount) return;
+      tiles.querySelectorAll('[data-own]').forEach((element) => element.remove());
+      tiles.classList.toggle('has-own', items.length > 0);
+      const own = items
+        .map(
+          (item) =>
+            `<li class="dw-tile" data-own><span class="dw-tile__preview">${
+              item.preview ? `<img src="${item.preview}" alt="" draggable="false">` : `<span class="dw-tile__ext">${escape(extension(item.name) || '—')}</span>`
+            }</span><span class="dw-tile__name">${escape(item.name)}</span></li>`,
+        )
+        .join('');
+      tiles.insertAdjacentHTML('afterbegin', own);
+      shelfCount.textContent = String(items.length || samples);
+    });
+
+    // The clipboard in the dock is the page's history: one-line rows, a click copies again.
+    const rows = root.querySelector<HTMLElement>('[data-dw-rows]');
+    const status = root.querySelector<HTMLElement>('[data-copy-status]');
+    const kindIcon: Record<string, Parameters<typeof iconSvg>[0]> = { text: 'text', code: 'text', link: 'link', image: 'image', file: 'file', secret: 'lock' };
+    onClipboard((items) => {
+      if (!rows) return;
+      rows.innerHTML = items
+        .slice(0, 9)
+        .map((item) => {
+          const text = item.kind === 'link' ? `${item.detail ?? ''}/${item.text}` : item.text;
+          const mono = item.kind === 'text' || item.kind === 'code' || item.kind === 'secret';
+          // A secret shows as dots and is read out as what it is.
+          const shown = item.kind === 'secret' ? `<span aria-hidden="true">••••••••</span><span class="visually-hidden">${escape(copy.demo.hiddenItem)}</span>` : escape(text);
+          const inner = `<span class="dw-copy__icon"><span class="dw-copy__kind">${iconSvg(kindIcon[item.kind] ?? 'text', 14)}</span><span class="dw-copy__check">${iconSvg('check', 14)}</span></span><span class="dw-copy__text${mono ? ' is-mono' : ''}">${shown}</span>`;
+          return item.value
+            ? `<li><button class="dw-copy" type="button" data-copy-id="${item.id}" title="${copy.demo.copy}">${inner}</button></li>`
+            : `<li><span class="dw-copy">${inner}</span></li>`;
+        })
+        .join('');
+    });
+    rows?.addEventListener('click', async (event) => {
+      const row = (event.target as Element).closest<HTMLElement>('[data-copy-id]');
+      if (!row || !(await copyAgain(Number(row.dataset.copyId)))) return;
+      const fresh = rows.querySelector<HTMLElement>(`[data-copy-id="${row.dataset.copyId}"]`);
+      fresh?.classList.add('is-copied');
+      if (status) status.textContent = copy.demo.copied;
+      window.setTimeout(() => {
+        fresh?.classList.remove('is-copied');
+        if (status) status.textContent = '';
+      }, 1400);
+    });
+  }
+</script>

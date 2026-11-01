@@ -1,0 +1,259 @@
+---
+import { copyFor } from '../copy';
+import { appVersion, repoUrl } from '../lib/app';
+import { githubMark } from '../lib/icons';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+
+const h = copy.hero;
+// What it is, then what it runs on: on a phone each gets a line of its own, so no line starts or ends with a "·".
+const [what, ...runsOn] = h.eyebrow.split(' · ');
+---
+
+<section class="hero" id="top" data-hero>
+  <canvas class="hero__swirl" data-swirl aria-hidden="true"></canvas>
+  <div class="hero__content">
+    <p class="hero__eyebrow">
+      <span class="hero__what">{what}</span><span class="hero__dot"> · </span><span class="hero__runs">{runsOn.join(' · ')}</span>
+    </p>
+    <h1 class="hero__title">
+      <span class="hero__wordmark">{h.wordmark}</span><span class="visually-hidden"> — </span>
+      <span class="hero__tagline">{h.tagline}</span>
+    </h1>
+    <p class="hero__lead">{h.lead}</p>
+    <div class="hero__actions">
+      <a class="btn btn--primary hero__download" href="#download" data-page-action>
+        <Icon name="download" size={17} />
+        {h.download}
+      </a>
+      {/* A phone can't run it: the page goes to the visitor's Mac instead, as in the Download section. */}
+      <button class="btn btn--primary hero__share" type="button" data-share data-page-action>
+        <Icon name="share" size={17} />
+        <span data-share-label>{copy.download.phone.share}</span>
+      </button>
+      <a class="btn btn--quiet" href={repoUrl}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d={githubMark}></path></svg>
+        {h.star}
+      </a>
+    </div>
+    <p class="hero__note">{h.note(appVersion)}</p>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: max(100svh, 640px);
+    padding: calc(var(--menubar-h) + 13vh) var(--gutter) 12vh;
+    overflow-x: clip;
+    text-align: center;
+  }
+
+  /* Light falling from the notch once it is on. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(1500px, 160vw);
+    height: 95vh;
+    transform: translateX(-50%);
+    background: radial-gradient(50% 62% at 50% 0, rgb(255 255 255 / 0.055), transparent 72%);
+    opacity: 0;
+    transition: opacity 2200ms var(--ease-out);
+    pointer-events: none;
+  }
+
+  .hero.is-lit::before {
+    opacity: 1;
+  }
+
+  .hero__swirl {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .hero__content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 980px;
+  }
+
+  .hero__eyebrow {
+    margin: 0 0 30px;
+    color: var(--text-3);
+    font: 500 13px/1.4 var(--mono);
+    text-wrap: balance;
+  }
+
+  .hero__runs {
+    white-space: nowrap;
+  }
+
+  .hero__title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+    font-weight: inherit;
+  }
+
+  .hero__wordmark {
+    margin-left: -0.04em;
+    font: 200 clamp(88px, 15vw, 208px) / 0.86 var(--font-display);
+    letter-spacing: -0.045em;
+  }
+
+  .hero__tagline {
+    font: 500 clamp(26px, 3.4vw, 44px) / 1.15 var(--font-display);
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  .hero__lead {
+    max-width: 640px;
+    margin: 26px 0 0;
+    color: var(--text-2);
+    font-size: clamp(18px, 1.5vw, 21px);
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 38px;
+  }
+
+  .hero__share {
+    display: none;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .hero__download {
+      display: none;
+    }
+
+    .hero__share {
+      display: inline-flex;
+    }
+  }
+
+  .hero__note {
+    margin: 20px 0 0;
+    color: var(--text-3);
+    font: 400 13px/1.4 var(--mono);
+  }
+
+  /* Before the light comes on the text is already painted, only nearly black; then it lights up from the top.
+     If the script never runs, `intro-done` lights it after a few seconds. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.js:not(.intro-done)) .hero:not(.is-lit) :is(.hero__eyebrow, .hero__wordmark, .hero__tagline, .hero__lead, .hero__note) {
+      color: var(--text-dim);
+    }
+
+    :global(.js:not(.intro-done)) .hero:not(.is-lit) .btn--primary {
+      background: var(--text-dim);
+      color: var(--bg);
+    }
+
+    :global(.js:not(.intro-done)) .hero:not(.is-lit) .btn--quiet {
+      color: var(--text-dim);
+      box-shadow: inset 0 0 0 1px var(--text-dim);
+    }
+  }
+
+  .hero.is-lit:not(.is-settled) :is(.hero__eyebrow, .hero__wordmark, .hero__tagline, .hero__lead, .hero__note, .btn) {
+    transition:
+      color 1100ms var(--ease-out) var(--light-delay, 0ms),
+      background-color 1100ms var(--ease-out) var(--light-delay, 0ms),
+      box-shadow 1100ms var(--ease-out) var(--light-delay, 0ms);
+  }
+
+  .hero__eyebrow {
+    --light-delay: 0ms;
+  }
+
+  .hero__wordmark {
+    --light-delay: 90ms;
+  }
+
+  .hero__tagline {
+    --light-delay: 220ms;
+  }
+
+  .hero__lead {
+    --light-delay: 340ms;
+  }
+
+  .hero__actions .btn {
+    --light-delay: 460ms;
+  }
+
+  .hero__note {
+    --light-delay: 560ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero::before {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .hero {
+      padding-top: calc(var(--menubar-h) + 10vh);
+    }
+
+    .hero__eyebrow {
+      margin-bottom: 22px;
+      font-size: 12px;
+    }
+
+    .hero__what,
+    .hero__runs {
+      display: block;
+    }
+
+    .hero__dot {
+      display: none;
+    }
+
+    .hero__actions {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+      max-width: 340px;
+    }
+  }
+</style>
+
+<script>
+  import '../scripts/swirl';
+
+  // Long light-up transitions only for the intro; afterwards hover feedback is quick again.
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  const settle = () => window.setTimeout(() => hero?.classList.add('is-settled'), 1800);
+  if (hero?.classList.contains('is-lit')) settle();
+  else if (hero) {
+    new MutationObserver((_, observer) => {
+      if (!hero.classList.contains('is-lit')) return;
+      observer.disconnect();
+      settle();
+    }).observe(hero, { attributes: true, attributeFilter: ['class'] });
+  }
+</script>

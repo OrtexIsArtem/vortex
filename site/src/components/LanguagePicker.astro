@@ -1,0 +1,245 @@
+---
+// The page in another language: each language's page, named in that language. A pick is remembered on this device,
+// so the root page sends the visitor back to it next time (layouts/Base.astro), and it keeps the place on the page.
+import { copyFor } from '../copy';
+import { localeOf, locales, pathFor } from '../copy/locales';
+import Icon from './Icon.astro';
+
+interface Props {
+  /** A menu under a globe, for the menu bar; a list inside the menu bar's own menu, on narrow screens; or a row of
+   * links, for the footer. */
+  variant: 'menu' | 'sheet' | 'row';
+}
+
+const { variant } = Astro.props;
+const copy = copyFor(Astro.url);
+const current = localeOf(Astro.url.pathname);
+const links = locales.map((locale) => ({ ...locale, href: pathFor(locale.code), current: locale.code === current }));
+---
+
+{
+  variant === 'menu' ? (
+    <details class="langs" data-langs>
+      <summary class="langs__button" aria-label={copy.menu.language} title={copy.menu.language}>
+        <Icon name="globe" size={16} />
+      </summary>
+      <ul class="langs__sheet">
+        {links.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              hreflang={link.tag}
+              lang={link.tag}
+              aria-current={link.current ? 'page' : undefined}
+              data-locale-link={link.code}
+            >
+              {link.name}
+              {link.current && <Icon name="check" size={14} />}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  ) : variant === 'sheet' ? (
+    <ul class="langs-sheet" aria-label={copy.footer.languages}>
+      {links.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            hreflang={link.tag}
+            lang={link.tag}
+            aria-current={link.current ? 'page' : undefined}
+            data-locale-link={link.code}
+          >
+            {link.name}
+          </a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <ul class="langs-row" aria-label={copy.footer.languages}>
+      {links.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            hreflang={link.tag}
+            lang={link.tag}
+            aria-current={link.current ? 'page' : undefined}
+            data-locale-link={link.code}
+          >
+            {link.name}
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .langs {
+    position: relative;
+  }
+
+  .langs__button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 26px;
+    border-radius: 6px;
+    list-style: none;
+    cursor: pointer;
+    transition: background-color 120ms linear;
+  }
+
+  .langs__button::-webkit-details-marker {
+    display: none;
+  }
+
+  .langs__button:hover,
+  .langs[open] .langs__button {
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  .langs__sheet {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 200px;
+    margin: 0;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgb(26 26 29 / 0.92);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    box-shadow:
+      0 0 0 var(--hair) rgb(255 255 255 / 0.1),
+      0 18px 40px rgb(0 0 0 / 0.5);
+    list-style: none;
+  }
+
+  .langs__sheet a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 9px;
+    color: var(--text-2);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .langs__sheet a:hover,
+  .langs__sheet a[aria-current] {
+    color: var(--text-1);
+  }
+
+  .langs__sheet a:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  /* Two columns of languages under a hairline, in the menu bar's menu. */
+  .langs-sheet {
+    display: grid;
+    /* Each column as wide as its longest name: the menu widens to fit "Português (Brasil)". */
+    grid-template-columns: repeat(2, max-content);
+    justify-content: space-between;
+    margin: 6px 0 0;
+    padding: 6px 0 0;
+    box-shadow: inset 0 var(--hair) 0 rgb(255 255 255 / 0.1);
+    list-style: none;
+  }
+
+  .langs-sheet a {
+    display: flex;
+    align-items: center;
+    min-height: var(--hit);
+    padding: 0 12px 0 14px;
+    border-radius: 9px;
+    color: var(--text-2);
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  .langs-sheet a:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .langs-sheet a:hover,
+  .langs-sheet a[aria-current] {
+    color: var(--text-1);
+  }
+
+  .langs-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .langs-row a {
+    color: var(--text-3);
+    font-size: 13px;
+    transition: color 200ms linear;
+  }
+
+  .langs-row a:hover,
+  .langs-row a[aria-current] {
+    color: var(--text-1);
+  }
+
+  @media (max-width: 767px) {
+    .langs-row a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+    }
+  }
+
+  @media (max-width: 959px) {
+    .langs__button {
+      width: var(--hit);
+      height: var(--hit);
+      border-radius: 10px;
+    }
+
+    .langs__sheet a {
+      min-height: var(--hit);
+      font-size: 16px;
+    }
+  }
+</style>
+
+<script>
+  // A pick is remembered, and the other page opens at the same section.
+  document.querySelectorAll<HTMLAnchorElement>('[data-locale-link]').forEach((link) => {
+    link.addEventListener('click', () => {
+      try {
+        localStorage.setItem('vortex-locale', link.dataset.localeLink ?? '');
+      } catch {
+        // Storage may be off; the link still works.
+      }
+      if (location.hash) link.href = `${link.href.split('#')[0]}${location.hash}`;
+    });
+  });
+
+  // The menu closes on a click elsewhere, when focus moves on and on Esc, as the menu bar's other menu does.
+  const menu = document.querySelector<HTMLDetailsElement>('[data-langs]');
+  if (menu) {
+    document.addEventListener('pointerdown', (event) => {
+      if (menu.open && !menu.contains(event.target as Node)) menu.removeAttribute('open');
+    });
+    menu.addEventListener('focusout', (event) => {
+      if (menu.open && event.relatedTarget instanceof Node && !menu.contains(event.relatedTarget)) menu.removeAttribute('open');
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !menu.open) return;
+      const inside = menu.contains(document.activeElement);
+      menu.removeAttribute('open');
+      if (inside) menu.querySelector('summary')?.focus();
+    });
+  }
+</script>

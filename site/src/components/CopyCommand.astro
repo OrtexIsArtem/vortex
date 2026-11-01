@@ -1,0 +1,124 @@
+---
+// Commands to paste into Terminal, each after a quiet $ that isn't copied, and a button that copies them all. What it
+// copies also lands in the page's clipboard history, as anything copied on the page does.
+import { copyFor } from '../copy';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+
+interface Props {
+  lines: readonly string[];
+}
+
+const { lines } = Astro.props;
+const c = copy.copyCommand;
+// Several of these can share a page: each Copy button is described by its own commands.
+const codeId = `cmd-${[...lines.join('\n')].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7).toString(36)}`;
+---
+
+<div class="cmd" data-copy={lines.join('\n')}>
+  <pre class="cmd__code"><code id={codeId}>{lines.map((line) => <span class="cmd__line">{line.split('/').map((part, index, all) => (index ? <>/{all[index - 1] && part ? <wbr /> : null}{part}</> : part))}</span>)}</code></pre>
+  <button class="cmd__copy" type="button" data-copy-button aria-label={c.copy} aria-describedby={codeId} title={c.copy}>
+    <span class="cmd__icon"><Icon name="copy" size={15} /></span>
+    <span class="cmd__icon cmd__icon--done"><Icon name="check" size={15} /></span>
+  </button>
+  <span class="visually-hidden" aria-live="polite" data-copy-status></span>
+</div>
+
+<style>
+  .cmd {
+    position: relative;
+    border-radius: 14px;
+    background: var(--window);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+
+  .cmd__code {
+    margin: 0;
+    padding: 14px 56px 14px 16px;
+    font: 13px/1.75 var(--mono);
+  }
+
+  /* A long command wraps under itself, after the $, and an address breaks after a single slash; the button copies it
+     whole. */
+  .cmd__line {
+    display: block;
+    padding-left: 2ch;
+    color: var(--text-1);
+    text-indent: -2ch;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .cmd__line::before {
+    content: '$ ';
+    color: var(--text-3);
+    user-select: none;
+  }
+
+  .cmd__copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: var(--text-2);
+    transition:
+      background-color 160ms linear,
+      color 160ms linear;
+  }
+
+  .cmd__copy:hover {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .cmd__icon {
+    grid-area: 1 / 1;
+    transition:
+      opacity 160ms linear,
+      transform 200ms var(--ease-out);
+  }
+
+  .cmd__icon--done,
+  .cmd.is-copied .cmd__icon:not(.cmd__icon--done) {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  .cmd.is-copied .cmd__icon--done {
+    opacity: 1;
+    transform: none;
+  }
+</style>
+
+<script>
+  import { copy } from '../scripts/copy';
+  import { record } from '../scripts/clipboard';
+
+  document.querySelectorAll<HTMLElement>('[data-copy]').forEach((block) => {
+    const button = block.querySelector<HTMLButtonElement>('[data-copy-button]');
+    const status = block.querySelector<HTMLElement>('[data-copy-status]');
+    if (!button || !status) return;
+    let timer = 0;
+    button.addEventListener('click', async () => {
+      const text = block.dataset.copy ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        return;
+      }
+      record(text, copy.clipboardChapter.thisPage);
+      block.classList.add('is-copied');
+      status.textContent = copy.copyCommand.copied;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        block.classList.remove('is-copied');
+        status.textContent = '';
+      }, 1600);
+    });
+  });
+</script>

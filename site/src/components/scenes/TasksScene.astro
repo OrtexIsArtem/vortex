@@ -1,0 +1,1399 @@
+---
+// A task from the screen, as the app takes one: + (or the shortcut) freezes the screen, a frame picks the part, the
+// cut-out moves to the left with the fields beside it, Return saves. The text in the frame is "recognized" from what
+// was framed, and the list's search finds the task by it.
+import { copyFor } from '../../copy';
+import { appLangOf, localeByCode, localeOf } from '../../copy/locales';
+import Icon from '../Icon.astro';
+
+const copy = copyFor(Astro.url);
+// The capture, its form and the list are the app's, in the app's language; the chat being captured and what the page
+// adds (Frame for me, Pause, Again) are in the page's.
+const code = localeOf(Astro.url.pathname);
+const appLang = appLangOf(code);
+const pageLang = appLang ? localeByCode(code).tag : undefined;
+
+const t = copy.tasksChapter;
+---
+
+<div class="scene tasks" data-tasks-scene tabindex="-1" data-nosnippet>
+  <div class="tasks__screen" data-ts-screen>
+    <div class="chat" data-ts-chat>
+      <div class="chat__bar">
+        <span class="chat__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="chat__title">{t.app} — {t.channel}</span>
+      </div>
+      <div class="chat__body">
+        {
+          t.messages.map((message, index) => (
+            <div class="msg" data-ts-msg={index}>
+              <span class="msg__avatar" aria-hidden="true">{message.who[0]}</span>
+              <div class="msg__content">
+                <p class="msg__who">
+                  {message.who} <time>{index === 0 ? '14:20' : '14:21'}</time>
+                </p>
+                <p class="msg__text" data-ts-text>{message.text}</p>
+                {message.shot && (
+                  <div class="shot" data-ts-shot aria-hidden="true">
+                    <span class="shot__field" />
+                    <span class="shot__field" />
+                    <span class="shot__button">Sign in</span>
+                    <span class="shot__link">Forgot password?</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="freeze" data-ts-freeze>
+      <div class="freeze__frame" data-ts-frame aria-hidden="true"><span class="freeze__size" data-ts-size></span></div>
+      <p class="freeze__hint" lang={appLang}>{t.frameHint}</p>
+      <button class="freeze__auto" type="button" data-ts-auto>{t.frameForMe}</button>
+    </div>
+
+    <div class="form" data-ts-form>
+      <div class="form__cutout" data-ts-cutout aria-hidden="true"></div>
+      <div class="form__fields" role="group" aria-label={t.newTask} lang={appLang}>
+        <label class="form__label" for="ts-title">{t.title_}</label>
+        <div class="form__title-row">
+          <input class="form__title" id="ts-title" data-ts-title autocomplete="off" spellcheck="false" />
+          <button class="form__use" type="button" data-ts-use>{t.use}</button>
+        </div>
+        <p class="form__label" id="ts-priority-label">{t.priority}</p>
+        <div class="form__priority" role="radiogroup" aria-labelledby="ts-priority-label" data-ts-priority>
+          {
+            t.priorities.map((label, index) => (
+              <label class="form__option">
+                <input class="visually-hidden" type="radio" name="ts-priority" value={label} checked={index === 0} />
+                <span>{label}</span>
+              </label>
+            ))
+          }
+        </div>
+        <p class="form__source" lang={pageLang}><Icon name="text" size={13} />{t.source}</p>
+        <div class="form__actions">
+          <button class="form__retake" type="button" data-ts-retake aria-label={t.retake} title={t.retake}>
+            <Icon name="retake" size={14} />
+          </button>
+          <button class="form__cancel" type="button" data-ts-cancel>{t.cancel}</button>
+          <button class="form__save" type="button" data-ts-save>{t.save} <kbd aria-hidden="true">⏎</kbd></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="list">
+    <div class="list__head" lang={appLang}>
+      <span class="list__title">{t.tasks}</span>
+      <input class="list__search" type="search" placeholder={t.search} aria-label={t.search} data-ts-search />
+      <button class="list__add" type="button" data-ts-capture aria-label={t.capture} title={t.capture}>
+        <Icon name="plus" size={15} />
+      </button>
+    </div>
+    <ul class="list__rows" data-ts-rows></ul>
+    <button class="list__again" type="button" data-ts-again>{t.replay}</button>
+  </div>
+  {/* What the visitor's own actions did, for a screen reader; the demo playing by itself stays silent. */}
+  <p class="visually-hidden" role="status" data-ts-status></p>
+</div>
+
+<style>
+  /* Focusable only so that a click inside keeps the focus here, where Esc and Return reach the capture. */
+  .tasks {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px;
+    outline: none;
+  }
+
+  .tasks__screen {
+    position: relative;
+    height: 268px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #16161a;
+  }
+
+  /* A chat drawn in the page's monochrome; no app's own look. */
+  .chat {
+    position: absolute;
+    inset: 14px 14px 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+    background: #222226;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+    transition: filter 300ms var(--ease-out);
+  }
+
+  .tasks.is-framed .chat {
+    filter: blur(5px) brightness(0.6);
+  }
+
+  .chat__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding: 0 10px;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .chat__lights {
+    display: flex;
+    gap: 5px;
+  }
+
+  .chat__lights i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4a4a50;
+  }
+
+  .chat__title {
+    color: var(--text-2);
+    font-size: 11.5px;
+  }
+
+  .chat__body {
+    display: grid;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .msg {
+    display: flex;
+    gap: 10px;
+  }
+
+  .msg__avatar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: #3a3a40;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .msg__content {
+    min-width: 0;
+  }
+
+  .msg__who {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .msg__who time {
+    margin-left: 4px;
+    color: var(--text-2);
+    font-weight: 400;
+  }
+
+  .msg__text {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  /* The bug report's screenshot: a sign-in form whose button runs off the edge. */
+  .shot {
+    position: relative;
+    display: grid;
+    gap: 5px;
+    width: 150px;
+    margin-top: 6px;
+    padding: 10px 0 10px 12px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #2e2e33;
+  }
+
+  .shot__field {
+    width: 120px;
+    height: 12px;
+    border-radius: 3px;
+    background: #45454b;
+  }
+
+  .shot__button {
+    width: 160px;
+    padding: 4px 0;
+    border-radius: 4px;
+    background: #d8d8dd;
+    color: #1d1d1f;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .shot__link {
+    color: var(--text-2);
+    font-size: 9px;
+  }
+
+  /* The frozen screen: dimmed, a crosshair, and the frame being drawn. */
+  .freeze {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: none;
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .tasks.is-frozen .freeze {
+    display: block;
+    background: rgb(0 0 0 / 0.25);
+  }
+
+  .tasks.is-drawing .freeze {
+    background: none;
+  }
+
+  .freeze__frame {
+    position: absolute;
+    display: none;
+    outline: 1.5px solid #ffffff;
+    box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.45);
+  }
+
+  .tasks.is-drawing .freeze__frame {
+    display: block;
+  }
+
+  .freeze__size {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: rgb(0 0 0 / 0.7);
+    color: var(--text-1);
+    font: 500 10.5px/1.2 var(--mono);
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+
+  .freeze__hint {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    margin: 0;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgb(20 20 22 / 0.85);
+    color: var(--text-1);
+    font-size: 11.5px;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .tasks.is-drawing .freeze__hint,
+  .tasks.is-drawing .freeze__auto {
+    display: none;
+  }
+
+  /* Pressed by the visitor, it only fades while it draws the frame, so a keyboard's focus stays on it until the form
+     takes it. */
+  .tasks.is-drawing.is-framing-for-me .freeze__auto {
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .freeze__auto {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgb(20 20 22 / 0.85);
+    color: var(--text-2);
+    font-size: 11.5px;
+  }
+
+  .freeze__auto:hover {
+    color: var(--text-1);
+  }
+
+  /* After framing: the cut-out on the left, the fields beside it. */
+  .form {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: none;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .tasks.is-framed .form {
+    display: flex;
+  }
+
+  .form__cutout {
+    position: relative;
+    flex: none;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.2),
+      0 16px 40px rgb(0 0 0 / 0.5);
+  }
+
+  .form__cutout :global(.chat) {
+    filter: none !important;
+  }
+
+  .form__fields {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgb(20 20 22 / 0.92);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+  }
+
+  .form__label {
+    margin: 2px 0 0;
+    color: var(--text-2);
+    font-size: 11px;
+  }
+
+  .form__title-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* Fields carry an edge that stands out from what is around them, so they read as fields. */
+  .form__title {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 7px;
+    background: var(--raised);
+    box-shadow: inset 0 0 0 var(--hair) var(--text-3);
+    color: var(--text-1);
+    font: 500 13px var(--font);
+    outline: none;
+  }
+
+  .form__title:focus-visible {
+    box-shadow:
+      inset 0 0 0 var(--hair) var(--text-3),
+      0 0 0 2px var(--text-1);
+  }
+
+  .form__use {
+    flex: none;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 7px;
+    background: var(--raised);
+    color: var(--text-2);
+    font-size: 12px;
+  }
+
+  .form__use[hidden] {
+    display: none;
+  }
+
+  .form__priority {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 9px;
+    background: var(--raised);
+  }
+
+  /* Radios, so the group is one Tab stop and the arrow keys move the choice; the segment is the label's. */
+  .form__option {
+    position: relative;
+    display: flex;
+    flex: 1;
+  }
+
+  .form__option span {
+    display: grid;
+    flex: 1;
+    place-items: center;
+    height: 26px;
+    border-radius: 7px;
+    color: var(--text-2);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .form__option input:checked + span {
+    background: var(--track);
+    color: var(--text-1);
+    font-weight: 500;
+  }
+
+  .form__option input:focus-visible + span {
+    outline: 2px solid var(--text-1);
+    outline-offset: 1px;
+  }
+
+  .form__source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 0;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+
+  .form__actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .form__retake,
+  .form__cancel,
+  .form__save {
+    height: 30px;
+    border-radius: 999px;
+    font-size: 12.5px;
+  }
+
+  .form__retake {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    background: var(--raised);
+    color: var(--text-2);
+  }
+
+  .form__cancel {
+    margin-left: auto;
+    padding: 0 12px;
+    background: var(--raised);
+  }
+
+  .form__save {
+    padding: 0 12px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  .form__save kbd {
+    margin-left: 3px;
+    font: inherit;
+    opacity: 0.55;
+  }
+
+  .list {
+    padding: 4px 4px 0;
+  }
+
+  .list__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .list__title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .list__search {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--raised);
+    box-shadow: inset 0 0 0 var(--hair) var(--text-3);
+    color: var(--text-1);
+    font: 12.5px var(--font);
+    outline: none;
+  }
+
+  .list__search::placeholder {
+    color: var(--text-2);
+  }
+
+  .list__search:focus-visible {
+    box-shadow:
+      inset 0 0 0 var(--hair) var(--text-3),
+      0 0 0 2px var(--text-1);
+  }
+
+  .list__add {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  /* Room for two rows: a task coming and going on the loop never moves the page. */
+  .list__rows {
+    min-height: 104px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    transition: opacity 250ms var(--ease-out);
+  }
+
+  .list__rows.is-clearing {
+    opacity: 0;
+  }
+
+  .list__rows :global(.row) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 4px;
+  }
+
+  .list__rows :global(.row + .row) {
+    box-shadow: inset 0 var(--hair) 0 var(--line);
+  }
+
+  .list__rows :global(.row.is-new) {
+    animation: row-in 520ms var(--ease-out);
+  }
+
+  @keyframes row-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  .list__rows :global(.row.is-hidden) {
+    display: none;
+  }
+
+  .list__rows :global(.row__done) {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--text-3);
+  }
+
+  .list__rows :global(.row__thumb) {
+    position: relative;
+    flex: none;
+    width: 56px;
+    height: 36px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--thumb);
+  }
+
+  /* A task saved before the visitor came: a note's lines stand in for its picture. */
+  .list__rows :global(.row__thumb.is-note) {
+    background:
+      linear-gradient(rgb(255 255 255 / 0.3) 0 0) 8px 9px / 24px 3px no-repeat,
+      linear-gradient(rgb(255 255 255 / 0.16) 0 0) 8px 16px / 38px 3px no-repeat,
+      linear-gradient(rgb(255 255 255 / 0.16) 0 0) 8px 23px / 30px 3px no-repeat,
+      var(--thumb);
+  }
+
+  .list__rows :global(.row__thumb-inner) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+  }
+
+  /* Text recognition: a line passes over the picture once it is saved. */
+  .list__rows :global(.row__scan) {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -20%;
+    width: 20%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+    animation: scan 900ms var(--ease-in-out) 1 forwards;
+  }
+
+  @keyframes scan {
+    to {
+      left: 100%;
+    }
+  }
+
+  .list__rows :global(.row__text) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .list__rows :global(.row__title) {
+    margin: 0;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .list__rows :global(.row__meta) {
+    margin: 2px 0 0;
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 11.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .list__rows :global(mark) {
+    border-radius: 3px;
+    background: rgb(255 255 255 / 0.85);
+    color: var(--on-accent);
+  }
+
+  .list__rows :global(.row__priority) {
+    flex: none;
+    color: var(--text-2);
+    font-size: 11.5px;
+  }
+
+  .list__rows :global(.row__time) {
+    flex: none;
+    width: 38px;
+    color: var(--text-3);
+    font-size: 11.5px;
+    text-align: right;
+  }
+
+  /* Pause while the demo goes round by itself, Again once it rests; its room is kept, so showing it moves nothing. */
+  .list__again {
+    visibility: hidden;
+    display: block;
+    margin: 6px auto 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text-3);
+    font: 400 12px/1 var(--mono);
+  }
+
+  .list__again.is-shown {
+    visibility: visible;
+  }
+
+  .list__again:hover {
+    color: var(--text-1);
+  }
+
+  /* A fingertip gets 44 points: the buttons keep their size and take taps from just around them too. */
+  @media (pointer: coarse) {
+    .list__add,
+    .list__again,
+    .form__use,
+    .form__retake,
+    .form__cancel,
+    .form__save {
+      position: relative;
+    }
+
+    .list__add::after,
+    .list__again::after,
+    .freeze__auto::after,
+    .form__use::after,
+    .form__option::after,
+    .form__retake::after,
+    .form__cancel::after,
+    .form__save::after {
+      content: '';
+      position: absolute;
+      inset: -7px;
+    }
+
+    /* Side by side, neighbours only reach towards each other as far as the gap between them. */
+    .form__use::after,
+    .form__cancel::after,
+    .form__save::after {
+      inset: -7px -3px;
+    }
+
+    .freeze__auto::after {
+      inset: -8px -4px;
+    }
+
+    .form__option::after {
+      inset: -9px 0;
+    }
+
+    .list__again::after {
+      inset: -12px -8px;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .tasks {
+      padding: 12px;
+    }
+
+    /* Taller on a phone, where the fields go under the cut-out instead of beside it. */
+    .tasks__screen {
+      height: 340px;
+    }
+
+    .form {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .form__cutout {
+      align-self: center;
+    }
+
+    .list__rows :global(.row__priority) {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chat {
+      transition: none;
+    }
+
+    .list__rows {
+      transition: none;
+    }
+
+    .list__rows :global(.row.is-new) {
+      animation: none;
+    }
+
+    .list__rows :global(.row__scan) {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { appLang, copy } from '../../scripts/copy';
+  import { setIndicator } from '../../scripts/notch';
+
+  const scene = document.querySelector<HTMLElement>('[data-tasks-scene]');
+  const part = <T extends Element>(selector: string) => scene?.querySelector<T>(selector) ?? null;
+  const screen = part<HTMLElement>('[data-ts-screen]');
+  const chat = part<HTMLElement>('[data-ts-chat]');
+  const freeze = part<HTMLElement>('[data-ts-freeze]');
+  const frame = part<HTMLElement>('[data-ts-frame]');
+  const sizeLabel = part<HTMLElement>('[data-ts-size]');
+  const auto = part<HTMLButtonElement>('[data-ts-auto]');
+  const form = part<HTMLElement>('[data-ts-form]');
+  const cutout = part<HTMLElement>('[data-ts-cutout]');
+  const title = part<HTMLInputElement>('[data-ts-title]');
+  const use = part<HTMLButtonElement>('[data-ts-use]');
+  const priority = part<HTMLElement>('[data-ts-priority]');
+  const rows = part<HTMLElement>('[data-ts-rows]');
+  const search = part<HTMLInputElement>('[data-ts-search]');
+  const add = part<HTMLButtonElement>('[data-ts-capture]');
+  const again = part<HTMLButtonElement>('[data-ts-again]');
+  const status = part<HTMLElement>('[data-ts-status]');
+
+  if (
+    scene &&
+    screen &&
+    chat &&
+    freeze &&
+    frame &&
+    sizeLabel &&
+    auto &&
+    form &&
+    cutout &&
+    title &&
+    use &&
+    priority &&
+    rows &&
+    search &&
+    add &&
+    again &&
+    status
+  ) {
+    const t = copy.tasksChapter;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    /** The page's language, for the visitor's own words inside the app's English parts. */
+    const pageLang = document.documentElement.lang;
+    /** `lang` for the app's own words in what the script writes, where the page speaks another language. */
+    const appWords = appLang ? ` lang="${appLang}"` : '';
+    type Phase = 'idle' | 'frozen' | 'drawing' | 'framed';
+    let phase: Phase = 'idle';
+    let nextNumber = 12;
+    let rect = { x: 0, y: 0, w: 0, h: 0 };
+    /** Where the visitor's pointer started a frame, while they draw one. */
+    let origin: { x: number; y: number } | null = null;
+    let recognized = '';
+    /** The visitor has the scene: the loop waits until the scene has left the screen with their focus out of it, and a
+     * capture under way is theirs, so Esc and Return work on it. */
+    let touched = false;
+    /** The visitor paused the demo: it doesn't go round by itself again. */
+    let paused = false;
+    /** Something has played, so Again has something to play again. */
+    let played = false;
+    /** The loop is going round. */
+    let looping = false;
+    /** The moment between the scene coming into view and the loop starting. */
+    let autoTimer = 0;
+    /** What the button under the list offers. */
+    let offer: 'pause' | 'again' | null = null;
+
+    interface Task {
+      title: string;
+      /** The title is the app's own "Task 12", not the visitor's words. */
+      appTitle: boolean;
+      text: string;
+      source: string;
+      priority: string;
+      time: string;
+      thumb: HTMLElement | null;
+      thumbSize: { w: number; h: number };
+    }
+    const tasks: Task[] = [
+      {
+        ...t.sample,
+        appTitle: false,
+        priority: t.priorities[1] ?? '',
+        time: '14:05',
+        thumb: null,
+        thumbSize: { w: 1, h: 1 },
+      },
+    ];
+
+    const escape = (text: string) =>
+      text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+
+    /** Every word of the query, ignoring case, in the title, the recognized text or the source, as the app's search. */
+    const matches = (task: Task, query: string) => {
+      const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const haystack = `${task.title} ${task.text} ${task.source}`.toLowerCase();
+      return words.every((word) => haystack.includes(word));
+    };
+
+    const highlight = (text: string, query: string) => {
+      let html = escape(text);
+      for (const word of query.split(/\s+/).filter(Boolean)) {
+        html = html.replace(new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig'), '<mark>$1</mark>');
+      }
+      return html;
+    };
+
+    const renderRows = (fresh = -1) => {
+      const query = search.value.trim();
+      rows.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const row = document.createElement('li');
+        row.className = `row${index === fresh ? ' is-new' : ''}${query && !matches(task, query) ? ' is-hidden' : ''}`;
+        const meta = query && matches(task, query) && !task.title.toLowerCase().includes(query.toLowerCase()) ? task.text : task.source;
+        row.innerHTML = `<span class="row__done" aria-hidden="true"></span><span class="row__thumb${task.thumb ? '' : ' is-note'}" aria-hidden="true"></span><div class="row__text"><p class="row__title"${task.appTitle ? appWords : ''}>${highlight(task.title, query)}</p><p class="row__meta">${highlight(meta, query)}</p></div><span class="row__priority"${appWords}>${escape(task.priority)}</span><span class="row__time"${appWords}>${escape(task.time)}</span>`;
+        const thumb = row.querySelector<HTMLElement>('.row__thumb');
+        if (thumb && task.thumb) {
+          const inner = task.thumb.cloneNode(true) as HTMLElement;
+          inner.classList.add('row__thumb-inner');
+          const scale = Math.min(56 / task.thumbSize.w, 36 / task.thumbSize.h, 1);
+          inner.style.transform = `scale(${scale})`;
+          thumb.append(inner);
+          if (index === fresh && !reduceMotion) thumb.insertAdjacentHTML('beforeend', '<span class="row__scan"></span>');
+        }
+        rows.append(row);
+      });
+    };
+
+    let statusTimer = 0;
+    /** Tells a screen reader, once and politely, what the visitor's own action did; the loop is never announced. */
+    const say = (text: string, lang?: string) => {
+      window.clearTimeout(statusTimer);
+      status.textContent = '';
+      // Empty for a moment first, so the same words said twice are heard twice.
+      statusTimer = window.setTimeout(() => {
+        if (lang) status.lang = lang;
+        else status.removeAttribute('lang');
+        status.textContent = text;
+      }, 100);
+    };
+
+    /** Which typing into the search is current, and what it types: putting the list back, a pause or the visitor's
+     * own typing stops it. */
+    let typing = 0;
+    let typingQuery = '';
+
+    const stopTyping = () => {
+      typing++;
+      typingQuery = '';
+    };
+
+    /** Ends a typing under way at once, with the whole query in the search: the frame a pass ends on. */
+    const finishTyping = () => {
+      if (!typingQuery) return;
+      const query = typingQuery;
+      stopTyping();
+      search.value = query;
+      renderRows();
+    };
+
+    /** The button under the list: Pause while the demo goes round by itself, Again once it rests. */
+    const offerSlot = (next: typeof offer) => {
+      offer = next;
+      again.textContent = next === 'pause' ? copy.chapter.pause : t.replay;
+      again.classList.toggle('is-shown', next !== null);
+    };
+
+    /** Brings the button under the list in line with the scene; nothing while a pass is under way. It never changes
+     * under the visitor's focus: only pressing it does. */
+    const sync = () => {
+      if (document.activeElement === again) return;
+      if ((looping || autoTimer) && !touched && !paused && !reduceMotion) offerSlot('pause');
+      else offerSlot(played && phase === 'idle' && !typingQuery ? 'again' : null);
+    };
+
+    /** `handOff`: the caller puts the focus where it belongs next. */
+    const setPhase = (next: Phase, handOff = false) => {
+      phase = next;
+      scene.classList.toggle('is-frozen', next === 'frozen' || next === 'drawing');
+      scene.classList.toggle('is-drawing', next === 'drawing');
+      scene.classList.toggle('is-framed', next === 'framed');
+      if (next !== 'drawing') scene.classList.remove('is-framing-for-me');
+      // The notch says what is going on, as the app's does.
+      if (next === 'frozen' || next === 'drawing') {
+        setIndicator('tasks', { left: [{ kind: 'text', text: t.freeze }], right: [{ kind: 'text', text: t.esc }], priority: 30 });
+      } else if (next === 'framed') {
+        setIndicator('tasks', { left: [{ kind: 'text', text: t.newTask }], right: [{ kind: 'text', text: t.esc }], priority: 30 });
+      } else {
+        setIndicator('tasks', null);
+      }
+      // A part that goes away never takes the focus with it: it lands on +, where a capture starts again.
+      const focused = document.activeElement;
+      if (!handOff && focused instanceof HTMLElement && screen.contains(focused) && !focused.getClientRects().length) {
+        add.focus({ preventScroll: true });
+      }
+      sync();
+    };
+
+    /** Freezes the screen. The visitor's own capture moves the focus to Frame for me and says the screen froze. */
+    const capture = (byVisitor: boolean) => {
+      window.clearTimeout(autoTimer);
+      autoTimer = 0;
+      played = true;
+      finishTyping();
+      setPhase('frozen', byVisitor);
+      if (byVisitor) {
+        auto.focus();
+        say([t.freeze, ...t.frameHint.split(' · ')].join('. '), appLang);
+      }
+    };
+
+    /** Which frame drawing is current: Esc, leaving the scene or the visitor's own drawing stops the one under way. */
+    let drawing = 0;
+
+    /** Ends a capture unsaved. The visitor's own Cancel or Esc puts the focus back on +. What the status said about the
+     * frozen screen goes with it, quietly. */
+    const cancel = (byVisitor = false) => {
+      drawing++;
+      origin = null;
+      window.clearTimeout(statusTimer);
+      status.textContent = '';
+      if (byVisitor) add.focus();
+      setPhase('idle', byVisitor);
+    };
+
+    /** The title is the app's words until the visitor puts theirs in; then it is read in the page's language. */
+    const ownTitle = (own: boolean) => {
+      if (!appLang) return;
+      if (own) title.lang = pageLang;
+      else title.removeAttribute('lang');
+    };
+
+    const drawFrame = () => {
+      frame.style.left = `${rect.x}px`;
+      frame.style.top = `${rect.y}px`;
+      frame.style.width = `${rect.w}px`;
+      frame.style.height = `${rect.h}px`;
+      sizeLabel.textContent = `${Math.round(rect.w)} × ${Math.round(rect.h)}`;
+    };
+
+    /** What text recognition finds in the frame: the lines of the messages and the screenshot it covers. */
+    const recognize = () => {
+      const box = screen.getBoundingClientRect();
+      const inFrame = (element: Element) => {
+        const r = element.getBoundingClientRect();
+        const x = r.left - box.left;
+        const y = r.top - box.top;
+        return x < rect.x + rect.w && x + r.width > rect.x && y < rect.y + rect.h && y + r.height > rect.y;
+      };
+      const lines: string[] = [];
+      scene.querySelectorAll('[data-ts-text]').forEach((line) => {
+        if (inFrame(line)) lines.push(line.textContent?.trim() ?? '');
+      });
+      const shot = scene.querySelector('[data-ts-shot]');
+      if (shot && inFrame(shot)) lines.push('Sign in', 'Forgot password?');
+      return lines.join(' · ');
+    };
+
+    const showForm = (byVisitor: boolean) => {
+      recognized = recognize();
+      // The framed part, as a copy of the screen clipped to the frame.
+      const clone = chat.cloneNode(true) as HTMLElement;
+      clone.removeAttribute('data-ts-chat');
+      // A clone is a picture: recognition reads the screen, never the copies.
+      clone.querySelectorAll('[data-ts-text], [data-ts-shot], [data-ts-msg]').forEach((element) => {
+        element.removeAttribute('data-ts-text');
+        element.removeAttribute('data-ts-shot');
+        element.removeAttribute('data-ts-msg');
+      });
+      clone.style.left = `${14 - rect.x}px`;
+      clone.style.top = `${14 - rect.y}px`;
+      clone.style.right = 'auto';
+      clone.style.width = `${chat.offsetWidth}px`;
+      clone.style.height = `${chat.offsetHeight}px`;
+      cutout.replaceChildren(clone);
+      // For a screen reader the cut-out is a picture, and its text is what recognition read in it.
+      if (recognized) {
+        cutout.setAttribute('role', 'img');
+        cutout.setAttribute('aria-label', recognized);
+        cutout.removeAttribute('aria-hidden');
+      } else {
+        cutout.removeAttribute('role');
+        cutout.removeAttribute('aria-label');
+        cutout.setAttribute('aria-hidden', 'true');
+      }
+      const narrow = matchMedia('(max-width: 599px)').matches;
+      const maxW = narrow ? screen.clientWidth - 40 : screen.clientWidth * 0.42;
+      const maxH = narrow ? 90 : screen.clientHeight - 40;
+      const scale = Math.min(1, maxW / rect.w, maxH / rect.h);
+      cutout.style.width = `${rect.w}px`;
+      cutout.style.height = `${rect.h}px`;
+      cutout.style.transform = `scale(${scale})`;
+      cutout.style.transformOrigin = narrow ? '50% 0' : '0 50%';
+      cutout.style.marginRight = narrow ? '0' : `${rect.w * (scale - 1)}px`;
+      cutout.style.marginBottom = narrow ? `${rect.h * (scale - 1)}px` : '0';
+      title.value = t.task(nextNumber);
+      ownTitle(false);
+      use.hidden = !recognized;
+      priority.querySelectorAll('input').forEach((input, index) => (input.checked = index === 0));
+      setPhase('framed', byVisitor);
+      if (!reduceMotion) {
+        const from = frame.getBoundingClientRect();
+        const to = cutout.getBoundingClientRect();
+        cutout.animate(
+          [{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(1)` }, { transform: `scale(${scale})` }],
+          { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+        );
+      }
+      // The visitor's own capture puts the cursor in the title; one that plays by itself leaves their focus alone.
+      if (byVisitor) {
+        title.focus({ preventScroll: true });
+        title.select();
+      }
+    };
+
+    const typeSearch = (query: string) => {
+      const current = ++typing;
+      typingQuery = query;
+      const done = () => {
+        typingQuery = '';
+        sync();
+      };
+      if (reduceMotion) {
+        search.value = query;
+        renderRows();
+        done();
+        return;
+      }
+      let index = 0;
+      const step = () => {
+        if (current !== typing) return;
+        index++;
+        search.value = query.slice(0, index);
+        renderRows();
+        if (index < query.length) window.setTimeout(step, 120);
+        else done();
+      };
+      window.setTimeout(step, 1100);
+    };
+
+    /** Saves the framed task. The visitor's own Save or Return puts the focus back on + and says the task is saved. */
+    const save = (byVisitor: boolean) => {
+      if (phase !== 'framed') return;
+      const chosen = priority.querySelector<HTMLInputElement>('input:checked')?.value ?? t.priorities[0] ?? '';
+      const thumb = cutout.firstElementChild?.cloneNode(true) as HTMLElement | null;
+      const box = document.createElement('div');
+      box.style.cssText = `position:relative;width:${rect.w}px;height:${rect.h}px;overflow:hidden`;
+      if (thumb) box.append(thumb);
+      const named = title.value.trim();
+      tasks.unshift({
+        title: named || t.task(nextNumber),
+        appTitle: !named || named === t.task(nextNumber),
+        text: recognized,
+        source: t.source,
+        priority: chosen,
+        time: t.now,
+        thumb: box,
+        thumbSize: { w: rect.w, h: rect.h },
+      });
+      nextNumber++;
+      if (byVisitor) add.focus();
+      setPhase('idle', byVisitor);
+      search.value = '';
+      renderRows(0);
+      if (byVisitor) say(t.saved);
+      // Then search finds it by a word only the picture had.
+      if (recognized.toLowerCase().includes('ipad')) typeSearch('ipad');
+    };
+
+    /** Draws the frame around the first message by itself, for the keyboard, touch, and visitors who only watch. */
+    const frameForMe = (byVisitor: boolean) => {
+      const target = scene.querySelector<HTMLElement>('[data-ts-msg="0"]');
+      if (!target) return;
+      const box = screen.getBoundingClientRect();
+      const r = target.getBoundingClientRect();
+      const goal = { x: r.left - box.left - 6, y: r.top - box.top - 6, w: r.width + 12, h: r.height + 12 };
+      scene.classList.toggle('is-framing-for-me', byVisitor);
+      setPhase('drawing', byVisitor);
+      const current = ++drawing;
+      const going = () => current === drawing && phase === 'drawing';
+      if (reduceMotion) {
+        rect = goal;
+        drawFrame();
+        showForm(byVisitor);
+        return;
+      }
+      const start = performance.now();
+      const animate = (now: number) => {
+        if (!going()) return;
+        const p = Math.min(1, (now - start) / 650);
+        const e = 1 - Math.pow(1 - p, 3);
+        rect = { x: goal.x, y: goal.y, w: Math.max(1, goal.w * e), h: Math.max(1, goal.h * e) };
+        drawFrame();
+        if (p < 1) requestAnimationFrame(animate);
+        else
+          window.setTimeout(() => {
+            if (going()) showForm(byVisitor);
+          }, 250);
+      };
+      requestAnimationFrame(animate);
+    };
+
+    // Drawing the frame with the pointer.
+    freeze.addEventListener('pointerdown', (event) => {
+      if ((event.target as Element).closest('button')) return;
+      touched = true;
+      drawing++;
+      const box = screen.getBoundingClientRect();
+      origin = { x: event.clientX - box.left, y: event.clientY - box.top };
+      rect = { ...origin, w: 0, h: 0 };
+      freeze.setPointerCapture(event.pointerId);
+      setPhase('drawing', true);
+      drawFrame();
+    });
+    freeze.addEventListener('pointermove', (event) => {
+      if (!origin) return;
+      const box = screen.getBoundingClientRect();
+      const x = Math.min(Math.max(event.clientX - box.left, 0), box.width);
+      const y = Math.min(Math.max(event.clientY - box.top, 0), box.height);
+      rect = { x: Math.min(origin.x, x), y: Math.min(origin.y, y), w: Math.abs(x - origin.x), h: Math.abs(y - origin.y) };
+      drawFrame();
+    });
+    freeze.addEventListener('pointerup', () => {
+      if (!origin) return;
+      origin = null;
+      // A frame under 8 px is taken for a click and ignored.
+      if (rect.w < 8 || rect.h < 8) setPhase('frozen', true);
+      else showForm(true);
+    });
+
+    add.addEventListener('click', () => {
+      touched = true;
+      capture(true);
+    });
+    auto.addEventListener('click', () => {
+      touched = true;
+      frameForMe(true);
+    });
+    part('[data-ts-cancel]')?.addEventListener('click', () => cancel(true));
+    part('[data-ts-retake]')?.addEventListener('click', () => capture(true));
+    part('[data-ts-save]')?.addEventListener('click', () => save(true));
+    use.addEventListener('click', () => {
+      title.value = recognized.split(' · ')[0] ?? title.value;
+      ownTitle(true);
+      use.hidden = true;
+      // The button goes; the cursor goes to the title it filled.
+      title.focus();
+    });
+    title.addEventListener('input', () => ownTitle(true));
+
+    // The visitor's own search: a screen reader hears how many tasks it found once they stop typing.
+    let searchTimer = 0;
+    search.addEventListener('input', () => {
+      stopTyping();
+      renderRows();
+      sync();
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(() => {
+        const query = search.value.trim();
+        if (query) say(t.found(tasks.filter((task) => matches(task, query)).length));
+      }, 600);
+    });
+
+    // Visitors who only watch get it on a loop: a moment after the scene comes into view it plays, the found task
+    // holds, the list goes back as it was and it plays again. Any touch hands the scene to the visitor until it leaves
+    // the screen, and Pause stops it for good. With Reduce Motion it plays once.
+    let autoRun = 0;
+    const firstTasks = [...tasks];
+    const firstNumber = nextNumber;
+    const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+    /** Puts the list back as the visitor first saw it, unless the loop stopped on the way; says whether there was
+     * anything to put back. */
+    const resetList = async (run: number) => {
+      if (tasks.length === firstTasks.length && !search.value) return false;
+      stopTyping();
+      rows.classList.add('is-clearing');
+      await wait(reduceMotion ? 0 : 260);
+      if (run === autoRun && !touched && !paused) {
+        tasks.splice(0, tasks.length, ...firstTasks);
+        nextNumber = firstNumber;
+        search.value = '';
+        renderRows();
+      }
+      rows.classList.remove('is-clearing');
+      return true;
+    };
+
+    const autoplay = async () => {
+      const run = ++autoRun;
+      const still = (expected: Phase) => run === autoRun && !touched && !paused && phase === expected;
+      looping = true;
+      played = true;
+      sync();
+      try {
+        do {
+          if (await resetList(run)) await wait(700);
+          if (!still('idle')) return;
+          capture(false);
+          await wait(500);
+          if (!still('frozen')) return;
+          frameForMe(false);
+          await wait(2500);
+          if (!still('framed')) return;
+          save(false);
+          await wait(5200);
+        } while (!reduceMotion && still('idle'));
+      } finally {
+        if (run === autoRun) looping = false;
+        sync();
+      }
+    };
+
+    /** Pause: no more rounds, a capture under way ends unsaved, a search being typed finishes at once, and the scene
+     * rests; the button then offers Again. */
+    const pause = () => {
+      paused = true;
+      autoRun++;
+      looping = false;
+      window.clearTimeout(autoTimer);
+      autoTimer = 0;
+      if (phase !== 'idle') cancel();
+      finishTyping();
+      offerSlot('again');
+    };
+
+    again.addEventListener('click', () => {
+      if (offer === 'pause') {
+        pause();
+        return;
+      }
+      // Again: the visitor plays one pass, from a cleared search.
+      touched = true;
+      search.value = '';
+      renderRows();
+      capture(true);
+    });
+    again.addEventListener('blur', sync);
+
+    // Esc and Return work on a capture the visitor has, and only from inside the scene: the rest of the page keeps its
+    // keys.
+    scene.addEventListener('keydown', (event) => {
+      if (!touched || phase === 'idle') return;
+      const target = event.target;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel(true);
+      } else if (
+        event.key === 'Enter' &&
+        phase === 'framed' &&
+        !event.isComposing &&
+        (target === scene || (target instanceof Node && form.contains(target))) &&
+        !(target instanceof HTMLButtonElement)
+      ) {
+        event.preventDefault();
+        save(true);
+      }
+    });
+
+    // Any touch hands the scene to the visitor, a capture under way with it. The button under the list is the
+    // exception: Pause and Again are about the loop itself, and only their click changes anything.
+    const takeOver = (event: Event) => {
+      if (event.target instanceof Node && again.contains(event.target)) return;
+      touched = true;
+      window.clearTimeout(autoTimer);
+      autoTimer = 0;
+      sync();
+    };
+    scene.addEventListener('pointerdown', takeOver);
+    scene.addEventListener('keydown', takeOver);
+    scene.addEventListener('focusin', takeOver);
+
+    new IntersectionObserver(
+      ([entry]) => {
+        window.clearTimeout(autoTimer);
+        autoTimer = 0;
+        // Off screen it rests: a capture ends, as another app coming to the front ends it in the app, and the visitor's
+        // turn ends unless their focus is still in the scene.
+        if (!entry?.isIntersecting) {
+          autoRun++;
+          looping = false;
+          if (phase !== 'idle') cancel();
+          if (!scene.contains(document.activeElement)) touched = false;
+          sync();
+          return;
+        }
+        if (entry.intersectionRatio >= 0.6 && !looping && !touched && !paused && phase === 'idle') {
+          autoTimer = window.setTimeout(() => {
+            autoTimer = 0;
+            if (!looping && !touched && !paused && phase === 'idle') void autoplay();
+            else sync();
+          }, 1000);
+        }
+        sync();
+      },
+      { threshold: [0, 0.6] },
+    ).observe(scene);
+
+    renderRows();
+  }
+</script>

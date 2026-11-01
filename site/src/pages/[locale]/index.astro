@@ -1,0 +1,11 @@
+---
+// Every other language's page, under its code: /uk/, /de/ and the rest.
+import Landing from '../../components/Landing.astro';
+import { defaultLocale, locales } from '../../copy/locales';
+
+export function getStaticPaths() {
+  return locales.filter((locale) => locale.code !== defaultLocale).map((locale) => ({ params: { locale: locale.code } }));
+}
+---
+
+<Landing />
