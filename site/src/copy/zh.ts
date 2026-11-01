@@ -317,4 +317,14 @@ export const zh: Copy = {
     tracking: '本网站同样不追踪你：没有 Cookie，也没有统计分析。',
     languages: '语言',
   },
+  guides: {
+    title: '指南',
+    read: '阅读指南：',
+    inEnglish: '（英文）',
+    breadcrumb: '面包屑导航',
+    contents: '本页内容',
+    updated: (date: string) => `更新于 ${date}`,
+    questions: '常见问题',
+    demo: '在浏览器中试一试',
+  },
 };

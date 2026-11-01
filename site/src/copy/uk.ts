@@ -425,4 +425,14 @@ export const uk: Copy = {
     tracking: 'Цей сайт теж не стежить за вами. Ні файлів cookie, ні аналітики.',
     languages: 'Мови',
   },
+  guides: {
+    title: 'Посібники',
+    read: 'Читати посібник:',
+    inEnglish: '(англійською)',
+    breadcrumb: 'Навігаційний ланцюжок',
+    contents: 'На цій сторінці',
+    updated: (date: string) => `Оновлено ${date}`,
+    questions: 'Питання',
+    demo: 'Спробуйте в браузері',
+  },
 };

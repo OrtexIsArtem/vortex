@@ -1,0 +1,18 @@
+---
+// A guide's translations, under their language's code: /de/claude-code-secrets/ and the rest
+// (src/content/pages/<language>), for the languages a guide has been translated into.
+import Guide from '../../components/Guide.astro';
+import { pageRoutes, type Page } from '../../lib/content';
+
+export async function getStaticPaths() {
+  return (await pageRoutes(false)).map(({ lang, slug, entry }) => ({ params: { locale: lang, slug }, props: { entry } }));
+}
+
+interface Props {
+  entry: Page;
+}
+
+const { entry } = Astro.props;
+---
+
+<Guide entry={entry} />

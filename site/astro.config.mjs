@@ -23,4 +23,8 @@ export default defineConfig({
     // The CSS is small: inlined, it never blocks the first paint.
     inlineStylesheets: 'always',
   },
+  markdown: {
+    // The guides' code stays monochrome, as everything on the site is (components/Prose.astro).
+    syntaxHighlight: false,
+  },
 });

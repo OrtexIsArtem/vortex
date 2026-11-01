@@ -323,4 +323,14 @@ export const ja: Copy = {
     tracking: 'このサイトも、あなたを追跡しません。Cookieも解析も使っていません。',
     languages: '言語',
   },
+  guides: {
+    title: 'ガイド',
+    read: 'ガイドを読む：',
+    inEnglish: '（英語）',
+    breadcrumb: 'パンくずリスト',
+    contents: 'このページの内容',
+    updated: (date: string) => `${date}更新`,
+    questions: 'よくある質問',
+    demo: 'ブラウザで試す',
+  },
 };

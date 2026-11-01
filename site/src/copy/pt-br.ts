@@ -318,4 +318,14 @@ export const ptBr: Copy = {
     tracking: 'Este site também não rastreia você. Sem cookies, sem analytics.',
     languages: 'Idiomas',
   },
+  guides: {
+    title: 'Guias',
+    read: 'Leia o guia:',
+    inEnglish: '(em inglês)',
+    breadcrumb: 'Trilha de navegação',
+    contents: 'Nesta página',
+    updated: (date: string) => `Atualizado em ${date}`,
+    questions: 'Perguntas',
+    demo: 'Experimente no navegador',
+  },
 };

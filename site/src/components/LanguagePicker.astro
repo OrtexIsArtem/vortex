@@ -1,24 +1,32 @@
 ---
 // The page in another language: each language's page, named in that language. A pick is remembered on this device,
 // so the root page sends the visitor back to it next time (layouts/Base.astro), and it keeps the place on the page.
+// A guide offers only the languages it exists in, and nothing when it exists in one.
 import { copyFor } from '../copy';
-import { localeOf, locales, pathFor } from '../copy/locales';
+import { localeByCode, localeOf, locales, pathFor } from '../copy/locales';
+import type { Alternate } from '../lib/pages';
 import Icon from './Icon.astro';
 
 interface Props {
   /** A menu under a globe, for the menu bar; a list inside the menu bar's own menu, on narrow screens; or a row of
    * links, for the footer. */
   variant: 'menu' | 'sheet' | 'row';
+  /** The page's versions, by path; every language's landing when left out. */
+  alternates?: readonly Alternate[] | undefined;
 }
 
-const { variant } = Astro.props;
+const { variant, alternates } = Astro.props;
 const copy = copyFor(Astro.url);
 const current = localeOf(Astro.url.pathname);
-const links = locales.map((locale) => ({ ...locale, href: pathFor(locale.code), current: locale.code === current }));
+const links = (alternates ?? locales.map((locale) => ({ code: locale.code, href: pathFor(locale.code) }))).map((version) => ({
+  ...localeByCode(version.code),
+  href: version.href,
+  current: version.code === current,
+}));
 ---
 
 {
-  variant === 'menu' ? (
+  links.length < 2 ? null : variant === 'menu' ? (
     <details class="langs" data-langs>
       <summary class="langs__button" aria-label={copy.menu.language} title={copy.menu.language}>
         <Icon name="globe" size={16} />

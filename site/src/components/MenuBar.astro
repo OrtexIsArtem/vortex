@@ -1,27 +1,40 @@
 ---
 import { copyFor } from '../copy';
+import { isLandingPath, localeOf, pathFor } from '../copy/locales';
 import { repoUrl } from '../lib/app';
 import { githubMark } from '../lib/icons';
+import type { Alternate } from '../lib/pages';
 import Glyph from './Glyph.astro';
 import Icon from './Icon.astro';
 import LanguagePicker from './LanguagePicker.astro';
 
+interface Props {
+  /** A guide's versions, for the language menu (components/LanguagePicker.astro). */
+  alternates?: readonly Alternate[] | undefined;
+}
+
+const { alternates } = Astro.props;
 const copy = copyFor(Astro.url);
+// The menus are the landing's sections: on a guide they lead to the landing in the guide's language. Download stays on
+// the page, as a guide ends with the download section too (components/Guide.astro).
+const landing = isLandingPath(Astro.url.pathname);
+const home = pathFor(localeOf(Astro.url.pathname));
+const section = (hash: string) => (landing ? hash : `${home}${hash}`);
 ---
 
 <header class="menubar" data-menubar>
   <div class="menubar__side">
-    <a class="menubar__brand" href="#top" aria-label={copy.menu.home}>
+    <a class="menubar__brand" href={landing ? '#top' : home} aria-label={copy.menu.home}>
       <Glyph size={15} />
       <span>Vortex</span>
     </a>
     <nav class="menubar__nav" aria-label={copy.menu.navLabel}>
-      {copy.menu.nav.map((item) => <a class="menubar__item" href={item.href}>{item.label}</a>)}
+      {copy.menu.nav.map((item) => <a class="menubar__item" href={section(item.href)}>{item.label}</a>)}
     </nav>
   </div>
 
   <div class="menubar__side menubar__side--end">
-    <LanguagePicker variant="menu" />
+    <LanguagePicker variant="menu" alternates={alternates} />
     <a class="menubar__item menubar__github" href={repoUrl}>
       <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d={githubMark}></path></svg>
       <span>{copy.menu.github}</span>
@@ -33,9 +46,9 @@ const copy = copyFor(Astro.url);
         <Icon name="menu" size={18} />
       </summary>
       <nav class="menubar__sheet" aria-label={copy.menu.navLabel}>
-        {copy.menu.nav.map((item) => <a href={item.href}>{item.label}</a>)}
+        {copy.menu.nav.map((item) => <a href={section(item.href)}>{item.label}</a>)}
         <a href={repoUrl}>{copy.menu.github}</a>
-        <LanguagePicker variant="sheet" />
+        <LanguagePicker variant="sheet" alternates={alternates} />
         <a class="menubar__sheet-download" href="#download">{copy.menu.download}</a>
       </nav>
     </details>

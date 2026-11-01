@@ -1,0 +1,299 @@
+---
+// A guide (src/content/pages/<language>/<slug>.md), in its language: the menu bar and footer of the landing, the page's
+// text in a reading column with its sections beside it on wide screens, its questions, and the download section with
+// the way to its feature's demo on the landing. No notch here: the live demo is the landing's.
+import { render } from 'astro:content';
+import { copyOf } from '../copy';
+import { defaultLocale, localeByCode, locales, pathFor, urlFor } from '../copy/locales';
+import { pageGroups, type Page } from '../lib/content';
+import { absolute, alternatesOf, pageKey, pagePath } from '../lib/pages';
+import { articleGraph } from '../lib/structured';
+import Base from '../layouts/Base.astro';
+import Download from './Download.astro';
+import Footer from './Footer.astro';
+import GuideFaq from './GuideFaq.astro';
+import MenuBar from './MenuBar.astro';
+import Prose from './Prose.astro';
+
+interface Props {
+  entry: Page;
+}
+
+const { entry } = Astro.props;
+const { lang, slug } = pageKey(entry.id);
+const data = entry.data;
+const copy = copyOf(lang);
+const locale = localeByCode(lang);
+
+const versions = (await pageGroups()).get(slug);
+if (!versions) throw new Error(`[pages] ${entry.id} is missing from its collection`);
+// Every language the page exists in: absolute for search engines, paths for the language menu.
+const head = alternatesOf(versions.keys(), (code) => absolute(pagePath(code, slug), Astro.site));
+const paths = alternatesOf(versions.keys(), (code) => pagePath(code, slug)).links;
+
+const { Content, headings } = await render(entry);
+if (headings.some((heading) => heading.depth === 1)) {
+  throw new Error(`[pages] ${entry.id}: the page's H1 is its \`heading\`; start the text at ## (H2)`);
+}
+const sections = [
+  ...headings.filter((heading) => heading.depth === 2).map((heading) => ({ id: heading.slug, text: heading.text })),
+  ...(data.faq.length > 0 ? [{ id: 'faq', text: copy.guides.questions }] : []),
+];
+
+const landing = pathFor(lang);
+const page = absolute(pagePath(lang, slug), Astro.site);
+const image = absolute(`${pathFor(defaultLocale)}og.png`, Astro.site);
+const graph = articleGraph({
+  home: urlFor(defaultLocale, Astro.site),
+  landing: urlFor(lang, Astro.site),
+  page,
+  title: data.title,
+  heading: data.heading,
+  description: data.description,
+  label: data.label,
+  tag: locale.tag,
+  tags: locales.map((l) => l.tag),
+  image,
+  published: data.published,
+  modified: data.updated,
+  faq: data.faq,
+});
+
+// Dates are days, written as the page's language writes them (the build may run in any time zone).
+const updated = new Intl.DateTimeFormat(locale.tag, { dateStyle: 'long', timeZone: 'UTC' }).format(data.updated);
+const demo = data.chapter ? { href: `${landing}#${data.chapter}`, label: copy.guides.demo } : undefined;
+---
+
+<Base
+  title={data.title}
+  description={data.description}
+  guide={{
+    canonical: page,
+    alternates: head.links,
+    xDefault: head.xDefault,
+    published: data.published,
+    modified: data.updated,
+    graph,
+  }}
+>
+  <MenuBar alternates={paths} />
+  <main id="main" tabindex="-1">
+    <div class="container guide">
+      <article class="guide__article">
+        <header class="guide__head">
+          <nav class="guide__crumbs" aria-label={copy.guides.breadcrumb}>
+            <ol>
+              <li><a href={landing}>Vortex</a></li>
+              <li aria-current="page">{data.label}</li>
+            </ol>
+          </nav>
+          <h1 class="guide__title">{data.heading}</h1>
+          <p class="guide__meta">
+            <a href="https://github.com/OrtexIsArtem">Artem Pronenko</a>
+            <span aria-hidden="true">·</span>
+            <time datetime={data.updated.toISOString().slice(0, 10)}>{copy.guides.updated(updated)}</time>
+          </p>
+          {
+            sections.length > 2 && (
+              <details class="guide__toc guide__toc--inline">
+                <summary>{copy.guides.contents}</summary>
+                <ol>
+                  {sections.map((section) => (
+                    <li>
+                      <a href={`#${section.id}`}>{section.text}</a>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )
+          }
+        </header>
+        <Prose>
+          <Content />
+        </Prose>
+        {data.faq.length > 0 && <GuideFaq items={data.faq} />}
+      </article>
+      {
+        sections.length > 2 && (
+          <nav class="guide__toc guide__toc--side" aria-labelledby="guide-toc">
+            <p class="guide__toc-title" id="guide-toc">
+              {copy.guides.contents}
+            </p>
+            <ol>
+              {sections.map((section) => (
+                <li>
+                  <a href={`#${section.id}`}>{section.text}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )
+      }
+    </div>
+    <Download demo={demo} />
+  </main>
+  <Footer alternates={paths} />
+</Base>
+
+<style>
+  /* The reading column, about 68 characters wide, and the page's sections beside it on a wide screen. */
+  .guide {
+    display: grid;
+    grid-template-columns: minmax(0, 700px);
+    justify-content: center;
+    gap: 0 72px;
+    padding-top: calc(var(--menubar-h) + clamp(48px, 9vh, 96px));
+  }
+
+  @media (min-width: 1100px) {
+    .guide {
+      grid-template-columns: minmax(0, 700px) 220px;
+    }
+  }
+
+  .guide__article {
+    min-width: 0;
+  }
+
+  .guide__crumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 0;
+    margin: 0 0 22px;
+    padding: 0;
+    color: var(--text-2);
+    font: 500 13px/1.5 var(--mono);
+    list-style: none;
+  }
+
+  .guide__crumbs li + li::before {
+    content: '›';
+    content: '›' / '';
+    margin: 0 10px;
+    color: var(--text-3);
+  }
+
+  .guide__crumbs a:hover {
+    color: var(--text-1);
+  }
+
+  .guide__title {
+    margin: 0;
+    font: 600 clamp(34px, 4vw, 52px) / 1.06 var(--font-display);
+    letter-spacing: -0.032em;
+    text-wrap: balance;
+  }
+
+  .guide__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 22px 0 0;
+    color: var(--text-3);
+    font: 400 13px/1.5 var(--mono);
+  }
+
+  .guide__meta a {
+    color: var(--text-2);
+  }
+
+  .guide__meta a:hover {
+    color: var(--text-1);
+  }
+
+  .guide__head {
+    margin-bottom: 44px;
+  }
+
+  .guide__toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .guide__toc a {
+    display: block;
+    padding: 5px 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.4;
+    transition: color 200ms linear;
+  }
+
+  .guide__toc a:hover {
+    color: var(--text-1);
+  }
+
+  /* Wide screens: the sections stay in view beside the text. */
+  .guide__toc--side {
+    display: none;
+    position: sticky;
+    top: calc(var(--menubar-h) + 40px);
+    align-self: start;
+    max-height: calc(100vh - var(--menubar-h) - 80px);
+    overflow-y: auto;
+    padding-left: 18px;
+    box-shadow: inset var(--hair) 0 0 var(--line);
+  }
+
+  .guide__toc-title {
+    margin: 0 0 8px;
+    color: var(--text-3);
+    font: 500 12.5px/1.5 var(--mono);
+  }
+
+  /* Narrower screens: the sections fold under the date. */
+  .guide__toc--inline {
+    margin: 28px 0 0;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+
+  .guide__toc--inline summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 14px;
+    color: var(--text-2);
+    font-size: 14px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .guide__toc--inline summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .guide__toc--inline summary::after {
+    content: '+';
+    content: '+' / '';
+    color: var(--text-3);
+    font: 400 16px/1 var(--mono);
+  }
+
+  .guide__toc--inline[open] summary::after {
+    content: '−';
+    content: '−' / '';
+  }
+
+  .guide__toc--inline ol {
+    padding: 0 14px 10px;
+  }
+
+  @media (min-width: 1100px) {
+    .guide__toc--side {
+      display: block;
+    }
+
+    .guide__toc--inline {
+      display: none;
+    }
+  }
+
+  /* The download section closes the page at the reading column's rhythm. */
+  .guide + :global(.dl) {
+    padding-top: clamp(72px, 12vh, 140px);
+  }
+</style>

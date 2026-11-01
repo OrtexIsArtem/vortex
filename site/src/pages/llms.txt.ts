@@ -1,12 +1,14 @@
 // What the product is, for AI search and assistants (llmstxt.org): written from the English page's own words, so it
-// never drifts from the site, each part linking to its place on the page.
+// never drifts from the site, each part linking to its place on the page; then the English guides, by their own words.
 import type { APIRoute } from 'astro';
 import { en } from '../copy/en';
 import { defaultLocale, locales, pathFor } from '../copy/locales';
 import { appVersion, buildUrl, contributingUrl, downloadUrl, licenseUrl, releasesUrl, repoUrl } from '../lib/app';
+import { guidesFor } from '../lib/content';
 import { inlineText } from '../lib/inline';
 
-export const GET: APIRoute = ({ site }) => {
+export const GET: APIRoute = async ({ site }) => {
+  const guides = await guidesFor(defaultLocale);
   const url = (path: string) => (site ? new URL(path, site).href : path);
   // A part of the English page.
   const at = (id: string) => url(`${pathFor(defaultLocale)}#${id}`);
@@ -48,6 +50,7 @@ export const GET: APIRoute = ({ site }) => {
     '',
     ...en.faq.items(contributingUrl).map((item) => `- [${item.q}](${at('faq')}): ${inlineText(item.a)}`),
     '',
+    ...(guides.length > 0 ? ['## Guides', '', ...guides.map((guide) => `- [${guide.heading}](${url(guide.href)}): ${guide.description}`), ''] : []),
     '## Links',
     '',
     `- [Website](${url(pathFor(defaultLocale))}): English`,

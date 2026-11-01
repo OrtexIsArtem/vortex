@@ -1,0 +1,312 @@
+---
+// A guide's Markdown (src/content/pages), set for reading: a column of about 68 characters, headings, lists, tables,
+// callouts (a blockquote) and code. Code stays monochrome, as everything on the site does (astro.config `markdown`).
+// A code block fenced with a language gets a Copy button; one fenced as `text`, or with none, is only shown: an
+// example to read, such as a command with a placeholder in it.
+import { copyFor } from '../copy';
+import Icon from './Icon.astro';
+
+const copy = copyFor(Astro.url);
+const c = copy.copyCommand;
+---
+
+<div class="prose">
+  <slot />
+</div>
+<template data-code-copy><button class="code__copy" type="button" aria-label={c.copy} title={c.copy}><span class="code__icon"><Icon name="copy" size={15} /></span><span class="code__icon code__icon--done"><Icon name="check" size={15} /></span></button></template>
+<span class="visually-hidden" aria-live="polite" data-code-status data-copied={c.copied}></span>
+
+<style>
+  .prose {
+    color: rgb(245 245 247 / 0.86);
+    font-size: 17.5px;
+    line-height: 1.7;
+    letter-spacing: -0.003em;
+    overflow-wrap: break-word;
+  }
+
+  /* The first paragraph leads: a step larger and brighter, as a chapter's body does on the landing. */
+  .prose > :global(p:first-child) {
+    margin-bottom: 1.4em;
+    color: var(--text-1);
+    font-size: clamp(18.5px, 1.6vw, 20px);
+    line-height: 1.55;
+    letter-spacing: -0.01em;
+    text-wrap: pretty;
+  }
+
+  .prose :global(h2) {
+    margin: 2.6em 0 0.7em;
+    color: var(--text-1);
+    font: 600 clamp(24px, 2.3vw, 30px) / 1.2 var(--font-display);
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  .prose :global(h3) {
+    margin: 2em 0 0.55em;
+    color: var(--text-1);
+    font: 600 19px/1.35 var(--font-display);
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+  }
+
+  .prose :global(:is(h2, h3) code) {
+    font-size: 0.86em;
+  }
+
+  .prose :global(p) {
+    margin: 0 0 1.15em;
+    text-wrap: pretty;
+  }
+
+  .prose :global(strong) {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+
+  .prose :global(a) {
+    color: var(--text-1);
+    text-decoration: underline;
+    text-decoration-color: var(--track);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 200ms linear;
+  }
+
+  .prose :global(a:hover) {
+    text-decoration-color: var(--text-1);
+  }
+
+  .prose :global(:not(pre) > code) {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--raised);
+    color: var(--text-1);
+    font: 0.86em var(--mono);
+    overflow-wrap: anywhere;
+  }
+
+  .prose :global(ul) {
+    margin: 0 0 1.2em;
+    padding: 0 0 0 1.25em;
+  }
+
+  .prose :global(li + li),
+  .prose :global(li > ul) {
+    margin-top: 0.45em;
+  }
+
+  .prose :global(ul > li::marker) {
+    color: var(--text-3);
+  }
+
+  .prose :global(li > p) {
+    margin: 0 0 0.5em;
+  }
+
+  /* Numbered lists are steps: each number in a ring, as the download section's are. */
+  .prose :global(ol) {
+    margin: 0 0 1.3em;
+    padding: 0;
+    counter-reset: step;
+    list-style: none;
+  }
+
+  .prose :global(ol > li) {
+    position: relative;
+    padding-left: 42px;
+    counter-increment: step;
+  }
+
+  .prose :global(ol > li + li) {
+    margin-top: 0.9em;
+  }
+
+  .prose :global(ol > li::before) {
+    content: counter(step);
+    position: absolute;
+    top: 1px;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--track);
+    color: var(--text-1);
+    font: 12.5px/1 var(--mono);
+  }
+
+  /* A blockquote is a callout: a quiet card. Start it with a bold lead-in in the page's own words. */
+  .prose :global(blockquote) {
+    margin: 1.6em 0;
+    padding: 16px 20px;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .prose :global(blockquote > :last-child) {
+    margin-bottom: 0;
+  }
+
+  /* Tables fit the column: keep them to a few short columns. */
+  .prose :global(table) {
+    width: 100%;
+    margin: 1.6em 0 1.8em;
+    border-collapse: collapse;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .prose :global(th) {
+    padding: 0 14px 10px 0;
+    color: var(--text-3);
+    font: 500 12.5px/1.4 var(--mono);
+    text-align: left;
+    vertical-align: bottom;
+  }
+
+  .prose :global(td) {
+    padding: 12px 14px 12px 0;
+    box-shadow: inset 0 var(--hair) 0 var(--line);
+    vertical-align: top;
+  }
+
+  .prose :global(:is(th, td):last-child) {
+    padding-right: 0;
+  }
+
+  .prose :global(tr:last-child td) {
+    box-shadow:
+      inset 0 var(--hair) 0 var(--line),
+      inset 0 calc(var(--hair) * -1) 0 var(--line);
+  }
+
+  .prose :global(hr) {
+    height: 1px;
+    margin: 3em 0;
+    border: 0;
+    background: var(--line);
+  }
+
+  /* Code: the window's material, as the landing's commands. Long lines wrap rather than scroll. */
+  .prose :global(pre) {
+    margin: 1.4em 0 1.6em;
+    padding: 15px 18px;
+    border-radius: 14px;
+    background: var(--window);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+    color: var(--text-1);
+    font: 13.5px/1.7 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 2;
+  }
+
+  .prose :global(pre code) {
+    font: inherit;
+  }
+
+  /* A block with a Copy button keeps room for it on its first lines. */
+  .prose :global(.code) {
+    position: relative;
+  }
+
+  .prose :global(.code pre) {
+    padding-right: 56px;
+  }
+
+  .code__copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: var(--text-2);
+    transition:
+      background-color 160ms linear,
+      color 160ms linear;
+  }
+
+  .code__copy:hover {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .code__icon {
+    grid-area: 1 / 1;
+    transition:
+      opacity 160ms linear,
+      transform 200ms var(--ease-out);
+  }
+
+  .code__icon--done,
+  :global(.code.is-copied) .code__icon:not(.code__icon--done) {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  :global(.code.is-copied) .code__icon--done {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (max-width: 599px) {
+    .prose {
+      font-size: 17px;
+    }
+
+    .prose :global(pre) {
+      font-size: 12.5px;
+    }
+
+    .prose :global(table) {
+      font-size: 14px;
+    }
+  }
+</style>
+
+<script>
+  // Each code block fenced with a language gets its Copy button, which copies the code as it reads.
+  const template = document.querySelector<HTMLTemplateElement>('template[data-code-copy]');
+  const status = document.querySelector<HTMLElement>('[data-code-status]');
+  const button = template?.content.firstElementChild;
+
+  document.querySelectorAll<HTMLElement>('.prose pre > code[class*="language-"]').forEach((code, index) => {
+    const pre = code.parentElement;
+    if (!pre || !status || !(button instanceof HTMLButtonElement) || code.classList.contains('language-text')) return;
+    // A frame around the block holds the button; the block's margins pass through it, so nothing moves.
+    const frame = document.createElement('div');
+    frame.className = 'code';
+    pre.replaceWith(frame);
+    frame.append(pre);
+    const copyButton = button.cloneNode(true) as HTMLButtonElement;
+    code.id ||= `code-${index + 1}`;
+    copyButton.setAttribute('aria-describedby', code.id);
+    frame.append(copyButton);
+
+    let timer = 0;
+    copyButton.addEventListener('click', async () => {
+      try {
+        // Markdown keeps the fence's last line break: a pasted command waits for Return.
+        await navigator.clipboard.writeText((code.textContent ?? '').replace(/\n$/, ''));
+      } catch {
+        return;
+      }
+      frame.classList.add('is-copied');
+      status.textContent = status.dataset.copied ?? '';
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        frame.classList.remove('is-copied');
+        status.textContent = '';
+      }, 1600);
+    });
+  });
+</script>

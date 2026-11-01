@@ -317,4 +317,14 @@ export const es: Copy = {
     tracking: 'Este sitio tampoco te rastrea. Sin cookies ni analíticas.',
     languages: 'Idiomas',
   },
+  guides: {
+    title: 'Guías',
+    read: 'Lee la guía:',
+    inEnglish: '(en inglés)',
+    breadcrumb: 'Ruta de navegación',
+    contents: 'En esta página',
+    updated: (date: string) => `Actualizado el ${date}`,
+    questions: 'Preguntas',
+    demo: 'Pruébalo en tu navegador',
+  },
 };

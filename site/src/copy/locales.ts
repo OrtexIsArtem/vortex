@@ -43,6 +43,11 @@ export function localeOf(pathname: string): LocaleCode {
   return isLocaleCode(first) ? first : defaultLocale;
 }
 
+/** Whether `pathname` is a language's landing page, rather than one of the guides (lib/pages.ts). */
+export function isLandingPath(pathname: string): boolean {
+  return pathname.replace(/\/?$/, '/') === pathFor(localeOf(pathname));
+}
+
 export function localeByCode(code: LocaleCode): Locale {
   return locales.find((locale) => locale.code === code) ?? locales[0];
 }

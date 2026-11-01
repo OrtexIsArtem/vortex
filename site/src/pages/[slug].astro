@@ -1,0 +1,17 @@
+---
+// Every guide in English, at the site's root: /claude-code-secrets/ and the rest (src/content/pages/en).
+import Guide from '../components/Guide.astro';
+import { pageRoutes, type Page } from '../lib/content';
+
+export async function getStaticPaths() {
+  return (await pageRoutes(true)).map(({ slug, entry }) => ({ params: { slug }, props: { entry } }));
+}
+
+interface Props {
+  entry: Page;
+}
+
+const { entry } = Astro.props;
+---
+
+<Guide entry={entry} />

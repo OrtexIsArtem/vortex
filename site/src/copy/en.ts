@@ -421,4 +421,20 @@ export const en = {
     tracking: "This site doesn't track you either. No cookies, no analytics.",
     languages: 'Languages',
   },
+  guides: {
+    /** The footer's list of the site's guides (src/content/pages). */
+    title: 'Guides',
+    /** At the end of a landing chapter, before the title of the guide it links to, with its colon. */
+    read: 'Read the guide:',
+    /** After a guide's title where the guide exists only in English so far. */
+    inEnglish: '(in English)',
+    /** A guide's way back to the landing, for screen readers. */
+    breadcrumb: 'Breadcrumb',
+    /** Above a guide's list of sections. */
+    contents: 'On this page',
+    updated: (date: string) => `Updated ${date}`,
+    questions: 'Questions',
+    /** Beside a guide's download button: its feature's demo, on the landing. */
+    demo: 'Try it in your browser',
+  },
 } as const;

@@ -1,11 +1,23 @@
 ---
-// The page's end: the spiral and the line, the project's links, and what the site doesn't do.
+// The page's end: the spiral and the line, the project's links, the site's guides, and what the site doesn't do.
 import { copyFor } from '../copy';
+import { headingGap, localeByCode, localeOf } from '../copy/locales';
 import { contributingUrl, licenseUrl, releasesUrl, repoUrl } from '../lib/app';
+import { guidesFor } from '../lib/content';
+import type { Alternate } from '../lib/pages';
 import Glyph from './Glyph.astro';
 import LanguagePicker from './LanguagePicker.astro';
 
+interface Props {
+  /** A guide's versions, for the row of languages (components/LanguagePicker.astro). */
+  alternates?: readonly Alternate[] | undefined;
+}
+
+const { alternates } = Astro.props;
 const copy = copyFor(Astro.url);
+// Each guide in this page's language when it has one, else in English, which it then says.
+const guides = await guidesFor(localeOf(Astro.url.pathname));
+const gap = headingGap(Astro.url.pathname);
 
 const t = copy.footer;
 ---
@@ -22,9 +34,37 @@ const t = copy.footer;
       <a href={contributingUrl}>{t.contributing}</a>
       <a href={licenseUrl}>{t.license}</a>
     </nav>
-    <div class="footer__langs">
-      <LanguagePicker variant="row" />
-    </div>
+    {
+      guides.length > 0 && (
+        <nav class="footer__guides" aria-labelledby="footer-guides">
+          <p class="footer__label" id="footer-guides">
+            {copy.guides.title}
+          </p>
+          <ul>
+            {guides.map((guide) => (
+              <li>
+                <a href={guide.href} hreflang={guide.lang && localeByCode(guide.lang).tag}>
+                  <span lang={guide.lang && localeByCode(guide.lang).tag}>{guide.label}</span>
+                  {guide.lang && (
+                    <span class="footer__hint">
+                      {gap}
+                      {copy.guides.inEnglish}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
+    {
+      (alternates === undefined || alternates.length > 1) && (
+        <div class="footer__langs">
+          <LanguagePicker variant="row" alternates={alternates} />
+        </div>
+      )
+    }
     <div class="footer__fine">
       <p>{t.copyright}</p>
       <p>{t.tracking}</p>
@@ -75,6 +115,44 @@ const t = copy.footer;
     color: var(--text-1);
   }
 
+  /* The guides, one line under the project's links: a quiet label, then each guide by its short name. */
+  .footer__guides {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 22px;
+    grid-column: 1 / -1;
+  }
+
+  .footer__label {
+    margin: 0;
+    color: var(--text-3);
+    font: 500 12.5px/1.5 var(--mono);
+  }
+
+  .footer__guides ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer__guides a {
+    color: var(--text-2);
+    font-size: 14px;
+    transition: color 200ms linear;
+  }
+
+  .footer__guides a:hover {
+    color: var(--text-1);
+  }
+
+  .footer__hint {
+    color: var(--text-3);
+  }
+
   .footer__langs {
     grid-column: 1 / -1;
   }
@@ -101,7 +179,8 @@ const t = copy.footer;
     }
 
     /* Links a finger can hit. */
-    .footer__nav a {
+    .footer__nav a,
+    .footer__guides a {
       display: inline-flex;
       align-items: center;
       min-height: 36px;

@@ -2,7 +2,8 @@
 // A feature's chapter: its tab's icon and name, a two-tone heading, a paragraph and three facts beside a scene the
 // visitor can try.
 import { copyFor } from '../copy';
-import { appLangOf, headingGap, localeOf } from '../copy/locales';
+import { appLangOf, headingGap, localeByCode, localeOf } from '../copy/locales';
+import type { GuideLink } from '../lib/content';
 import type { IconName } from '../lib/icons';
 import Icon from './Icon.astro';
 
@@ -26,9 +27,11 @@ interface Props {
   note?: string;
   /** Keeps the scene in view while the copy beside it is read: for a chapter whose copy runs much longer. */
   stickyScene?: boolean;
+  /** The guides about this feature (src/content/pages), linked quietly at the chapter's end. */
+  guides?: readonly GuideLink[] | undefined;
 }
 
-const { id, icon, label, title, titleQuiet, body, facts, tryIt, tryItTouch, note, stickyScene = false } = Astro.props;
+const { id, icon, label, title, titleQuiet, body, facts, tryIt, tryItTouch, note, stickyScene = false, guides = [] } = Astro.props;
 ---
 
 <section class="chapter" id={id} aria-labelledby={`${id}-title`} data-chapter={id}>
@@ -42,6 +45,30 @@ const { id, icon, label, title, titleQuiet, body, facts, tryIt, tryItTouch, note
       </ul>
       {note && <p class="chapter__note">{note}</p>}
       <slot name="aside" />
+      {
+        guides.map((guide) => (
+          <p class="chapter__guide">
+            <a href={guide.href} hreflang={guide.lang && localeByCode(guide.lang).tag}>
+              <Icon name="book" size={15} />
+              <span>
+                {copy.guides.read}
+                {gap}
+                <span class="chapter__guide-title" lang={guide.lang && localeByCode(guide.lang).tag}>
+                  {guide.heading}
+                </span>
+                {guide.lang && (
+                  <span class="chapter__guide-hint">
+                    {gap}
+                    {copy.guides.inEnglish}
+                  </span>
+                )}
+                {/* The arrow is drawn, not read, and keeps to the last word's line. */}
+                <span aria-hidden="true">{'\u00a0→'}</span>
+              </span>
+            </a>
+          </p>
+        ))
+      }
     </div>
     <div class:list={['chapter__scene', { 'chapter__scene--sticky': stickyScene }]} data-reveal="later">
       <slot />
@@ -151,6 +178,44 @@ const { id, icon, label, title, titleQuiet, body, facts, tryIt, tryItTouch, note
     font-size: 13.5px;
     line-height: 1.5;
   }
+
+  /* A guide about the feature: a quiet link at the end of the chapter's copy, the guide's title underlined. */
+  .chapter__guide {
+    max-width: 520px;
+    margin: 24px 0 0;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+
+  .chapter__guide a {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 9px;
+    color: var(--text-2);
+    transition: color 200ms linear;
+  }
+
+  .chapter__guide a :global(svg) {
+    flex: none;
+    margin-top: 3px;
+  }
+
+  .chapter__guide-title {
+    color: var(--text-1);
+    text-decoration: underline;
+    text-decoration-color: var(--track);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 200ms linear;
+  }
+
+  .chapter__guide a:hover .chapter__guide-title {
+    text-decoration-color: var(--text-1);
+  }
+
+  .chapter__guide-hint {
+    color: var(--text-3);
+  }
+
 
   .chapter__try {
     display: flex;

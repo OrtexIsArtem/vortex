@@ -318,4 +318,14 @@ export const fr: Copy = {
     tracking: 'Ce site ne vous piste pas non plus. Ni cookies, ni mesure d’audience.',
     languages: 'Langues',
   },
+  guides: {
+    title: 'Guides',
+    read: 'Lire le guide\u00a0:',
+    inEnglish: '(en anglais)',
+    breadcrumb: 'Fil d’Ariane',
+    contents: 'Sur cette page',
+    updated: (date: string) => `Mis à jour le ${date}`,
+    questions: 'Questions',
+    demo: 'Essayez dans votre navigateur',
+  },
 };

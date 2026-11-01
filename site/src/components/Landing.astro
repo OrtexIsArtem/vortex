@@ -22,9 +22,13 @@ import ShelfScene from './scenes/ShelfScene.astro';
 import TimerScene from './scenes/TimerScene.astro';
 import Toast from './Toast.astro';
 import { copyFor } from '../copy';
+import { localeOf } from '../copy/locales';
+import { chapterGuides } from '../lib/content';
 import Base from '../layouts/Base.astro';
 
 const copy = copyFor(Astro.url);
+// Each chapter ends with the guides about its feature (src/content/pages), in this page's language or else in English.
+const guides = await chapterGuides(localeOf(Astro.url.pathname));
 ---
 
 <Base title={copy.meta.title} description={copy.meta.description}>
@@ -34,24 +38,24 @@ const copy = copyFor(Astro.url);
   <main id="main" tabindex="-1">
     <Hero />
     <OpenSection />
-    <Chapter id="timer" icon="timer" {...copy.timerChapter}>
+    <Chapter id="timer" icon="timer" {...copy.timerChapter} guides={guides.get('timer')}>
       <TimerScene />
     </Chapter>
-    <Chapter id="clipboard" icon="clipboard" {...copy.clipboardChapter}>
+    <Chapter id="clipboard" icon="clipboard" {...copy.clipboardChapter} guides={guides.get('clipboard')}>
       <ClipboardScene />
     </Chapter>
-    <Chapter id="shelf" icon="tray" {...copy.shelfChapter}>
+    <Chapter id="shelf" icon="tray" {...copy.shelfChapter} guides={guides.get('shelf')}>
       <ShelfScene />
     </Chapter>
-    <Chapter id="tasks" icon="checklist" {...copy.tasksChapter}>
+    <Chapter id="tasks" icon="checklist" {...copy.tasksChapter} guides={guides.get('tasks')}>
       <TasksScene />
     </Chapter>
-    <Chapter id="keys" icon="key" stickyScene {...copy.keysChapter}>
+    <Chapter id="keys" icon="key" stickyScene {...copy.keysChapter} guides={guides.get('keys')}>
       <KeysScene />
       <KeyKinds slot="aside" />
       <KeyLimits slot="aside" />
     </Chapter>
-    <Chapter id="keyboard" icon="keyboard" {...copy.keyboardChapter}>
+    <Chapter id="keyboard" icon="keyboard" {...copy.keyboardChapter} guides={guides.get('keyboard')}>
       <KeyboardScene />
     </Chapter>
     <SmallThings />

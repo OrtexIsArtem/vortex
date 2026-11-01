@@ -8,6 +8,12 @@ import { githubMark } from '../lib/icons';
 import CopyCommand from './CopyCommand.astro';
 import Icon from './Icon.astro';
 
+interface Props {
+  /** On a guide: its feature's demo on the landing, offered beside the download. */
+  demo?: { href: string; label: string } | undefined;
+}
+
+const { demo } = Astro.props;
 const copy = copyFor(Astro.url);
 const gap = headingGap(Astro.url.pathname);
 
@@ -19,10 +25,24 @@ const d = copy.download;
     <div class="dl__head" data-reveal>
       <h2 class="h2" id="dl-title">{d.title}{gap}<span>{d.titleQuiet}</span></h2>
       <div class="dl__mac">
-        <a class="btn btn--primary dl__button" href={downloadUrl} data-page-action>
-          <Icon name="download" size={18} />
-          {d.button(appVersion)}
-        </a>
+        {
+          demo ? (
+            <div class="dl__actions">
+              <a class="btn btn--primary dl__button" href={downloadUrl} data-page-action>
+                <Icon name="download" size={18} />
+                {d.button(appVersion)}
+              </a>
+              <a class="btn btn--quiet dl__button" href={demo.href}>
+                {demo.label}
+              </a>
+            </div>
+          ) : (
+            <a class="btn btn--primary dl__button" href={downloadUrl} data-page-action>
+              <Icon name="download" size={18} />
+              {d.button(appVersion)}
+            </a>
+          )
+        }
         <p class="dl__meta">{d.meta(appVersion)}</p>
       </div>
       <div class="dl__phone">
@@ -32,10 +52,18 @@ const d = copy.download;
             <Icon name="share" size={17} />
             <span data-share-label>{d.phone.share}</span>
           </button>
-          <a class="btn btn--quiet" href={repoUrl}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d={githubMark}></path></svg>
-            {copy.hero.star}
-          </a>
+          {
+            demo ? (
+              <a class="btn btn--quiet" href={demo.href}>
+                {demo.label}
+              </a>
+            ) : (
+              <a class="btn btn--quiet" href={repoUrl}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d={githubMark}></path></svg>
+                {copy.hero.star}
+              </a>
+            )
+          }
         </div>
       </div>
     </div>
@@ -91,6 +119,13 @@ const d = copy.download;
     height: 56px;
     padding: 0 30px;
     font-size: 16px;
+  }
+
+  .dl__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
   }
 
   .dl__meta {
