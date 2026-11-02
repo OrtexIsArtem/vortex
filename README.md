@@ -2,6 +2,8 @@
 
 A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac without one. Hover over the notch and it opens with the tools you reach for a dozen times a day.
 
+![A build lands in a watched folder and the notch flashes; hovering over the notch opens Vortex with the timer, the clipboard and the shelf](.github/media/hero.gif)
+
 **Website:** [vortex-notch.web.app](https://vortex-notch.web.app), where you can try every feature in your browser. **Download:** [the latest release](https://github.com/OrtexIsArtem/vortex/releases/latest).
 
 - **Timer**: set the minutes on a drum and watch the countdown in the notch. When time is up, it plays a sound, flashes and shows a notification.
@@ -10,6 +12,21 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 - **Tasks**: press «+» in the Tasks tab, or a shortcut you set, to freeze the screen. Frame an area and press Return. You get a task with the screenshot, its recognized text and the page address from your browser.
 - **Keys for Claude**: keep database URLs, API tokens and passwords in the macOS keychain. Claude Code runs commands with `{{key}}` placeholders through a local MCP server and never sees a value. Vortex asks you once per key per session.
 - **Keyboard cleaning**: lock every key while you wipe the keyboard.
+
+<table>
+  <tr>
+    <td width="50%"><b>Timer</b><br><img src=".github/media/timer.gif" alt="Start on Home, then the countdown runs in the closed notch"></td>
+    <td width="50%"><b>Clipboard</b><br><img src=".github/media/clipboard.gif" alt="Each copy appears as a card in the Clipboard tab"></td>
+  </tr>
+  <tr>
+    <td><b>Shelf</b><br><img src=".github/media/shelf.gif" alt="Two builds land in a watched folder, the notch flashes for each, and the Shelf tab holds both"></td>
+    <td><b>Tasks</b><br><img src=".github/media/tasks.gif" alt="An illustration from the website: a frame on a chat becomes a task, found later by the text in its picture"></td>
+  </tr>
+  <tr>
+    <td><b>Keys for Claude</b><br><img src=".github/media/keys.gif" alt="Claude Code asks for the github key; the notch shows it and the Keys tab asks Allow"></td>
+    <td><b>Keyboard cleaning</b><br><img src=".github/media/keyboard.gif" alt="Home's keyboard button locks every key until Turn the keyboard back on"></td>
+  </tr>
+</table>
 
 Vortex speaks English and Ukrainian, and follows light and dark mode.
 
