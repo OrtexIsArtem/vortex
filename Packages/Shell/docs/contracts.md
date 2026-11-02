@@ -29,4 +29,5 @@
 - The menu bar menu's items have identifiers (continueSetup, open, settings, quit), which `entry kind=menu item=` names; a hidden item can't be chosen.
 - The onboarding registers the windows `onboarding` and `onboarding-panel`, the state section `onboarding` (page, mode, rows, Skip/Next, completed, saved progress, frames) and the command `onboarding press=…|open|reset`.
 - In a QA run the window opens off the displays without animation and never takes the keyboard or the front; there are no ears, no menu bar icon and no click monitor, and the displays are `QA.screens`.
+- A visible QA run (`--qa-visible`) opens the window and draws the ears and flashes where plain Vortex does, with the animations, but the pointer passes through them and nothing takes the keyboard.
 - A QA run listens to no `…debug.*` notification.

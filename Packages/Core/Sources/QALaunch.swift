@@ -20,11 +20,20 @@
       public var releaseBehavior = false
       /// `--qa-screens notch|plain|notch+plain`: the displays, the main one first; nil: those of this Mac.
       public var screens: [Screen]?
+      /// `--qa-visible`: the ears, the notch window and its flashes show on this Mac's displays as plain Vortex shows
+      /// them, to record a demo. The run still takes no keyboard, pointer or front. Not with `--qa-screens`.
+      public var visible = false
 
-      public init(reduceMotion: Bool = false, releaseBehavior: Bool = false, screens: [Screen]? = nil) {
+      public init(
+        reduceMotion: Bool = false,
+        releaseBehavior: Bool = false,
+        screens: [Screen]? = nil,
+        visible: Bool = false
+      ) {
         self.reduceMotion = reduceMotion
         self.releaseBehavior = releaseBehavior
         self.screens = screens
+        self.visible = visible
       }
     }
 
@@ -79,13 +88,23 @@
           }
           options.screens = screens
           index += 2
+        case "--qa-visible":
+          options.visible = true
+          index += 1
         default:
-          self = .invalid("unknown QA option \(word): there are --qa <name>, --qa-reduce-motion, --qa-release and --qa-screens")
+          self = .invalid(
+            "unknown QA option \(word): there are --qa <name>, --qa-reduce-motion, --qa-release, --qa-screens and --qa-visible"
+          )
           return
         }
       }
       guard let name else {
         self = given.isEmpty ? .none : .invalid("QA options need --qa <name>")
+        return
+      }
+      // A visible run shows on the displays this Mac has, so it can't pretend to have others.
+      if options.visible, options.screens != nil {
+        self = .invalid("--qa-visible shows the run on this Mac's displays, so it takes no --qa-screens")
         return
       }
       self = .named(name, options)

@@ -16,7 +16,8 @@
   /// Watches that a QA run leaves no trace on screen, as a violation each time: any window of the app that shows on a
   /// display is ordered out and moved off the displays, a window that takes the keyboard is ordered out, and Vortex
   /// coming to the front gives the front back. Windows are placed off the displays and can't take the keyboard in the
-  /// first place (`QA.offscreen`, `QA.allowsKeyWindows`); this is the second line.
+  /// first place (`QA.offscreen`, `QA.allowsKeyWindows`); this is the second line. A visible run (`QA.isVisible`) shows
+  /// its notch window and ears on purpose, so there only the keyboard and the front are guarded.
   ///
   /// It is installed when the shell starts, before any window of the run can show, and checks every window up then.
   /// After that it checks a window whenever it shows or hides (occlusion), moves, resizes or changes display, every
@@ -80,9 +81,13 @@
       }
     }
 
-    /// A window on a display is a violation: it is ordered out and moved off the displays.
-    static func check(_ window: some QAGuardedWindow, displays: [CGRect] = NSScreen.screens.map(\.frame)) {
-      guard isOnDisplay(window, displays: displays) else { return }
+    /// A window on a display is a violation: it is ordered out and moved off the displays. Not in a visible run.
+    static func check(
+      _ window: some QAGuardedWindow,
+      displays: [CGRect] = NSScreen.screens.map(\.frame),
+      isVisibleRun: Bool = QA.isVisible
+    ) {
+      guard !isVisibleRun, isOnDisplay(window, displays: displays) else { return }
       QALog.violation("window", "showed on a display, ordered out", describe(window))
       window.orderOut(nil)
       window.setFrameOrigin(QA.offscreen(window.frame).origin)

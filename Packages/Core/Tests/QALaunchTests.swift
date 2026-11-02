@@ -76,6 +76,7 @@ struct QALaunchTests {
     )
     #expect(launch("--qa-release", "--qa", "A").options == .init(releaseBehavior: true))
     #expect(launch("--qa", "A").options == .init())
+    #expect(launch("--qa", "A", "--qa-visible").options == .init(visible: true))
     #expect(launch().options == nil)
   }
 
@@ -86,6 +87,9 @@ struct QALaunchTests {
     #expect(isInvalid(launch("--qa", "A", "--qa-screens")))
     #expect(isInvalid(launch("--qa", "A", "--qa-screens", "wide")))
     #expect(isInvalid(launch("--qa", "A", "--qa-release", "--qa-release")))
+    #expect(isInvalid(launch("--qa-visible")))
+    // A visible run shows on this Mac's displays: it can't pretend to have others.
+    #expect(isInvalid(launch("--qa", "A", "--qa-visible", "--qa-screens", "notch")))
   }
 
   @Test

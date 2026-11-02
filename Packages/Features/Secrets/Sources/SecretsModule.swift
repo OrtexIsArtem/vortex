@@ -52,17 +52,39 @@ public enum SecretsModule: FeatureModule {
     static var isStepShowing = false
 
     /// QA mode: `keys press=connect|connectAgain|copyCommand|getClaudeCode` presses the Claude Code step's buttons,
-    /// refused while the step doesn't show them; `press=turnOn|restart` the Notifications row in the settings. The
-    /// `keys` state section shows the step, never the token or the command.
+    /// refused while the step doesn't show them; `press=turnOn|restart` the Notifications row in the settings;
+    /// `press=allow|deny` answers the first request waiting; `add=<name> value=<value> [note=<text>]` saves a key as the
+    /// form does; `claude=<command> [folder=<path>]` is Claude Code's `run` call as the MCP server hands it over, without
+    /// the network or the token. The `keys` state section shows the step, never the token or the command.
     private static func registerQACommands() {
       QA.registerState(section: "keys") { StepState(store.state) }
       QA.register(command: "keys") { arguments in
         let state = store.state
+        if let name = arguments["add"] {
+          guard let value = arguments["value"], !value.isEmpty else { throw QAError("keys add= needs value=") }
+          store.send(.addTapped)
+          store.send(.draftChanged(KeyDraft(name: name, value: value, note: arguments["note"] ?? "")))
+          store.send(.saveTapped)
+          return
+        }
+        if let command = arguments["claude"] {
+          let session = MCPSession(id: "qa-claude-code", client: "Claude Code")
+          if state.sessions[session.id] == nil { store.send(.server(.sessionStarted(session))) }
+          var call: [String: JSONValue] = ["command": .string(command)]
+          if let folder = arguments["folder"] { call["cwd"] = .string(folder) }
+          store.send(.server(.call(MCPCall(
+            id: UUID(), session: session.id, client: session.client, tool: .run, arguments: .object(call)
+          ))))
+          return
+        }
         let stepPresses: Set<String> = ["connect", "connectAgain", "copyCommand", "getClaudeCode"]
         if let press = arguments["press"], stepPresses.contains(press), !isStepShowing {
           throw QAError("the Claude Code step's buttons are on its onboarding page, which isn't showing")
         }
         switch arguments["press"] {
+        case "allow", "deny":
+          guard let id = state.approvals.first?.id else { throw QAError("no request is waiting for Allow") }
+          store.send(arguments["press"] == "allow" ? .approveTapped(id) : .denyTapped(id))
         case "connect", "connectAgain":
           let again = arguments["press"] == "connectAgain"
           let showsConnected = state.showsConnectAgain
@@ -87,7 +109,9 @@ public enum SecretsModule: FeatureModule {
             restart: { store.send(.restartTapped) }
           )
           guard pressed else {
-            throw QAError("keys takes press=connect, connectAgain, copyCommand, getClaudeCode, turnOn or restart")
+            throw QAError(
+              "keys takes add=, or press=allow, deny, connect, connectAgain, copyCommand, getClaudeCode, turnOn or restart"
+            )
           }
         }
       }

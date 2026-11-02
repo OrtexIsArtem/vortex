@@ -73,6 +73,17 @@
     }
 
     @Test
+    func aVisibleRunsWindowOnADisplayIsLeftAlone() {
+      // `--qa-visible` puts the notch window and the ears where plain Vortex does, to record a demo.
+      let frame = CGRect(x: 400, y: 760, width: 640, height: 140)
+      let window = StandInWindow(frame: frame)
+      QAWindowGuard.check(window, displays: [display], isVisibleRun: true)
+      #expect(!window.isOrderedOut)
+      #expect(window.frame == frame)
+      #expect(violations(at: frame).isEmpty)
+    }
+
+    @Test
     func aWindowOnAnyOfSeveralDisplaysCounts() {
       let second = CGRect(x: 1_440, y: 0, width: 1_920, height: 1_080)
       let window = StandInWindow(frame: CGRect(x: 2_000, y: 400, width: 560, height: 620))

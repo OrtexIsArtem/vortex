@@ -21,6 +21,7 @@
   /// - Every system client with an effect outside that folder is simulated (`useQAClients`), and what they were asked
   ///   to do goes to the system events log.
   /// - Nothing shows: no menu bar icon, no ears, windows off the displays (`offscreen`), the app never in front.
+  ///   A visible run (`isVisible`) shows its ears, notch window and flashes, to record a demo; the rest stays off.
   /// - It takes commands only on the distributed notification `io.github.ortexisartem.vortex.qa.<name>`, never the
   ///   `…debug.*` ones; `scripts/qa` sends them and waits for the reply.
   ///
@@ -34,6 +35,10 @@
 
     /// `--qa-release`: the run has the behaviors only release builds have, such as applying the login item.
     public static var releaseBehavior: Bool { QALaunch.current.options?.releaseBehavior == true }
+
+    /// `--qa-visible`: the ears, the notch window and its flashes show on this Mac's displays as plain Vortex shows
+    /// them, to record a demo. The run still takes no keyboard, pointer or front: commands stand for the user.
+    public static var isVisible: Bool { QALaunch.current.options?.visible == true }
 
     /// The displays the run pretends to have, the main one first: `--qa-screens` at launch, otherwise this Mac's
     /// (a notch or not); the shell's `screens` command changes them. Empty outside QA mode.

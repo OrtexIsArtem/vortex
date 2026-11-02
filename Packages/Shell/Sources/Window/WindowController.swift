@@ -101,6 +101,11 @@ final class WindowController: NSObject {
   /// QA mode (VortexPlatform's `QA`): nothing on screen. No ears, no menu bar icon, no monitors; the window opens off
   /// the displays without animation and never takes the keyboard; the displays are the ones the run pretends to have.
   private let isQA: Bool
+  /// A visible QA run (`--qa-visible`): the ears, the window and the flashes show and animate where plain Vortex puts
+  /// them, to record a demo, but the pointer passes through them. As in any run, commands stand for the user.
+  private let isQAVisible: Bool
+  /// A QA run that shows nothing: the window opens off the displays, without animation (`qaPlacement`).
+  private var isOffscreenQA: Bool { isQA && !isQAVisible }
   /// QA: whether the pretended pointer is inside the window, as it is after opening it from the notch.
   private var isQAPointerInWindow = false
   /// QA: the shell listens for events; until then an event a command makes would be lost.
@@ -111,8 +116,10 @@ final class WindowController: NSObject {
   override private init() {
     #if DEBUG
       isQA = QA.isActive
+      isQAVisible = QA.isVisible
     #else
       isQA = false
+      isQAVisible = false
     #endif
     super.init()
   }
@@ -122,7 +129,9 @@ final class WindowController: NSObject {
   /// Puts the notch on screen and builds the window, so the first open does not wait for it. Call once at launch.
   func install(content: some View, menu: NSMenu) {
     menuBarMenu = menu
-    presentation.notch = isQA ? qaPlacement(for: .click).notch : NSScreen.screens.lazy.compactMap(\.notchRect).first?.size
+    presentation.notch = isOffscreenQA
+      ? qaPlacement(for: .click).notch
+      : NSScreen.screens.lazy.compactMap(\.notchRect).first?.size
     presentation.onNotchTapped = { [weak self] in self?.emit(.notchClicked(feature: nil)) }
     mainPanel = makeMainPanel(content: AnyView(content))
     rebuildEars()
@@ -177,7 +186,7 @@ final class WindowController: NSObject {
     generation += 1
     let current = generation
 
-    if isQA {
+    if isOffscreenQA {
       presentOffscreen(panel, placement)
       return
     }
@@ -187,10 +196,12 @@ final class WindowController: NSObject {
     panel.hasShadow = false
     panel.setFrame(placement.frame, display: true)
     panel.orderFrontRegardless()
-    if !reason.isPassing { panel.makeKey() }
+    // A visible QA run never takes the keyboard either.
+    if !reason.isPassing, !isQA { panel.makeKey() }
     panel.contentView?.updateTrackingAreas()
     // NSMouseInRect counts the top edge in, where a pointer pushed against the notch sits.
-    emit(.pointerInsideWindowChanged(isInside: NSMouseInRect(NSEvent.mouseLocation, placement.frame, false)))
+    let isInside = isQA ? isQAPointerInWindow : NSMouseInRect(NSEvent.mouseLocation, placement.frame, false)
+    emit(.pointerInsideWindowChanged(isInside: isInside))
     installOutsideClickMonitor()
 
     // Expand on the next run loop turn, after the collapsed state has been drawn once.
@@ -213,7 +224,7 @@ final class WindowController: NSObject {
     guard let panel = mainPanel, panel.isVisible else { return }
     generation += 1
     let current = generation
-    if isQA {
+    if isOffscreenQA {
       withoutAnimation { presentation.isExpanded = false }
       panel.orderOut(nil)
       return
@@ -267,6 +278,8 @@ final class WindowController: NSObject {
     }
     let panel = VortexPanel(acceptsKey: true, root: root, content: WindowChromeView(model: presentation, content: content))
     panel.onEscape = { [weak self] in self?.emit(.escapePressed) }
+    // A visible QA run shows the window, but the user's pointer passes through it.
+    panel.ignoresMouseEvents = isQAVisible
     // Lay the content out once while hidden, so opening only has to animate it.
     let shoulder = presentation.notch == nil ? 0 : VortexMetrics.shoulder
     let size = VortexMetrics.windowSize
@@ -276,7 +289,7 @@ final class WindowController: NSObject {
   }
 
   private func placement(for reason: OpenReason) -> Placement? {
-    if isQA { return qaPlacement(for: reason) }
+    if isOffscreenQA { return qaPlacement(for: reason) }
     let pointer = NSEvent.mouseLocation
     let pointerScreen = NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) } ?? NSScreen.main
     let screen: NSScreen? = switch reason {
@@ -387,8 +400,8 @@ final class WindowController: NSObject {
       $0.glowPanel.orderOut(nil)
     }
     ears.removeAll()
-    // A QA run shows no ears: its indicators are in the state dump.
-    for screen in NSScreen.screens where !isQA {
+    // A QA run shows no ears, unless it is a visible one: its indicators are in the state dump.
+    for screen in NSScreen.screens where !isOffscreenQA {
       guard let notch = screen.notchRect else { continue }
       let model = EarsModel()
       model.notchSize = notch.size
@@ -420,6 +433,8 @@ final class WindowController: NSObject {
         glowPanel: glowPanel,
         glow: glow
       )
+      // A visible QA run draws the ears, but the user's pointer passes through them.
+      entry.panel.ignoresMouseEvents = isQAVisible
       ears[screen.displayID] = entry
       layOut(entry)
       entry.panel.orderFrontRegardless()
