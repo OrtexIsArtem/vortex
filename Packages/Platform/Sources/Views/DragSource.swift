@@ -132,8 +132,9 @@ public final class DragSourceView: NSView, NSDraggingSource {
   }
 
   public func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-    // Copy, never move: the shelf and the clipboard keep what was dragged out of them.
-    .copy
+    // Copy or link, never move: the shelf and the clipboard keep what was dragged out of them. Some apps take only a
+    // drag that may link: Transporter refuses an .ipa offered for copying alone.
+    [.copy, .link]
   }
 
   public func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {

@@ -52,4 +52,10 @@ struct DragSourceTests {
     press(releasingAt: 400)
     #expect(clicks == 0)
   }
+
+  @Test
+  func aDragMayCopyOrLinkButNeverMove() {
+    // Transporter takes an .ipa only from a drag that may link it.
+    #expect(view.draggingSession(NSDraggingSession(), sourceOperationMaskFor: .outsideApplication) == [.copy, .link])
+  }
 }
