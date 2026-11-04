@@ -18,12 +18,17 @@ function bytes(count: number, language: AppLanguage): string {
   return `${count} ${word}`;
 }
 
+/** `value` as it shows with `digits` decimals. */
+const rounded = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
+
 /** "48.2 MB" or «48,2 МБ», "860 kB", "1.23 GB". */
 export function fileSize(count: number, language: AppLanguage): string {
+  if (count === 0) return language === 'en' ? 'Zero kB' : '0 кБ';
   if (count < 1000) return bytes(count, language);
   let value = count / 1000;
   let unit = 0;
-  while (value >= 1000 && unit < units[language].length - 1) {
+  // By the value as shown, so 999,600 bytes read 1 MB, not 1,000 kB.
+  while (rounded(value, unit) >= 1000 && unit < units[language].length - 1) {
     value /= 1000;
     unit++;
   }

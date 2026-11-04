@@ -25,6 +25,13 @@ describe('fileSize', () => {
     expect(fileSize(1_234_567_890, 'uk')).toBe('1,23 ГБ');
   });
 
+  it('says zero and rounds into the next unit as the app does', () => {
+    expect(fileSize(0, 'en')).toBe('Zero kB');
+    expect(fileSize(0, 'uk')).toBe('0 кБ');
+    expect(fileSize(999_600, 'en')).toBe('1 MB');
+    expect(fileSize(999_600, 'uk')).toBe('1 МБ');
+  });
+
   it('counts bytes with Ukrainian plural forms', () => {
     expect(fileSize(3, 'uk')).toBe('3 байти');
     expect(fileSize(12, 'uk')).toBe('12 байтів');

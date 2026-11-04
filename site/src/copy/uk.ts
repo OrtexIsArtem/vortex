@@ -80,7 +80,7 @@ export const uk: Copy = {
     drumHint: 'Прокрутіть, потягніть або клацніть поділку',
     copy: 'Скопіювати',
     hiddenItem: 'Прихований елемент',
-    ago: (minutes: number) => (minutes < 1 ? 'щойно' : minutes < 60 ? `${minutes} хв` : `${Math.floor(minutes / 60)} год`),
+    ago: (minutes: number) => (minutes < 1 ? 'щойно' : minutes < 60 ? `${minutes} хв` : `${Math.floor(minutes / 60)} год`),
     shelf: 'Полиця',
     clipboard: 'Буфер обміну',
     keyboard: 'Заблокувати клавіатуру для очищення',
