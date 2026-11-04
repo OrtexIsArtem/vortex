@@ -38,6 +38,21 @@ struct TaskItemTests {
     #expect(third.title == TaskItem.defaultTitle(number: 3))
   }
 
+  /// An untouched "Task N" is kept empty, so after a change of language it reads in the new one, as a new task's does;
+  /// a typed title is kept as typed.
+  @Test
+  func anUntouchedDefaultTitleIsKeptEmptyAndReadsAsTheDefault() async throws {
+    let database = VortexDatabase.inMemory()
+    try await database.migrate(TaskItem.migrator)
+    let untouched = try await database.write { db in try TaskItem.insertNew(task(number: 1), db) }
+    _ = try await database.write { db in try TaskItem.insertNew(task(number: 2, title: "Fix the pay button"), db) }
+    #expect(untouched.title == TaskItem.defaultTitle(number: 1))
+    let kept = try await database.read { db in try String.fetchAll(db, sql: "SELECT title FROM tasks_task ORDER BY number") }
+    #expect(kept == ["", "Fix the pay button"])
+    let read = try await database.read { db in try TaskItem.fetchAllReadable(db) }.sorted { $0.number < $1.number }
+    #expect(read.map(\.title) == [TaskItem.defaultTitle(number: 1), "Fix the pay button"])
+  }
+
   @Test
   func aTitleTheUserTypedStaysWhenTheNumberMoves() async throws {
     let database = VortexDatabase.inMemory()

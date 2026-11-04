@@ -43,9 +43,23 @@ public struct TaskItem: Identifiable, Equatable, Sendable {
     return CGRect(x: cropX / screenWidth, y: cropY / screenHeight, width: cropWidth / screenWidth, height: cropHeight / screenHeight)
   }
 
-  /// The title as shown and saved: an emptied one is "Task 13" again.
+  /// The title as shown: an emptied one is "Task 13" again.
   var displayTitle: String {
     title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Self.defaultTitle(number: number) : title
+  }
+
+  /// The title as the row keeps it: empty for an untouched "Task 13" (or an emptied title), so it reads in whatever
+  /// language Vortex speaks later; anything else as typed.
+  var storedTitle: String {
+    let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    return title.isEmpty || title == Self.defaultTitle(number: number) ? "" : self.title
+  }
+
+  /// The task as its row keeps it, with `storedTitle`.
+  var stored: TaskItem {
+    var task = self
+    task.title = storedTitle
+    return task
   }
 
   /// The pictures of every task, one folder per task.
@@ -108,9 +122,14 @@ extension TaskItem: Codable, FetchableRecord, PersistableRecord {
     return migrator
   }
 
-  /// Every saved task; rows this version can't read (written by a newer Vortex) are skipped.
+  /// Every saved task; rows this version can't read (written by a newer Vortex) are skipped. A title kept empty reads
+  /// as "Task 13" in the app's language.
   static func fetchAllReadable(_ db: Database) throws -> [TaskItem] {
-    try Row.fetchAll(db, sql: "SELECT * FROM \(databaseTableName)").compactMap { try? TaskItem(row: $0) }
+    try Row.fetchAll(db, sql: "SELECT * FROM \(databaseTableName)").compactMap { row in
+      guard var task = try? TaskItem(row: row) else { return nil }
+      task.title = task.displayTitle
+      return task
+    }
   }
 
   /// The highest number ever given.
@@ -121,7 +140,7 @@ extension TaskItem: Codable, FetchableRecord, PersistableRecord {
   }
 
   /// Saves a new task under the next free number. When another Vortex took the number the task was shown with, it
-  /// gets the next one, and an untouched default title follows.
+  /// gets the next one, and an untouched default title follows. The row keeps `storedTitle`.
   static func insertNew(_ task: TaskItem, _ db: Database) throws -> TaskItem {
     var task = task
     let number = max(task.number, try lastNumber(db) + 1)
@@ -136,7 +155,7 @@ extension TaskItem: Codable, FetchableRecord, PersistableRecord {
         """,
       arguments: [number]
     )
-    try task.insert(db)
+    try task.stored.insert(db)
     return task
   }
 }

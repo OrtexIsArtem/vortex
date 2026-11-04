@@ -329,8 +329,9 @@ public struct TasksFeature: Sendable {
       case let .titleChanged(id, title):
         guard state.tasks[id: id] != nil else { return .none }
         state.tasks[id: id]?.title = title
-        // Written once typing pauses, so the writes never overtake one another; an emptied title is saved as "Task 13".
-        let saved = state.tasks[id: id]?.displayTitle ?? title
+        // Written once typing pauses, so the writes never overtake one another; an emptied title is kept empty, as an
+        // untouched "Task 13" is.
+        let saved = state.tasks[id: id]?.storedTitle ?? title
         return update(id, "title", saved, after: .milliseconds(400))
           .cancellable(id: CancelID.titleSave(id), cancelInFlight: true)
 
@@ -604,7 +605,7 @@ public struct TasksFeature: Sendable {
   private func commitTitle(_ id: TaskItem.ID, _ state: inout State) -> Effect<Action> {
     guard let task = state.tasks[id: id] else { return .none }
     state.tasks[id: id]?.title = task.displayTitle
-    return .merge(.cancel(id: CancelID.titleSave(id)), update(id, "title", task.displayTitle))
+    return .merge(.cancel(id: CancelID.titleSave(id)), update(id, "title", task.storedTitle))
   }
 
   /// Deletes the tasks with a moment to take it back: their rows go now, so they stay gone if Vortex quits meanwhile
@@ -665,7 +666,7 @@ public struct TasksFeature: Sendable {
     .run { _ in
       try await database.write { db in
         for task in tasks {
-          try task.insert(db, onConflict: .replace)
+          try task.stored.insert(db, onConflict: .replace)
         }
       }
     } catch: { error, _ in

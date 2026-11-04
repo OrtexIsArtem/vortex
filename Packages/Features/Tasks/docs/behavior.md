@@ -8,7 +8,7 @@
 - Once drawn, the framed part moves to the left, the rest blurs, and the fields show: title, priority, source, retake, Cancel, Save.
 - The title is "Task N", selected, so typing replaces it, also right after a frame drawn with the mouse; ⌘V, ⌘C, ⌘X, ⌘A and ⌘Z work in it, also under a Cyrillic layout; "Use" puts the first line of text found in the frame instead and hides once it is the title.
 - Priority is Low by default; Low, Medium or High.
-- Return saves, also from the title field; an emptied title saves as "Task N"; the retake button draws the frame again on the same frozen screen.
+- Return saves, also from the title field; an emptied title is "Task N"; the retake button draws the frame again on the same frozen screen.
 - A second press of the shortcut while a capture is under way does nothing.
 - Vortex comes to the front with the frozen screen; saving or cancelling gives the front back to the app the user was in, with its keyboard focus.
 - Another app coming to the front ends the capture, so the frozen screen never hides it: a prompt of the system (Screen Recording's periodic confirmation, a browser's Automation) or ⌘Tab.

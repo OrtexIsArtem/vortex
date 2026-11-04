@@ -680,6 +680,8 @@ struct TasksFeatureTests {
     let saved = try await database.read { db in try TaskItem.fetchAllReadable(db) }
     #expect(saved.first?.priority == .high)
     #expect(saved.first?.title == TaskItem.defaultTitle(number: 1))
+    // Kept empty, as an untouched one: it reads in whatever language Vortex speaks later.
+    #expect(try await database.read { db in try String.fetchOne(db, sql: "SELECT title FROM tasks_task") } == "")
     await store.send(.stop)
   }
 

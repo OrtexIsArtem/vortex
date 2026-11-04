@@ -12,6 +12,7 @@ Tables are created by the feature's migrator (`tasks.v1`, `tasks.v2`) before its
 - DataFolder/tasks.json (whether the old Screen Recording prompt was shown) is no longer read or written; an old file stays as it is.
 - Numbers are never given twice: the next is one more than the highest ever given, also after that task is deleted.
 - If another Vortex took the number a capture showed, it saves with the next one, and an untouched "Task N" title follows.
+- An untouched or emptied title is kept empty and reads as "Task N" in the app's language of the day; a title saved before this rule keeps the words it was saved with.
 - The pictures are written before the row, so a row always has them; at launch, picture folders without a row are deleted, unless the database is only in memory because its file didn't open.
 - A deleted task's row goes at once, its pictures once the deletion can't be taken back (5 s, or the next change that can be); taken back, the row is written again as it was. If Vortex quits meanwhile, the deletion stands.
 - Rows this version can't read (written by a newer Vortex) are skipped and kept.
