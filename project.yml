@@ -41,6 +41,14 @@ targets:
       - name: "Rule: no network outside Secrets"
         script: '"$SRCROOT/scripts/check-no-network.sh"'
         basedOnDependencyAnalysis: false
+    postBuildScripts:
+      # KeyboardShortcuts ships no Ukrainian: ours (App/KeyboardShortcuts) goes into its bundle inside the app. The
+      # input makes it run after Xcode has copied that bundle in.
+      - name: "Ukrainian for KeyboardShortcuts"
+        script: '"$SRCROOT/scripts/keyboard-shortcuts-uk.sh"'
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/KeyboardShortcuts_KeyboardShortcuts.bundle
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_NAME: Vortex

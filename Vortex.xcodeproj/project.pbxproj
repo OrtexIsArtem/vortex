@@ -105,6 +105,7 @@
 				E51A05B1913ABB1FAA6EBB24 /* Sources */,
 				4F6440388F4C27DC21DF2BDF /* Resources */,
 				CB542D0FFDA709EBEE26B977 /* Frameworks */,
+				6D0EE900B5063C4996881ECC /* Ukrainian for KeyboardShortcuts */,
 			);
 			buildRules = (
 			);
@@ -186,6 +187,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"$SRCROOT/scripts/check-no-network.sh\"";
+		};
+		6D0EE900B5063C4996881ECC /* Ukrainian for KeyboardShortcuts */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/KeyboardShortcuts_KeyboardShortcuts.bundle",
+			);
+			name = "Ukrainian for KeyboardShortcuts";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/scripts/keyboard-shortcuts-uk.sh\"";
 		};
 /* End PBXShellScriptBuildPhase section */
 

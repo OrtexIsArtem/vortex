@@ -1,0 +1,13 @@
+/* Vortex adds this file: Ukrainian for KeyboardShortcuts, which ships none. scripts/keyboard-shortcuts-uk.sh copies it
+   into the library's resource bundle as the app is built. The keys are the library's own (Localization/en.lproj). */
+
+"record_shortcut" = "Записати скорочення";
+"press_shortcut" = "Натисніть скорочення";
+"keyboard_shortcut_used_by_menu_item" = "Це скорочення не можна використати: його вже має пункт меню «%@».";
+"keyboard_shortcut_used_by_system" = "Це скорочення не можна використати: воно вже системне.";
+"keyboard_shortcuts_can_be_changed" = "Більшість системних скорочень можна змінити в «Системні параметри › Клавіатура › Клавіатурні скорочення».";
+"keyboard_shortcut_disallowed" = "Клавішу Option потрібно поєднувати з Command або Control.";
+"clear_shortcut" = "Очистити скорочення";
+"force_use_shortcut" = "Усе одно застосувати";
+"ok" = "OK";
+"space_key" = "Пробіл";
