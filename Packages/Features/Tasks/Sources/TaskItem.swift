@@ -119,6 +119,14 @@ extension TaskItem: Codable, FetchableRecord, PersistableRecord {
         table.add(column: "screenHeight", .double)
       }
     }
+    migrator.registerMigration("tasks.v3") { db in
+      // Default titles saved before they were kept empty: the English one, and the Ukrainian one of Vortex 0.1.0, whose
+      // word for a task 0.1.1 changed. Emptied, they read as "Task N" in the app's language of the day. A number of
+      // 1000 or more was written with a group separator; such a title doesn't match and stays as it is.
+      try db.execute(
+        sql: "UPDATE \(databaseTableName) SET title = '' WHERE title = 'Task ' || number OR title = 'Задача ' || number"
+      )
+    }
     return migrator
   }
 

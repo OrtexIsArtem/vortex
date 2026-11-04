@@ -53,6 +53,41 @@ struct TaskItemTests {
     #expect(read.map(\.title) == [TaskItem.defaultTitle(number: 1), "Fix the pay button"])
   }
 
+  /// Tasks saved before default titles were kept empty kept them as text, in English or in Vortex 0.1.0's Ukrainian:
+  /// `tasks.v3` empties those, so they read as the default of the day. Other titles stay, also one that names another
+  /// task's number, and the 1000th, saved with a group separator, as it was.
+  @Test
+  func oldDefaultTitlesAreEmptiedAndReadAsTheDefault() async throws {
+    let database = VortexDatabase.inMemory()
+    try TaskItem.migrator.migrate(database, upTo: "tasks.v1")
+    let source = String(decoding: try JSONEncoder().encode(task(number: 1).source), as: UTF8.self)
+    let saved: [(Int, String)] = [
+      (1, "Task 1"),
+      (2, "Задача 2"),
+      (3, "Task 7"),
+      (4, "Fix the pay button"),
+      (5, "Задача 5 і 6"),
+      (1000, "Задача 1\u{00A0}000"),
+    ]
+    try await database.write { db in
+      for (number, title) in saved {
+        try db.execute(
+          sql: """
+            INSERT INTO tasks_task (id, number, title, priority, createdAt, source, cropWidth, cropHeight)
+            VALUES (?, ?, ?, 0, ?, ?, 300, 120)
+            """,
+          arguments: [UUID().uuidString, number, title, Date(timeIntervalSinceReferenceDate: 800_000_000), source]
+        )
+      }
+    }
+    try await database.migrate(TaskItem.migrator)
+    let kept = try await database.read { db in try String.fetchAll(db, sql: "SELECT title FROM tasks_task ORDER BY number") }
+    #expect(kept == ["", "", "Task 7", "Fix the pay button", "Задача 5 і 6", "Задача 1\u{00A0}000"])
+    let read = try await database.read { db in try TaskItem.fetchAllReadable(db) }.sorted { $0.number < $1.number }
+    #expect(read.prefix(2).map(\.title) == [TaskItem.defaultTitle(number: 1), TaskItem.defaultTitle(number: 2)])
+    #expect(read.dropFirst(2).map(\.title) == ["Task 7", "Fix the pay button", "Задача 5 і 6", "Задача 1\u{00A0}000"])
+  }
+
   @Test
   func aTitleTheUserTypedStaysWhenTheNumberMoves() async throws {
     let database = VortexDatabase.inMemory()
