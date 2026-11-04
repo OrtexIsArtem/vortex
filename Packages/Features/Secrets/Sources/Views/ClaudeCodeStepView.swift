@@ -113,10 +113,12 @@ struct ClaudeCodeStepView: View {
 }
 
 extension SecretsFeature {
-  /// The server couldn't start: on which port, and why, as the system said it.
-  struct ServerFailure: Equatable {
-    var port: Int
-    var reason: String
+  /// Why the server isn't running.
+  enum ServerFailure: Equatable {
+    /// It couldn't listen on this port.
+    case listen(port: Int, MCPFailure)
+    /// The keychain gave no MCP token.
+    case token
   }
 
   /// What the Claude Code step shows under its text: the Keys card's server failure (`ServerFailureMessage`), or
@@ -130,8 +132,11 @@ extension SecretsFeature {
 extension SecretsFeature.State {
   /// Why the server isn't running, for the Keys card and the Claude Code step alike; nil while it runs or starts.
   var serverFailure: SecretsFeature.ServerFailure? {
-    guard case let .failed(reason) = server else { return nil }
-    return SecretsFeature.ServerFailure(port: settings.port, reason: reason)
+    switch server {
+    case let .failed(failure): .listen(port: settings.port, failure)
+    case .tokenUnavailable: .token
+    case .off, .starting, .listening: nil
+    }
   }
 
   var claudeStepBody: SecretsFeature.ClaudeStepBody {

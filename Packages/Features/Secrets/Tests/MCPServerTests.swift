@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import Testing
 
 @testable import FeatureSecrets
@@ -150,6 +151,15 @@ struct MCPServerTests {
     #expect(result["id"] == 7)
     #expect(result["result"]?["isError"] == false)
     #expect(result["result"]?["content"] == [["type": "text", "text": "exit code 0\n{{db}}"]])
+  }
+
+  /// A port in use reads as taken; any other error of the system's only as unexpected, its words left to the log.
+  @Test
+  func aPortInUseIsTakenAndAnyOtherErrorIsUnexpected() {
+    #expect(MCPServer.failure(NWError.posix(.EADDRINUSE)) == .portTaken)
+    #expect(MCPServer.failure(NWError.posix(.EACCES)) == .other)
+    #expect(MCPServer.failure(NWError.posix(.EADDRNOTAVAIL)) == .other)
+    #expect(MCPServer.failure(CocoaError(.featureUnsupported)) == .other)
   }
 
   @Test

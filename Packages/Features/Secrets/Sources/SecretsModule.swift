@@ -135,6 +135,7 @@ public enum SecretsModule: FeatureModule {
         case .starting: "starting"
         case .listening: "listening"
         case .failed: "failed"
+        case .tokenUnavailable: "tokenUnavailable"
         }
         connect = switch state.connect {
         case .idle: "idle"
@@ -149,7 +150,7 @@ public enum SecretsModule: FeatureModule {
         addedToClaudeCode = state.settings.addedToClaudeCode
         @Shared(.onboardingStepsDone) var done
         stepDone = done.contains(SecretsFeature.id)
-        if case let .serverFailure(failure) = state.claudeStepBody { serverFailurePort = failure.port }
+        if case let .serverFailure(.listen(port, _)) = state.claudeStepBody { serverFailurePort = port }
       }
     }
   #endif
@@ -186,7 +187,8 @@ public enum SecretsModule: FeatureModule {
         case .off: "off"
         case .starting: "starting"
         case let .listening(port): "listening \(port)"
-        case let .failed(message): "failed: \(message)"
+        case let .failed(failure): "failed: \(failure)"
+        case .tokenUnavailable: "tokenUnavailable"
         }
         let state: [String: Any] = [
           "server": server,

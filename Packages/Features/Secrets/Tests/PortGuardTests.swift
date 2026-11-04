@@ -51,9 +51,6 @@ struct PortGuardTests {
     await store.send(.tokenReady("token"))
     await store.receive(\.server.failed)
     #expect(served.value.isEmpty)
-    guard case .failed = store.state.server else {
-      Issue.record("The server should be failed, not \(store.state.server)")
-      return
-    }
+    #expect(store.state.server == .failed(.portTaken))
   }
 }

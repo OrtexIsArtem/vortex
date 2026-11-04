@@ -141,7 +141,10 @@ private struct KeysList: View {
 
 extension SecretsFeature.ServerStatus {
   var isFailed: Bool {
-    if case .failed = self { true } else { false }
+    switch self {
+    case .failed, .tokenUnavailable: true
+    case .off, .starting, .listening: false
+    }
   }
 }
 

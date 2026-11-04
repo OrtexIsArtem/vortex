@@ -265,18 +265,19 @@ struct ClaudeCodeStepTests {
   }
 
   /// With the server down, the step shows the Keys card's message, which names the port and says what to do, never
-  /// Settings' raw status line; Connect is hidden and Skip stays.
+  /// Settings' status line; Connect is hidden and Skip stays.
   @Test
   func withTheServerDownTheStepShowsTheKeysCardsMessageWithThePort() {
     var state = SecretsFeature.State()
     state.$settings.withLock { $0.port = 55555 }
     state.token = Self.token
-    state.server = .failed("Address already in use")
-    let failure = SecretsFeature.ServerFailure(port: 55555, reason: "Address already in use")
-    #expect(state.claudeStepBody == .serverFailure(failure))
-    #expect(state.serverFailure == failure)
-    #expect(!state.canConnect)
-    #expect(!state.isClaudeStepDone)
+    for failure in [MCPFailure.portTaken, .other] {
+      state.server = .failed(failure)
+      #expect(state.claudeStepBody == .serverFailure(.listen(port: 55555, failure)))
+      #expect(state.serverFailure == .listen(port: 55555, failure))
+      #expect(!state.canConnect)
+      #expect(!state.isClaudeStepDone)
+    }
     for server in [SecretsFeature.ServerStatus.off, .starting, .listening(port: 55555)] {
       state.server = server
       #expect(state.claudeStepBody == .connect)
@@ -284,9 +285,20 @@ struct ClaudeCodeStepTests {
     }
   }
 
+  /// Without the token the step names the keychain, not a port: another port wouldn't help.
+  @Test
+  func withoutTheTokenTheStepShowsTheKeychainsMessage() {
+    var state = SecretsFeature.State()
+    state.server = .tokenUnavailable
+    #expect(state.claudeStepBody == .serverFailure(.token))
+    #expect(state.serverFailure == .token)
+    #expect(state.server.isFailed)
+    #expect(!state.canConnect)
+  }
+
   @Test
   func connectWaitsForTheServerToListen() async {
-    for server in [SecretsFeature.ServerStatus.starting, .off, .failed("port taken")] {
+    for server in [SecretsFeature.ServerStatus.starting, .off, .failed(.portTaken), .tokenUnavailable] {
       let store = makeStore([], server: server)
       #expect(!store.state.canConnect)
       await store.send(.connectTapped).finish()

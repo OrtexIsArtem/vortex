@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import Network
+import os
 
 /// The MCP server: what the feature asks of it.
 @DependencyClient
@@ -88,7 +89,9 @@ actor MCPServer {
   func listen(attempt: Int = 0) {
     guard !isStopped else { return }
     guard let port = NWEndpoint.Port(rawValue: UInt16(clamping: port)), self.port > 0 else {
-      events.yield(.failed("Port \(self.port) is not a port"))
+      // Settings keep the port in 1024–65535, so this never happens.
+      logger.error("Port \(self.port, privacy: .public) is not a port")
+      events.yield(.failed(.other))
       return
     }
     let parameters = NWParameters.tcp
@@ -105,7 +108,7 @@ actor MCPServer {
       self.listener = listener
       listener.start(queue: queue)
     } catch {
-      events.yield(.failed(error.localizedDescription))
+      events.yield(.failed(Self.failure(error)))
     }
   }
 
@@ -120,11 +123,18 @@ actor MCPServer {
         try? await Task.sleep(for: .milliseconds(300))
         listen(attempt: attempt + 1)
       } else {
-        events.yield(.failed(error.localizedDescription))
+        events.yield(.failed(Self.failure(error)))
       }
     default:
       break
     }
+  }
+
+  /// What the feature shows for a listener's error; the error itself goes to the log.
+  static func failure(_ error: any Error) -> MCPFailure {
+    logger.error("The MCP server could not listen: \(error, privacy: .public)")
+    if case .posix(.EADDRINUSE) = error as? NWError { return .portTaken }
+    return .other
   }
 
   /// No more connections; calls still waiting get an error.
@@ -380,3 +390,5 @@ actor MCPServer {
     }
   }
 }
+
+private let logger = Logger(subsystem: "io.github.ortexisartem.vortex", category: "mcp")

@@ -507,6 +507,40 @@ struct SecretsFeatureTests {
     #expect(copied.value.last?.concealed == true)
     await store.send(.stop)
   }
+
+  /// A token the keychain refuses (the user denied its prompt after an update) is a state of its own: the server never
+  /// starts, a new port changes nothing, and turning Keys on again asks the keychain again.
+  @Test
+  func aTokenTheKeychainRefusesIsItsOwnStateAndTurningKeysOnAsksAgain() async {
+    let store = makeStore()
+    let refuses = LockIsolated(true)
+    let served = LockIsolated(0)
+    store.dependencies.keychainClient.read = { [keychain] service, account in
+      if service == SecretsFeature.serverService, refuses.value { throw KeychainError(status: -128) }
+      return keychain.value["\(service)/\(account)"]
+    }
+    store.dependencies.mcpServer.serve = { [events] _, _ in
+      served.withValue { $0 += 1 }
+      return events.stream
+    }
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await store.receive(\.tokenFailed)
+    #expect(store.state.server == .tokenUnavailable)
+    #expect(store.state.serverFailure == .token)
+
+    await store.send(.portChanged(50123))
+    #expect(store.state.server == .tokenUnavailable)
+    #expect(served.value == 0)
+
+    refuses.setValue(false)
+    await store.send(.stop)
+    await store.send(.start)
+    await store.receive(\.tokenReady)
+    #expect(store.state.server == .starting)
+    #expect(served.value == 1)
+    await store.send(.stop)
+  }
 }
 
 /// The Notifications row in Keys' settings.

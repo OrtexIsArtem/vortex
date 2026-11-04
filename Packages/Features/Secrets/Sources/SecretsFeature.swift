@@ -142,7 +142,11 @@ struct SecretsFeature: Sendable {
     case off
     case starting
     case listening(port: Int)
-    case failed(String)
+    /// It could not listen on the port.
+    case failed(MCPFailure)
+    /// The keychain gave no MCP token, such as when the user denied its prompt after an update: with nothing to check
+    /// Claude's requests against, the server doesn't start. Turning Keys on again, or a relaunch, asks again.
+    case tokenUnavailable
   }
 
   struct Session: Equatable, Sendable {
@@ -248,6 +252,8 @@ struct SecretsFeature: Sendable {
     case undoExpired
     case expiryReached
     case tokenReady(String)
+    /// The MCP token could be neither read from the keychain nor saved there.
+    case tokenFailed
     case server(MCPEvent)
     case approveTapped(Approval.ID)
     case denyTapped(Approval.ID)
@@ -466,6 +472,10 @@ struct SecretsFeature: Sendable {
         state.token = token
         return serve(state)
 
+      case .tokenFailed:
+        state.server = .tokenUnavailable
+        return .none
+
       case let .server(event):
         return serverEvent(event, &state)
 
@@ -512,7 +522,8 @@ struct SecretsFeature: Sendable {
         state.$settings.withLock { $0.port = port }
         let reset = resetSessions(&state)
         guard state.isEnabled else { return reset }
-        state.server = .starting
+        // Without a token nothing starts: a missing one stays the status.
+        if state.token != nil { state.server = .starting }
         return .merge(reset, serve(state))
 
       case .settingsShown:
@@ -750,7 +761,7 @@ struct SecretsFeature: Sendable {
       await send(.tokenReady(token))
     } catch: { error, send in
       logger.error("Preparing the MCP token failed: \(error, privacy: .public)")
-      await send(.server(.failed(String(describing: error))))
+      await send(.tokenFailed)
     }
     .cancellable(id: CancelID.token, cancelInFlight: true)
   }
@@ -760,7 +771,7 @@ struct SecretsFeature: Sendable {
     let port = state.settings.port
     // A port that is taken is never served on, however it got into the settings.
     guard !state.takenPorts.contains(port) else {
-      return .send(.server(.failed(String(localized: "Port \(port) is taken", bundle: .module))))
+      return .send(.server(.failed(.portTaken)))
     }
     return .run { send in
       for await event in server.serve(port, token) {
@@ -790,8 +801,8 @@ struct SecretsFeature: Sendable {
     case let .listening(port):
       state.server = .listening(port: port)
       return .none
-    case let .failed(message):
-      state.server = .failed(message)
+    case let .failed(failure):
+      state.server = .failed(failure)
       return .none
     case let .sessionStarted(session):
       state.sessions[session.id] = Session(client: session.client)

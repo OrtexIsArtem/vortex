@@ -22,12 +22,19 @@ struct MCPToolResult: Equatable, Sendable {
   var isError: Bool
 }
 
+/// Why the server could not listen. The system's own words go to the log, never to the screen.
+enum MCPFailure: Equatable, Sendable {
+  /// Something else holds the port: another app, or another user's Vortex on this Mac.
+  case portTaken
+  /// Anything else the system refused.
+  case other
+}
+
 /// What the server reports to the feature.
 @CasePathable
 enum MCPEvent: Equatable, Sendable {
   case listening(port: Int)
-  /// It could not listen, such as when another app has the port.
-  case failed(String)
+  case failed(MCPFailure)
   case sessionStarted(MCPSession)
   case sessionEnded(String)
   case call(MCPCall)

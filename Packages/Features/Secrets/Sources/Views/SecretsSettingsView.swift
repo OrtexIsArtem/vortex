@@ -55,7 +55,9 @@ struct SecretsSettingsView: View {
     case .off: Text("Keys are off.", bundle: .module)
     case .starting: Text("Starting…", bundle: .module)
     case let .listening(port): Text("Waiting for Claude on port \(String(port)). Connect Claude Code once with the command.", bundle: .module)
-    case let .failed(message): Text("Not running: \(message)", bundle: .module)
+    case let .failed(failure): Text("Not running: \(failure.reason(port: store.settings.port))", bundle: .module)
+    case .tokenUnavailable:
+      Text("Not running: \(String(localized: "Vortex could not get its token from the keychain", bundle: .module))", bundle: .module)
     }
   }
 

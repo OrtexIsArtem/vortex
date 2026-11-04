@@ -32,7 +32,8 @@
 
 ## Onboarding step (Claude Code)
 - `makeOnboardingStep()` gives the shell the step "Claude Code": "Let Claude run commands with your saved keys without ever seeing their values. Skip this if you don't use Claude Code."; the footer says it can be done later in the Keys tab.
-- "Connect" is enabled only while the server listens, and hidden when it failed to start: the step then shows the Keys card's "Claude can't reach the keys" with the port, the reason and "Pick another port in Settings › Features › Keys".
+- "Connect" is enabled only while the server listens, and hidden when it failed to start: the step then shows the Keys card's "Claude can't reach the keys" with the port, the reason ("Port 47823 is taken", or "An unexpected error occurred": the system's own words go only to the log) and "Pick another port in Settings › Features › Keys".
+- Without the MCP token (the keychain refused it, such as after its prompt was denied) the server doesn't start, and the card says "Vortex could not get its token from the keychain. Restart Vortex and click Always Allow when macOS asks."; turning Keys on again asks too.
 - Connect first asks the user's shell (zsh, bash or fish) only for its PATH, between two `__vortex_claude_path__` lines (5 s): what startup files print before them is never read.
 - Vortex then looks for `claude` itself: in each absolute PATH directory, then ~/.local/bin, ~/.claude/local (an old install .zshrc reaches by an alias), /opt/homebrew/bin and /usr/local/bin.
 - It runs only an absolute path to an existing executable file named `claude`, checked before the run; none found reads as not installed.

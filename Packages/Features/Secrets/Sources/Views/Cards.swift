@@ -149,8 +149,8 @@ struct ConnectCard: View {
   }
 }
 
-/// Why Claude can't reach the keys: the port the server couldn't listen on, the reason, and what to do. The Keys tab's
-/// card and the onboarding's Claude Code step show the same text.
+/// Why Claude can't reach the keys, and what to do: the port the server couldn't listen on and why, or the token the
+/// keychain didn't give. The Keys tab's card and the onboarding's Claude Code step show the same text.
 struct ServerFailureMessage: View {
   let failure: SecretsFeature.ServerFailure
 
@@ -158,10 +158,29 @@ struct ServerFailureMessage: View {
     VStack(alignment: .leading, spacing: 8) {
       Text("Claude can't reach the keys", bundle: .module)
         .font(.system(size: 13, weight: .semibold))
-      Text("Vortex could not listen on port \(String(failure.port)): \(failure.reason). Pick another port in Settings › Features › Keys.", bundle: .module)
+      message
         .font(.system(size: 12))
         .foregroundStyle(VortexColor.secondaryText)
         .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private var message: Text {
+    switch failure {
+    case let .listen(port, failure):
+      Text("Vortex could not listen on port \(String(port)): \(failure.reason(port: port)). Pick another port in Settings › Features › Keys.", bundle: .module)
+    case .token:
+      Text("Vortex could not get its token from the keychain. Restart Vortex and click Always Allow when macOS asks.", bundle: .module)
+    }
+  }
+}
+
+extension MCPFailure {
+  /// Why the server couldn't listen, as it reads after a colon: "Not running: Port 47823 is taken".
+  func reason(port: Int) -> String {
+    switch self {
+    case .portTaken: String(localized: "Port \(port) is taken", bundle: .module)
+    case .other: String(localized: "An unexpected error occurred", bundle: .module)
     }
   }
 }
