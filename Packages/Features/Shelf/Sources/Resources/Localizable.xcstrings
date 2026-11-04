@@ -149,12 +149,23 @@
       }
     },
     "New files from %@ appear here by themselves." : {
-      "comment" : "%@ lists watched folder names",
+      "comment" : "On the empty shelf, with one watched folder: %@ is its name as Finder shows it",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нові файли з %@ зʼявляться тут самі."
+            "value" : "Нові файли з папки «%@» зʼявляться тут самі."
+          }
+        }
+      }
+    },
+    "New files from these folders appear here by themselves: %@." : {
+      "comment" : "On the empty shelf, with several watched folders: %@ lists their names as Finder shows them",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові файли з цих папок зʼявляться тут самі: %@."
           }
         }
       }

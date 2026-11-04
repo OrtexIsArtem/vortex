@@ -145,11 +145,19 @@ private struct EmptyShelf: View {
         .multilineTextAlignment(.center)
         .frame(maxWidth: 360)
       if !watchedFolders.isEmpty {
-        Text("New files from \(watchedFolders.map(FileName.shown).formatted(.list(type: .and))) appear here by themselves.", bundle: .module)
-          .font(.system(size: 11.5))
-          .foregroundStyle(VortexColor.tertiaryText)
-          .multilineTextAlignment(.center)
-          .frame(maxWidth: 360)
+        // Folders go by Finder's names, which Ukrainian can't decline after "from": one folder is named after the word
+        // "folder", several follow a colon.
+        Group {
+          if watchedFolders.count == 1, let folder = watchedFolders.first {
+            Text("New files from \(FileName.shown(folder)) appear here by themselves.", bundle: .module)
+          } else {
+            Text("New files from these folders appear here by themselves: \(watchedFolders.map(FileName.shown).formatted(.list(type: .and))).", bundle: .module)
+          }
+        }
+        .font(.system(size: 11.5))
+        .foregroundStyle(VortexColor.tertiaryText)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: 360)
       }
       Button(action: watchFolder) {
         Text("Watch a folder…", bundle: .module)

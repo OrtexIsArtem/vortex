@@ -21,7 +21,7 @@
 - Files that vanish while being written (temporary files renamed by the build tool) and empty files that stay empty are skipped.
 - Files already in a folder are not added; watching runs only while the feature is on.
 
-- The empty shelf says unpinned items leave after 24 hours, offers Watch a folder… and names the folders it already watches, as Finder names them in the app's language (Downloads by its Ukrainian name in Ukrainian).
+- The empty shelf says unpinned items leave after 24 hours, offers Watch a folder… and names the folders it already watches, as Finder names them in the app's language: "New files from %@ appear here by themselves." for one folder, "New files from these folders appear here by themselves: %@." for several.
 
 ## On the shelf
 - Newest first. A tile shows a preview (Quick Look thumbnail, or the extension), the name as Finder shows it in the app's language with the extension kept, size or "Folder", and age.
