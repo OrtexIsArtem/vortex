@@ -405,6 +405,11 @@ struct HardPermissionContent: View {
   }
 }
 
+extension Permission {
+  /// Whether its pane in System Settings lists apps above a + button. Notifications and Paste from Other Apps have none.
+  fileprivate var paneHasAddButton: Bool { self == .accessibility || self == .screenRecording }
+}
+
 /// "Already on in System Settings? Turn it off and on again." with the pane button.
 struct RecheckHint: View {
   let store: StoreOf<OnboardingFeature>
@@ -420,7 +425,9 @@ struct RecheckHint: View {
           } else {
             Text("Already on in System Settings? Turn it off and on again.", bundle: .module)
           }
-          Text("Not in the list? Click + and choose Vortex.", bundle: .module)
+          if permission.paneHasAddButton {
+            Text("Not in the list? Click + and choose Vortex.", bundle: .module)
+          }
         }
         .font(.system(size: 12))
         .foregroundStyle(VortexColor.secondaryText)

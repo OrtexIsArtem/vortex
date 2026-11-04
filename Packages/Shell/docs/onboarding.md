@@ -57,4 +57,4 @@
 - It holds the title, a smaller mock, the live checkbox and "Back"; it never takes focus and has no close control.
 - It turns back into the window, in front, on the grant, on "Back" or when System Settings quits; it hides while another app is in front.
 - "Continue setup", a blocked entry point or a request brings a showing panel forward as a panel; one that hid behind another app turns back into the window, in front.
-- Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again." and "Not in the list? Click + and choose Vortex.", with the pane button. For the pasteboard only after a relaunch still reads it off: before one, its page says "Checked after restart" and offers "Restart to check".
+- Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again.", with the pane button. Accessibility and Screen Recording add "Not in the list? Click + and choose Vortex.": the other panes have no +. For the pasteboard only after a relaunch still reads it off: before one, its page says "Checked after restart" and offers "Restart to check".
