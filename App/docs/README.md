@@ -9,7 +9,7 @@ Debug builds outside QA mode can be driven by scripts without touching the point
 - `io.github.ortexisartem.vortex.debug.tab` — switch to a tab (userInfo `id`; `settings` takes a `section`);
 - features add their own: Tasks drives a capture with `…taskCapture`, `…taskCaptureImage`, `…taskFrame`, `…taskSave` and more, listed in TasksModule.
 
-Target settings also give the app the Apple Events entitlement and its usage text, for the page addresses of browsers.
+Target settings also give the app the Apple Events entitlement and its usage text, for the page addresses of browsers, and the reason macOS shows before Vortex first reads a file in Desktop, Documents or Downloads (the shelf, the clipboard, watched folders). Their Ukrainian is in App/Resources/InfoPlist.xcstrings.
 
 ## QA mode
 A debug build started with `--qa <name>` (1–16 letters, digits or dashes) runs next to your own Vortex as a copy that never touches it; a bad `--qa…` argument stops the app before it starts. Drive it with `scripts/qa`:

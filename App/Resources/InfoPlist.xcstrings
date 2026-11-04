@@ -40,7 +40,61 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vortex зберігає адресу сторінки, відкритої у браузері, разом із задачею."
+            "value" : "Vortex зберігає адресу сторінки, відкритої в браузері, разом із завданням."
+          }
+        }
+      }
+    },
+    "NSDesktopFolderUsageDescription" : {
+      "comment" : "Shown by macOS when Vortex first reads a file in the Desktop folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex показує файли, які ви кладете на полицю чи копіюєте, і кладе на полицю нові файли з відстежуваних папок."
+          }
+        }
+      }
+    },
+    "NSDocumentsFolderUsageDescription" : {
+      "comment" : "Shown by macOS when Vortex first reads a file in the Documents folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex показує файли, які ви кладете на полицю чи копіюєте, і кладе на полицю нові файли з відстежуваних папок."
+          }
+        }
+      }
+    },
+    "NSDownloadsFolderUsageDescription" : {
+      "comment" : "Shown by macOS when Vortex first reads a file in the Downloads folder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex показує файли, які ви кладете на полицю чи копіюєте, і кладе на полицю нові файли з відстежуваних папок."
           }
         }
       }

@@ -241,6 +241,9 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Vortex saves the address of the page open in your browser with a task.";
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Artem Pronenko";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -327,6 +330,9 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Vortex saves the address of the page open in your browser with a task.";
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Artem Pronenko";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

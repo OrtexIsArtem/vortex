@@ -61,6 +61,11 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Artem Pronenko"
         # Tasks read the address of the page open in a browser, with the user's permission per browser.
         INFOPLIST_KEY_NSAppleEventsUsageDescription: "Vortex saves the address of the page open in your browser with a task."
+        # The shelf and the clipboard read files in folders macOS guards, and the shelf watches folders there: the reason
+        # macOS shows when it asks. The uk texts are in App/Resources/InfoPlist.xcstrings.
+        INFOPLIST_KEY_NSDesktopFolderUsageDescription: "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf."
+        INFOPLIST_KEY_NSDocumentsFolderUsageDescription: "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf."
+        INFOPLIST_KEY_NSDownloadsFolderUsageDescription: "Vortex shows the files you put on its shelf or copy, and puts new files from watched folders on the shelf."
         CODE_SIGN_ENTITLEMENTS: App/Vortex.entitlements
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
