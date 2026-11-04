@@ -47,9 +47,9 @@ private struct GeneralSettings: View {
 
   var body: some View {
     SettingsRow(
-      title: Text("Launch at login", bundle: .module),
+      title: Text("Open at login", bundle: .module),
       caption: store.launchAtLogin == .requiresApproval
-        ? Text("Allow Vortex in System Settings › General › Login Items.", bundle: .module)
+        ? Text("Allow Vortex in System Settings › General › Login Items & Extensions.", bundle: .module)
         : nil
     ) {
       HStack(spacing: 10) {
@@ -57,12 +57,12 @@ private struct GeneralSettings: View {
           Button {
             store.send(.openLoginItemsTapped)
           } label: {
-            Text("Open Login Items", bundle: .module)
+            Text("Open System Settings", bundle: .module)
           }
           .buttonStyle(.quietCapsule)
         }
         Toggle(isOn: Binding(get: { store.launchAtLogin == .enabled }, set: { store.send(.launchAtLoginChanged($0)) })) {
-          Text("Launch at login", bundle: .module)
+          Text("Open at login", bundle: .module)
         }
       }
     }
@@ -117,7 +117,7 @@ private struct ActivationSettings: View {
   var body: some View {
     SettingsRow(
       title: Text("Open on hover", bundle: .module),
-      caption: Text("Hover the notch to open Vortex.", bundle: .module),
+      caption: Text("Hover over the notch to open Vortex.", bundle: .module),
       isOn: $store.settings.openOnHover
     )
     if store.settings.openOnHover {

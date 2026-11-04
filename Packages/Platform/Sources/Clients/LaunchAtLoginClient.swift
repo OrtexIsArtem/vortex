@@ -5,7 +5,8 @@ import ServiceManagement
 public enum LaunchAtLoginStatus: Equatable, Sendable {
   case enabled
   case disabled
-  /// Registered, but the user has to allow it in System Settings › General › Login Items.
+  /// Registered, but the user has to allow it in System Settings › General › Login Items & Extensions (Login Items
+  /// before macOS 15).
   case requiresApproval
 }
 

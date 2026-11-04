@@ -53,6 +53,6 @@
 - On displays without a notch the indicators appear next to the menu bar icon as text.
 - When an indicator asks for it, the closed notch flashes in the color it gives: a glow spreading past the notch, behind the ears, blinking twice; over the window while it is open.
 - An indicator's alarm flashes the notch, one flash after another, until the pointer comes or moves over the notch or the window opens; with the window open already it flashes three times and counts as seen; with no notch on any display it waits for one.
-- Launch at login shows what the system decided; when the system wants approval, a button opens Login Items. Nothing registers it at launch: the onboarding's Basics applies "Open at login" (onboarding.md).
+- "Open at login" shows what the system decided; when the system wants approval, the caption names General › Login Items & Extensions and "Open System Settings" opens it. Nothing registers it at launch: the onboarding's Basics applies the switch (onboarding.md).
 - Settings › General has Quit, so Vortex can be quit even with the menu bar icon hidden.
 - Settings are written 0.4 s after the last change and when the app quits.

@@ -43,12 +43,12 @@
         }
       }
     },
-    "Allow Vortex in System Settings › General › Login Items." : {
+    "Allow Vortex in System Settings › General › Login Items & Extensions." : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Дозвольте Vortex у Системних параметрах › Загальні › Автозапуск."
+            "value" : "Дозвольте Vortex у Системних параметрах › Загальні › Автозапуск і розширення."
           }
         }
       }
@@ -286,16 +286,6 @@
         }
       }
     },
-    "Hover the notch to open Vortex." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Наведіть курсор на виріз, щоб відкрити Vortex."
-          }
-        }
-      }
-    },
     "If the switch is already on, turn it off and on again." : {
       "localizations" : {
         "uk" : {
@@ -343,16 +333,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пізніше"
-          }
-        }
-      }
-    },
-    "Launch at login" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запускати під час входу"
           }
         }
       }
@@ -485,16 +465,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Відкривати під час входу"
-          }
-        }
-      }
-    },
-    "Open Login Items" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Відкрити Автозапуск"
           }
         }
       }

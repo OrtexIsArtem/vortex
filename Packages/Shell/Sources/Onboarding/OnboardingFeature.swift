@@ -396,7 +396,7 @@ struct OnboardingFeature {
     case loginItemToggled(Bool)
     case loginItemStatusLoaded(LaunchAtLoginStatus)
     case loginItemSetUpLoaded(Bool)
-    /// Basics' button for System Settings › Login Items; it gets no panel.
+    /// Basics' "Open System Settings", at General › Login Items & Extensions; it gets no panel.
     case openLoginItemsTapped
     case openShortcutLoaded(String?)
     case navigationUnlocked

@@ -107,7 +107,7 @@
         try need(isFlow && state.page == .basics, "Open at login is only on Basics")
         action = .loginItemToggled(parts.count > 1 && parts[1] == "on")
       case "loginItems":
-        try need(isFlow && state.page == .basics && state.loginItem == .requiresApproval, "Open Login Items isn't shown")
+        try need(isFlow && state.page == .basics && state.loginItem == .requiresApproval, "the login item's Open System Settings isn't shown")
         action = .openLoginItemsTapped
       default:
         throw QAError("unknown button \(button)")

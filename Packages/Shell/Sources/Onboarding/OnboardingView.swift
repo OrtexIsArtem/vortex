@@ -309,7 +309,7 @@ struct BasicsContent: View {
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(VortexColor.primaryText)
           if !showsChoice, store.loginItem == .requiresApproval {
-            Text("Allow Vortex in System Settings › General › Login Items.", bundle: .module)
+            Text("Allow Vortex in System Settings › General › Login Items & Extensions.", bundle: .module)
               .font(.system(size: 12))
               .foregroundStyle(VortexColor.secondaryText)
               .fixedSize(horizontal: false, vertical: true)
@@ -320,7 +320,7 @@ struct BasicsContent: View {
           Button {
             store.send(.openLoginItemsTapped)
           } label: {
-            Text("Open Login Items", bundle: .module)
+            Text("Open System Settings", bundle: .module)
           }
           .buttonStyle(.quietCapsule)
           // Its whole label; the caption beside it wraps instead.
