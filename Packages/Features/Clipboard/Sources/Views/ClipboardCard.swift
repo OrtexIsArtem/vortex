@@ -105,7 +105,7 @@ struct ClipboardCard: View {
               .frame(width: 30, height: 30)
           }
           VStack(alignment: .leading, spacing: 2) {
-            Text(verbatim: urls.first?.lastPathComponent ?? "")
+            Text(verbatim: urls.first.map(FileName.shown) ?? "")
               .font(.system(size: 13, weight: .medium))
               .lineLimit(1)
               .truncationMode(.middle)
@@ -216,7 +216,7 @@ struct ClipboardCard: View {
       case let .text(text): Text(verbatim: String(text.prefix(200)))
       case let .link(url): Text(verbatim: url.absoluteString)
       case .image: Text("Image", bundle: .module)
-      case let .files(urls): Text(verbatim: urls.map(\.lastPathComponent).joined(separator: ", "))
+      case let .files(urls): Text(verbatim: urls.map(FileName.shown).joined(separator: ", "))
       }
     }
     guard let source = item.source else { return content }

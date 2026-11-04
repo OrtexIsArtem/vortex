@@ -21,10 +21,10 @@
 - Files that vanish while being written (temporary files renamed by the build tool) and empty files that stay empty are skipped.
 - Files already in a folder are not added; watching runs only while the feature is on.
 
-- The empty shelf says unpinned items leave after 24 hours, offers Watch a folder… and names the folders it already watches.
+- The empty shelf says unpinned items leave after 24 hours, offers Watch a folder… and names the folders it already watches, as Finder names them in the app's language (Downloads by its Ukrainian name in Ukrainian).
 
 ## On the shelf
-- Newest first. A tile shows a preview (Quick Look thumbnail, or the extension), the name, size or "Folder", and age.
+- Newest first. A tile shows a preview (Quick Look thumbnail, or the extension), the name as Finder shows it in the app's language with the extension kept, size or "Folder", and age.
 - Click selects, ⌘-click adds or removes, ⇧-click selects a range, a click on empty space clears the selection.
 - Dragging a selected item drags the whole selection; an unselected item is dragged alone. Items stay on the shelf.
 - Double click opens the file in its app, or the link in the browser.

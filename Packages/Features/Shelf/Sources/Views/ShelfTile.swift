@@ -137,7 +137,7 @@ struct ShelfTile: View {
   private var title: String {
     switch item.content {
     case .file, .copy:
-      item.fileURL?.lastPathComponent ?? ""
+      item.fileURL.map(FileName.shown) ?? ""
     case let .text(text):
       text.prefix(200).split(whereSeparator: \.isNewline).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
     case let .link(url):

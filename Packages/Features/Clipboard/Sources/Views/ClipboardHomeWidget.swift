@@ -180,7 +180,7 @@ private struct ClipboardRow: View {
       return Text("Image", bundle: .module).font(.system(size: 12))
     case let .files(urls):
       let more = urls.count > 1 ? " +\(urls.count - 1)" : ""
-      return Text(verbatim: (urls.first?.lastPathComponent ?? "") + more).font(.system(size: 12))
+      return Text(verbatim: (urls.first.map(FileName.shown) ?? "") + more).font(.system(size: 12))
     }
   }
 }

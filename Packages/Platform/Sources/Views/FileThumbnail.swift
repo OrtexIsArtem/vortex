@@ -56,6 +56,18 @@ public struct FileIcon: View {
   }
 }
 
+/// A file's or folder's name as Finder shows it in the app's language, when it differs by more than a hidden
+/// extension: a folder or app macOS names in that language, such as Downloads; otherwise its name on disk, extension
+/// included.
+public enum FileName {
+  public static func shown(_ url: URL) -> String {
+    let name = url.lastPathComponent
+    let shown = FileManager.default.displayName(atPath: url.path)
+    // Finder may hide an extension too; Vortex always shows it, as a build's .ipa or .aab matters.
+    return shown.isEmpty || shown == url.deletingPathExtension().lastPathComponent ? name : shown
+  }
+}
+
 /// Thumbnails already made, so scrolling and reopening the window do not make them again.
 private actor ThumbnailCache {
   static let shared = ThumbnailCache()

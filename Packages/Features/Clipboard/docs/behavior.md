@@ -14,7 +14,7 @@
 
 ## The tab
 - Pinned items come first, then the rest; newest first in both.
-- A card shows a preview, the app it was copied in and how long ago.
+- A card shows a preview, the app it was copied in and how long ago; files go by the names Finder shows in the app's language (Downloads by its Ukrainian name in Ukrainian), extensions included.
 - Clicking a card copies it again, with the marks of the app it came from, and moves it to the top; "Copied" shows once it is on the pasteboard.
 - Dragging a card drops its text, link, image file or files into another app; the item stays in the history.
 - A hidden secret doesn't drag; once the eye shows it, it does.

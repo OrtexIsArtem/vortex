@@ -145,7 +145,7 @@ private struct EmptyShelf: View {
         .multilineTextAlignment(.center)
         .frame(maxWidth: 360)
       if !watchedFolders.isEmpty {
-        Text("New files from \(watchedFolders.map(\.lastPathComponent).formatted(.list(type: .and))) appear here by themselves.", bundle: .module)
+        Text("New files from \(watchedFolders.map(FileName.shown).formatted(.list(type: .and))) appear here by themselves.", bundle: .module)
           .font(.system(size: 11.5))
           .foregroundStyle(VortexColor.tertiaryText)
           .multilineTextAlignment(.center)

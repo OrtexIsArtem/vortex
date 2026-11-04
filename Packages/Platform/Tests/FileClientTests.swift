@@ -13,6 +13,25 @@ struct FileClientTests {
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
   }
 
+  /// A name shows as Finder shows it, but an extension Finder hides stays: a build's .aab matters.
+  @Test
+  func aNameShowsAsInFinderWithItsExtension() throws {
+    defer { try? FileManager.default.removeItem(at: root) }
+    var file = root.appending(path: "app-release.aab")
+    try Data(count: 3).write(to: file)
+    var hidden = URLResourceValues()
+    hidden.hasHiddenExtension = true
+    try file.setResourceValues(hidden)
+    #expect(FileName.shown(file) == "app-release.aab")
+    let folder = root.appending(path: "builds", directoryHint: .isDirectory)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    #expect(FileName.shown(folder) == "builds")
+    // A folder macOS names in the app's language reads as Finder names it, here in the language of `swift test`.
+    let downloads = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Downloads", directoryHint: .isDirectory)
+    #expect(FileName.shown(downloads) == FileManager.default.displayName(atPath: downloads.path))
+    #expect(FileName.shown(root.appending(path: "missing.ipa")) == "missing.ipa")
+  }
+
   @Test
   func infoNoticesAFileDeletedMeanwhile() async throws {
     let file = root.appending(path: "build.ipa")
