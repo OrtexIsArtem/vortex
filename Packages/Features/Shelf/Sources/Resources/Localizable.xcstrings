@@ -201,16 +201,6 @@
         }
       }
     },
-    "Or on the menu bar icon. The shelf keeps links to your files and clears itself after 24 hours." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Або на значок на смузі меню. Полиця зберігає посилання на файли й очищується сама через 24 години."
-          }
-        }
-      }
-    },
     "Path to watch" : {
       "localizations" : {
         "uk" : {
@@ -351,6 +341,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Відкріпити"
+          }
+        }
+      }
+    },
+    "Unpinned items leave the shelf after 24 hours." : {
+      "comment" : "Under «Drop files here» on the empty shelf",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Незакріплені файли зникають із полиці через 24 години."
           }
         }
       }

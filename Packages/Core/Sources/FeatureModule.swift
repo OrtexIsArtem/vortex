@@ -17,8 +17,9 @@ public protocol FeatureModule {
   /// SF Symbol shown in the sidebar.
   static var symbol: String { get }
   /// Whether files given to Vortex belong to this feature. Files dragged to the notch open the window on its tab,
-  /// where the tab's own drop target receives them; files dropped on the menu bar icon or opened with Vortex
-  /// (`vortex shelf add`) arrive in `receiveFiles(_:)`. The first enabled feature that accepts files gets them.
+  /// where the tab's own drop target receives them; files dropped on the menu bar icon (never on macOS 26, where the
+  /// drop doesn't reach Vortex) or opened with Vortex (`vortex shelf add`) arrive in `receiveFiles(_:)`. The first
+  /// enabled feature that accepts files gets them.
   static var acceptsFileDrops: Bool { get }
   /// Content of the feature's sidebar tab. It stays mounted while the window is closed, so work that should
   /// run only while it is visible goes into `.task(id: isWindowOpen)`.

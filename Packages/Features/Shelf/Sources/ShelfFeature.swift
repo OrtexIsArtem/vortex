@@ -5,9 +5,9 @@ import os
 import VortexCore
 import VortexPlatform
 
-/// A place for files the user puts aside to take somewhere else: dragged in, dropped on the menu bar icon, sent
-/// from the terminal or found in the watched folder; dragged out into any app as many times as needed.
-/// Clears itself after 24 hours.
+/// A place for files the user puts aside to take somewhere else: dragged in, dropped on the menu bar icon (not on
+/// macOS 26, where the drop never reaches Vortex), sent from the terminal or found in the watched folder; dragged out
+/// into any app as many times as needed. Unpinned items leave it after 24 hours.
 @Reducer
 public struct ShelfFeature: Sendable {
   public static let id: FeatureID = "shelf"

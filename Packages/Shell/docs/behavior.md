@@ -16,7 +16,7 @@
 - Opening for dragged files does not change the remembered tab.
 
 ## Files given to Vortex
-- Files dropped on the menu bar icon, or opened with Vortex (`vortex shelf add`, `open -a Vortex`), go to the first enabled feature that accepts files and the window stays as it is; without one the icon refuses the drop and opened files are ignored.
+- Files dropped on the menu bar icon, or opened with Vortex (`vortex shelf add`, `open -a Vortex`), go to the first enabled feature that accepts files and the window stays as it is; without one the icon refuses the drop and opened files are ignored. On macOS 26 a drop on the icon never reaches Vortex: Control Center draws the icon.
 
 ## Keyboard
 - A window opened by hover or by dragging files does not take keyboard focus; the first click inside gives it focus.

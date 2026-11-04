@@ -138,7 +138,8 @@ private struct EmptyShelf: View {
         }
       }
       .font(.system(size: 13, weight: .medium))
-      Text("Or on the menu bar icon. The shelf keeps links to your files and clears itself after 24 hours.", bundle: .module)
+      // No word of the menu bar icon: on macOS 26 a drop on it never reaches Vortex, and the icon may be hidden.
+      Text("Unpinned items leave the shelf after 24 hours.", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .multilineTextAlignment(.center)

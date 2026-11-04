@@ -1,6 +1,6 @@
 # Shelf
 
-A place for files the user puts aside to drag into another app, as many times as needed; it clears itself after a day.
+A place for files the user puts aside to drag into another app, as many times as needed; unpinned items leave it after a day.
 
 | File | What it covers |
 | --- | --- |
