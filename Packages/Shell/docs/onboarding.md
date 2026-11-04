@@ -17,6 +17,7 @@
 - "Open at login" shows on for a fresh install, and the real state for one that set it up before; in release builds the user's choice is applied on leaving Basics, never while it shows. Afterwards the switch shows and sets the real state.
 - A hard page: the reasons of every feature that needs it, the drawn System Settings mock, and the "Turn on" checkbox; Screen Recording and the pasteboard add the relaunch note.
 - The mock's pointer and switch move by Core Animation: the page uses no CPU while it shows. No text is cut short: a page too long for the window scrolls.
+- The mock names the panes as this Mac's System Settings does, read once at launch: in the system's language, which may not be Vortex's, and for its macOS version ("Screen Recording" before macOS 15). A breadcrumb with a name macOS doesn't give is Vortex's own, macOS 26's names in Vortex's language.
 - Done: a row per needed permission with ✓, ↻ or the warning; a row that is off opens its page, and Next or Skip there comes back to Done; the notifications row opens Basics.
 - Done's hint names the notch only while a notch display is connected, by hover when Open on hover is on, else by click; then the menu bar icon while it shows, otherwise the "Open Vortex" shortcut if one is set.
 

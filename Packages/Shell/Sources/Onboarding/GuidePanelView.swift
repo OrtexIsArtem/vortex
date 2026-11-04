@@ -14,7 +14,7 @@ struct GuidePanelView: View {
         Text(permission.title)
           .font(.system(size: 15, weight: .semibold))
           .foregroundStyle(VortexColor.primaryText)
-        SettingsIllustration(permission: permission, compact: true)
+        SettingsIllustration(permission: permission, names: store.settingsNames, compact: true)
           .frame(height: 150)
         HStack(spacing: 8) {
           Text("Turn on", bundle: .module)

@@ -9,6 +9,8 @@ import VortexPlatform
 /// while it shows; with Reduce Motion the switch is on, with an arrow pointing at it.
 struct SettingsIllustration: View {
   let permission: Permission
+  /// System Settings' own names on this Mac (`IllustrationText`).
+  let names: SystemSettingsNames
   var compact = false
   @Environment(\.reduceMotion) private var reduceMotion
 
@@ -19,7 +21,7 @@ struct SettingsIllustration: View {
         .frame(width: 92 * scale)
       Rectangle().fill(VortexColor.line).frame(width: 1)
       VStack(alignment: .leading, spacing: 10 * scale) {
-        Text(IllustrationText.breadcrumb(permission))
+        Text(verbatim: IllustrationText.breadcrumb(permission, names))
           .font(.system(size: 11 * scale, weight: .semibold))
           .foregroundStyle(VortexColor.primaryText)
           // Wraps rather than cutting a long pane name short (uk).
@@ -48,7 +50,7 @@ struct SettingsIllustration: View {
     .clipShape(RoundedRectangle(cornerRadius: 12))
     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(VortexColor.line, lineWidth: 1))
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text(IllustrationText.breadcrumb(permission)))
+    .accessibilityLabel(Text(verbatim: IllustrationText.breadcrumb(permission, names)))
   }
 
   private var sidebar: some View {
@@ -87,7 +89,7 @@ struct SettingsIllustration: View {
       Image(nsImage: NSApp?.applicationIconImage ?? NSImage())
         .resizable()
         .frame(width: 18 * scale, height: 18 * scale)
-      Text(IllustrationText.rowTitle(permission))
+      Text(verbatim: IllustrationText.rowTitle(permission, names))
         .font(.system(size: 11 * scale, weight: .medium))
         .foregroundStyle(VortexColor.primaryText)
       Spacer()
@@ -113,24 +115,40 @@ struct SettingsIllustration: View {
   }
 }
 
-/// The illustration's words, as System Settings on macOS 26 names its panes.
+/// The illustration's words, as System Settings names its panes on this Mac: read from System Settings itself, in the
+/// system's language and for this macOS version, so they match what the user sees there even when Vortex speaks
+/// another language. A breadcrumb with a name macOS doesn't give falls back whole to Vortex's own words, macOS 26's
+/// names in Vortex's language, so it never mixes two languages.
 enum IllustrationText {
-  static func breadcrumb(_ permission: Permission) -> LocalizedStringResource {
+  static func breadcrumb(_ permission: Permission, _ names: SystemSettingsNames) -> String {
     switch permission {
     case .notifications:
-      LocalizedStringResource("Notifications › Vortex", bundle: .atURL(Bundle.module.bundleURL))
+      names.notifications.map { "\($0) › Vortex" }
+        ?? String(localized: "Notifications › Vortex", bundle: .module)
     case .accessibility:
-      LocalizedStringResource("Privacy & Security › Accessibility", bundle: .atURL(Bundle.module.bundleURL))
+      privacy(names, names.accessibility)
+        ?? String(localized: "Privacy & Security › Accessibility", bundle: .module)
     case .screenRecording:
-      LocalizedStringResource("Privacy & Security › Screen & System Audio Recording", bundle: .atURL(Bundle.module.bundleURL))
+      privacy(names, names.screenRecording)
+        ?? String(localized: "Privacy & Security › Screen & System Audio Recording", bundle: .module)
     case .pasteboard:
-      LocalizedStringResource("Privacy & Security › Paste from Other Apps", bundle: .atURL(Bundle.module.bundleURL))
+      privacy(names, names.pasteFromOtherApps)
+        ?? String(localized: "Privacy & Security › Paste from Other Apps", bundle: .module)
     }
   }
 
-  static func rowTitle(_ permission: Permission) -> LocalizedStringResource {
-    permission == .notifications
-      ? LocalizedStringResource("Allow notifications", bundle: .atURL(Bundle.module.bundleURL))
-      : LocalizedStringResource(stringLiteral: "Vortex")
+  /// Vortex's row: the switch's label on its Notifications page, else the app's name.
+  static func rowTitle(_ permission: Permission, _ names: SystemSettingsNames) -> String {
+    guard permission == .notifications else { return "Vortex" }
+    // From the same files as the breadcrumb, so both are in one language.
+    guard names.notifications != nil, let allow = names.allowNotifications else {
+      return String(localized: "Allow notifications", bundle: .module)
+    }
+    return allow
+  }
+
+  private static func privacy(_ names: SystemSettingsNames, _ pane: String?) -> String? {
+    guard let privacy = names.privacyAndSecurity, let pane else { return nil }
+    return "\(privacy) › \(pane)"
   }
 }

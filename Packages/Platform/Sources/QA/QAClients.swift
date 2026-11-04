@@ -27,6 +27,7 @@
       screenCaptureClient = .qa
       soundClient = .qa
       systemClient = .qa
+      systemSettingsNamesClient = .qa
       textRecognitionClient = .qa
     }
   }
@@ -316,6 +317,14 @@
       client.play = { name in QALog.record("sound", "play", ["name": name]) }
       return client
     }()
+  }
+
+  extension SystemSettingsNamesClient {
+    /// The names as this Mac's System Settings has them, in the system's language, as the live client reads them: only
+    /// System Settings' files are read, so a run shows what plain Vortex would.
+    static let qa = SystemSettingsNamesClient(
+      names: { SystemSettingsStrings.names(languages: SystemSettingsStrings.systemLanguages()) }
+    )
   }
 
   extension SystemClient {

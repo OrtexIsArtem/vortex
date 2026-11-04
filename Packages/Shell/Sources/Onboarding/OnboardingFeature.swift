@@ -54,6 +54,8 @@ struct OnboardingFeature {
     var doneHint = DoneHint()
     /// The "Open Vortex" shortcut, read when Done shows; nil while none is set.
     var openShortcut: String?
+    /// The pane names the drawn System Settings shows, as this Mac's System Settings has them; read once at launch.
+    var settingsNames = SystemSettingsNames()
 
     init(progress: OnboardingProgress = OnboardingProgress()) {
       self.progress = progress
@@ -399,6 +401,8 @@ struct OnboardingFeature {
     /// Basics' "Open System Settings", at General › Login Items & Extensions; it gets no panel.
     case openLoginItemsTapped
     case openShortcutLoaded(String?)
+    /// The shell read System Settings' own names at launch.
+    case systemSettingsNamesLoaded(SystemSettingsNames)
     case navigationUnlocked
     case turnOnUnlocked(Permission)
     case notificationHintExpired
@@ -601,6 +605,10 @@ struct OnboardingFeature {
 
       case let .openShortcutLoaded(shortcut):
         state.openShortcut = shortcut
+        return .none
+
+      case let .systemSettingsNamesLoaded(names):
+        state.settingsNames = names
         return .none
 
       case .navigationUnlocked:

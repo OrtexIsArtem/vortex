@@ -134,6 +134,7 @@ struct ShellPermissionsTests {
     store.dependencies.activeAppClient.activations = { .finished }
     store.dependencies.activeAppClient.terminations = { .finished }
     store.dependencies.launchAtLoginClient.status = { .disabled }
+    store.dependencies.systemSettingsNamesClient.names = { SystemSettingsNames() }
   }
 
   // MARK: The statuses

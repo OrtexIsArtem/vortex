@@ -572,10 +572,12 @@ struct ShellFeatureTests {
     #expect(applied.value == [.english])
   }
 
-  /// The launch no longer registers the login item by itself: Basics does, when the user leaves it.
+  /// The launch no longer registers the login item by itself: Basics does, when the user leaves it. System Settings'
+  /// own names are read before the onboarding can show its drawing of it.
   @Test
   func launchStartsFeaturesAndSetsUpTheShell() async {
     let firstLaunchSetUps = LockIsolated(0)
+    let names = SystemSettingsNames(privacyAndSecurity: "Datenschutz & Sicherheit", accessibility: "Bedienungshilfen")
     let store = makeStore { $0.disabledFeatures = ["tasks"] }
     store.dependencies.windowClient.events = { .finished }
     store.dependencies.hotkeyClient.presses = { _ in .finished }
@@ -586,9 +588,11 @@ struct ShellFeatureTests {
     store.dependencies.permissionPage.requests = { .finished }
     store.dependencies.activeAppClient.activations = { .finished }
     store.dependencies.activeAppClient.terminations = { .finished }
+    store.dependencies.systemSettingsNamesClient.names = { names }
 
     await store.send(.task)
     await store.receive(\.launchAtLoginStatusLoaded) { $0.launchAtLogin = .enabled }
+    await store.receive(\.onboarding.systemSettingsNamesLoaded) { $0.onboarding.settingsNames = names }
     await store.receive(\.started) { $0.isStarted = true }
     await store.finish()
     #expect(menuBarIcon.value == [true])

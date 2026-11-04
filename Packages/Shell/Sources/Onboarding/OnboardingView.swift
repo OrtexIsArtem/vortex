@@ -354,7 +354,7 @@ struct HardPermissionContent: View {
         .foregroundStyle(VortexColor.secondaryText)
         .fixedSize(horizontal: false, vertical: true)
       // The mock needs about 154 pt; the rest of the page's room goes to text, which may be longer in Ukrainian.
-      SettingsIllustration(permission: permission)
+      SettingsIllustration(permission: permission, names: store.settingsNames)
         .frame(height: 170)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)

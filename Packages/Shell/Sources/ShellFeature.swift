@@ -253,6 +253,7 @@ struct ShellFeature {
   @Dependency(\.permissionsClient) var permissions
   @Dependency(\.settingsClient) var settingsClient
   @Dependency(\.systemClient) var system
+  @Dependency(\.systemSettingsNamesClient) var systemSettingsNames
   @Dependency(\.windowClient) var window
 
   private enum CancelID {
@@ -335,6 +336,8 @@ struct ShellFeature {
               }
               // No silent registration at launch: the onboarding's Basics applies "Open at login".
               await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
+              // Before any onboarding page shows its drawing of System Settings.
+              await send(.onboarding(.systemSettingsNamesLoaded(systemSettingsNames.names())))
               await send(.started)
             },
             .run { send in
