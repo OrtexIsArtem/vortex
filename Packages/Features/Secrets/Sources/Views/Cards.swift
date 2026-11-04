@@ -179,7 +179,8 @@ extension MCPFailure {
   /// Why the server couldn't listen, as it reads after a colon: "Not running: Port 47823 is taken".
   func reason(port: Int) -> String {
     switch self {
-    case .portTaken: String(localized: "Port \(port) is taken", bundle: .module)
+    // A port reads as a code, «64483», never as a number with a separator for thousands.
+    case .portTaken: String(localized: "Port \(String(port)) is taken", bundle: .module)
     case .other: String(localized: "An unexpected error occurred", bundle: .module)
     }
   }
