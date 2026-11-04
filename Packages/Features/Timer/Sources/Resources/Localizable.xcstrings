@@ -6,7 +6,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld хв"
+            "value" : "%lld хв"
           }
         }
       }
@@ -16,7 +16,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "+5 хв"
+            "value" : "+5 хв"
           }
         }
       }
@@ -26,7 +26,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Додати 10 хвилин"
+            "value" : "Додати 10 хвилин"
           }
         }
       }
@@ -36,7 +36,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Додати 5 хвилин"
+            "value" : "Додати 5 хвилин"
           }
         }
       }
@@ -86,7 +86,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "з %lld хв"
+            "value" : "з %lld хв"
           }
         }
       }
@@ -116,7 +116,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Програє звук і блимання через 3 с: закрийте вікно, щоб бачити виріз, і наведіть на нього, щоб зупинити"
+            "value" : "Відтворить звук і покаже блимання через 3 с: закрийте вікно, щоб бачити виріз, і наведіть на нього вказівник, щоб зупинити"
           }
         }
       }
@@ -126,7 +126,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Лунає, коли час вийшов."
+            "value" : "Лунає, коли час вийде."
           }
         }
       }
@@ -178,7 +178,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запустити таймер на %lld хв"
+            "value" : "Запустити таймер на %lld хв"
           }
         }
       }
@@ -199,7 +199,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Повідомляє, коли таймер закінчився."
+            "value" : "Повідомляє, коли таймер закінчиться."
           }
         }
       }
@@ -219,7 +219,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Таймер на %lld хв закінчився"
+            "value" : "Таймер на %lld хв закінчився"
           }
         }
       }
