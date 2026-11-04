@@ -323,12 +323,17 @@ public struct ClipboardFeature: Sendable {
     lhs.isPinned != rhs.isPinned ? lhs.isPinned : lhs.copiedAt > rhs.copiedAt
   }
 
-  /// "Image 2026-10-04 at 14.03.12.png": the name the image has when dragged into another app.
+  /// "Image 2026-10-04 at 14.03.12.png": the name the image has when dragged into another app, in the words macOS gives
+  /// such an image in the app's language; the date and time read the same in every language.
   static func imageFileName(copiedAt date: Date) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-    return "Image \(formatter.string(from: date)).png"
+    formatter.dateFormat = "yyyy-MM-dd"
+    let day = formatter.string(from: date)
+    formatter.dateFormat = "HH.mm.ss"
+    let time = formatter.string(from: date)
+    let name = String(localized: "Image \(day) at \(time)", bundle: .module, comment: "File name of a copied image: the date and the time")
+    return "\(name).png"
   }
 
   /// Whether a file lives in Vortex's own data folder: the history's image files, the shelf's copies. Such a file goes

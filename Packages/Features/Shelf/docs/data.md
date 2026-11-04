@@ -3,7 +3,7 @@
 | What | Where | How long |
 | --- | --- | --- |
 | The shelf | table `shelf_item` in DataFolder/vortex.sqlite | 24 hours, pinned items until taken off |
-| Copies (images without a file, Vortex's own files) | DataFolder/Shelf/<item id>/<name> | Deleted with their item |
+| Copies (images without a file, Vortex's own files) | DataFolder/Shelf/<item id>/<name>; an image without a file is "Image <date> at <time>", its words in the app's language | Deleted with their item |
 | Watched folders and their file types, flash colors | DataFolder/shelf.json | Until changed |
 
 - DataFolder is ~/Library/Application Support/Vortex.

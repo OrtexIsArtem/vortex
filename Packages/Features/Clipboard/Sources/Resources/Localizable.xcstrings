@@ -137,6 +137,17 @@
         }
       }
     },
+    "Image %@ at %@" : {
+      "comment" : "File name of a copied image: the date and the time",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зображення %@ о %@"
+          }
+        }
+      }
+    },
     "Keeps your clipboard history." : {
       "comment" : "Why the clipboard needs Paste from Other Apps, next to the permission",
       "localizations" : {

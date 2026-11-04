@@ -127,6 +127,17 @@
         }
       }
     },
+    "Image %@ at %@" : {
+      "comment" : "File name of an image dropped without a file: the date and the time",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зображення %@ о %@"
+          }
+        }
+      }
+    },
     "New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. Opening the shelf starts the count over." : {
       "localizations" : {
         "uk" : {

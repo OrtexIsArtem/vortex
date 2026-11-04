@@ -251,6 +251,14 @@ struct ShelfFeatureTests {
     await store.finish()
   }
 
+  /// An image dropped without a file is named in macOS's words, from the catalog; its date and time read the same in
+  /// every language.
+  @Test
+  func anImageWithoutAFileIsNamedByItsDateAndTime() throws {
+    let date = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 4, hour: 14, minute: 3, second: 12)))
+    #expect(ShelfFeature.imageFileName(addedAt: date, fileExtension: "jpeg") == "Image 2026-10-04 at 14.03.12.jpeg")
+  }
+
   @Test
   func aFileOfVortexsOwnDroppedAgainMovesItsCopyToTheFront() async {
     let store = makeStore()

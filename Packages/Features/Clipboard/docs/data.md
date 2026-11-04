@@ -3,7 +3,7 @@
 | What | Where | How long |
 | --- | --- | --- |
 | The history | table `clipboard_item` in DataFolder/vortex.sqlite | Until the item drops out of the last ten, is deleted or cleared |
-| Copied images | DataFolder/Clipboard/<item id>/Image <date>.png | Deleted with their item |
+| Copied images | DataFolder/Clipboard/<item id>/Image <date> at <time>.png, its words in the app's language | Deleted with their item |
 | Ignored apps | DataFolder/clipboard.json | Until changed |
 
 - DataFolder is ~/Library/Application Support/Vortex.

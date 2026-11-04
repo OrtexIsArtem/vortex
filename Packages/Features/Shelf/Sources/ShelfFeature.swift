@@ -605,12 +605,17 @@ public struct ShelfFeature: Sendable {
     .cancellable(id: CancelID.save, cancelInFlight: true)
   }
 
-  /// "Image 2026-10-04 at 14.03.12.png": the name an image dropped without a file gets.
+  /// "Image 2026-10-04 at 14.03.12.png": the name an image dropped without a file gets, in the words macOS gives such an
+  /// image in the app's language; the date and time read the same in every language.
   static func imageFileName(addedAt date: Date, fileExtension: String) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-    return "Image \(formatter.string(from: date)).\(fileExtension)"
+    formatter.dateFormat = "yyyy-MM-dd"
+    let day = formatter.string(from: date)
+    formatter.dateFormat = "HH.mm.ss"
+    let time = formatter.string(from: date)
+    let name = String(localized: "Image \(day) at \(time)", bundle: .module, comment: "File name of an image dropped without a file: the date and the time")
+    return "\(name).\(fileExtension)"
   }
 }
 

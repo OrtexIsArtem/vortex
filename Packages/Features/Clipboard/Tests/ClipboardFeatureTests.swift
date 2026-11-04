@@ -406,6 +406,14 @@ struct ClipboardFeatureTests {
     await store.send(.stop)
   }
 
+  /// A copied image's file is named in macOS's words, from the catalog; its date and time read the same in every
+  /// language.
+  @Test
+  func aCopiedImageIsNamedByItsDateAndTime() throws {
+    let date = try #require(Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 4, hour: 14, minute: 3, second: 12)))
+    #expect(ClipboardFeature.imageFileName(copiedAt: date) == "Image 2026-10-04 at 14.03.12.png")
+  }
+
   @Test
   func externalFilesWinOverAnOwnImageDroppedWithThem() async {
     let ipa = URL(fileURLWithPath: "/tmp/a.ipa")
