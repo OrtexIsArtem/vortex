@@ -786,9 +786,6 @@
         }
       }
     },
-    "Vortex" : {
-      "shouldTranslate" : false
-    },
     "Vortex lives in your notch: a timer, a shelf for files, clipboard history, tasks and keys for Claude." : {
       "localizations" : {
         "uk" : {
