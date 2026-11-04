@@ -52,8 +52,8 @@ export const en = {
     sidebar: ['Home', 'Timer', 'Clipboard', 'Shelf', 'Tasks', 'Keys'],
     settings: 'Settings',
     minutes: 'min',
-    add5: '+5 minutes',
-    add10: '+10 minutes',
+    add5: 'Add 5 minutes',
+    add10: 'Add 10 minutes',
     start: 'Start',
     pause: 'Pause',
     resume: 'Resume',
@@ -73,13 +73,6 @@ export const en = {
       { name: 'Build 42.ipa', kind: 'ipa' },
       { name: 'mockup.png', kind: 'image' },
       { name: 'notes.md', kind: 'md' },
-    ],
-    copies: [
-      { kind: 'text', text: 'git clone https://github.com/OrtexIsArtem/vortex.git', value: 'git clone https://github.com/OrtexIsArtem/vortex.git' },
-      { kind: 'link', text: 'github.com/OrtexIsArtem/vortex', value: 'https://github.com/OrtexIsArtem/vortex' },
-      { kind: 'secret', text: '••••••••', value: null },
-      { kind: 'image', text: 'Image', value: null },
-      { kind: 'text', text: 'brew install xcodegen', value: 'brew install xcodegen' },
     ],
   },
   chapter: {
@@ -182,11 +175,10 @@ export const en = {
     cancel: 'Cancel',
     save: 'Save',
     tasks: 'Tasks',
-    search: 'Search tasks',
-    now: 'now',
+    search: 'Search',
     app: 'Chat',
     channel: 'Mobile team',
-    source: 'Chat — Mobile team',
+    source: 'Chat · Mobile team',
     messages: [
       { who: 'Dana', text: 'Login button is cut off on iPad mini. Screenshot:', shot: true },
       { who: 'Sam', text: 'Also, the keyboard covers the password field in landscape.', shot: false },
@@ -199,7 +191,7 @@ export const en = {
     sample: {
       title: 'Update the release notes',
       text: 'Release checklist: notes, screenshots, build',
-      source: 'Notes — Release checklist',
+      source: 'Notes · Release checklist',
     },
   },
   keysChapter: {

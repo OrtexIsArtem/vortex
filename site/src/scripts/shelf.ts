@@ -76,20 +76,6 @@ export function lookedAtShelf(): void {
   emit();
 }
 
-/** "2.1 MB", "860 KB". */
-export function sizeText(bytes: number | null): string {
-  if (bytes === null) return 'Folder';
-  if (bytes < 1000) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1000;
-  let unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000;
-    unit++;
-  }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
-}
-
 /** The extension, for a tile without a picture: ".aab". */
 export function extension(name: string): string {
   const dot = name.lastIndexOf('.');

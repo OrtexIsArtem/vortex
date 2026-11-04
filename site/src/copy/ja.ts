@@ -109,7 +109,7 @@ export const ja: Copy = {
     frameForMe: '自動で囲む',
     app: 'チャット',
     channel: 'モバイルチーム',
-    source: 'チャット — モバイルチーム',
+    source: 'チャット · モバイルチーム',
     messages: [
       { ...en.tasksChapter.messages[0], text: 'iPad miniでログインボタンが見切れています。スクショです。' },
       { ...en.tasksChapter.messages[1], text: 'あと、横向きだとキーボードでパスワード欄が隠れます。' },
@@ -120,7 +120,7 @@ export const ja: Copy = {
     sample: {
       title: 'リリースノートを更新',
       text: 'リリースチェックリスト：リリースノート、スクリーンショット、ビルド',
-      source: 'メモ — リリースチェックリスト',
+      source: 'メモ · リリースチェックリスト',
     },
   },
   keysChapter: {

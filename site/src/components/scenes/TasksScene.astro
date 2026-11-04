@@ -874,12 +874,16 @@ const t = copy.tasksChapter;
       thumb: HTMLElement | null;
       thumbSize: { w: number; h: number };
     }
+    /** Today's tasks show their time, as the app's list does, in the visitor's language like the menu bar clock. */
+    const timeOf = (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const sampleTime = new Date();
+    sampleTime.setHours(14, 5, 0, 0);
     const tasks: Task[] = [
       {
         ...t.sample,
         appTitle: false,
         priority: t.priorities[1] ?? '',
-        time: '14:05',
+        time: timeOf(sampleTime),
         thumb: null,
         thumbSize: { w: 1, h: 1 },
       },
@@ -1151,7 +1155,7 @@ const t = copy.tasksChapter;
         text: recognized,
         source: t.source,
         priority: chosen,
-        time: t.now,
+        time: timeOf(new Date()),
         thumb: box,
         thumbSize: { w: rect.w, h: rect.h },
       });

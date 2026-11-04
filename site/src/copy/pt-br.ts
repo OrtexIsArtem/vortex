@@ -106,7 +106,7 @@ export const ptBr: Copy = {
     tryIt: 'Clique em + e desenhe um retângulo em volta da mensagem ou escolha “Selecionar por mim”.',
     frameForMe: 'Selecionar por mim',
     channel: 'Equipe mobile',
-    source: 'Chat — Equipe mobile',
+    source: 'Chat · Equipe mobile',
     messages: [
       { ...en.tasksChapter.messages[0], text: 'O botão de login está cortado no iPad mini. Segue o print:' },
       { ...en.tasksChapter.messages[1], text: 'Ah, e na horizontal o teclado cobre o campo de senha.' },
@@ -118,7 +118,7 @@ export const ptBr: Copy = {
     sample: {
       title: 'Atualizar as notas da versão',
       text: 'Checklist da versão: notas, capturas de tela, build',
-      source: 'Notas — Checklist da versão',
+      source: 'Notas · Checklist da versão',
     },
   },
   keysChapter: {

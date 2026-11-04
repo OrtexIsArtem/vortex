@@ -66,7 +66,7 @@ export const es: Copy = {
     ...en.clipboardChapter,
     title: 'El historial del portapapeles, siempre a mano.',
     titleQuiet: 'Tus diez últimas copias, más las que fijes.',
-    body: 'Los textos, enlaces, imágenes y archivos se guardan a medida que los copias. Haz clic en uno para volver a copiarlo, arrástralo a cualquier app o fíjalo para más tarde. Las copias que los gestores de contraseñas marcan como secretas se muestran como puntos, solo se guardan en memoria y se borran cuando Vortex se cierra.',
+    body: 'Los textos, enlaces, imágenes y archivos se guardan a medida que los copias. Haz clic en uno para volver a copiarlo, arrástralo a cualquier app o fíjalo para más tarde. Las copias que los gestores de contraseñas marcan como secretas se muestran como puntos, solo se guardan en memoria y se borran cuando sales de Vortex.',
     facts: ['10 recientes, las fijadas arriba', 'Textos, enlaces, imágenes y archivos', 'Las apps que excluyas nunca se registran'],
     tryIt: 'Copia cualquier frase de esta página.',
     thisPage: 'Esta página',
@@ -106,7 +106,7 @@ export const es: Copy = {
     tryIt: 'Pulsa «+» y dibuja un recuadro alrededor del mensaje, o elige «Encuadra por mí».',
     frameForMe: 'Encuadra por mí',
     channel: 'Equipo de apps',
-    source: 'Chat — Equipo de apps',
+    source: 'Chat · Equipo de apps',
     messages: [
       { ...en.tasksChapter.messages[0], text: 'El botón de iniciar sesión sale cortado en el iPad mini. Captura:' },
       { ...en.tasksChapter.messages[1], text: 'Además, en horizontal el teclado tapa el campo de la contraseña.' },
@@ -118,7 +118,7 @@ export const es: Copy = {
     sample: {
       title: 'Actualizar las notas de la versión',
       text: 'Lista de lanzamiento: notas, capturas, compilación',
-      source: 'Notas — Lista de lanzamiento',
+      source: 'Notas · Lista de lanzamiento',
     },
   },
   keysChapter: {
@@ -152,7 +152,7 @@ export const es: Copy = {
     title: 'Bloquea el teclado para limpiarlo.',
     titleQuiet: 'Ninguna tecla responde hasta que lo vuelvas a activar.',
     body: 'Un botón en la pestaña Home bloquea todas las teclas: letras, modificadoras, Esc, la fila de funciones y las teclas de brillo, sonido y multimedia. El ratón y el trackpad siguen funcionando, así que con un clic recuperas el teclado.',
-    facts: ['Necesita permiso de Accesibilidad', 'El ratón y el trackpad siguen funcionando', 'Las teclas vuelven si Vortex se cierra'],
+    facts: ['Necesita permiso de Accesibilidad', 'El ratón y el trackpad siguen funcionando', 'Las teclas vuelven si sales de Vortex'],
     note: 'macOS no deja que ninguna app bloquee Touch ID ni Caps Lock.',
     tryIt: 'Pulsa algunas teclas y luego bloquéalas.',
   },
@@ -194,7 +194,7 @@ export const es: Copy = {
       {
         ...en.more.items[5],
         title: 'Inglés y ucraniano.',
-        text: 'Vortex habla los dos: el idioma de tu Mac o el que elijas en sus ajustes.',
+        text: 'Vortex habla los dos: el idioma de tu Mac o el que elijas en «Settings».',
       },
     ],
   },

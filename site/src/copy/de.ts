@@ -109,7 +109,7 @@ export const de: Copy = {
     frameForMe: 'Für mich rahmen',
     app: 'Chat',
     channel: 'Mobile-Team',
-    source: 'Chat — Mobile-Team',
+    source: 'Chat · Mobile-Team',
     messages: [
       { who: 'Dana', text: 'Der Login-Button ist auf dem iPad mini abgeschnitten. Screenshot:', shot: true },
       { who: 'Sam', text: 'Außerdem verdeckt die Tastatur im Querformat das Passwortfeld.', shot: false },
@@ -121,7 +121,7 @@ export const de: Copy = {
     sample: {
       title: 'Release Notes aktualisieren',
       text: 'Release-Checkliste: Notes, Screenshots, Build',
-      source: 'Notizen — Release-Checkliste',
+      source: 'Notizen · Release-Checkliste',
     },
   },
   keysChapter: {
@@ -155,7 +155,7 @@ export const de: Copy = {
     title: 'Sperre die Tastatur zum Reinigen.',
     titleQuiet: 'Alle Tasten ruhen, bis du sie wieder einschaltest.',
     body: 'Ein Button in „Home“ sperrt jede Taste: Buchstaben, Sondertasten, Esc, die Funktionstasten und die Tasten für Helligkeit, Lautstärke und Medien. Maus und Trackpad funktionieren weiter, also holt ein Klick die Tastatur zurück.',
-    facts: ['Braucht „Bedienungshilfen“', 'Maus und Trackpad funktionieren weiter', 'Tasten gehen wieder, wenn Vortex endet'],
+    facts: ['Braucht „Bedienungshilfen“', 'Maus und Trackpad funktionieren weiter', 'Tasten gehen wieder, wenn Vortex beendet wird'],
     note: 'macOS lässt keine App Touch ID oder Caps Lock sperren.',
     tryIt: 'Drücke ein paar Tasten und sperre sie dann.',
   },
@@ -197,7 +197,7 @@ export const de: Copy = {
       {
         icon: 'globe',
         title: 'Englisch und Ukrainisch.',
-        text: 'Vortex spricht beide: die Sprache deines Macs oder die, die du in den Einstellungen wählst.',
+        text: 'Vortex spricht beide: die Sprache deines Macs oder die, die du in „Settings“ wählst.',
       },
     ],
   },

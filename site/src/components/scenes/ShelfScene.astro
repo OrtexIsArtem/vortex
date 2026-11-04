@@ -613,7 +613,8 @@ const command = s.command.split(' && ').map((part, index, parts) => {
   import { makeDraggable, type DropTarget } from '../../scripts/drag';
   import '../../scripts/file-drop';
   import { dropPoint, inDropZone, setDropZone } from '../../scripts/notch';
-  import { extension, lookedAtShelf, onShelf, putOnShelf, sizeText, takeOff, type ShelfItem } from '../../scripts/shelf';
+  import { fileSize } from '../../lib/file-size';
+  import { extension, lookedAtShelf, onShelf, putOnShelf, takeOff, type ShelfItem } from '../../scripts/shelf';
 
   const scene = document.querySelector<HTMLElement>('[data-shelf-scene]');
   const shelf = scene?.querySelector<HTMLElement>('[data-sscene-shelf]');
@@ -637,6 +638,7 @@ const command = s.command.split(' && ').map((part, index, parts) => {
     let drawnOnce = false;
     // The shelf's own words (sizes, ages, Remove) are the app's: English on the pages the app doesn't speak.
     const appWords = appLang ? ` lang="${appLang}"` : '';
+    const sizeLanguage = appLang ?? (document.documentElement.dataset.locale === 'uk' ? 'uk' : 'en');
 
     const escape = (text: string) =>
       text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
@@ -729,7 +731,7 @@ const command = s.command.split(' && ').map((part, index, parts) => {
     const update = (element: HTMLElement, item: ShelfItem) => {
       element.classList.toggle('is-fresh', item.fresh);
       const details = element.querySelector('.tile__details');
-      const size = item.size === null ? s.folder : sizeText(item.size);
+      const size = item.size === null ? s.folder : fileSize(item.size, sizeLanguage);
       const text = `${size} · ${copy.demo.ago(Math.floor((Date.now() - item.addedAt) / 60_000))}`;
       if (details && details.textContent !== text) details.textContent = text;
     };

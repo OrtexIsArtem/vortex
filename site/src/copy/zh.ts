@@ -109,7 +109,7 @@ export const zh: Copy = {
     frameForMe: '帮我框选',
     app: '聊天',
     channel: '移动端团队',
-    source: '聊天 — 移动端团队',
+    source: '聊天 · 移动端团队',
     messages: [
       { ...en.tasksChapter.messages[0], text: '登录按钮在 iPad mini 上显示不全，截图如下：' },
       { ...en.tasksChapter.messages[1], text: '还有，横屏时键盘会挡住密码输入框。' },
@@ -120,7 +120,7 @@ export const zh: Copy = {
     sample: {
       title: '更新版本说明',
       text: '发布清单：版本说明、截图、构建版本',
-      source: '备忘录 — 发布清单',
+      source: '备忘录 · 发布清单',
     },
   },
   keysChapter: {
@@ -196,7 +196,7 @@ export const zh: Copy = {
       {
         icon: 'globe',
         title: '英语和乌克兰语。',
-        text: 'Vortex 的界面支持这两种语言：默认跟随 Mac 的语言，其他语言下显示英语；也可以在设置中自选。',
+        text: 'Vortex 的界面支持这两种语言：默认跟随 Mac 的语言，其他语言下显示英语；也可以在“Settings”中自选。',
       },
     ],
   },
@@ -252,7 +252,7 @@ export const zh: Copy = {
       { name: '辅助功能', use: '键盘清洁' },
       { name: '录屏', use: '从屏幕截取任务' },
       { name: '自动化（每个浏览器分别授权）', use: '获取任务的网页地址；macOS 会在首次使用时询问' },
-      { name: '从其他 App 粘贴', use: '剪贴板历史；仅在会询问此权限的 macOS 版本上需要' },
+      { name: '从其他App粘贴', use: '剪贴板历史；仅在会询问此权限的 macOS 版本上需要' },
     ],
     permissionsNote: '首次启动时，Vortex 会引导你逐一设置。如果某个功能的权限未开启，它会显示黄色警告：点按警告即可开启该权限。',
     phone: {

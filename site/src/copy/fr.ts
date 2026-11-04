@@ -67,7 +67,7 @@ export const fr: Copy = {
     ...en.clipboardChapter,
     title: 'L’historique du presse-papiers, en un survol.',
     titleQuiet: 'Vos dix derniers éléments copiés, et ceux que vous épinglez.',
-    body: 'Textes, liens, images et fichiers sont conservés au fil de vos copies. Cliquez sur un élément pour le copier à nouveau, faites-le glisser dans n’importe quelle app ou épinglez-le pour plus tard. Ce que les gestionnaires de mots de passe marquent comme secret s’affiche sous forme de points, reste en mémoire et disparaît quand Vortex se ferme.',
+    body: 'Textes, liens, images et fichiers sont conservés au fil de vos copies. Cliquez sur un élément pour le copier à nouveau, faites-le glisser dans n’importe quelle app ou épinglez-le pour plus tard. Ce que les gestionnaires de mots de passe marquent comme secret s’affiche sous forme de points, reste en mémoire et disparaît quand vous quittez Vortex.',
     facts: ['10 récents, épinglés en tête', 'Texte, liens, images, fichiers', 'Les apps que vous excluez sont ignorées'],
     tryIt: 'Copiez une phrase de cette page.',
     thisPage: 'Cette page',
@@ -107,7 +107,7 @@ export const fr: Copy = {
     frameForMe: 'Cadrer pour moi',
     app: 'Messagerie',
     channel: 'Équipe mobile',
-    source: 'Messagerie — Équipe mobile',
+    source: 'Messagerie · Équipe mobile',
     messages: [
       { ...en.tasksChapter.messages[0], text: 'Le bouton de connexion est coupé sur iPad mini. Capture d’écran\u00a0:' },
       { ...en.tasksChapter.messages[1], text: 'Et en mode paysage, le clavier cache le champ du mot de passe.' },
@@ -119,7 +119,7 @@ export const fr: Copy = {
     sample: {
       title: 'Mettre à jour les notes de version',
       text: 'Check-list de sortie\u00a0: notes, captures d’écran, build',
-      source: 'Notes — Check-list de sortie',
+      source: 'Notes · Check-list de sortie',
     },
   },
   keysChapter: {
@@ -153,7 +153,7 @@ export const fr: Copy = {
     title: 'Verrouillez le clavier pour le nettoyer.',
     titleQuiet: 'Plus aucune touche ne répond jusqu’à ce que vous le réactiviez.',
     body: 'Un bouton de l’onglet Home verrouille toutes les touches\u00a0: lettres, touches de modification, Esc, rangée des touches de fonction et touches de luminosité, de volume et multimédias. La souris et le trackpad continuent de fonctionner\u00a0: un clic suffit pour réactiver le clavier.',
-    facts: ['Nécessite l’Accessibilité', 'Souris et trackpad restent actifs', 'Touches rétablies si Vortex se ferme'],
+    facts: ['Nécessite l’Accessibilité', 'Souris et trackpad restent actifs', 'Touches rétablies si vous quittez Vortex'],
     note: 'macOS ne permet à aucune app de verrouiller Touch ID ni Caps Lock.',
     tryIt: 'Appuyez sur quelques touches, puis verrouillez-les.',
   },
@@ -195,7 +195,7 @@ export const fr: Copy = {
       {
         icon: 'globe',
         title: 'Anglais et ukrainien.',
-        text: 'Vortex parle les deux\u00a0: la langue de votre Mac, ou celle que vous choisissez dans ses réglages.',
+        text: 'Vortex parle les deux\u00a0: la langue de votre Mac, ou celle que vous choisissez dans «\u00a0Settings\u00a0».',
       },
     ],
   },
