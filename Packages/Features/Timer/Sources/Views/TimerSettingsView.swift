@@ -14,7 +14,7 @@ struct TimerSettingsView: View {
           Text("No sound", bundle: .module).tag(String?.none)
           Divider()
           ForEach(soundNames, id: \.self) { name in
-            Text(verbatim: name).tag(Optional(name))
+            Text(verbatim: SoundName.shown(name)).tag(Optional(name))
           }
         } label: {
           Text("Sound", bundle: .module)
@@ -52,9 +52,10 @@ struct TimerSettingsView: View {
     .onAppear { store.send(.settingsShown) }
   }
 
-  /// The system sounds, and the chosen one even before they load, so the picker always has its selection.
+  /// The system sounds by the names they show, and the chosen one even before they load, so the picker always has its
+  /// selection.
   private var soundNames: [String] {
-    var names = store.sounds
+    var names = store.sounds.sorted { SoundName.shown($0).localizedStandardCompare(SoundName.shown($1)) == .orderedAscending }
     if let sound = store.settings.sound, !names.contains(sound) { names.insert(sound, at: 0) }
     return names
   }

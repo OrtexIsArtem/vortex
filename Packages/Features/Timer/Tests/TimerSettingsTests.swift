@@ -9,6 +9,18 @@ struct TimerSettingsTests {
     try JSONDecoder().decode(TimerSettings.self, from: Data(json.utf8))
   }
 
+  /// The settings keep a sound's file name; the picker shows the name System Settings › Sound gives it. A sound
+  /// without such a name shows its file name.
+  @Test
+  func soundsShowTheNamesSystemSettingsGivesThem() {
+    let files = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse", "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
+    let names = ["Mezzo", "Breeze", "Pebble", "Jump", "Funky", "Crystal", "Heroine", "Pong", "Sonar", "Bubble", "Pluck", "Sonumi", "Submerge", "Boop"]
+    #expect(files.map(SoundName.shown) == names)
+    #expect(SoundName.renamed("Whistle") == nil)
+    #expect(SoundName.shown("Whistle") == "Whistle")
+    #expect(SoundName.shown(TimerSettings.defaultSound) == "Crystal")
+  }
+
   @Test
   func missingOrBrokenKeysFallBackToDefaults() throws {
     let settings = try decoded(#"{"sound": 5, "flashColor": "orange"}"#)

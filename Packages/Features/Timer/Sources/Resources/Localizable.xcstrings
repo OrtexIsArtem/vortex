@@ -41,12 +41,100 @@
         }
       }
     },
+    "Boop" : {
+      "comment" : "The system sound Tink, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тиць"
+          }
+        }
+      }
+    },
+    "Breeze" : {
+      "comment" : "The system sound Blow, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вітерець"
+          }
+        }
+      }
+    },
+    "Bubble" : {
+      "comment" : "The system sound Pop, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Булька"
+          }
+        }
+      }
+    },
+    "Crystal" : {
+      "comment" : "The system sound Glass, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кришталь"
+          }
+        }
+      }
+    },
     "Flash color" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Колір блимання"
+          }
+        }
+      }
+    },
+    "Funky" : {
+      "comment" : "The system sound Funk, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модний"
+          }
+        }
+      }
+    },
+    "Heroine" : {
+      "comment" : "The system sound Hero, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Героїня"
+          }
+        }
+      }
+    },
+    "Jump" : {
+      "comment" : "The system sound Frog, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стрибок"
+          }
+        }
+      }
+    },
+    "Mezzo" : {
+      "comment" : "The system sound Basso, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мецо"
           }
         }
       }
@@ -111,6 +199,17 @@
         }
       }
     },
+    "Pebble" : {
+      "comment" : "The system sound Bottle, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Галька"
+          }
+        }
+      }
+    },
     "Plays the sound and the flashes in 3 seconds: close the window to watch the notch, point at it to stop them" : {
       "localizations" : {
         "uk" : {
@@ -127,6 +226,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Лунає, коли час вийде."
+          }
+        }
+      }
+    },
+    "Pluck" : {
+      "comment" : "The system sound Purr, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щипок"
+          }
+        }
+      }
+    },
+    "Pong" : {
+      "comment" : "The system sound Morse, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Понг"
           }
         }
       }
@@ -148,6 +269,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прокрутіть, потягніть або клацніть поділку"
+          }
+        }
+      }
+    },
+    "Sonar" : {
+      "comment" : "The system sound Ping, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сонар"
+          }
+        }
+      }
+    },
+    "Sonumi" : {
+      "comment" : "The system sound Sosumi, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повідомлення"
           }
         }
       }
@@ -189,6 +332,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зупинити"
+          }
+        }
+      }
+    },
+    "Submerge" : {
+      "comment" : "The system sound Submarine, as System Settings › Sound names it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Занурення"
           }
         }
       }
