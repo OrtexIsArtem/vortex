@@ -7,7 +7,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld дн"
+            "value" : "%lld дн"
           }
         }
       }
@@ -18,7 +18,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld год"
+            "value" : "%lld год"
           }
         }
       }
@@ -29,7 +29,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld хв"
+            "value" : "%lld хв"
           }
         }
       }
