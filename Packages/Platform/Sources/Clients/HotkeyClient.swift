@@ -1,3 +1,4 @@
+import AppKit
 import ComposableArchitecture
 import KeyboardShortcuts
 import SwiftUI
@@ -67,7 +68,40 @@ public struct HotkeyRecorder: View {
   }
 
   public var body: some View {
-    KeyboardShortcuts.Recorder(for: hotkey.shortcutName)
+    RecorderField(name: hotkey.shortcutName)
+      .frame(width: Self.width)
       .accessibilityLabel(label)
+  }
+
+  /// The library's field is 130 pt whatever its words, and the Ukrainian placeholders App/KeyboardShortcuts gives it
+  /// need more: as wide as the longer of "Record Shortcut" and "Press Shortcut" in the app's language, never narrower
+  /// than the library's own.
+  static let width: CGFloat = {
+    let bundle = [Bundle.main.resourceURL, Bundle.main.bundleURL]
+      .compactMap { $0?.appending(path: "KeyboardShortcuts_KeyboardShortcuts.bundle") }
+      .lazy.compactMap { Bundle(url: $0) }.first
+    guard let bundle else { return 130 }
+    let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+    let widest = ["record_shortcut", "press_shortcut"]
+      .map { (bundle.localizedString(forKey: $0, value: nil, table: nil) as NSString).size(withAttributes: [.font: font]).width }
+      .max() ?? 0
+    // The text gets the field less 29 pt: the left inset and the clear button.
+    return max(130, (widest + 29 + 2).rounded(.up))
+  }()
+}
+
+/// The library's recorder, made as its SwiftUI `Recorder(for:)` makes it, but free to take the width it is given: the
+/// library holds its field at 130 pt.
+private struct RecorderField: NSViewRepresentable {
+  let name: KeyboardShortcuts.Name
+
+  func makeNSView(context: Context) -> KeyboardShortcuts.RecorderCocoa {
+    let recorder = KeyboardShortcuts.RecorderCocoa(for: name)
+    recorder.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    return recorder
+  }
+
+  func updateNSView(_ recorder: KeyboardShortcuts.RecorderCocoa, context: Context) {
+    if recorder.shortcutName != name { recorder.shortcutName = name }
   }
 }
