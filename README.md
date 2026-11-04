@@ -63,7 +63,7 @@ macOS 14 or later, on Apple silicon.
 4. Vortex shows its setup. To start it with your Mac, turn on **Open at login** there, or later in Settings.
 
 ### Update a downloaded release
-1. Quit Vortex: right-click its menu bar icon › Quit, or use Settings › General.
+1. Quit Vortex: right-click its menu bar icon › Quit Vortex, or use Settings › General.
 2. Replace Vortex.app in Applications with the new one, and open it with steps 2–3 above.
 3. Releases aren't signed by a developer account, so macOS treats each new version as a new app. It will ask you again to:
    - turn on **Accessibility** and **Screen Recording**: open the yellow warning, then switch Vortex off and on in System Settings;
