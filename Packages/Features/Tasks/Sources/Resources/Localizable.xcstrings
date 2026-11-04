@@ -6,7 +6,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "7 днів"
+            "value" : "7 днів"
           }
         }
       }
@@ -86,7 +86,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити показані виконані задачі"
+            "value" : "Видалити показані виконані завдання"
           }
         }
       }
@@ -96,7 +96,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити задачу"
+            "value" : "Видалити завдання"
           }
         }
       }
@@ -117,7 +117,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Виконані задачі видаляються разом зі знімками через 30 днів."
+            "value" : "Виконані завдання видаляються разом зі знімками через 30 днів після виконання."
           }
         }
       }
@@ -127,7 +127,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Виконані задачі видалено"
+            "value" : "Виконані завдання видалено"
           }
         }
       }
@@ -137,7 +137,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esc — скасувати"
+            "value" : "Esc — скасувати"
           }
         }
       }
@@ -157,7 +157,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Виділи область"
+            "value" : "Обведіть область"
           }
         }
       }
@@ -178,7 +178,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Зупиняє екран, щоб обвести рамкою те, про що задача."
+            "value" : "Заморожує екран, щоб обвести рамкою те, про що завдання."
           }
         }
       }
@@ -228,7 +228,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Позначити виконаною"
+            "value" : "Позначити виконаним"
           }
         }
       }
@@ -239,7 +239,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Готово"
+            "value" : "Позначити виконаним"
           }
         }
       }
@@ -269,7 +269,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нова задача"
+            "value" : "Нове завдання"
           }
         }
       }
@@ -279,7 +279,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нова задача з екрана"
+            "value" : "Нове завдання з екрана"
           }
         }
       }
@@ -289,7 +289,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Активних задач немає"
+            "value" : "Активних завдань немає"
           }
         }
       }
@@ -299,7 +299,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Виконаних задач ще немає"
+            "value" : "Виконаних завдань ще немає"
           }
         }
       }
@@ -309,7 +309,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Задач ще немає"
+            "value" : "Завдань ще немає"
           }
         }
       }
@@ -339,7 +339,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Натисніть + або свою гарячу клавішу, обведіть рамкою потрібне на екрані й натисніть Return."
+            "value" : "Натисніть + або своє клавіатурне скорочення, обведіть рамкою потрібне на екрані й натисніть Return."
           }
         }
       }
@@ -390,7 +390,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Задача %lld"
+            "value" : "Завдання %lld"
           }
         }
       }
@@ -400,7 +400,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Задачу видалено"
+            "value" : "Завдання видалено"
           }
         }
       }
@@ -410,7 +410,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Задачу виконано"
+            "value" : "Завдання виконано"
           }
         }
       }
@@ -421,7 +421,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Задачі"
+            "value" : "Завдання"
           }
         }
       }
@@ -462,7 +462,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Робить задачу зі знімка екрана."
+            "value" : "Робить завдання зі знімка екрана."
           }
         }
       }
@@ -472,7 +472,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скасувати"
+            "value" : "Відмінити"
           }
         }
       }
