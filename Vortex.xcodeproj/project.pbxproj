@@ -249,7 +249,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_NAME = Vortex;
 				SDKROOT = macosx;
 			};
@@ -338,7 +338,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_NAME = Vortex;
 				SDKROOT = macosx;
 			};
