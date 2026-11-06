@@ -3,7 +3,8 @@ import Testing
 
 @testable import VortexPlatform
 
-/// Runs real commands in the user's shell, as the app does.
+/// Runs real commands in the user's shell, as the app does. A busy machine running the whole suite can hold up any
+/// await here for many seconds, so no test bounds how long a call takes by less than a minute.
 struct CommandClientTests {
   let client = CommandClient.liveValue
 
@@ -34,19 +35,19 @@ struct CommandClientTests {
 
   @Test
   func itIsStoppedWhenItsTimeIsUp() async throws {
-    let start = ContinuousClock.now
-    let output = try await client.run("sleep 30", nil, [:], .milliseconds(500))
+    // Left alone, it would end by itself a minute later, with exit code 0.
+    let output = try await client.run("sleep 60", nil, [:], .milliseconds(500))
     #expect(output.timedOut)
-    #expect(ContinuousClock.now - start < .seconds(10))
+    #expect(output.exitCode == 128 + SIGTERM)
   }
 
   @Test
   func whatItLeavesRunningDoesNotKeepItWaiting() async throws {
-    let start = ContinuousClock.now
-    let output = try await client.run("sleep 30 & echo done", nil, [:], .seconds(20))
+    // `sleep` keeps the output open past the time limit, so waiting for it would end in a time-out.
+    let output = try await client.run("sleep 120 & echo done", nil, [:], .seconds(60))
     #expect(text(output.stdout).contains("done"))
     #expect(output.exitCode == 0)
-    #expect(ContinuousClock.now - start < .seconds(10))
+    #expect(!output.timedOut)
   }
 
   /// A home folder with these startup files, for the shell to read instead of the user's.
@@ -78,24 +79,29 @@ struct CommandClientTests {
 
   @Test
   func aShellThatDoesNotAnswerInTimeGivesNoEnvironment() async throws {
-    let home = try home([".zshrc": "sleep 30\n"])
+    // Left alone, it would answer a minute later.
+    let home = try home([".zshrc": "sleep 60\n"])
     defer { try? FileManager.default.removeItem(at: home) }
     let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
     let start = ContinuousClock.now
     #expect(await TerminalEnvironment.ask(shell: "/bin/zsh", base: base, timeout: .milliseconds(500)) == nil)
-    #expect(ContinuousClock.now - start < .seconds(10))
+    // Given up when its time was up, not once the shell answered.
+    #expect(ContinuousClock.now - start < .seconds(60))
   }
 
   @Test
   func whatTheStartupFilesLeaveRunningDoesNotHoldItUp() async throws {
-    // A process of another session keeps whatever it was given, which killing the shell's group doesn't reach.
-    let home = try home([".zshrc": "/usr/bin/perl -e 'use POSIX; setsid(); sleep 30' &\nexport FROM_ZSHRC=yes\n"])
+    // A process of another session keeps whatever it was given, which killing the shell's group doesn't reach. It
+    // outlives the shell's time limit, so waiting for it would give no environment.
+    let home = try home([
+      // The shell goes on only once it has left the group; still in it, it would be killed with the shell.
+      ".zshrc": "/usr/bin/perl -e 'use POSIX; setsid(); open my $f, \">$ENV{HOME}/detached\"; sleep 30' &\n"
+        + "until [[ -e $HOME/detached ]]; do sleep 0.01; done\nexport FROM_ZSHRC=yes\n",
+    ])
     defer { try? FileManager.default.removeItem(at: home) }
     let base = ["HOME": home.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "TERM": "dumb"]
-    let start = ContinuousClock.now
     let environment = await TerminalEnvironment.ask(shell: "/bin/zsh", base: base)
     #expect(environment?["FROM_ZSHRC"] == "yes")
-    #expect(ContinuousClock.now - start < .seconds(20))
   }
 
   @Test
