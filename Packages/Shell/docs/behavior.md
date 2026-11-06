@@ -46,6 +46,7 @@
 - Permission statuses are read at launch, then again on macOS's change signal, when any app becomes active and each time the window opens.
 - Vortex is blocked while a required permission that an enabled feature, or keyboard cleaning with Home on, needs reads `notGranted`; becoming blocked after the launch's read (a revoke, a feature turned on, a new required set) closes the notch window and opens the blocking page.
 - A feature asking for a permission's page gets the single page in the onboarding window (onboarding.md); the notch window closes first, as it does for "Continue setup".
+- After an update (a version or build other than the last launch's), the first read opens, as a feature's request does, the single page of each permission with a yellow dot that macOS reported granted under the previous version and that now reads `notGranted`, as a new signature leaves it while System Settings still shows Vortex on; 0.1.1 and earlier kept no grants, so there it counts if Vortex had asked macOS for it. Several open one after another in onboarding order, the next when one is granted or closed; checked once per version, never instead of an unfinished onboarding or the blocking page.
 
 ## Settings
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.

@@ -163,6 +163,8 @@
       /// What Done's hint says: hoverOrIcon, hoverOrShortcut, hover, clickOrIcon, clickOrShortcut, click or icon.
       var doneHint: String
       var completed: Bool
+      /// After an update, the pages still to show, the next as a single page closes.
+      var afterUpdate: [Permission]
       var saved: OnboardingProgress
       var windows: [String: Frame]
       /// For each illustration mounted in the window or the panel: whether Core Animation plays its pointer and switch.
@@ -219,6 +221,7 @@
         case .icon: "icon"
         }
         completed = state.progress.completed
+        afterUpdate = state.afterUpdate
         saved = state.progress
         var windows: [String: Frame] = [:]
         let controller = OnboardingWindowController.shared

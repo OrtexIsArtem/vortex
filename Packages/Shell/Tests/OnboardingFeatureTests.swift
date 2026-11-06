@@ -1067,8 +1067,12 @@ struct OnboardingFeatureTests {
     var progress = OnboardingProgress.at(.step("secrets"))
     progress.pendingChecks = [.pasteboard]
     progress.pendingSingle = .accessibility
+    progress.version = "0.1.2 (17)"
+    progress.granted = [.screenRecording: "0.1.1 (3)", .notifications: "0.1.2 (17)"]
     let data = try JSONEncoder().encode(progress)
     #expect(try JSONDecoder().decode(OnboardingProgress.self, from: data) == progress)
+    // Kept as an object by permission.
+    #expect(String(decoding: data, as: UTF8.self).contains(#""screenRecording":"0.1.1 (3)""#))
     for page: OnboardingPage in [.welcome, .basics, .permission(.screenRecording), .step("secrets"), .done] {
       #expect(OnboardingPage(id: page.id) == page)
     }
@@ -1081,9 +1085,12 @@ struct OnboardingFeatureTests {
     let old = try JSONDecoder().decode(OnboardingProgress.self, from: Data(#"{"page":"basics"}"#.utf8))
     #expect(old.page == "basics")
     #expect(!old.completed)
+    #expect(old.version == nil)
+    #expect(old.granted.isEmpty)
     let newer = try JSONDecoder().decode(OnboardingProgress.self, from: Data(#"""
       {"page": "done", "completed": true, "restarted": true, "pendingChecks": ["pasteboard", "camera"],
-       "pendingSingle": "camera", "returnToDone": "yes", "loginItemApplied": 1, "future": {"a": 1}}
+       "pendingSingle": "camera", "returnToDone": "yes", "loginItemApplied": 1, "future": {"a": 1},
+       "version": 3, "granted": {"screenRecording": "0.1.2 (5)", "camera": "0.1.2 (5)"}}
       """#.utf8))
     #expect(newer.completed)
     #expect(newer.restarted)
@@ -1092,6 +1099,8 @@ struct OnboardingFeatureTests {
     #expect(newer.pendingSingle == nil)
     #expect(!newer.returnToDone)
     #expect(!newer.loginItemApplied)
+    #expect(newer.version == nil)
+    #expect(newer.granted == [.screenRecording: "0.1.2 (5)"])
   }
 
   @Test

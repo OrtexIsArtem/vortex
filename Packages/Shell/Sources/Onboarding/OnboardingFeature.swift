@@ -56,9 +56,63 @@ struct OnboardingFeature {
     var openShortcut: String?
     /// The pane names the drawn System Settings shows, as this Mac's System Settings has them; read once at launch.
     var settingsNames = SystemSettingsNames()
+    /// This build's version, short version and build ("0.1.2 (17)"), as `progress` keeps it; the shell sets it.
+    var appVersion = ""
+    /// What Vortex had asked macOS for (Platform's permissions.json), read at launch: a release that kept no grants yet
+    /// counts these as granted before (`recordLaunch`).
+    var askedBefore: Set<Permission> = []
+    /// After an update, the pages still to show, in onboarding order: the next opens when a single page closes.
+    var afterUpdate: [Permission] = []
 
     init(progress: OnboardingProgress = OnboardingProgress()) {
       self.progress = progress
+    }
+
+    /// The version that stands for a release that kept no grants: 0.1.1 and earlier.
+    static let earlierVersion = "earlier"
+
+    /// After an update, a version or build other than the last launch's: the permissions with a yellow dot, needed by an
+    /// enabled feature, that macOS reported granted under that last version and that read `notGranted` now, in
+    /// onboarding order. A new signature does that while System Settings still shows Vortex on.
+    var lostInUpdate: [Permission] {
+      let previous = progress.version ?? Self.earlierVersion
+      guard previous != appVersion else { return [] }
+      return catalog.featurePermissions.filter { statuses[$0] == .notGranted && grantedVersion($0) == previous }
+    }
+
+    /// The version that last saw macOS grant `permission`; for a release that kept no grants yet, `earlierVersion` for
+    /// what Vortex had asked for. Nil when macOS never granted it, as far as Vortex knows.
+    func grantedVersion(_ permission: Permission) -> String? {
+      progress.granted[permission]
+        ?? (progress.version == nil && askedBefore.contains(permission) ? Self.earlierVersion : nil)
+    }
+
+    /// Records the launch, after its check for permissions the update dropped: a release that kept no grants yet keeps
+    /// what Vortex had asked for as granted under `earlierVersion`; then this version, and what macOS grants now.
+    mutating func recordLaunch() {
+      if progress.version == nil {
+        for permission in askedBefore where progress.granted[permission] == nil {
+          progress.granted[permission] = Self.earlierVersion
+        }
+      }
+      progress.version = appVersion
+      recordGrants()
+    }
+
+    /// What macOS says now, under this version: a grant, also one for after a relaunch, is kept with this version; a
+    /// permission that reads `notGranted` under the version that saw it granted was turned off and is dropped. Returns
+    /// whether anything changed.
+    @discardableResult
+    mutating func recordGrants() -> Bool {
+      let before = progress.granted
+      for (permission, status) in statuses {
+        if status.isOn {
+          progress.granted[permission] = appVersion
+        } else if status == .notGranted, progress.granted[permission] == appVersion {
+          progress.granted[permission] = nil
+        }
+      }
+      return progress.granted != before
     }
 
     var isVisible: Bool { presentation != .hidden }
@@ -229,7 +283,9 @@ struct OnboardingFeature {
     }
 
     /// The recheck hint: "Already on in System Settings? Turn it off and on again.", or on a page the refused lock
-    /// opened, "If the switch is already on, turn it off and on again."
+    /// opened, "If the switch is already on, turn it off and on again." It shows once System Settings came up for the
+    /// page, and at once for a permission macOS granted before, which an update may have dropped while System Settings
+    /// still shows Vortex on.
     func showsRecheckHint(_ permission: Permission) -> Bool {
       if let single, single.permission == permission, single.kind == .lockRefused {
         return true
@@ -240,13 +296,13 @@ struct OnboardingFeature {
       if permission == .pasteboard {
         return checkedAtLaunch.contains(.pasteboard) && rowState(.pasteboard) == .off
       }
-      return settingsOpened.contains(permission)
+      return settingsOpened.contains(permission) || grantedVersion(permission) != nil
     }
 
-    /// Whether the window shows at launch: the onboarding isn't done, Vortex is blocked, or a page waits for this
-    /// relaunch.
+    /// Whether the window shows at launch: the onboarding isn't done, Vortex is blocked, a page waits for this
+    /// relaunch, or an update dropped a permission.
     var showsAtLaunch: Bool {
-      !progress.completed || !missingRequired.isEmpty || progress.pendingSingle != nil
+      !progress.completed || !missingRequired.isEmpty || progress.pendingSingle != nil || !lostInUpdate.isEmpty
     }
 
     /// What Done's hint says.
@@ -442,12 +498,17 @@ struct OnboardingFeature {
         }
         let pending = state.progress.pendingSingle
         state.progress.pendingSingle = nil
+        // After an update, the pages of the permissions macOS dropped: checked once per version, before it is recorded.
+        let lost = state.lostInUpdate.filter { $0 != pending }
+        state.recordLaunch()
         let saved = save(state)
         // Blocked first: the blocking page opens by itself at launch, before a page waiting for this relaunch.
         if !state.missingRequired.isEmpty { return .merge(saved, showBlocking(activate: true, &state)) }
         if !state.progress.completed { return .merge(saved, showFlow(activate: true, &state)) }
-        guard let pending else { return saved }
-        return .merge(saved, showSingle(pending, .afterRelaunch, activate: true, &state))
+        // Then a page waiting for this relaunch, then the update's pages, one after another.
+        state.afterUpdate = lost
+        if let pending { return .merge(saved, showSingle(pending, .afterRelaunch, activate: true, &state)) }
+        return .merge(saved, showNextAfterUpdate(&state) ?? .none)
 
       case .getStartedTapped:
         guard state.isFlow, state.page == .welcome, !state.isNavigationLocked, !state.isRelaunching else { return .none }
@@ -535,18 +596,18 @@ struct OnboardingFeature {
 
       case .laterTapped:
         guard state.waitsForRelaunch, !state.isRelaunching else { return .none }
-        return hide(&state, restoreFront: true)
+        return closeSingle(&state)
 
       case .closeTapped:
         switch state.presentation {
         case .hidden: return .none
         case .flow: return hide(&state, restoreFront: false)
-        case .single: return hide(&state, restoreFront: true)
+        case .single: return closeSingle(&state)
         }
 
       case .escapePressed:
         guard state.single != nil else { return .none }
-        return hide(&state, restoreFront: true)
+        return closeSingle(&state)
 
       case .backTapped:
         guard state.isPanel else { return .none }
@@ -636,7 +697,7 @@ struct OnboardingFeature {
           state.presentation = .single(SinglePage(permission: next, kind: .blocked), .window)
           return surface == .window ? .none : present(state, activate: true)
         }
-        return hide(&state, restoreFront: true)
+        return closeSingle(&state)
 
       case .loginItemTick:
         return .run { send in await send(.loginItemStatusLoaded(launchAtLogin.status())) }
@@ -648,6 +709,7 @@ struct OnboardingFeature {
         state.turnOnIgnored = []
         state.openAtLoginChoice = nil
         state.isRelaunching = false
+        state.afterUpdate = []
         return .concatenate(save(state), hide(&state, restoreFront: false))
       }
     }
@@ -847,6 +909,25 @@ struct OnboardingFeature {
     )
   }
 
+  /// A single page closes; after an update, the next page whose permission still reads off shows instead, unless Vortex
+  /// is blocked.
+  private func closeSingle(_ state: inout State) -> Effect<Action> {
+    guard state.missingRequired.isEmpty, let next = showNextAfterUpdate(&state) else {
+      return hide(&state, restoreFront: true)
+    }
+    state.isNotificationHintVisible = false
+    return .merge(.cancel(id: CancelID.singleClose), .cancel(id: CancelID.notificationHint), next)
+  }
+
+  /// The single page of the next permission the update dropped that still reads `notGranted`; nil when none is left.
+  private func showNextAfterUpdate(_ state: inout State) -> Effect<Action>? {
+    while !state.afterUpdate.isEmpty {
+      let next = state.afterUpdate.removeFirst()
+      if state.statuses[next] == .notGranted { return showSingle(next, .request, activate: true, &state) }
+    }
+    return nil
+  }
+
   private func closeSingleLater() -> Effect<Action> {
     .run { send in
       try await clock.sleep(for: .milliseconds(1_500))
@@ -910,6 +991,9 @@ struct OnboardingFeature {
     if state.isVisible, state.isFlow, state.page == .basics {
       effects.append(.send(.loginItemTick))
     }
+    // What macOS grants is kept with this version. The launch's first read waits for `launched`, which checks first
+    // what the update dropped.
+    if !old.isEmpty, state.recordGrants() { effects.append(save(state)) }
     return .merge(effects)
   }
 

@@ -78,4 +78,10 @@ struct PermissionCatalog: Equatable, Sendable {
   func missingRequired(_ statuses: [Permission: PermissionStatus]) -> [Permission] {
     entries.filter { $0.isRequired && statuses[$0.permission] == .notGranted }.map(\.permission)
   }
+
+  /// The permissions enabled features declare, in the catalog's order: those a feature's yellow dot names while they
+  /// are off. Keyboard cleaning's Accessibility alone is none of them, as Home has no dot.
+  var featurePermissions: [Permission] {
+    entries.filter { $0.needs.contains { $0.owner != .keyboardCleaning } }.map(\.permission)
+  }
 }

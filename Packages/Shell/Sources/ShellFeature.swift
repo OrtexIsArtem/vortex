@@ -43,6 +43,8 @@ struct ShellFeature {
     var language: AppLanguage
     /// Language the app was started with; another choice needs a relaunch.
     let launchLanguage: AppLanguage
+    /// This build's version; the onboarding keeps it with what macOS granted.
+    let appVersion: AppVersion
     /// What macOS says about each permission, as last read; empty until the first read. Only the shell writes it.
     @Shared(.permissionStatuses) var permissionStatuses
     /// A required permission that something enabled needs reads `notGranted`; follows `isBlocked`.
@@ -56,21 +58,27 @@ struct ShellFeature {
     /// An entry point used before the first status read; it is decided once the statuses are in.
     var pendingEntry: OpenReason?
 
+    /// `askedBefore`: what Vortex had asked macOS for, which a release that kept no grants yet counts as granted.
     init(
       settings: ShellSettings = ShellSettings(),
       features: [FeatureDescriptor] = [],
       language: AppLanguage = .system,
       onboarding: OnboardingProgress = OnboardingProgress(),
-      stepFeatures: Set<FeatureID> = []
+      stepFeatures: Set<FeatureID> = [],
+      appVersion: AppVersion = .current,
+      askedBefore: Set<Permission> = []
     ) {
       self.settings = settings
       self.features = features
       self.language = language
       self.launchLanguage = language
+      self.appVersion = appVersion
       self.onboarding = OnboardingFeature.State(progress: onboarding)
       self.stepFeatures = stepFeatures
       self.selectedTab = restoredTab
       self.onboarding.appliesLoginItem = OnboardingConfig.appliesLoginItem
+      self.onboarding.appVersion = appVersion.full
+      self.onboarding.askedBefore = askedBefore
       onboardingContext.apply(to: &self.onboarding)
     }
 

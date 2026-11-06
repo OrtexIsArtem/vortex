@@ -21,6 +21,7 @@ public final class ShellController: NSObject {
     @Dependency(\.settingsClient) var settingsClient
     @Dependency(\.systemClient) var system
     @Dependency(\.onboardingProgress) var onboardingProgress
+    @Dependency(\.permissionsClient) var permissions
     var steps: [FeatureID: OnboardingStep] = [:]
     for module in FeatureRegistry.all {
       if let step = module.makeOnboardingStep() { steps[module.id] = step }
@@ -31,7 +32,8 @@ public final class ShellController: NSObject {
       features: FeatureRegistry.all.map { $0.descriptor },
       language: system.language(),
       onboarding: onboardingProgress.load(),
-      stepFeatures: Set(steps.keys)
+      stepFeatures: Set(steps.keys),
+      askedBefore: permissions.requested()
     )
     store = Store(initialState: state) {
       ShellFeature()

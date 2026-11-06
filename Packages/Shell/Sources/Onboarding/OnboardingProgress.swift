@@ -20,6 +20,12 @@ struct OnboardingProgress: Codable, Equatable, Sendable {
   var restarted = false
   /// The user's "Open at login" choice was applied when they left Basics; from then on the row shows the real state.
   var loginItemApplied = false
+  /// The version of Vortex that launched last, short version and build ("0.1.2 (17)"), recorded after the launch's
+  /// check for permissions an update dropped; nil from a release that kept no grants yet.
+  var version: String?
+  /// Each permission macOS reported granted, with the version of Vortex that saw it last. One that reads `notGranted`
+  /// under that same version was turned off and is dropped; under a later one it stays: macOS granted it before.
+  var granted: [Permission: String] = [:]
 
   init() {}
 
@@ -37,6 +43,10 @@ struct OnboardingProgress: Codable, Equatable, Sendable {
     completed = value(.completed, false)
     restarted = value(.restarted, false)
     loginItemApplied = value(.loginItemApplied, false)
+    version = try? container.decodeIfPresent(String.self, forKey: .version)
+    granted = value(.granted, [String: String]()).reduce(into: [:]) { granted, entry in
+      if let permission = Permission(rawValue: entry.key) { granted[permission] = entry.value }
+    }
   }
 }
 

@@ -38,12 +38,12 @@
 - Once a relaunch is asked for, no other navigation or final button is taken until Vortex is gone.
 
 ## The single page
-- A feature's request shows that permission's page in the same window, with Close instead of Skip and Next.
+- A feature's request, or an update that dropped a permission (behavior.md), shows that permission's page in the same window, with Close instead of Skip and Next.
 - With the onboarding on screen, a request only brings it to the front at its page; with it closed before completion, the request gets a single page and the saved page stays.
 - A new request switches the single page to the latest permission.
 - On a grant it shows ✓ and closes after 1.5 s, the pasteboard's too, which then reads `notNeeded`; turned off again within those 1.5 s, it stays open with the checkbox off. A grant that waits for a relaunch offers "Restart Vortex" and "Later".
 - "Restart Vortex" and "Restart to check" reopen the page once after the relaunch.
-- After Close the app that was in front gets the front back.
+- After Close the app that was in front gets the front back, once no page of an update is left to show.
 
 ## Blocked
 - While a required permission is off, every entry point (hover, notch and ear clicks, the menu bar icon, its menu, the shortcuts, files dragged onto the notch) opens the blocking page instead of the notch window, which closes.
@@ -57,4 +57,4 @@
 - It holds the title, a smaller mock, the live checkbox and "Back"; it never takes focus and has no close control.
 - It turns back into the window, in front, on the grant, on "Back" or when System Settings quits; it hides while another app is in front.
 - "Continue setup", a blocked entry point or a request brings a showing panel forward as a panel; one that hid behind another app turns back into the window, in front.
-- Back on the page with the permission still off: "Already on in System Settings? Turn it off and on again.", with the pane button. Accessibility and Screen Recording add "Not in the list? Click + and choose Vortex.": the other panes have no +. For the pasteboard only after a relaunch still reads it off: before one, its page says "Checked after restart" and offers "Restart to check".
+- Back on the page with the permission still off, and at once on any page of a permission macOS granted before (an update may have dropped it while System Settings still shows Vortex on): "Already on in System Settings? Turn it off and on again.", with the pane button. Accessibility and Screen Recording add "Not in the list? Click + and choose Vortex.": the other panes have no +. For the pasteboard only after a relaunch still reads it off: before one, its page says "Checked after restart" and offers "Restart to check".

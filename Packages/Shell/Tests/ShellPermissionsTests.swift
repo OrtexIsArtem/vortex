@@ -39,6 +39,8 @@ struct PermissionCatalogTests {
     #expect(catalog.entry(for: .accessibility)?.reasons == [PermissionCatalog.keyboardCleaningReason])
     #expect(catalog.entry(for: .screenRecording)?.needs.map(\.owner) == [.feature("tasks")])
     #expect(catalog.entry(for: .pasteboard)?.needs.map(\.owner) == [.feature("clipboard")])
+    // Those a feature's yellow dot names: keyboard cleaning's Accessibility isn't one.
+    #expect(catalog.featurePermissions == [.notifications, .screenRecording, .pasteboard])
   }
 
   /// The keyboard button is on Home: without it, keyboard cleaning needs nothing.
@@ -115,13 +117,25 @@ struct ShellPermissionsTests {
     }
   }
 
-  /// The first read reaches the onboarding: its statuses, then the launch's decision.
+  /// The first read reaches the onboarding: its statuses, then the launch's decision, which records this version and
+  /// what macOS grants.
   func firstRead(_ store: TestStoreOf<ShellFeature>, _ statuses: [Permission: PermissionStatus]) async {
     await store.send(.permissionStatusesChanged(statuses)) {
       $0.$permissionStatuses.withLock { $0 = statuses }
     }
     await store.receive(\.onboarding.statusesChanged)
-    await store.receive(\.onboarding.launched)
+    await store.receive(\.onboarding.launched) { state in
+      Self.recordsTheLaunch(&state, statuses)
+    }
+  }
+
+  /// What the launch records: this version, and each permission macOS grants now, also for after a relaunch.
+  static func recordsTheLaunch(_ state: inout ShellFeature.State, _ statuses: [Permission: PermissionStatus]) {
+    let version = state.appVersion.full
+    state.onboarding.progress.version = version
+    for (permission, status) in statuses where status == .granted || status == .grantedAfterRestart {
+      state.onboarding.progress.granted[permission] = version
+    }
   }
 
   /// Everything the launch task starts besides the permissions, finished at once.
@@ -207,6 +221,7 @@ struct ShellPermissionsTests {
     }
     await store.receive(\.onboarding.statusesChanged)
     await store.receive(\.onboarding.launched) {
+      Self.recordsTheLaunch(&$0, Self.allOff)
       $0.onboarding.presentation = .single(.init(permission: .accessibility, kind: .blocked), .window)
     }
     let granted = Self.allOff.merging([.accessibility: .granted]) { $1 }
@@ -215,6 +230,8 @@ struct ShellPermissionsTests {
       $0.$appBlocked.withLock { $0 = false }
     }
     await store.receive(\.onboarding.statusesChanged) {
+      // A grant is kept with this version.
+      $0.onboarding.progress.granted[.accessibility] = $0.appVersion.full
       $0.onboarding.presentation = .single(.init(permission: .accessibility, kind: .blocked, isClosing: true), .window)
     }
     await store.receive(\.onboarding.singleCloseElapsed) {
