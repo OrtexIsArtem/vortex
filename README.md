@@ -74,7 +74,7 @@ The script downloads the latest release, checks that it is signed with Vortex's 
 
 Every release since 0.1.2 is signed with the same certificate, so macOS keeps Vortex's permissions across updates. Only the keychain asks again, as releases have no Team ID from Apple: click **Always Allow** for each key when macOS asks. A build of your own, signed with your team, avoids that too. See below.
 
-Updating from 0.1.0 or 0.1.1, macOS asks one last time for **Accessibility** and **Screen Recording**: Vortex opens their page, and you switch Vortex off and on in System Settings. Each browser asks once more too.
+Updating from 0.1.0 or 0.1.1, macOS asks one last time for **Screen Recording** and **Accessibility**: switch Vortex off and on in System Settings. Vortex opens Screen Recording's page by itself; Accessibility's opens from Home's keyboard button. Each browser asks once more too.
 
 ### Build it yourself
 You need Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen):
