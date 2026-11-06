@@ -10,4 +10,5 @@ A place for files the user puts aside to drag into another app, as many times as
 | contracts.md | files from the shell, what it takes from Core and Platform |
 
 Code: ShelfFeature.swift (logic, tested), ShelfItem.swift (the item and its table), Views/ (tab, tile, Home widget,
-ShelfSeenTracking: when the shelf counts as seen), ShelfModule.swift (entry point for the registry: takes files).
+ShelfVisibilityTracking: when the tab or the Home widget shows and hides), ShelfModule.swift (entry point for the
+registry: takes files).

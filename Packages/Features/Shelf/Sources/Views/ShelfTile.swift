@@ -31,11 +31,9 @@ struct ShelfTile: View {
           }
         }
         .overlay(alignment: .topTrailing) {
-          if isFresh && !isHovered {
-            Circle()
-              .fill(VortexColor.primaryText)
-              .frame(width: 6, height: 6)
-              .padding(10)
+          if isFresh {
+            freshDot
+              .padding(8)
               .accessibilityHidden(true)
           }
         }
@@ -58,7 +56,11 @@ struct ShelfTile: View {
       DragSourceArea(
         items: dragItems,
         onClick: { send(.itemClicked(item.id, $0)) },
-        onHover: { isHovered = $0 }
+        onHover: { isHovering in
+          isHovered = isHovering
+          // Pointing at a new item is how the user sees it: its dot goes for good, and so does its count in the notch.
+          if isHovering, isFresh { send(.itemHovered(item.id)) }
+        }
       )
     }
     .overlay(alignment: .topTrailing) {
@@ -90,6 +92,17 @@ struct ShelfTile: View {
   }
 
   // MARK: - Preview
+
+  /// The mark of a new item, until the pointer comes over it. A ring in the preview's background color keeps it apart
+  /// from a white or a black picture alike.
+  private var freshDot: some View {
+    let size: CGFloat = isCompact ? 7 : 8
+    return Circle()
+      .fill(VortexColor.accent)
+      .frame(width: size, height: size)
+      .padding(1.5)
+      .background(Circle().fill(VortexColor.thumbnail))
+  }
 
   @ViewBuilder
   private var preview: some View {

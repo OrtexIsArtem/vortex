@@ -99,14 +99,44 @@ struct ShelfFeatureTests {
     #expect(indicators[ShelfFeature.id] == NotchIndicator(
       leading: [.symbol("tray.full")], trailing: [.text("2")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
     ))
-    // Once the shelf counts as seen, the files stay on it but leave the notch, without another flash.
-    await store.send(.tabHidden) { $0.fresh = [] }
-    #expect(contents(store) == [.file(Self.ipa), .file(Self.apk)])
+    // Leaving the tab, or the window closing on it or on Home, keeps the marks and the number.
+    await store.send(.tabHidden)
+    #expect(store.state.fresh == [uuid(0), uuid(1)])
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("2")])
+    await store.send(.stop)
+    #expect(indicators[ShelfFeature.id] == nil)
+  }
+
+  @Test
+  func pointingAtANewItemClearsOnlyItsMark() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.filesReceived([Self.ipa, Self.apk]))
+    @Shared(.notchIndicators) var indicators
+    await store.send(.itemHovered(uuid(0))) { $0.fresh = [uuid(1)] }
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("1")])
+    // With no mark left the tray goes, without another flash; the items stay.
+    await store.send(.itemHovered(uuid(1))) { $0.fresh = [] }
     #expect(indicators[ShelfFeature.id] == NotchIndicator(
       leading: [], trailing: [], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
     ))
+    #expect(contents(store) == [.file(Self.ipa), .file(Self.apk)])
     await store.send(.stop)
-    #expect(indicators[ShelfFeature.id] == nil)
+  }
+
+  @Test
+  func pointingAtAnItemWithoutAMarkChangesNothing() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.dropped([.file(Self.notes)]))
+    await store.send(.filesReceived([Self.ipa]))
+    await store.send(.itemHovered(uuid(0)))
+    #expect(store.state.fresh == [uuid(1)])
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[ShelfFeature.id] == NotchIndicator(
+      leading: [.symbol("tray.full")], trailing: [.text("1")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[0]
+    ))
+    await store.send(.stop)
   }
 
   @Test
@@ -172,9 +202,16 @@ struct ShelfFeatureTests {
     await store.send(.filesReceived([Self.notes]))
     #expect(store.state.flashColor == .white)
     #expect(store.state.flashes == 3)
-    // Looking at the shelf starts the count over.
+    // Leaving the tab keeps the marks; pointing at two of the three leaves one, so the next file is the second.
     await store.send(.tabHidden)
+    await store.send(.itemHovered(uuid(0)))
+    await store.send(.itemHovered(uuid(1)))
     await store.send(.filesReceived([URL(fileURLWithPath: "/Users/me/Builds/next.ipa")]))
+    #expect(store.state.flashColor == green)
+    // With no mark left, the count starts over.
+    await store.send(.itemHovered(uuid(2)))
+    await store.send(.itemHovered(uuid(3)))
+    await store.send(.filesReceived([URL(fileURLWithPath: "/Users/me/Builds/last.ipa")]))
     #expect(store.state.flashColor == blue)
     await store.send(.stop)
   }

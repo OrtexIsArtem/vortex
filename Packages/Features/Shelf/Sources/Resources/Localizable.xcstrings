@@ -138,12 +138,13 @@
         }
       }
     },
-    "New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. Opening the shelf starts the count over." : {
+    "New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. A file on the shelf stops being new once you point at it." : {
+      "comment" : "Caption of the notch flash colors in the shelf's settings; a new file keeps its dot until the pointer comes over it",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Коли надходять нові файли, виріз блимає: кольором 1 — для першого нового файлу, кольором 2 — для другого і так далі, а після останнього кольору — білим. Коли ви відкриваєте полицю, лік починається спочатку."
+            "value" : "Коли надходять нові файли, виріз блимає: кольором 1 — для першого нового файлу, кольором 2 — для другого і так далі, а після останнього кольору — білим. Файл на полиці перестає бути новим, щойно ви наведете на нього вказівник."
           }
         }
       }

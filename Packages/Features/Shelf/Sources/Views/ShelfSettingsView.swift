@@ -119,7 +119,7 @@ private struct FlashColorsSection: View {
     let colors = store.settings.flashColors
     SettingsRow(
       title: Text("Notch flash", bundle: .module),
-      caption: Text("New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. Opening the shelf starts the count over.", bundle: .module)
+      caption: Text("New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. A file on the shelf stops being new once you point at it.", bundle: .module)
     ) {
       Button {
         store.send(.testFlashTapped)

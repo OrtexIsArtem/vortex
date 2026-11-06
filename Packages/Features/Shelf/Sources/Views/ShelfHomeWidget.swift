@@ -60,7 +60,7 @@ struct ShelfHomeWidget: View {
     .dropTarget(isTargeted: $isTargeted) { items in
       store.send(.dropped(items), animation: .snappy(duration: 0.25))
     }
-    // Seeing the shelf on Home counts as seeing the shelf: fresh marks and the flash count start over afterwards.
-    .modifier(ShelfSeenTracking(store: store))
+    // As in the tab: missing files are marked once Home shows, and Quick Look closes when it hides.
+    .modifier(ShelfVisibilityTracking(store: store))
   }
 }

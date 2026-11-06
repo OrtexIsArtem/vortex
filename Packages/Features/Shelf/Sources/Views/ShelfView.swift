@@ -89,7 +89,7 @@ public struct ShelfView: View {
       store.send(.selectAllPressed)
       return .handled
     }
-    .modifier(ShelfSeenTracking(store: store) { isFocused = true })
+    .modifier(ShelfVisibilityTracking(store: store) { isFocused = true })
   }
 
   private var header: some View {

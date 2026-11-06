@@ -4,10 +4,11 @@
 - Drop files, folders, images, links or text on the tab; files dragged to the notch open the window on this tab.
 - A file always lands as the file, also a text or picture file from Finder, never as its contents.
 - Files dropped on the menu bar icon, opened with Vortex or sent with `vortex shelf add <files>` land on the shelf without opening the window. On macOS 26 a drop on the icon never reaches Vortex (Control Center draws the icon), so the shelf doesn't offer it.
-- Those files get a dot until the user leaves the tab, and the notch flashes: a glow that spreads past its edges,
-  blinking twice. Its color follows the number of new files: color 1 for the first, color 2 for the second… then white.
-- Looking at the shelf (leaving its tab) starts the count over; files dropped on the tab do not flash.
-- Only a look counts: the window opening on another tab, for example from another feature's ear, keeps the dots and the count.
+- Those files get a dot, and the notch flashes: a glow that spreads past its edges, blinking twice.
+- The flash color follows the number of files with a dot: color 1 for the first, color 2 for the second… then white; with no dot left, the count starts over.
+- A dot stays until the pointer comes over its item, in the tab or on Home; then it goes for good.
+- Leaving the tab, closing the window or opening it on another tab keeps the dots and the count.
+- Files the user drops get no dot and do not flash.
 - Files and folders are kept by reference; images without a file are saved as PNG copies.
 - Files from Vortex's own data folder (a clipboard image) are copied, since they could go away with their owner; so are files from temporary folders (a screenshot dragged from its floating thumbnail), which go once the drag is over.
 - Such a file dropped again moves its copy to the front instead of being copied again; copies are matched by file name.
@@ -37,9 +38,8 @@
 - Unpinned items leave the shelf 24 hours after they were added, checked every 10 minutes and at start.
 - The closed notch shows a tray and a number only while files that came by themselves still have their dot; the number is how many such files there are, not the whole shelf.
 - What the user puts on the shelf (on the tab, on Home or by dragging to the notch) never shows in the notch.
-- The tray and its number go once the shelf counts as seen or those files leave the shelf; turning the feature off hides them too.
+- The number drops by one when the pointer comes over such a file or the file leaves the shelf; with none left the tray goes. Turning the feature off hides it too.
 
 ## On Home
 - The shelf sits in the dock as small tiles with their names; the last tile takes drops.
 - Tiles drag out, open on double-click and have the same menu as in the tab; the whole widget takes drops.
-- While the window shows Home, the shelf counts as seen: fresh marks and the flash count start over when it closes.

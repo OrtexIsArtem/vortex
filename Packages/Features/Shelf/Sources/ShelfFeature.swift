@@ -35,7 +35,8 @@ public struct ShelfFeature: Sendable {
     var selection: Set<ShelfItem.ID> = []
     /// Where a shift-click selection starts.
     var selectionAnchor: ShelfItem.ID?
-    /// Items that arrived by themselves (menu bar icon, terminal, watched folder): marked until the user leaves the tab.
+    /// Items that arrived by themselves (menu bar icon, terminal, watched folder): marked, and counted in the notch,
+    /// until the user points at them or they leave the shelf.
     var fresh: Set<ShelfItem.ID> = []
     /// Size and kind of file items.
     var info: [ShelfItem.ID: FileInfo] = [:]
@@ -50,8 +51,9 @@ public struct ShelfFeature: Sendable {
 
     public init() {}
 
-    /// The tray and the number of fresh items in the closed notch: only what came by itself and is not seen yet, never
-    /// what the user put on the shelf. With none it shows no ears, but can still flash the notch (Test in settings).
+    /// The tray and the number of fresh items in the closed notch: only what came by itself and the user has not pointed
+    /// at yet, never what the user put on the shelf. With none it shows no ears, but can still flash the notch (Test in
+    /// settings).
     var indicator: NotchIndicator? {
       guard isRunning else { return nil }
       return NotchIndicator(
@@ -92,6 +94,8 @@ public struct ShelfFeature: Sendable {
     case infoLoaded(found: [ShelfItem.ID: FileInfo], missing: Set<ShelfItem.ID>)
     case tabShown
     case tabHidden
+    /// The pointer came over a new item's tile, in the tab or on Home: the item is no longer new.
+    case itemHovered(ShelfItem.ID)
     case itemClicked(ShelfItem.ID, DragSourceClick)
     case backgroundClicked
     case selectAllPressed
@@ -220,8 +224,11 @@ public struct ShelfFeature: Sendable {
         return loadInfo(for: state.items.elements)
 
       case .tabHidden:
-        state.fresh = []
         return .run { _ in await quickLook.close() }
+
+      case let .itemHovered(id):
+        state.fresh.remove(id)
+        return .none
 
       case let .itemClicked(id, click):
         guard let item = state.items[id: id] else { return .none }
