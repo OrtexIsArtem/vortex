@@ -132,6 +132,23 @@ struct AppMoverTests {
     #expect(Self.isQuarantined(folders.downloaded.path))
   }
 
+  /// A Trash that took the old app without telling where it went couldn't put it back after a failed landing: the move
+  /// stops before the new app moves, and the old one waits in the Trash, where the user can put it back.
+  @Test
+  func aTrashThatDoesntTellWhereTheOldAppWentStopsTheMove() throws {
+    let folders = try Folders()
+    try folders.makeApp(at: folders.installed, which: "old")
+    try folders.makeApp(at: folders.downloaded, which: "new")
+    let silent = AppMover { [trashFolder = folders.trashFolder] url in
+      try FileManager.default.moveItem(at: url, to: trashFolder.appending(path: url.lastPathComponent))
+      return nil
+    }
+    #expect(throws: AppMoveError.trashedOutOfSight) { try silent.install(folders.downloaded, at: folders.installed) }
+    #expect(folders.trashed == ["old"])
+    #expect(folders.which(folders.downloaded) == "new")
+    #expect(!FileManager.default.fileExists(atPath: folders.installed.path))
+  }
+
   @Test
   func aNewAppThatCantLandBringsTheOldOneBack() throws {
     let folders = try Folders()

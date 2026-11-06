@@ -105,7 +105,7 @@ public struct AppInstallClient: Sendable {
   /// from the translocated path when macOS doesn't tell where the original is (the source then goes to the Trash if it
   /// can). The quarantine attribute comes off, so macOS doesn't translocate it again. Throws on any failure, macOS's
   /// App Management refusing (EPERM) included, with nothing half-done: a partial copy goes, and an app it moved to the
-  /// Trash comes back.
+  /// Trash comes back; a Trash that doesn't tell where that app went stops the move before this copy moves.
   public var move: @Sendable (_ copy: AppCopy, _ destination: URL) throws -> Void
   /// "Don't ask again" was ticked with Not Now.
   public var isMoveDeclined: @Sendable () -> Bool = { false }
@@ -177,6 +177,13 @@ enum Translocation {
   }
 }
 
+/// Why the move stopped before this copy landed, beyond the file system's own errors.
+enum AppMoveError: Error, Equatable {
+  /// The Trash took the app that was there without telling where it went, so a failed landing couldn't put it back:
+  /// nothing else moves, and the old app waits in the Trash, where the user can put it back.
+  case trashedOutOfSight
+}
+
 /// The file steps of the move, on any folders: tests run them on temporary ones that stand in for /Applications and the
 /// Trash. Only whole bundles are moved: the app already there is never written into.
 struct AppMover: Sendable {
@@ -196,14 +203,21 @@ struct AppMover: Sendable {
     try install(copy.location, at: destination, copying: onlyTranslocated, trashesCopiedSource: !onlyTranslocated)
   }
 
-  /// The app at `destination` goes to the Trash first: when it can't, this throws before anything changed. Then `source`
-  /// lands there, renamed, or copied when `copying` or when it is on another volume; a copied source goes to the Trash
+  /// The app at `destination` goes to the Trash first: when it can't, this throws before anything changed, and when the
+  /// Trash doesn't tell where it went, before `source` moves (`AppMoveError.trashedOutOfSight`). Then `source` lands
+  /// there, renamed, or copied when `copying` or when it is on another volume; a copied source goes to the Trash
   /// afterwards if `trashesCopiedSource` and it can, as nothing should stay behind. On a failure a partial copy goes and
   /// the old app comes back from the Trash. Last, the quarantine attribute comes off the new app, if it can.
   func install(_ source: URL, at destination: URL, copying: Bool = false, trashesCopiedSource: Bool = true) throws {
     let files = FileManager.default
+    let trashed: URL?
     // `attributesOfItem` doesn't follow a link: a link there counts as something there.
-    let trashed = (try? files.attributesOfItem(atPath: destination.path)) != nil ? try trash(destination) : nil
+    if (try? files.attributesOfItem(atPath: destination.path)) != nil {
+      guard let url = try trash(destination) else { throw AppMoveError.trashedOutOfSight }
+      trashed = url
+    } else {
+      trashed = nil
+    }
     func putBack() {
       if let trashed { try? files.moveItem(at: trashed, to: destination) }
     }
