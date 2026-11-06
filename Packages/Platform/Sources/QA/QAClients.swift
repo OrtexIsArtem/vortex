@@ -12,6 +12,7 @@
     /// never the live one.
     mutating func useQAClients() {
       activeAppClient = .qa
+      appInstallClient = .qa
       appsClient = .qa
       commandClient = .qa
       fileClient = .qa
@@ -42,6 +43,33 @@
       client.terminations = { QASystem.shared.terminations() }
       client.frontmost = { simulation.frontApp }
       client.windowFrames = { bundleID in QASystem.shared.windowFrames(of: bundleID) }
+      return client
+    }()
+  }
+
+  extension AppInstallClient {
+    /// Nothing moves: a QA run is a debug build, which never offers the move to /Applications. The app looks kept in
+    /// /Applications already, any other app is missing, and every call is logged.
+    static let qa: AppInstallClient = {
+      var client = AppInstallClient()
+      client.current = {
+        QALog.record("appInstall", "current")
+        return AppCopy(
+          bundle: URL(fileURLWithPath: "/Applications/Vortex.app"),
+          bundleID: Bundle.main.bundleIdentifier ?? "",
+          version: AppVersion.current.short
+        )
+      }
+      client.app = { url in
+        QALog.record("appInstall", "app", ["path": url.path])
+        return nil
+      }
+      client.move = { _, destination in
+        QALog.record("appInstall", "move", ["destination": destination.path, "moved": "no"])
+        throw QAError("a QA run never moves itself")
+      }
+      client.isMoveDeclined = { false }
+      client.declineMove = { QALog.record("appInstall", "declineMove") }
       return client
     }()
   }
@@ -340,6 +368,8 @@
         QALog.record("system", "setLanguage", ["language": language.rawValue])
       }
       client.relaunch = { await QA.relaunch() }
+      // Logged, never run: a QA run never moves itself, and no helper outlives a run to open another app.
+      client.relaunchFrom = { app in QALog.record("system", "relaunchFrom", ["path": app.path]) }
       client.quit = {
         QALog.record("system", "quit")
         await QA.quit()

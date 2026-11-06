@@ -13,6 +13,9 @@ public struct SystemClient: Sendable {
   /// Quits and opens the app again once this process is gone. If it is still there after about 10 s, as when the quit
   /// was cancelled, the app is not opened.
   public var relaunch: @Sendable () async -> Void
+  /// Quits and opens the app at `app` once this process is gone, by the relaunch's helper with its 10 s limit: after
+  /// Vortex moved itself to /Applications.
+  public var relaunchFrom: @Sendable (_ app: URL) async -> Void
   public var quit: @Sendable () async -> Void
   /// Opens the app again once this process is gone, for a quit already under way, without quitting: the helper of
   /// `relaunch`, with its 10 s limit. `open` without `-n`, so a Vortex that someone else opened meanwhile is not
@@ -50,6 +53,12 @@ extension SystemClient: DependencyKey {
         NSApp.terminate(nil)
       }
     },
+    relaunchFrom: { app in
+      await MainActor.run {
+        Relaunch.startHelper(bundlePath: app.path)
+        NSApp.terminate(nil)
+      }
+    },
     quit: {
       await MainActor.run { NSApp.terminate(nil) }
     },
@@ -67,11 +76,12 @@ extension SystemClient: DependencyKey {
 enum Relaunch {
   static let checks = 100
 
-  /// Starts the helper for this process and this app. It outlives the process: when Vortex exits, launchd adopts it.
-  static func startHelper() {
+  /// Starts the helper for this process; it opens this app, or the one at `bundlePath`. It outlives the process: when
+  /// Vortex exits, launchd adopts it.
+  static func startHelper(bundlePath: String = Bundle.main.bundlePath) {
     let task = Process()
     task.executableURL = URL(fileURLWithPath: "/bin/sh")
-    task.arguments = arguments(pid: ProcessInfo.processInfo.processIdentifier, bundlePath: Bundle.main.bundlePath)
+    task.arguments = arguments(pid: ProcessInfo.processInfo.processIdentifier, bundlePath: bundlePath)
     try? task.run()
   }
 
