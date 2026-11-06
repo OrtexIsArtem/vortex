@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8D9C368DF0A6E979E6BD012E /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 891564E40BF44C900A0E6D8F /* AppIcon.icon */; };
 		BAA1CBE9865ABC964A732499 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D333C57DF64394ECC7341A50 /* AppDelegate.swift */; };
 		C994DC9C50F79818EF9FF7E7 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C80B0DB8C2376DE1C7C01F /* main.swift */; };
 		D811EC96E993713014C4D64E /* VortexShell in Frameworks */ = {isa = PBXBuildFile; productRef = 619B1D86983F65929201911C /* VortexShell */; };
@@ -18,6 +19,7 @@
 		22BC3AEFE278CAB1429A2B0E /* Vortex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vortex.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EFAB82B66A2A8BF5B773BFD /* Vortex.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Vortex.xcconfig; sourceTree = "<group>"; };
 		66BC97C8411DEA204D599C3D /* Packages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Packages; path = Packages; sourceTree = SOURCE_ROOT; };
+		891564E40BF44C900A0E6D8F /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		D333C57DF64394ECC7341A50 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E5C80B0DB8C2376DE1C7C01F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -71,6 +73,7 @@
 		C6237923FCF5756C2AB4F0D1 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				891564E40BF44C900A0E6D8F /* AppIcon.icon */,
 				08D820EFEBD8985D1741A7E5 /* InfoPlist.xcstrings */,
 			);
 			path = Resources;
@@ -162,6 +165,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8D9C368DF0A6E979E6BD012E /* AppIcon.icon in Resources */,
 				DD6434C2467BB29E815C7109 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

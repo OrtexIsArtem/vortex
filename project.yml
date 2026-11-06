@@ -23,7 +23,8 @@ targets:
     platform: macOS
     sources:
       - path: App/Sources
-      # The texts of macOS prompts, in English and Ukrainian.
+      # The texts of macOS prompts, in English and Ukrainian, and the app icon: AppIcon.icon, an Icon Composer document
+      # (XcodeGen's default ASSETCATALOG_COMPILER_APPICON_NAME names it). Xcode makes the flat icon for macOS 14 and 15.
       - path: App/Resources
     info:
       path: App/Info.plist
