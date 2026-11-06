@@ -242,11 +242,11 @@ export const ptBr: Copy = {
     meta: (version: string) => `Versão ${version} · um zip do GitHub Releases · Licença MIT`,
     firstTitle: 'Ao abrir pela primeira vez',
     steps: [
-      'Descompacte o zip e mova o Vortex para Aplicativos.',
-      'Abra o Vortex. O macOS vai recusar: o Vortex não é autenticado pela Apple, o que exige uma conta de desenvolvedor paga. Clique em OK, ou em Cancelar no macOS\u00a014.',
-      'Abra Ajustes do Sistema › Privacidade e Segurança, role até Segurança e clique em Abrir Mesmo Assim ao lado da mensagem sobre o Vortex. No macOS\u00a014, em vez disso, você pode clicar no Vortex em Aplicativos com a tecla Control pressionada e escolher Abrir.',
+      'Descompacte o zip e abra o Vortex. O macOS vai recusar: o Vortex não é autenticado pela Apple, o que exige uma conta de desenvolvedor paga. Clique em OK, ou em Cancelar no macOS\u00a014.',
+      'Abra Ajustes do Sistema › Privacidade e Segurança, role até Segurança e clique em Abrir Mesmo Assim ao lado da mensagem sobre o Vortex. No macOS\u00a014, em vez disso, você pode clicar no Vortex com a tecla Control pressionada e escolher Abrir.',
+      'O Vortex se oferece para ir para Aplicativos e depois guia você pela configuração.',
     ],
-    terminal: 'Ou, no Terminal:',
+    terminal: 'Ou instale pelo Terminal, sem esses passos:',
     permissionsTitle: 'Todas as permissões são opcionais',
     permissions: [
       { name: 'Notificações', use: 'o fim do timer e os pedidos de chave do Claude com a janela fechada' },
@@ -300,7 +300,7 @@ export const ptBr: Copy = {
       },
       {
         q: 'Como atualizar o Vortex?',
-        a: 'Encerre o Vortex, substitua-o em Aplicativos pela nova versão e abra-o como da primeira vez. As versões não são assinadas com uma conta de desenvolvedor, então o macOS trata cada uma como um app novo: ele volta a pedir Acessibilidade e Gravação de Tela, além do acesso aos seus navegadores e aos itens de chaves do Vortex.',
+        a: 'Rode de novo o comando no Terminal, ou baixe a nova versão e abra: o Vortex toma o lugar da antiga em Aplicativos. Todas as versões são assinadas com o mesmo certificado, então suas permissões continuam; só os itens de chaves do Vortex pedem acesso de novo, uma vez cada. Check for Updates, em Settings › General, abre a versão mais recente.',
       },
       {
         q: 'Posso adicionar meu próprio recurso?',

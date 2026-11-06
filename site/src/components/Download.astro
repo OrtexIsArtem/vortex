@@ -75,7 +75,7 @@ const d = copy.download;
           {d.steps.map((step) => <li>{step}</li>)}
         </ol>
         <p class="dl__or">{d.terminal}</p>
-        <CopyCommand lines={[d.xattr]} />
+        <CopyCommand lines={[d.install]} />
       </div>
       <div class="dl__card" data-reveal="later">
         <h3 class="dl__title">{d.permissionsTitle}</h3>

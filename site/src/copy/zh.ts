@@ -240,12 +240,12 @@ export const zh: Copy = {
     meta: (version: string) => `版本 ${version} · 来自 GitHub Releases 的 zip 文件 · MIT 许可证`,
     firstTitle: '首次打开',
     steps: [
-      '解压后，将 Vortex 移到“应用程序”文件夹。',
-      '打开 Vortex。macOS 会拒绝打开：Vortex 未经 Apple 公证，而公证需要付费的开发者账户。点按“完成”；在 macOS 14 上则点按“取消”。',
-      '打开“系统设置”›“隐私与安全性”，滚动到“安全性”，点按 Vortex 相关提示旁边的“仍要打开”。在 macOS 14 上，也可以在“应用程序”中按住 Control 键点按 Vortex，然后选取“打开”。',
+      '解压后打开 Vortex。macOS 会拒绝打开：Vortex 未经 Apple 公证，而公证需要付费的开发者账户。点按“完成”；在 macOS 14 上则点按“取消”。',
+      '打开“系统设置”›“隐私与安全性”，滚动到“安全性”，点按 Vortex 相关提示旁边的“仍要打开”。在 macOS 14 上，也可以按住 Control 键点按 Vortex，然后选取“打开”。',
+      'Vortex 会提议把自己移到“应用程序”文件夹，然后引导你完成设置。',
     ],
-    terminal: '或者在“终端”中运行：',
-    xattr: en.download.xattr,
+    terminal: '或者在“终端”中安装，无需这些步骤：',
+    install: en.download.install,
     permissionsTitle: '每项权限都是可选的',
     permissions: [
       { name: '通知', use: '计时结束提醒，以及窗口关闭时 Claude 发来的密钥请求' },
@@ -298,7 +298,7 @@ export const zh: Copy = {
       },
       {
         q: '如何更新 Vortex？',
-        a: '退出 Vortex，用新版本替换“应用程序”中的旧版本，再按首次打开时的方法打开它。发布版本没有用开发者账户签名，所以 macOS 会把每个新版本都当作新的 App：它会再次请求“辅助功能”和“录屏”权限、控制各个浏览器的权限，以及访问 Vortex 钥匙串项目的权限。',
+        a: '再次运行“终端”中的命令，或者下载新版本并打开它：Vortex 会替换“应用程序”中的旧版本。所有版本都使用同一张证书签名，所以你的权限会保留；只有钥匙串会再问一次，每个密钥一次。“Settings”›“General”中的“Check for Updates”会打开最新版本。',
       },
       {
         q: '我能添加自己的功能吗？',

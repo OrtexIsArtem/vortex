@@ -336,12 +336,12 @@ export const en = {
     meta: (version: string) => `Version ${version} · a zip from GitHub Releases · MIT license`,
     firstTitle: 'Opening it the first time',
     steps: [
-      'Unzip it and move Vortex to Applications.',
-      "Open Vortex. macOS refuses: Vortex isn't notarized by Apple, which takes a paid developer account. Click Done, or Cancel on macOS 14.",
-      'Open System Settings › Privacy & Security, scroll to Security and click Open Anyway next to the message about Vortex. On macOS 14 you can instead Control-click Vortex in Applications and choose Open.',
+      "Unzip it and open Vortex. macOS refuses: Vortex isn't notarized by Apple, which takes a paid developer account. Click Done, or Cancel on macOS 14.",
+      'Open System Settings › Privacy & Security, scroll to Security and click Open Anyway next to the message about Vortex. On macOS 14 you can instead Control-click Vortex and choose Open.',
+      'Vortex offers to move itself to Applications, then walks you through its setup.',
     ],
-    terminal: 'Or, in Terminal:',
-    xattr: 'xattr -dr com.apple.quarantine /Applications/Vortex.app',
+    terminal: 'Or install it in Terminal, without these steps:',
+    install: 'curl -fsSL https://vortex-notch.web.app/install.sh | sh',
     permissionsTitle: 'Every permission is optional',
     permissions: [
       { name: 'Notifications', use: "the timer's end, and Claude's key requests while the window is closed" },
@@ -394,7 +394,7 @@ export const en = {
       },
       {
         q: 'How do I update Vortex?',
-        a: "Quit Vortex, replace it in Applications with the new version and open it the way you did the first time. Releases aren't signed with a developer account, so macOS treats each one as a new app: it asks again for Accessibility and Screen Recording, for your browsers and for Vortex's keychain items.",
+        a: "Run the Terminal command again, or download the new version and open it: Vortex takes the old one's place in Applications. Every release is signed with the same certificate, so your permissions stay; only the keychain asks again, once per key. Check for Updates in Settings › General opens the latest release.",
       },
       {
         q: 'Can I add my own feature?',

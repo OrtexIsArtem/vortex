@@ -242,11 +242,11 @@ export const de: Copy = {
     meta: (version: string) => `Version ${version} · ZIP von GitHub Releases · MIT-Lizenz`,
     firstTitle: 'Beim ersten Öffnen',
     steps: [
-      'Entpacke das ZIP und ziehe Vortex in den Ordner „Programme“.',
-      'Öffne Vortex. macOS verweigert den Start: Vortex ist nicht von Apple beglaubigt, denn das setzt ein kostenpflichtiges Entwicklerkonto voraus. Klicke auf „Fertig“, unter macOS\u00a014 auf „Abbrechen“.',
-      'Öffne „Systemeinstellungen“ › „Datenschutz & Sicherheit“, scrolle zu „Sicherheit“ und klicke neben der Meldung zu Vortex auf „Dennoch öffnen“. Unter macOS\u00a014 kannst du stattdessen in „Programme“ bei gedrückter Control-Taste auf Vortex klicken und „Öffnen“ wählen.',
+      'Entpacke das ZIP und öffne Vortex. macOS verweigert den Start: Vortex ist nicht von Apple beglaubigt, denn das setzt ein kostenpflichtiges Entwicklerkonto voraus. Klicke auf „Fertig“, unter macOS\u00a014 auf „Abbrechen“.',
+      'Öffne „Systemeinstellungen“ › „Datenschutz & Sicherheit“, scrolle zu „Sicherheit“ und klicke neben der Meldung zu Vortex auf „Dennoch öffnen“. Unter macOS\u00a014 kannst du stattdessen bei gedrückter Control-Taste auf Vortex klicken und „Öffnen“ wählen.',
+      'Vortex bietet an, sich selbst in den Ordner „Programme“ zu bewegen, und führt dich dann durch die Einrichtung.',
     ],
-    terminal: 'Oder im Terminal:',
+    terminal: 'Oder installiere es im Terminal, ohne diese Schritte:',
     permissionsTitle: 'Jede Berechtigung ist optional',
     permissions: [
       { name: 'Mitteilungen', use: 'das Ende des Timers und Claudes Schlüsselanfragen bei geschlossenem Fenster' },
@@ -299,7 +299,7 @@ export const de: Copy = {
       },
       {
         q: 'Wie aktualisiere ich Vortex?',
-        a: 'Beende Vortex, ersetze die App in „Programme“ durch die neue Version und öffne sie wie beim ersten Mal. Releases sind nicht mit einem Entwicklerkonto signiert, deshalb behandelt macOS jede Version als neue App: Es fragt erneut nach „Bedienungshilfen“ und „Bildschirmaufnahme“, nach deinen Browsern und nach den Schlüsselbundeinträgen von Vortex.',
+        a: 'Führe den Terminal-Befehl erneut aus, oder lade die neue Version und öffne sie: Vortex nimmt den Platz der alten in „Programme“ ein. Jedes Release ist mit demselben Zertifikat signiert, deine Berechtigungen bleiben also erhalten; nur der Schlüsselbund fragt erneut, einmal pro Schlüssel. „Check for Updates“ unter „Settings“ › „General“ öffnet das neueste Release.',
       },
       {
         q: 'Kann ich ein eigenes Feature hinzufügen?',

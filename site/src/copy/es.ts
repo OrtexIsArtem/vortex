@@ -239,12 +239,12 @@ export const es: Copy = {
     // Buttons and settings as macOS names them in Spanish (Spain); Latin American Spanish says "Listo",
     // "Configuración del Sistema" and "Abrir de todos modos".
     steps: [
-      'Descomprímelo y mueve Vortex a Aplicaciones.',
-      'Abre Vortex. macOS lo bloquea: Vortex no está certificado por Apple, y para eso hace falta una cuenta de desarrollador de pago. Haz clic en «Aceptar», o en «Cancelar» en macOS\u00a014.',
-      'Abre Ajustes del Sistema › Privacidad y seguridad, desplázate hasta Seguridad y haz clic en «Abrir igualmente» junto al mensaje sobre Vortex. En macOS\u00a014 también puedes ir a Aplicaciones, hacer clic en Vortex con la tecla Control pulsada y seleccionar «Abrir».',
+      'Descomprímelo y abre Vortex. macOS lo bloquea: Vortex no está certificado por Apple, y para eso hace falta una cuenta de desarrollador de pago. Haz clic en «Aceptar», o en «Cancelar» en macOS\u00a014.',
+      'Abre Ajustes del Sistema › Privacidad y seguridad, desplázate hasta Seguridad y haz clic en «Abrir igualmente» junto al mensaje sobre Vortex. En macOS\u00a014 también puedes hacer clic en Vortex con la tecla Control pulsada y seleccionar «Abrir».',
+      'Vortex se ofrece a moverse a Aplicaciones y luego te guía por su configuración.',
     ],
-    terminal: 'O bien, en Terminal:',
-    xattr: en.download.xattr,
+    terminal: 'O instálalo en Terminal, sin estos pasos:',
+    install: en.download.install,
     permissionsTitle: 'Todos los permisos son opcionales',
     permissions: [
       { name: 'Notificaciones', use: 'el final del temporizador y las peticiones de claves de Claude con la ventana cerrada' },
@@ -298,7 +298,7 @@ export const es: Copy = {
       },
       {
         q: '¿Cómo actualizo Vortex?',
-        a: 'Sal de Vortex, sustitúyelo en Aplicaciones por la nueva versión y ábrelo como la primera vez. Las versiones publicadas no están firmadas con una cuenta de desarrollador, así que macOS trata cada una como una app nueva: vuelve a pedirte los permisos de Accesibilidad y Grabación de pantalla, el de tus navegadores y el acceso a los elementos del llavero de Vortex.',
+        a: 'Vuelve a ejecutar el comando en Terminal, o descarga la nueva versión y ábrela: Vortex ocupa el lugar de la anterior en Aplicaciones. Todas las versiones se firman con el mismo certificado, así que tus permisos se mantienen; solo el llavero vuelve a preguntar, una vez por clave. «Check for Updates», en «Settings» › «General», abre la versión más reciente.',
       },
       {
         q: '¿Puedo añadir mi propia función?',

@@ -43,7 +43,7 @@ export const GET: APIRoute = async ({ site }) => {
     '',
     `- [Download](${downloadUrl}): ${en.download.meta(appVersion)}`,
     ...en.download.steps.map((step, index) => `- First launch, step ${index + 1}: ${step}`),
-    `- Or, in Terminal: \`${en.download.xattr}\``,
+    `- ${en.download.terminal} \`${en.download.install}\``,
     `- [Build it yourself](${buildUrl}): ${en.openSource.commands.map((command) => `\`${command}\``).join(', ')}. You need Xcode.`,
     '',
     '## Questions',

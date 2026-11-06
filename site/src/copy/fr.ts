@@ -240,12 +240,12 @@ export const fr: Copy = {
     meta: (version: string) => `Version ${version} · archive zip sur GitHub Releases · licence MIT`,
     firstTitle: 'Première ouverture',
     steps: [
-      'Décompressez l’archive et placez Vortex dans le dossier Applications.',
-      'Ouvrez Vortex. macOS refuse de l’ouvrir\u00a0: Vortex n’est pas notarisé par Apple, ce qui exige un compte développeur payant. Cliquez sur «\u00a0Terminé\u00a0», ou sur «\u00a0Annuler\u00a0» sous macOS\u00a014.',
-      'Ouvrez Réglages Système › Confidentialité et sécurité, faites défiler jusqu’à Sécurité et cliquez sur «\u00a0Ouvrir quand même\u00a0» à côté du message concernant Vortex. Sous macOS\u00a014, vous pouvez plutôt cliquer sur Vortex dans Applications en maintenant la touche Contrôle enfoncée, puis choisir «\u00a0Ouvrir\u00a0».',
+      'Décompressez l’archive et ouvrez Vortex. macOS refuse de l’ouvrir\u00a0: Vortex n’est pas notarisé par Apple, ce qui exige un compte développeur payant. Cliquez sur «\u00a0Terminé\u00a0», ou sur «\u00a0Annuler\u00a0» sous macOS\u00a014.',
+      'Ouvrez Réglages Système › Confidentialité et sécurité, faites défiler jusqu’à Sécurité et cliquez sur «\u00a0Ouvrir quand même\u00a0» à côté du message concernant Vortex. Sous macOS\u00a014, vous pouvez plutôt cliquer sur Vortex en maintenant la touche Contrôle enfoncée, puis choisir «\u00a0Ouvrir\u00a0».',
+      'Vortex propose de se placer lui-même dans le dossier Applications, puis vous guide dans sa configuration.',
     ],
-    terminal: 'Ou, dans Terminal\u00a0:',
-    xattr: en.download.xattr,
+    terminal: 'Ou installez-le dans Terminal, sans ces étapes\u00a0:',
+    install: en.download.install,
     permissionsTitle: 'Chaque autorisation est facultative',
     permissions: [
       { name: 'Notifications', use: 'la fin du minuteur, et les demandes de clé de Claude quand la fenêtre est fermée' },
@@ -299,7 +299,7 @@ export const fr: Copy = {
       },
       {
         q: 'Comment mettre à jour Vortex\u202f?',
-        a: 'Quittez Vortex, remplacez-le dans Applications par la nouvelle version et ouvrez-le comme la première fois. Les versions publiées ne sont pas signées avec un compte développeur\u00a0: macOS traite donc chacune comme une nouvelle app et vous redemande les autorisations Accessibilité et Enregistrement de l’écran, l’accès à vos navigateurs et aux éléments du trousseau de Vortex.',
+        a: 'Relancez la commande dans Terminal, ou téléchargez la nouvelle version et ouvrez-la\u00a0: Vortex prend la place de l’ancienne dans Applications. Toutes les versions sont signées avec le même certificat, vos autorisations restent donc en place\u202f; seul le trousseau redemande, une fois par clé. «\u00a0Check for Updates\u00a0», dans «\u00a0Settings\u00a0» › «\u00a0General\u00a0», ouvre la dernière version.',
       },
       {
         q: 'Puis-je ajouter ma propre fonctionnalité\u202f?',

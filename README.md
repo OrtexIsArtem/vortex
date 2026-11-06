@@ -54,23 +54,27 @@ macOS 14 or later, on Apple silicon.
 
 ## Install
 
-### Download a release (no Xcode needed)
-1. Download `Vortex-<version>.zip` from [Releases](https://github.com/OrtexIsArtem/vortex/releases) and unzip it. Move **Vortex.app** to **Applications**.
+### In Terminal
+```sh
+curl -fsSL https://vortex-notch.web.app/install.sh | sh
+```
+The script downloads the latest release, checks that it is signed with Vortex's certificate, puts it in **Applications** and opens it. A download made by `curl` opens without the steps below. [Read the script](site/public/install.sh) first, if you like.
+
+### Download a release
+1. Download `Vortex-<version>.zip` from [Releases](https://github.com/OrtexIsArtem/vortex/releases/latest) and unzip it.
 2. Open Vortex. macOS refuses to open it, because Vortex isn't notarized by Apple: that needs a paid developer account. Click **Done**, or **Cancel** on macOS 14.
-3. Open **System Settings › Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the message about Vortex. Confirm with your password. On macOS 14 you can instead Control-click Vortex in Applications and choose **Open**.
+3. Open **System Settings › Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the message about Vortex. Confirm with your password. On macOS 14 you can instead Control-click Vortex and choose **Open**.
+4. Vortex offers to move itself to **Applications**, then shows its setup. To start it with your Mac, turn on **Open at login** there, or later in Settings.
 
-   Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/Vortex.app`
-4. Vortex shows its setup. To start it with your Mac, turn on **Open at login** there, or later in Settings.
+### Update
+- In Terminal, run the install command again.
+- Or download the new release and open it with steps 2–3 above. Vortex offers to take the old one's place in **Applications**, and the old one goes to the Trash.
 
-### Update a downloaded release
-1. Quit Vortex: right-click its menu bar icon › Quit Vortex, or use Settings › General.
-2. Replace Vortex.app in Applications with the new one, and open it with steps 2–3 above.
-3. Releases aren't signed by a developer account, so macOS treats each new version as a new app. It will ask you again to:
-   - turn on **Accessibility** and **Screen Recording**: open the yellow warning, then switch Vortex off and on in System Settings;
-   - allow each browser for page addresses;
-   - let Vortex read its own keychain items: click **Always Allow** when macOS asks about them.
+**Check for Updates** in Settings › General opens the latest release in your browser; Vortex itself never goes online.
 
-A build of your own, signed with your team, avoids all of this. See below.
+Every release since 0.1.2 is signed with the same certificate, so macOS keeps Vortex's permissions across updates. Only the keychain asks again, as releases have no Team ID from Apple: click **Always Allow** for each key when macOS asks. A build of your own, signed with your team, avoids that too. See below.
+
+Updating from 0.1.0 or 0.1.1, macOS asks one last time for **Accessibility** and **Screen Recording**: Vortex opens their page, and you switch Vortex off and on in System Settings. Each browser asks once more too.
 
 ### Build it yourself
 You need Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen):
