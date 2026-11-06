@@ -107,6 +107,35 @@
       Set(hotkeyListeners.value.values.map(\.name)).sorted()
     }
 
+    // MARK: - Keys under the keyboard lock
+
+    private let keyListeners = LockIsolated<[UUID: AsyncStream<KeyboardKey>.Continuation]>([:])
+
+    /// Keys pressed while the keyboard is locked: only those the shell's `keyboard key=` presses.
+    func keyPresses() -> AsyncStream<KeyboardKey> {
+      AsyncStream { continuation in
+        let id = UUID()
+        keyListeners.withValue { $0[id] = continuation }
+        continuation.onTermination = { _ in QASystem.shared.keyListeners.withValue { $0[id] = nil } }
+      }
+    }
+
+    func pressKey(_ key: KeyboardKey) -> Int {
+      let listeners = keyListeners.value.values
+      listeners.forEach { $0.yield(key) }
+      QALog.record("keyboardLock", "press", ["key": "\(key)", "listeners": "\(listeners.count)"])
+      return listeners.count
+    }
+
+    /// The lock ended: its keys end too, as the live client's do.
+    func endKeyPresses() {
+      let listeners = keyListeners.withValue { listeners in
+        defer { listeners = [:] }
+        return Array(listeners.values)
+      }
+      listeners.forEach { $0.finish() }
+    }
+
     // MARK: - Notification buttons
 
     func buttonPresses() -> AsyncStream<NotificationClient.Press> {

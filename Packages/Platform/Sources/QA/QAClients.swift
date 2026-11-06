@@ -202,7 +202,8 @@
 
   extension KeyboardLockClient {
     /// Never a real event tap: the lock holds while the simulated Accessibility is on in System Settings (`perm`), as
-    /// a tap works exactly then, and `keyboardLockRefuses` is off.
+    /// a tap works exactly then, and `keyboardLockRefuses` is off. Keys are pressed only by the shell's
+    /// `keyboard key=`; the keyboard's layout is `keyboardLayout`.
     static let qa: KeyboardLockClient = {
       var client = KeyboardLockClient()
       client.lock = {
@@ -210,7 +211,12 @@
         QALog.record("keyboardLock", "lock", ["locked": "\(isLocked)"])
         return isLocked
       }
-      client.unlock = { QALog.record("keyboardLock", "unlock") }
+      client.unlock = {
+        QASystem.shared.endKeyPresses()
+        QALog.record("keyboardLock", "unlock")
+      }
+      client.presses = { QASystem.shared.keyPresses() }
+      client.layout = { KeyboardLayout(rawValue: simulation.keyboardLayout) ?? .ansi }
       return client
     }()
   }

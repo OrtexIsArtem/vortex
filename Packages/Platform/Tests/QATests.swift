@@ -201,6 +201,9 @@ struct QASimulationTests {
     var simulation = QASimulation()
     try simulation.set(["keyboardLockRefuses": "true", "launchAtLogin": "requiresApproval", "frontTitle": "", "chooseApp": "com.apple.Safari"])
     #expect(simulation.keyboardLockRefuses)
+    #expect(simulation.keyboardLayout == "ansi")
+    try simulation.set(["keyboardLayout": "iso"])
+    #expect(simulation.keyboardLayout == "iso")
     #expect(simulation.launchAtLogin == "requiresApproval")
     #expect(simulation.frontTitle == nil)
     #expect(simulation.chooseApp == "com.apple.Safari")
@@ -213,6 +216,7 @@ struct QASimulationTests {
     }
     #expect(throws: QAError.self) { try simulation.set(["screenAccess": "true", "volume": "11"]) }
     #expect(throws: QAError.self) { try simulation.set(["launchAtLogin": "maybe"]) }
+    #expect(throws: QAError.self) { try simulation.set(["keyboardLayout": "dvorak"]) }
     #expect(simulation == before)
   }
 
@@ -423,5 +427,34 @@ struct QAClientsTests {
     QASimulation.update { $0.keyboardLockRefuses = true }
     #expect(await !lock.lock())
     QASimulation.update { $0 = QASimulation() }
+  }
+
+  /// Keys come only from `keyboard key=`, and the layout from the simulation.
+  @Test
+  @MainActor
+  func lockedKeysArePressedByCommandAndTheLayoutIsSimulated() async {
+    let lock = KeyboardLockClient.qa
+    #expect(lock.layout() == .ansi)
+    QASimulation.update { $0.keyboardLayout = "iso" }
+    #expect(lock.layout() == .iso)
+    QASimulation.update { $0 = QASimulation() }
+
+    let presses = await lock.presses()
+    let received = Task {
+      var keys: [KeyboardKey] = []
+      for await key in presses.prefix(2) { keys.append(key) }
+      return keys
+    }
+    #expect(QA.pressKey(.a) == 1)
+    #expect(QA.pressKey(.f1) == 1)
+    #expect(await received.value == [.a, .f1])
+
+    // Unlocked, the keys end and nobody listens.
+    let ended = await lock.presses()
+    await lock.unlock()
+    var afterUnlock: [KeyboardKey] = []
+    for await key in ended { afterUnlock.append(key) }
+    #expect(afterUnlock.isEmpty)
+    #expect(QA.pressKey(.a) == 0)
   }
 }

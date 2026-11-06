@@ -121,6 +121,13 @@
       QASystem.shared.pressHotkey(name)
     }
 
+    /// Presses a key on the locked keyboard, as the lock sees it go down, for whoever listens; returns how many listen.
+    @MainActor
+    @discardableResult
+    public static func pressKey(_ key: KeyboardKey) -> Int {
+      QASystem.shared.pressKey(key)
+    }
+
     /// Starts this build again with the same arguments, and quits; after the reply when a command asked for it.
     @MainActor
     public static func relaunch() {

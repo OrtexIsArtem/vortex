@@ -9,6 +9,8 @@
     var keyboardAccess = false
     /// macOS refuses the lock though access reads on, as it does when the switch in System Settings went stale.
     var keyboardLockRefuses = false
+    /// The physical layout of the keyboard used last: ansi, iso or jis.
+    var keyboardLayout = KeyboardLayout.ansi.rawValue
     /// No longer read: a capture follows the simulated Screen Recording (`perm`, `QAPermissions.screenCaptureWorks`).
     /// Kept so older simulation files still parse; `sim set` refuses it.
     var screenAccess = false
@@ -76,6 +78,7 @@
       }
       keyboardAccess = value(.keyboardAccess, defaults.keyboardAccess)
       keyboardLockRefuses = value(.keyboardLockRefuses, defaults.keyboardLockRefuses)
+      keyboardLayout = value(.keyboardLayout, defaults.keyboardLayout)
       screenAccess = value(.screenAccess, defaults.screenAccess)
       notificationsAllowed = value(.notificationsAllowed, defaults.notificationsAllowed)
       launchAtLogin = value(.launchAtLogin, defaults.launchAtLogin)
@@ -103,6 +106,11 @@
         case "keyboardAccess", "screenAccess", "notificationsAllowed":
           throw QAError("\(key) is gone: use perm, e.g. perm set=accessibility:granted")
         case "keyboardLockRefuses": copy.keyboardLockRefuses = try flag()
+        case "keyboardLayout":
+          guard KeyboardLayout(rawValue: value) != nil else {
+            throw QAError("keyboardLayout takes ansi, iso or jis, not \"\(value)\"")
+          }
+          copy.keyboardLayout = value
         case "launchAtLogin":
           guard ["enabled", "disabled", "requiresApproval"].contains(value) else {
             throw QAError("launchAtLogin takes enabled, disabled or requiresApproval, not \"\(value)\"")
@@ -116,7 +124,7 @@
         case "recognizedText": copy.recognizedText = value
         default:
           throw QAError(
-            "sim set knows keyboardLockRefuses, launchAtLogin, "
+            "sim set knows keyboardLockRefuses, keyboardLayout, launchAtLogin, "
               + "frontApp, frontTitle, frontURL, chooseFolder, chooseApp and recognizedText, not \(key)"
           )
         }
