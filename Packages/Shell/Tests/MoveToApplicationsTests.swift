@@ -48,9 +48,23 @@ struct MoveToApplicationsTests {
     "/Applications Old/Vortex.app",
     "/Users/someone/ApplicationsBackup/Vortex.app",
     "/Users/other/Applications/Vortex.app",
+    "/Users/someone/DerivedDataBackup/Vortex.app",
+    "/Users/someone/Build/Vortex.app",
   ])
   func aCopyKeptElsewhereAsks(path: String) {
     #expect(decide(copy(path)) == .ask(replacesOlder: false))
+  }
+
+  /// Xcode runs release builds (Profile, a Release-scheme Run) from its build folders: moving one would put the build
+  /// product in /Applications and the installed Vortex in the Trash.
+  @Test(arguments: [
+    "/Users/someone/Library/Developer/Xcode/DerivedData/Vortex-abc/Build/Products/Release/Vortex.app",
+    "/Users/someone/XcodeProjects/vortex/build/Release/Build/Products/Release/Vortex.app",
+    "/Users/someone/XcodeProjects/vortex/build/DerivedData/Vortex.app",
+  ])
+  func aBuildInXcodesBuildFoldersNeverAsks(path: String) {
+    #expect(decide(copy(path)) == .run)
+    #expect(decide(copy(path), installed: InstalledApp(bundleID: vortex, version: "0.1.0")) == .run)
   }
 
   /// Under App Translocation the app runs from a random path; where the user keeps its original is what counts.

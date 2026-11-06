@@ -26,14 +26,24 @@ struct MoveToApplications {
   @Dependency(\.systemClient) var system
 
   /// Asks only for a copy kept outside /Applications and ~/Applications, at any depth (under App Translocation, where
-  /// its original is), never after "Don't ask again", and not when the app at /Applications/Vortex.app is a newer
-  /// Vortex, compared as numbers, or another app, which never goes to the Trash for it.
+  /// its original is), never after "Don't ask again" or for a build in Xcode's build folders, and not when the app at
+  /// /Applications/Vortex.app is a newer Vortex, compared as numbers, or another app, which never goes to the Trash for
+  /// it.
   nonisolated static func decide(_ copy: AppCopy, installed: InstalledApp?, home: URL, isDeclined: Bool) -> Decision {
-    if isKeptInApplications(copy.location, home: home) || isDeclined { return .run }
+    if isKeptInApplications(copy.location, home: home) || isDeclined || isBuildProduct(copy) { return .run }
     guard let installed else { return .ask(replacesOlder: false) }
     guard installed.bundleID == copy.bundleID else { return .run }
     if AppVersion.isNewer(installed.version ?? "", than: copy.version) { return .run }
     return .ask(replacesOlder: true)
+  }
+
+  /// A release build Xcode runs from its build folders (Profile, a Release-scheme Run): moved, the build product would
+  /// take the installed Vortex's place.
+  nonisolated static func isBuildProduct(_ copy: AppCopy) -> Bool {
+    [copy.bundle, copy.location].contains { url in
+      let path = url.standardizedFileURL.path
+      return path.contains("/DerivedData/") || path.contains("/Build/Products/")
+    }
   }
 
   /// Inside /Applications or ~/Applications, at any depth. macOS may spell /Applications through the data volume.
