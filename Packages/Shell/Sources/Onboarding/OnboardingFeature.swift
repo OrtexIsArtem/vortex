@@ -27,6 +27,12 @@ struct OnboardingFeature {
     var presentation: Presentation = .hidden
     /// A "Turn on" click armed the panel: System Settings coming to the front within 10 s shrinks the window.
     var guideArmed: Permission?
+    /// System Settings quit while a page showed: for 1 s, the app macOS brings forward in its place puts the window back
+    /// in front each time it comes to the front, as it may take the front back after Vortex.
+    var keepsFront = false
+    /// The last app other than Vortex and System Settings to come to the front while a page showed: when System Settings
+    /// quits, the one macOS brings forward. While nil, the first to come forward after the quit counts as that app.
+    var lastApp: String?
     /// System Settings came to the front after a request from these pages.
     var settingsOpened: Set<Permission> = []
     /// Permissions whose check waited for this launch's relaunch: the pasteboard's page gives the recheck hint only
@@ -473,6 +479,7 @@ struct OnboardingFeature {
     case turnOnUnlocked(Permission)
     case notificationHintExpired
     case guideExpired
+    case keepFrontExpired
     case singleCloseElapsed
     case loginItemTick
     /// QA's `onboarding reset`: the onboarding starts over, hidden until something shows it.
@@ -492,6 +499,7 @@ struct OnboardingFeature {
     case turnOn(Permission)
     case notificationHint
     case guide
+    case keepFront
     case singleClose
     case loginItemTick
   }
@@ -652,8 +660,12 @@ struct OnboardingFeature {
         return appActivated(bundleID, &state)
 
       case let .appTerminated(bundleID):
-        guard bundleID == Self.systemSettingsID, state.isPanel else { return .none }
-        return leavePanel(&state)
+        // Any page that shows, not only the panel: after «Quit & Reopen» Vortex shows the window while System Settings
+        // is in front, and the app macOS brings forward in its place would cover it.
+        guard bundleID == Self.systemSettingsID, state.isVisible else { return .none }
+        state.keepsFront = true
+        state.setSurface(.window)
+        return .merge(present(state, activate: true), keepFront())
 
       case let .loginItemToggled(isOn):
         if state.appliesLoginItem, !state.progress.loginItemApplied {
@@ -696,6 +708,10 @@ struct OnboardingFeature {
 
       case .guideExpired:
         state.guideArmed = nil
+        return .none
+
+      case .keepFrontExpired:
+        state.keepsFront = false
         return .none
 
       case .singleCloseElapsed:
@@ -808,6 +824,15 @@ struct OnboardingFeature {
     .cancellable(id: CancelID.guide, cancelInFlight: true)
   }
 
+  /// The window stays in front for 1 s after System Settings quit.
+  private func keepFront() -> Effect<Action> {
+    .run { send in
+      try await clock.sleep(for: .seconds(1))
+      await send(.keepFrontExpired)
+    }
+    .cancellable(id: CancelID.keepFront, cancelInFlight: true)
+  }
+
   private func save(_ state: State) -> Effect<Action> {
     // Synchronous: a forced quit right after a page change still resumes there.
     progressClient.save(state.progress)
@@ -907,11 +932,14 @@ struct OnboardingFeature {
   private func hide(_ state: inout State, restoreFront: Bool) -> Effect<Action> {
     state.presentation = .hidden
     state.guideArmed = nil
+    state.keepsFront = false
+    state.lastApp = nil
     state.isNotificationHintVisible = false
     return .merge(
       .cancel(id: CancelID.singleClose),
       .cancel(id: CancelID.loginItemTick),
       .cancel(id: CancelID.guide),
+      .cancel(id: CancelID.keepFront),
       .run { _ in
         await window.hide(restoreFront)
         await permissions.setFrequentChecks(false)
@@ -1025,8 +1053,15 @@ struct OnboardingFeature {
       }
       return .none
     }
-    guard let guided = state.guided else { return .none }
     let isVortex = bundleID == state.ownBundleID
+    if !isVortex {
+      // macOS reports the app it brings forward in System Settings' place just before the quit, or else as the first
+      // after it: within the second the window goes back over that app, never over one the user switches to.
+      let isFromBefore = state.lastApp == nil || state.lastApp == bundleID
+      state.lastApp = bundleID
+      if state.keepsFront, isFromBefore, !state.isPanel { return present(state, activate: true) }
+    }
+    guard let guided = state.guided else { return .none }
     if isVortex == state.isPanelHidden {
       state.setSurface(.panel(guided, isHidden: !isVortex))
       return present(state, activate: false)

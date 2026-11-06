@@ -2,11 +2,11 @@
 
 ## When it shows
 - At launch, after the first status read, an onboarding that isn't completed opens at its saved page; a fresh install, or one from a release without the onboarding, opens at Welcome.
-- It lives in its own standard window, centered on the pointer's screen, about 560×620 pt, with only a close button; never in the notch window.
+- It lives in its own standard window, centered on the pointer's screen, about 560×620 pt, with only a close button, never in the notch window; there ⌘Q quits Vortex, Esc closes only a single page and Return presses the page's main button.
 - Only Done's final button completes it; after that no launch shows it unless Vortex is blocked.
 - Closing it (close button or ⌘W) hides it and keeps the page; the menu bar menu then has "Continue setup", which closes the notch window and reopens it at the saved page, even over a single page.
 - "Continue setup" shows whenever the onboarding isn't completed, blocked or not; the menu bar icon shows then too, even if hidden.
-- ⌘Q in the window quits Vortex; Esc closes only a single page; Return presses the page's main button.
+- When System Settings quits, a page that shows comes to the front in the window, and for 1 s goes back over the app macOS brings forward in its place each time that app takes the front back; never over an app the user switches to.
 
 ## Pages
 - Order: Welcome, Basics, Accessibility, Screen Recording, Paste from Other Apps, the features' own steps, Done.

@@ -945,6 +945,9 @@ struct OnboardingFeatureTests {
     await store.send(.appTerminated(OnboardingFeature.systemSettingsID))
     #expect(await windowCalls.next() == "window+activate")
     #expect(!store.state.isPanel)
+    // And once more over the app macOS brings forward in System Settings' place.
+    await store.send(.appActivated("com.apple.Safari"))
+    #expect(await windowCalls.next() == "window+activate")
   }
 
   @Test
@@ -956,6 +959,88 @@ struct OnboardingFeatureTests {
     await store.receive(\.guideExpired)
     await store.send(.appActivated(OnboardingFeature.systemSettingsID))
     #expect(!store.state.isPanel)
+  }
+
+  // MARK: - System Settings quits
+
+  /// After «Quit & Reopen» Vortex shows the window while System Settings is in front. When System Settings quits, macOS
+  /// brings forward the app that was in front before it, over the window, and reports it just before the quit; that
+  /// app may take the front back just after Vortex. The window comes to the front, and back over that app, but never
+  /// over an app the user switches to.
+  @Test
+  func whenSystemSettingsQuitsTheWindowComesToTheFrontAlsoOverTheAppMacOSBringsForward() async {
+    let store = makeStore(progress: .at(.permission(.screenRecording)))
+    await store.send(.launched)
+    #expect(await windowCalls.next() == "window+activate")
+    // As macOS reports it: the app from before System Settings in front, then the quit.
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    await store.send(.appTerminated(OnboardingFeature.systemSettingsID))
+    #expect(await windowCalls.next() == "window+activate")
+    // Vortex in front, then that app takes the front back.
+    await store.send(.appActivated("vortex"))
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    #expect(await windowCalls.next() == "window+activate")
+    // An app the user switches to stays in front.
+    await store.send(.appActivated("com.apple.Safari"))
+    await store.send(.closeTapped)
+    #expect(await windowCalls.next() == "hide")
+  }
+
+  /// Reported the other way round, the first app to come forward after the quit counts as the one macOS brought
+  /// forward. A second after the quit, it stays in front.
+  @Test
+  func whenTheQuitIsReportedFirstTheNextAppCountsAsTheOneMacOSBringsForward() async {
+    let store = makeStore(progress: .at(.permission(.screenRecording)))
+    await store.send(.launched)
+    #expect(await windowCalls.next() == "window+activate")
+    await store.send(.appTerminated(OnboardingFeature.systemSettingsID))
+    #expect(await windowCalls.next() == "window+activate")
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    #expect(await windowCalls.next() == "window+activate")
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    #expect(await windowCalls.next() == "window+activate")
+    await clock.advance(by: .seconds(1))
+    await store.receive(\.keepFrontExpired)
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    await store.send(.closeTapped)
+    #expect(await windowCalls.next() == "hide")
+  }
+
+  /// System Settings back within the second for a "Turn on": the panel steps aside for another app, as always.
+  @Test
+  func aPanelThatOpensWithinTheSecondStillStepsAsideForAnotherApp() async {
+    let store = makeStore(progress: .at(.permission(.screenRecording)))
+    await store.send(.launched)
+    #expect(await windowCalls.next() == "window+activate")
+    await store.send(.appTerminated(OnboardingFeature.systemSettingsID))
+    #expect(await windowCalls.next() == "window+activate")
+    await openPanel(store, for: .screenRecording)
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    #expect(await windowCalls.next() == "panelHidden")
+  }
+
+  @Test
+  func whenSystemSettingsQuitsASinglePageComesToTheFront() async {
+    let store = makeStore(progress: .finished)
+    await store.send(.pageRequested(.accessibility, .request))
+    #expect(await windowCalls.next() == "window+activate")
+    await store.send(.appTerminated(OnboardingFeature.systemSettingsID))
+    #expect(await windowCalls.next() == "window+activate")
+    #expect(store.state.presentation == .single(.init(permission: .accessibility, kind: .request), .window))
+  }
+
+  @Test
+  func aClosedOnboardingStaysClosedWhenSystemSettingsQuits() async {
+    let store = makeStore(progress: .at(.permission(.screenRecording)))
+    await store.send(.launched)
+    #expect(await windowCalls.next() == "window+activate")
+    await store.send(.closeTapped)
+    #expect(await windowCalls.next() == "hide")
+    await store.send(.appTerminated(OnboardingFeature.systemSettingsID))
+    await store.send(.appActivated("com.anthropic.claudefordesktop"))
+    #expect(store.state.presentation == .hidden)
+    await store.send(.reset)
+    #expect(await windowCalls.next() == "hide")
   }
 
   // MARK: - Open at login
