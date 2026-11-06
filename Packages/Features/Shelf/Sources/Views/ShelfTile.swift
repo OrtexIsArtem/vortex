@@ -58,8 +58,12 @@ struct ShelfTile: View {
         onClick: { send(.itemClicked(item.id, $0)) },
         onHover: { isHovering in
           isHovered = isHovering
-          // Pointing at a new item is how the user sees it: its dot goes for good, and so does its count in the notch.
-          if isHovering, isFresh { send(.itemHovered(item.id)) }
+          // A new item counts as seen once the pointer rests on it; the shelf keeps the time.
+          if !isHovering {
+            send(.itemHoverEnded(item.id))
+          } else if isFresh {
+            send(.itemHoverStarted(item.id))
+          }
         }
       )
     }
@@ -84,7 +88,8 @@ struct ShelfTile: View {
     .contextMenu { menu }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text(verbatim: title))
-    .accessibilityValue(details)
+    // VoiceOver says what the dot shows.
+    .accessibilityValue(isFresh ? Text("New", bundle: .module) + Text(verbatim: " · ") + details : details)
     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction { send(.itemClicked(item.id, DragSourceClick(count: 1, modifiers: []))) }
     .accessibilityAction(named: Text("Quick Look", bundle: .module)) { send(.quickLookTapped(item.id)) }
@@ -93,8 +98,8 @@ struct ShelfTile: View {
 
   // MARK: - Preview
 
-  /// The mark of a new item, until the pointer comes over it. A ring in the preview's background color keeps it apart
-  /// from a white or a black picture alike.
+  /// The mark of a new item, until the pointer rests on it, a click or Quick Look shows it. A ring in the preview's
+  /// background color keeps it apart from a white or a black picture alike.
   private var freshDot: some View {
     let size: CGFloat = isCompact ? 7 : 8
     return Circle()

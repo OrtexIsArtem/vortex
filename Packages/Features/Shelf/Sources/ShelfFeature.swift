@@ -16,6 +16,9 @@ public struct ShelfFeature: Sendable {
   static let expiryCheckInterval: Duration = .seconds(600)
   /// A file in the watched folder counts as written once its size has stayed the same for two checks this far apart.
   static let settleInterval: Duration = .seconds(1)
+  /// A new item counts as seen once the pointer has rested on it this long; passing over it on the way elsewhere
+  /// doesn't count.
+  static let hoverDwell: Duration = .milliseconds(400)
 
   @ObservableState
   public struct State: Equatable {
@@ -36,7 +39,7 @@ public struct ShelfFeature: Sendable {
     /// Where a shift-click selection starts.
     var selectionAnchor: ShelfItem.ID?
     /// Items that arrived by themselves (menu bar icon, terminal, watched folder): marked, and counted in the notch,
-    /// until the user points at them or they leave the shelf.
+    /// until the pointer rests on them, a click or Quick Look shows them, or they leave the shelf.
     var fresh: Set<ShelfItem.ID> = []
     /// Size and kind of file items.
     var info: [ShelfItem.ID: FileInfo] = [:]
@@ -51,9 +54,8 @@ public struct ShelfFeature: Sendable {
 
     public init() {}
 
-    /// The tray and the number of fresh items in the closed notch: only what came by itself and the user has not pointed
-    /// at yet, never what the user put on the shelf. With none it shows no ears, but can still flash the notch (Test in
-    /// settings).
+    /// The tray and the number of fresh items in the closed notch: only what came by itself and is still marked, never
+    /// what the user put on the shelf. With none it shows no ears, but can still flash the notch (Test in settings).
     var indicator: NotchIndicator? {
       guard isRunning else { return nil }
       return NotchIndicator(
@@ -76,9 +78,14 @@ public struct ShelfFeature: Sendable {
       var isFresh: Bool
     }
 
+    /// Selected items whose file is still there: what Quick Look shows.
+    var selectedFiles: [ShelfItem] {
+      items.filter { selection.contains($0.id) && !unavailable.contains($0.id) && $0.fileURL != nil }
+    }
+
     /// Files of the selected items that are still there.
     var selectedFileURLs: [URL] {
-      items.filter { selection.contains($0.id) && !unavailable.contains($0.id) }.compactMap(\.fileURL)
+      selectedFiles.compactMap(\.fileURL)
     }
   }
 
@@ -94,8 +101,12 @@ public struct ShelfFeature: Sendable {
     case infoLoaded(found: [ShelfItem.ID: FileInfo], missing: Set<ShelfItem.ID>)
     case tabShown
     case tabHidden
-    /// The pointer came over a new item's tile, in the tab or on Home: the item is no longer new.
-    case itemHovered(ShelfItem.ID)
+    /// The pointer came over an item's tile, in the tab or on Home.
+    case itemHoverStarted(ShelfItem.ID)
+    /// The pointer left an item's tile.
+    case itemHoverEnded(ShelfItem.ID)
+    /// The pointer has rested on a new item for `hoverDwell`: its mark clears.
+    case itemHoverRested(ShelfItem.ID)
     case itemClicked(ShelfItem.ID, DragSourceClick)
     case backgroundClicked
     case selectAllPressed
@@ -141,6 +152,7 @@ public struct ShelfFeature: Sendable {
     case watch
     case wait(URL)
     case testFlash
+    case hover(ShelfItem.ID)
   }
 
   public init() {}
@@ -175,7 +187,12 @@ public struct ShelfFeature: Sendable {
 
       case .stop:
         state.isRunning = false
-        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.expiry), stopWatching(&state))
+        return .merge(
+          .cancel(id: CancelID.load),
+          .cancel(id: CancelID.expiry),
+          stopWatching(&state),
+          endHoverWaits(on: state.items.elements)
+        )
 
       case let .loaded(items):
         state.items = IdentifiedArray(items, uniquingIDsWith: { first, _ in first })
@@ -226,12 +243,25 @@ public struct ShelfFeature: Sendable {
       case .tabHidden:
         return .run { _ in await quickLook.close() }
 
-      case let .itemHovered(id):
+      case let .itemHoverStarted(id):
+        guard state.fresh.contains(id) else { return .none }
+        return .run { send in
+          try await clock.sleep(for: Self.hoverDwell)
+          await send(.itemHoverRested(id))
+        }
+        .cancellable(id: CancelID.hover(id), cancelInFlight: true)
+
+      case let .itemHoverEnded(id):
+        return .cancel(id: CancelID.hover(id))
+
+      case let .itemHoverRested(id):
         state.fresh.remove(id)
         return .none
 
       case let .itemClicked(id, click):
         guard let item = state.items[id: id] else { return .none }
+        // A click, VoiceOver's activate among them, shows the user the item: its mark clears.
+        state.fresh.remove(id)
         if click.count == 2 {
           guard !state.unavailable.contains(id), let url = item.fileURL ?? item.linkURL else { return .none }
           return .run { [files] _ in await files.open(url) }
@@ -260,6 +290,8 @@ public struct ShelfFeature: Sendable {
       case .quickLookPressed:
         let urls = state.selectedFileURLs
         guard !urls.isEmpty else { return .none }
+        // Quick Look shows the user these files: their marks clear.
+        state.fresh.subtract(state.selectedFiles.map(\.id))
         return .run { _ in await quickLook.toggle(urls) }
 
       case let .quickLookTapped(id):
@@ -272,7 +304,7 @@ public struct ShelfFeature: Sendable {
       case .removeSelectedPressed:
         guard !state.selection.isEmpty else { return .none }
         let removed = remove(state.selection, &state)
-        return .merge(deleteCopies(of: removed), save(state))
+        return .merge(deleteCopies(of: removed), endHoverWaits(on: removed), save(state))
 
       case let .showInFinderTapped(id):
         let urls = state.selection.contains(id) ? state.selectedFileURLs : state.items[id: id]?.fileURL.map { [$0] } ?? []
@@ -285,11 +317,11 @@ public struct ShelfFeature: Sendable {
 
       case let .removeTapped(id):
         let removed = remove([id], &state)
-        return .merge(deleteCopies(of: removed), save(state))
+        return .merge(deleteCopies(of: removed), endHoverWaits(on: removed), save(state))
 
       case .clearTapped:
         let removed = remove(Set(state.items.filter { !$0.isPinned }.ids), &state)
-        return .merge(deleteCopies(of: removed), save(state))
+        return .merge(deleteCopies(of: removed), endHoverWaits(on: removed), save(state))
 
       case let .watchedFileChanged(url):
         guard state.isRunning, state.settings.takes(url) else { return .none }
@@ -493,7 +525,7 @@ public struct ShelfFeature: Sendable {
     let limit = now.addingTimeInterval(-Self.lifetime)
     let removed = remove(Set(state.items.filter { !$0.isPinned && $0.addedAt < limit }.ids), &state)
     guard !removed.isEmpty else { return .none }
-    return .merge(deleteCopies(of: removed), save(state))
+    return .merge(deleteCopies(of: removed), endHoverWaits(on: removed), save(state))
   }
 
   /// Watches the folders from the settings; each change goes through `watchedFileChanged`.
@@ -586,6 +618,11 @@ public struct ShelfFeature: Sendable {
       }
       await send(.infoLoaded(found: found, missing: missing))
     }
+  }
+
+  /// Ends the pointer's waits on these items, see `hoverDwell`.
+  private func endHoverWaits(on items: [ShelfItem]) -> Effect<Action> {
+    .merge(items.map { .cancel(id: CancelID.hover($0.id)) })
   }
 
   /// Deletes the shelf's own copies; the user's files are never touched.

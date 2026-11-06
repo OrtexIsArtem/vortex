@@ -6,7 +6,9 @@
 - Files dropped on the menu bar icon, opened with Vortex or sent with `vortex shelf add <files>` land on the shelf without opening the window. On macOS 26 a drop on the icon never reaches Vortex (Control Center draws the icon), so the shelf doesn't offer it.
 - Those files get a dot, and the notch flashes: a glow that spreads past its edges, blinking twice.
 - The flash color follows the number of files with a dot: color 1 for the first, color 2 for the second… then white; with no dot left, the count starts over.
-- A dot stays until the pointer comes over its item, in the tab or on Home; then it goes for good.
+- A dot stays until the user sees its item, in the tab or on Home: the pointer resting on it for 0.4 s, a click, or Quick Look showing it. Then it goes for good.
+- The pointer passing over an item, or leaving it within 0.4 s, keeps its dot.
+- VoiceOver reads an item with a dot as "New".
 - Leaving the tab, closing the window or opening it on another tab keeps the dots and the count.
 - Files the user drops get no dot and do not flash.
 - Files and folders are kept by reference; images without a file are saved as PNG copies.
@@ -38,7 +40,9 @@
 - Unpinned items leave the shelf 24 hours after they were added, checked every 10 minutes and at start.
 - The closed notch shows a tray and a number only while files that came by themselves still have their dot; the number is how many such files there are, not the whole shelf.
 - What the user puts on the shelf (on the tab, on Home or by dragging to the notch) never shows in the notch.
-- The number drops by one when the pointer comes over such a file or the file leaves the shelf; with none left the tray goes. Turning the feature off hides it too.
+- The number drops by one when such a file loses its dot or leaves the shelf.
+- With no such file left, the tray goes.
+- Turning the feature off hides the tray.
 
 ## On Home
 - The shelf sits in the dock as small tiles with their names; the last tile takes drops.

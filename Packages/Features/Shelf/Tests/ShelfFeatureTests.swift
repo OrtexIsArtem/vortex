@@ -99,7 +99,9 @@ struct ShelfFeatureTests {
     #expect(indicators[ShelfFeature.id] == NotchIndicator(
       leading: [.symbol("tray.full")], trailing: [.text("2")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
     ))
-    // Leaving the tab, or the window closing on it or on Home, keeps the marks and the number.
+    // The shelf showing, and leaving its tab or the window closing on it or on Home, keep the marks and the number.
+    await store.send(.tabShown)
+    #expect(store.state.fresh == [uuid(0), uuid(1)])
     await store.send(.tabHidden)
     #expect(store.state.fresh == [uuid(0), uuid(1)])
     #expect(indicators[ShelfFeature.id]?.trailing == [.text("2")])
@@ -108,15 +110,22 @@ struct ShelfFeatureTests {
   }
 
   @Test
-  func pointingAtANewItemClearsOnlyItsMark() async {
+  func restingThePointerOnANewItemClearsItsMark() async {
     let store = makeStore()
     await start(store)
     await store.send(.filesReceived([Self.ipa, Self.apk]))
     @Shared(.notchIndicators) var indicators
-    await store.send(.itemHovered(uuid(0))) { $0.fresh = [uuid(1)] }
+    await store.send(.itemHoverStarted(uuid(0)))
+    await clock.advance(by: .milliseconds(300))
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("2")])
+    await clock.advance(by: .milliseconds(100))
+    await store.receive(\.itemHoverRested) { $0.fresh = [uuid(1)] }
     #expect(indicators[ShelfFeature.id]?.trailing == [.text("1")])
     // With no mark left the tray goes, without another flash; the items stay.
-    await store.send(.itemHovered(uuid(1))) { $0.fresh = [] }
+    await store.send(.itemHoverEnded(uuid(0)))
+    await store.send(.itemHoverStarted(uuid(1)))
+    await clock.advance(by: .milliseconds(400))
+    await store.receive(\.itemHoverRested) { $0.fresh = [] }
     #expect(indicators[ShelfFeature.id] == NotchIndicator(
       leading: [], trailing: [], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
     ))
@@ -125,17 +134,75 @@ struct ShelfFeatureTests {
   }
 
   @Test
-  func pointingAtAnItemWithoutAMarkChangesNothing() async {
+  func leavingANewItemSoonerKeepsItsMark() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.filesReceived([Self.ipa]))
+    let hover = await store.send(.itemHoverStarted(uuid(0)))
+    await clock.advance(by: .milliseconds(300))
+    await store.send(.itemHoverEnded(uuid(0)))
+    // The wait ended with the hover, so nothing clears the mark later.
+    await hover.finish()
+    await clock.advance(by: .seconds(1))
+    #expect(store.state.fresh == [uuid(0)])
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("1")])
+    await store.send(.stop)
+  }
+
+  @Test
+  func pointingAtAnItemWithoutAMarkStartsNoWait() async {
     let store = makeStore()
     await start(store)
     await store.send(.dropped([.file(Self.notes)]))
-    await store.send(.filesReceived([Self.ipa]))
-    await store.send(.itemHovered(uuid(0)))
-    #expect(store.state.fresh == [uuid(1)])
+    let hover = await store.send(.itemHoverStarted(uuid(0)))
+    // Nothing waits on the clock for it, and nothing changes.
+    await hover.finish()
+    #expect(store.state.fresh.isEmpty)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aWaitEndsWhenItsItemLeavesOrTheFeatureStops() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.filesReceived([Self.ipa, Self.apk]))
+    let first = await store.send(.itemHoverStarted(uuid(0)))
+    await store.send(.removeTapped(uuid(0)))
+    await first.finish()
+    let second = await store.send(.itemHoverStarted(uuid(1)))
+    await store.send(.stop)
+    await second.finish()
+  }
+
+  @Test
+  func clickingANewItemClearsItsMark() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.filesReceived([Self.ipa, Self.apk, Self.notes]))
+    // A click, a double click, or VoiceOver's activate, which sends a click.
+    await store.send(.itemClicked(uuid(0), DragSourceClick(count: 1, modifiers: []))) { $0.fresh = [uuid(1), uuid(2)] }
+    await store.send(.itemClicked(uuid(1), DragSourceClick(count: 2, modifiers: []))) { $0.fresh = [uuid(2)] }
     @Shared(.notchIndicators) var indicators
-    #expect(indicators[ShelfFeature.id] == NotchIndicator(
-      leading: [.symbol("tray.full")], trailing: [.text("1")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[0]
-    ))
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("1")])
+    await store.send(.stop)
+  }
+
+  @Test
+  func quickLookClearsTheMarksOfTheFilesItShows() async {
+    missing.setValue([Self.notes])
+    let store = makeStore()
+    await start(store)
+    await store.send(.filesReceived([Self.ipa, Self.apk, Self.notes]))
+    await store.receive(\.infoLoaded)
+    // Space on the selection; a missing file isn't shown, so it keeps its mark.
+    await store.send(.selectAllPressed)
+    await store.send(.quickLookPressed) { $0.fresh = [uuid(2)] }
+    // Quick Look from the item's menu, or VoiceOver's action of that name.
+    let next = URL(fileURLWithPath: "/Users/me/Builds/next.ipa")
+    await store.send(.filesReceived([next]))
+    await store.send(.quickLookTapped(uuid(3)))
+    await store.receive(\.quickLookPressed) { $0.fresh = [uuid(2)] }
     await store.send(.stop)
   }
 
@@ -202,15 +269,16 @@ struct ShelfFeatureTests {
     await store.send(.filesReceived([Self.notes]))
     #expect(store.state.flashColor == .white)
     #expect(store.state.flashes == 3)
-    // Leaving the tab keeps the marks; pointing at two of the three leaves one, so the next file is the second.
+    // Leaving the tab keeps the marks; clicking two of the three leaves one, so the next file is the second.
+    let click = DragSourceClick(count: 1, modifiers: [])
     await store.send(.tabHidden)
-    await store.send(.itemHovered(uuid(0)))
-    await store.send(.itemHovered(uuid(1)))
+    await store.send(.itemClicked(uuid(0), click))
+    await store.send(.itemClicked(uuid(1), click))
     await store.send(.filesReceived([URL(fileURLWithPath: "/Users/me/Builds/next.ipa")]))
     #expect(store.state.flashColor == green)
     // With no mark left, the count starts over.
-    await store.send(.itemHovered(uuid(2)))
-    await store.send(.itemHovered(uuid(3)))
+    await store.send(.itemClicked(uuid(2), click))
+    await store.send(.itemClicked(uuid(3), click))
     await store.send(.filesReceived([URL(fileURLWithPath: "/Users/me/Builds/last.ipa")]))
     #expect(store.state.flashColor == blue)
     await store.send(.stop)

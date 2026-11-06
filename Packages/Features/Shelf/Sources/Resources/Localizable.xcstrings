@@ -138,6 +138,17 @@
         }
       }
     },
+    "New" : {
+      "comment" : "VoiceOver value of a shelf item that came by itself and still has its dot, read before its size and age",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новий"
+          }
+        }
+      }
+    },
     "New files flash the notch: color 1 for the first new file, color 2 for the second, and so on; after the last color, white. A file on the shelf stops being new once you point at it." : {
       "comment" : "Caption of the notch flash colors in the shelf's settings; a new file keeps its dot until the pointer comes over it",
       "localizations" : {
