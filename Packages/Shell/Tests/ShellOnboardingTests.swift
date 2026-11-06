@@ -49,6 +49,8 @@ struct ShellOnboardingTests {
       $0.windowClient.setMenuBarIconVisible = { _ in }
       $0.windowClient.setAcceptsFiles = { _ in }
       $0.windowClient.holdKeyboard = { _ in }
+      $0.keyboardLockClient.layout = { .ansi }
+      $0.keyboardLockClient.presses = { .finished }
       $0.settingsClient.save = { _ in }
       $0.featuresClient.setEnabled = { _, _ in }
       $0.onboardingProgress.save = { _ in }

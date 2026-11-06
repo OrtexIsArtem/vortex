@@ -38,6 +38,8 @@ enum WindowEvent: Equatable, Sendable {
   case escapePressed
   /// Sent when the events start and whenever displays change. `anyScreenHasNotch`: some display has one.
   case screensChanged(everyScreenHasNotch: Bool, anyScreenHasNotch: Bool = true)
+  /// During keyboard cleaning, a key got past the lock's tap and went down in Vortex, which drops it.
+  case keyPressedWhileHeld(KeyboardKey)
 }
 
 /// Owns everything Vortex puts on screen: the closed notch with its ears, the window that grows out of the
@@ -89,7 +91,8 @@ final class WindowController: NSObject {
   /// Whether some feature takes files, so files may be dropped on the menu bar icon.
   private var acceptsFiles = false
   private var outsideClickMonitor: Any?
-  /// Drops every key Vortex receives while keyboard cleaning holds the keyboard; nil otherwise.
+  /// Drops every key Vortex receives while keyboard cleaning holds the keyboard, telling only which key went down;
+  /// nil otherwise.
   private var keyboardHoldMonitor: Any?
   /// The app that was in front when keyboard cleaning brought Vortex there; it gets the front back after.
   private var appBeforeKeyboardHold: NSRunningApplication?
@@ -243,8 +246,8 @@ final class WindowController: NSObject {
 
   /// While held, Vortex is the app in front, its window has the keyboard and every key that reaches Vortex is dropped.
   /// So a key that passes the lock's tap — while some app has secure input on, or for the moment macOS turns the tap
-  /// off — goes nowhere rather than into the app the user was in. Let go, that app gets the front and the keys back,
-  /// unless the user went to another app meanwhile.
+  /// off — goes nowhere rather than into the app the user was in; the lock screen still washes it. Let go, that app
+  /// gets the front and the keys back, unless the user went to another app meanwhile.
   func holdKeyboard(_ isHeld: Bool) {
     if isQA {
       // Never in front and never the keyboard: the lock itself is simulated.
@@ -258,7 +261,12 @@ final class WindowController: NSObject {
       if let front = NSWorkspace.shared.frontmostApplication, front != .current {
         appBeforeKeyboardHold = front
       }
-      keyboardHoldMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { _ in nil }
+      keyboardHoldMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
+        if let key = event.cgEvent.flatMap(KeyboardKey.init(pressedBy:)) {
+          MainActor.assumeIsolated { WindowController.shared.emit(.keyPressedWhileHeld(key)) }
+        }
+        return nil
+      }
       NSApp.activate()
       mainPanel?.makeKey()
     } else if let monitor = keyboardHoldMonitor {

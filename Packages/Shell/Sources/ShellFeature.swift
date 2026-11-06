@@ -609,6 +609,10 @@ struct ShellFeature {
       guard let reason = state.openReason else { return .none }
       // A window kept open for keyboard cleaning moves to the new screens; any other was placed for the old ones.
       return state.keyboardCleaning.isLocked ? .run { _ in await window.present(reason) } : close(&state)
+
+    case let .keyPressedWhileHeld(key):
+      // The key went nowhere, but the lock screen washes it as if the lock had held it back.
+      return .send(.keyboardCleaning(.keyPressed(key)))
     }
   }
 

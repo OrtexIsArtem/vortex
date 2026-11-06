@@ -226,6 +226,17 @@
         }
       }
     },
+    "Don't press Touch ID: it locks your Mac, and Vortex can't block it." : {
+      "comment" : "Tooltip of the Touch ID button drawn on the keyboard cleaning screen.",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не натискайте Touch ID: він замикає Mac, і Vortex не може його заблокувати."
+          }
+        }
+      }
+    },
     "Drag Vortex to the Applications folder in Finder." : {
       "comment" : "Text of the alert after moving Vortex to the Applications folder failed",
       "localizations" : {

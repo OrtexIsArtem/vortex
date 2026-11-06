@@ -31,12 +31,12 @@
 - After the window closes under the pointer, hovering the notch counts again only once the pointer has left it.
 
 ## Keyboard cleaning
-- Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. Mouse and trackpad keep working. The window then shows only "Keyboard cleaning mode", "All keys are locked" and "Turn the keyboard back on".
-- While the keys are locked, nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut. New displays move it there. Vortex comes to the front with the lock and drops any key that still reaches it.
-- "Turn the keyboard back on" lets the keys go at once and closes the window; the app that was in front gets the front and the keys back.
+- Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. Mouse and trackpad keep working. The window then shows only a drawn MacBook keyboard (ISO for an ISO keyboard, otherwise ANSI; English labels), "Keyboard cleaning mode", "All keys are locked" and "Turn the keyboard back on".
+- Each lock starts every drawn key dirty, and each press washes its key a step, clean at the third. A key counts as it goes down, once however long it is held, also when it gets past the lock into Vortex; the function row's brightness, sound and media keys wash their F key, and keys the drawing lacks (the numpad, F13 and up) wash nothing. Keys are read only during the lock, as places on the drawing, and never kept (data.md).
+- While the keys are locked, nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut. New displays move it there. Vortex comes to the front with the lock and drops any key that still reaches it. "Turn the keyboard back on" lets the keys go at once and closes the window; the app that was in front gets the front and the keys back.
 - Without Accessibility the button opens Accessibility's page and locks nothing, never asking macOS itself; a lock macOS refuses opens that page too, which says to turn the switch off and on again when the status reads granted, and never closes by itself.
 - Accessibility lost during a lock ends it at once and opens no page of its own; a required permission lost during a lock blocks Vortex only once the lock ends.
-- macOS never lets an app lock the Touch ID (power) button or Caps Lock: Caps Lock may stay on after cleaning. If Vortex quits or crashes, the keys come back.
+- macOS never lets an app lock the Touch ID (power) button or Caps Lock: Caps Lock may stay on after cleaning, and its presses still wash it; Touch ID never washes, and its tooltip says pressing it locks the Mac. If Vortex quits or crashes, the keys come back.
 
 ## Sidebar, features and permissions
 - The sidebar shows enabled features in the user's order, with Settings at the bottom.

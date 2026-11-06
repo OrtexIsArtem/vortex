@@ -9,6 +9,7 @@
 | "Don't ask again" ticked with Not Now in the offer to move to /Applications | UserDefaults key moveToApplicationsDeclined, kept by Platform's AppInstallClient, release builds only | Forever |
 | Onboarding progress: page, return to Done, pending checks, pending single page, completed, restarted, login item applied; the version that launched last (`version`, short version and build, "0.1.2 (17)") and, of Accessibility and Screen Recording, the permissions macOS ties to the signature, each one macOS reported granted with the version that saw it last (`granted`) | DataFolder/onboarding.json, written at once on every change | Until `onboarding reset` in QA; a missing file means a fresh onboarding |
 | Permissions Vortex asked macOS for (notifications, Accessibility, Screen Recording) | ~/Library/Application Support/Vortex/permissions.json, kept by Platform's PermissionsClient | Forever |
+| Keys pressed during keyboard cleaning: how often each place on the drawn keyboard went down, never what it types | In memory only; never written, logged or sent | Until the lock ends |
 
 - Missing, unknown or unreadable keys in settings.json fall back to their defaults; delays are clamped to 0–2 s.
 - `version` is written after the launch's check for permissions an update dropped. A grant that reads `notGranted` under the version that saw it was turned off and is dropped; under a later version it stays, as granted before.

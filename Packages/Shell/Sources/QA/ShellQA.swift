@@ -193,8 +193,17 @@
     }
 
     /// `keyboard press=start`: Home's keyboard button, on Home in the open window; `keyboard press=stop`:
-    /// «Turn the keyboard back on» on the lock screen.
+    /// «Turn the keyboard back on» on the lock screen; `keyboard key=<name>`: a key of the locked keyboard going down,
+    /// by its `KeyboardKey` name (a, digit1, f1, leftShift, return, upArrow, section…).
     static func pressKeyboard(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
+      if let name = arguments["key"] {
+        guard store.keyboardCleaning.isLocked else { throw QAError("the keyboard is not locked") }
+        guard let key = KeyboardKey.allCases.first(where: { "\($0)" == name }) else {
+          throw QAError("no key \(name); keys: \(KeyboardKey.allCases.map { "\($0)" }.joined(separator: ", "))")
+        }
+        guard QA.pressKey(key) > 0 else { throw QAError("nothing listens for the locked keyboard yet") }
+        return
+      }
       switch arguments["press"] {
       case "start":
         guard store.isOpen, store.selectedTab == .feature("home") else {
@@ -205,7 +214,7 @@
         guard store.keyboardCleaning.isLocked else { throw QAError("the keyboard is not locked") }
         store.send(.keyboardCleaning(.stopTapped))
       default:
-        throw QAError("keyboard takes press=start or press=stop")
+        throw QAError("keyboard takes press=start, press=stop or key=<name>")
       }
     }
 
@@ -221,6 +230,10 @@
       var sidebar: [FeatureID]
       var fileFeature: FeatureID?
       var keyboardLocked: Bool
+      /// The board the lock screen draws: ansi, iso or jis (drawn as ansi).
+      var keyboardLayout: String
+      /// How washed each pressed key looks, 1 to 3, by `KeyboardKey` name.
+      var keyboardWashes: [String: Int]
       var screens: [String]
       var everyScreenHasNotch: Bool
       /// Whether the menu bar icon would show; QA puts none in the menu bar.
@@ -245,6 +258,9 @@
         sidebar = state.sidebarFeatures.map(\.id)
         fileFeature = state.fileFeature?.id
         keyboardLocked = state.keyboardCleaning.isLocked
+        let cleaning = state.keyboardCleaning
+        keyboardLayout = cleaning.layout.rawValue
+        keyboardWashes = Dictionary(uniqueKeysWithValues: cleaning.presses.keys.map { ("\($0)", cleaning.washes(of: $0)) })
         screens = QA.screens.map(\.rawValue)
         everyScreenHasNotch = state.everyScreenHasNotch
         menuBarIcon = window.qaIsMenuBarIconShown
@@ -259,9 +275,9 @@
       }
 
       private enum CodingKeys: String, CodingKey {
-        case isOpen, openReason, selectedTab, settingsSection, sidebar, fileFeature, keyboardLocked, screens
-        case everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen, launchAtLogin, language
-        case needsRestartForLanguage, settings
+        case isOpen, openReason, selectedTab, settingsSection, sidebar, fileFeature, keyboardLocked, keyboardLayout
+        case keyboardWashes, screens, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
+        case launchAtLogin, language, needsRestartForLanguage, settings
       }
 
       /// Every key, `null` for what is absent, so a reader never has to tell a missing key from a closed window.
@@ -274,6 +290,8 @@
         try container.encode(sidebar, forKey: .sidebar)
         try container.encode(fileFeature, forKey: .fileFeature)
         try container.encode(keyboardLocked, forKey: .keyboardLocked)
+        try container.encode(keyboardLayout, forKey: .keyboardLayout)
+        try container.encode(keyboardWashes, forKey: .keyboardWashes)
         try container.encode(screens, forKey: .screens)
         try container.encode(everyScreenHasNotch, forKey: .everyScreenHasNotch)
         try container.encode(menuBarIcon, forKey: .menuBarIcon)

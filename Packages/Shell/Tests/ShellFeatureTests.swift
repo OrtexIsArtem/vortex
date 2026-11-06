@@ -375,6 +375,8 @@ struct ShellFeatureTests {
     let store = makeStore()
     store.dependencies.keyboardLockClient.lock = { locks.withValue { $0.append(true) }; return true }
     store.dependencies.keyboardLockClient.unlock = { locks.withValue { $0.append(false) } }
+    store.dependencies.keyboardLockClient.layout = { .ansi }
+    store.dependencies.keyboardLockClient.presses = { .finished }
     store.dependencies.windowClient.holdKeyboard = { isHeld in holds.withValue { $0.append(isHeld) } }
     await openByHover(store)
     await store.send(.keyboardCleaning(.startTapped)) { $0.keyboardCleaning.isLocked = true }
@@ -404,6 +406,32 @@ struct ShellFeatureTests {
     #expect(locks.value == [true, false])
     #expect(holds.value == [true, false])
     #expect(dismissals.value == 1)
+  }
+
+  /// A key that got past the lock and went down in Vortex's window washes its key too; after the lock, nothing does.
+  @Test
+  func aKeyThatReachesTheWindowDuringTheLockWashesItsKey() async {
+    let store = makeStore()
+    store.dependencies.keyboardLockClient.lock = { true }
+    store.dependencies.keyboardLockClient.unlock = {}
+    store.dependencies.keyboardLockClient.layout = { .iso }
+    store.dependencies.keyboardLockClient.presses = { .finished }
+    store.dependencies.windowClient.holdKeyboard = { _ in }
+    await openByHover(store)
+    await store.send(.keyboardCleaning(.startTapped)) {
+      $0.keyboardCleaning.isLocked = true
+      $0.keyboardCleaning.layout = .iso
+    }
+    await store.send(.window(.keyPressedWhileHeld(.q)))
+    await store.receive(\.keyboardCleaning.keyPressed, .q) { $0.keyboardCleaning.presses[.q] = 1 }
+    await store.send(.keyboardCleaning(.stopTapped)) {
+      $0.keyboardCleaning.isLocked = false
+      $0.keyboardCleaning.presses = [:]
+      $0.openReason = nil
+    }
+    await store.send(.window(.keyPressedWhileHeld(.q)))
+    await store.receive(\.keyboardCleaning.keyPressed, .q)
+    await store.finish()
   }
 
   // MARK: - Files dragged to the notch
