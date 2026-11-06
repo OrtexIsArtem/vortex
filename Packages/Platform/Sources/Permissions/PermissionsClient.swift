@@ -40,6 +40,9 @@ public struct PermissionsClient: Sendable {
   /// Reads every status again now; `updates` tells of a change. Notifications have no change signal, so the shell
   /// calls it when the notch window opens. Not polling.
   public var refresh: @Sendable () async -> Void
+  /// What Vortex has ever asked macOS for, as DataFolder/permissions.json keeps it (never the pasteboard, which has
+  /// nothing to ask). The shell reads it once at launch: a release that kept no grants counts these as granted before.
+  public var requested: @Sendable () -> Set<Permission> = { [] }
 }
 
 extension PermissionsClient: DependencyKey {
@@ -49,7 +52,8 @@ extension PermissionsClient: DependencyKey {
     setFrequentChecks: { isOn in LivePermissions.feed.setFrequentChecks(isOn) },
     request: { permission in await LivePermissions.request(permission) },
     openSettings: { permission in await LivePermissions.openSettings(permission) },
-    refresh: { _ = await LivePermissions.feed.statuses() }
+    refresh: { _ = await LivePermissions.feed.statuses() },
+    requested: { AskedPermissions.inDataFolder.all }
   )
 
   public static let testValue = PermissionsClient()

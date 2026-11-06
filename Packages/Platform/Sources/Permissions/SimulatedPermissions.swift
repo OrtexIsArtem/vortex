@@ -282,7 +282,8 @@
         setFrequentChecks: { isOn in permissions.setFrequentChecks(isOn) },
         request: { permission in permissions.request(permission) },
         openSettings: { permission in permissions.openSettings(permission) },
-        refresh: { permissions.refresh() }
+        refresh: { permissions.refresh() },
+        requested: { permissions.state.requested }
       )
     }
   }

@@ -104,6 +104,11 @@ struct AskedPermissions: Sendable {
     Self.lock.withLock { load().contains(permission.rawValue) }
   }
 
+  /// Every permission requested that this build knows.
+  var all: Set<Permission> {
+    Self.lock.withLock { Set(load().compactMap(Permission.init(rawValue:))) }
+  }
+
   func insert(_ permission: Permission) {
     Self.lock.withLock {
       let asked = load()

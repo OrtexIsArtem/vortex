@@ -174,6 +174,7 @@ struct PermissionRulesTests {
     #expect(asked.contains(.accessibility))
     #expect(asked.contains(.screenRecording))
     #expect(!asked.contains(.notifications))
+    #expect(asked.all == [.accessibility, .screenRecording])
     let file = try String(contentsOf: asked.url, encoding: .utf8)
     #expect(file == #"{"asked":["accessibility","screenRecording"]}"#)
   }
@@ -185,9 +186,12 @@ struct PermissionRulesTests {
     let asked = AskedPermissions(url: folder.appending(path: "permissions.json"))
     try Data("not json".utf8).write(to: asked.url)
     #expect(!asked.contains(.notifications))
+    #expect(asked.all.isEmpty)
     try Data(#"{"asked":["camera"]}"#.utf8).write(to: asked.url)
     asked.insert(.notifications)
     #expect(asked.contains(.notifications))
+    // A name this build doesn't know isn't one of its permissions.
+    #expect(asked.all == [.notifications])
     #expect(try String(contentsOf: asked.url, encoding: .utf8) == #"{"asked":["camera","notifications"]}"#)
   }
 
