@@ -13,7 +13,8 @@ import ComposableArchitecture
 ///
 /// Privacy: only while the lock is on, the keys it holds back come out of `presses` as places on the keyboard
 /// (`KeyboardKey`), for the cleaning screen to draw them washed. Never what they type; the screen keeps how often each
-/// place went down, in memory, until the lock ends. Vortex never stores, logs or sends them.
+/// place went down, in memory, until the lock ends. The live lock never stores, logs or sends them; QA mode, which
+/// never taps, logs only the keys its commands simulate.
 @DependencyClient
 public struct KeyboardLockClient: Sendable {
   /// Holds the keys back until `unlock`; false when macOS doesn't let Vortex do it. If Vortex quits or crashes, the

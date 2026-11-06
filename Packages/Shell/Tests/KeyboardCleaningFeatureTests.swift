@@ -22,6 +22,7 @@ struct KeyboardCleaningFeatureTests {
       $0.windowClient.holdKeyboard = { [holds] isHeld in holds.withValue { $0.append(isHeld) } }
       $0.keyboardLockClient.unlock = { [unlocks] in unlocks.withValue { $0 += 1 } }
       $0.keyboardLockClient.layout = { .ansi }
+      $0.keyboardLockClient.presses = { .never }
     }
   }
 
@@ -35,7 +36,6 @@ struct KeyboardCleaningFeatureTests {
   }
 
   /// A tap macOS refuses while the status reads granted opens the page that says to turn the switch off and on again.
-  /// No key is ever listened for.
   @Test
   func aTapMacOSRefusesLetsTheKeyboardGoAndOpensThePageThatSaysToFlipTheSwitch() async {
     let store = makeStore(accessibility: .granted)
@@ -62,12 +62,90 @@ struct KeyboardCleaningFeatureTests {
   func losingAccessDuringTheLockEndsItWithoutAPage() async {
     let store = makeStore(accessibility: .granted)
     store.dependencies.keyboardLockClient.lock = { true }
-    store.dependencies.keyboardLockClient.presses = { .never }
     await store.send(.startTapped) { $0.isLocked = true }
     await store.send(.accessLost) { $0.isLocked = false }
     await store.finish()
     #expect(unlocks.value == 1)
     #expect(holds.value == [true, false])
+  }
+
+  /// «Turn the keyboard back on» while Vortex is still taking the keyboard, its unlock done first: the start never
+  /// locks after it, and lets the keyboard go.
+  @Test
+  func aLockEndedBeforeTheTapNeverTakesTheKeysAfterwards() async {
+    let store = makeStore(accessibility: .granted)
+    let calls = LockIsolated<[String]>([])
+    let (arrived, unlocked) = (Arrival(), Latch())
+    store.dependencies.windowClient.holdKeyboard = { isHeld in
+      calls.withValue { $0.append("hold \(isHeld)") }
+      guard isHeld else { return }
+      arrived.signal()
+      await unlocked.wait()
+    }
+    store.dependencies.keyboardLockClient.lock = {
+      calls.withValue { $0.append("lock") }
+      return true
+    }
+    store.dependencies.keyboardLockClient.unlock = {
+      calls.withValue { $0.append("unlock") }
+      unlocked.open()
+    }
+    await store.send(.startTapped) { $0.isLocked = true }
+    await arrived.wait()
+    await store.send(.stopTapped) { $0.isLocked = false }
+    await store.finish()
+    #expect(!calls.value.contains("lock"))
+    #expect(calls.value.last { $0.hasPrefix("hold") } == "hold false")
+  }
+
+  /// «Turn the keyboard back on» while macOS is taking the keys, its unlock done before the lock returns: the keys go
+  /// once more after the lock.
+  @Test
+  func aLockEndedWhileMacOSTakesTheKeysLetsThemGoAfter() async {
+    let store = makeStore(accessibility: .granted)
+    let calls = LockIsolated<[String]>([])
+    let (arrived, unlocked) = (Arrival(), Latch())
+    store.dependencies.windowClient.holdKeyboard = { isHeld in calls.withValue { $0.append("hold \(isHeld)") } }
+    store.dependencies.keyboardLockClient.lock = {
+      arrived.signal()
+      await unlocked.wait()
+      calls.withValue { $0.append("locked") }
+      return true
+    }
+    store.dependencies.keyboardLockClient.unlock = {
+      calls.withValue { $0.append("unlock") }
+      unlocked.open()
+    }
+    await store.send(.startTapped) { $0.isLocked = true }
+    await arrived.wait()
+    await store.send(.stopTapped) { $0.isLocked = false }
+    await store.finish()
+    #expect(calls.value.filter { $0 == "locked" || $0 == "unlock" } == ["unlock", "locked", "unlock"])
+    #expect(calls.value.last { $0.hasPrefix("hold") } == "hold false")
+  }
+
+  /// A key pressed as the tap goes live, before `lock` even returns, still counts: the lock listens first.
+  @Test
+  func aKeyPressedAsTheLockBeginsCounts() async {
+    let store = makeStore(accessibility: .granted)
+    // As the live tap does: a key reaches only who listens when it goes down.
+    let listeners = LockIsolated<[AsyncStream<KeyboardKey>.Continuation]>([])
+    store.dependencies.keyboardLockClient.presses = {
+      let (stream, continuation) = AsyncStream.makeStream(of: KeyboardKey.self)
+      listeners.withValue { $0.append(continuation) }
+      return stream
+    }
+    store.dependencies.keyboardLockClient.lock = {
+      listeners.value.forEach { $0.yield(.escape) }
+      return true
+    }
+    await store.send(.startTapped) { $0.isLocked = true }
+    await store.receive(\.keyPressed, .escape) { $0.presses[.escape] = 1 }
+    await store.send(.stopTapped) {
+      $0.isLocked = false
+      $0.presses = [:]
+    }
+    await store.finish()
   }
 
   // MARK: - Washing
@@ -133,6 +211,44 @@ struct KeyboardCleaningFeatureTests {
     #expect(listening.value == 1)
     await store.send(.stopTapped) { $0.isLocked = false }
     await store.finish()
+  }
+}
+
+/// Tells the test that a dependency's call has arrived.
+private final class Arrival: Sendable {
+  private let arrivals = AsyncStream.makeStream(of: Void.self)
+
+  func signal() {
+    arrivals.continuation.yield()
+  }
+
+  func wait() async {
+    for await _ in arrivals.stream { return }
+  }
+}
+
+/// Holds a dependency's call until another call opens it, even after its task is cancelled, as a call into macOS goes
+/// on regardless.
+private final class Latch: Sendable {
+  private let state = LockIsolated<(isOpen: Bool, waiter: CheckedContinuation<Void, Never>?)>((false, nil))
+
+  func wait() async {
+    await withCheckedContinuation { continuation in
+      let isOpen = state.withValue { state in
+        if !state.isOpen { state.waiter = continuation }
+        return state.isOpen
+      }
+      if isOpen { continuation.resume() }
+    }
+  }
+
+  func open() {
+    let waiter = state.withValue { state in
+      state.isOpen = true
+      defer { state.waiter = nil }
+      return state.waiter
+    }
+    waiter?.resume()
   }
 }
 

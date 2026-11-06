@@ -111,7 +111,8 @@
 
     private let keyListeners = LockIsolated<[UUID: AsyncStream<KeyboardKey>.Continuation]>([:])
 
-    /// Keys pressed while the keyboard is locked: only those the shell's `keyboard key=` presses.
+    /// Keys pressed while the keyboard is locked: only those the shell's `keyboard key=` presses. A run never taps, so
+    /// it never sees a real key.
     func keyPresses() -> AsyncStream<KeyboardKey> {
       AsyncStream { continuation in
         let id = UUID()
@@ -120,6 +121,7 @@
       }
     }
 
+    /// Logs the simulated key by name, as every simulated press is logged.
     func pressKey(_ key: KeyboardKey) -> Int {
       let listeners = keyListeners.value.values
       listeners.forEach { $0.yield(key) }

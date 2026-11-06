@@ -18,6 +18,12 @@ struct KeyboardCleaningView: View {
   private static let ansi = KeyboardBoard(.ansi, metrics: metrics)
   private static let iso = KeyboardBoard(.iso, metrics: metrics)
 
+  /// Touch ID's tooltip, and VoiceOver's hint on the title, which the hidden drawing can't give.
+  static let touchIDWarning = Text(
+    "Don't press Touch ID: it locks your Mac, and Vortex can't block it.",
+    bundle: .module
+  )
+
   var body: some View {
     VStack(alignment: .leading, spacing: 32) {
       KeyboardBoardView(board: store.layout == .iso ? Self.iso : Self.ansi, presses: store.presses)
@@ -32,6 +38,7 @@ struct KeyboardCleaningView: View {
             .foregroundStyle(VortexColor.secondaryText)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityHint(Self.touchIDWarning)
         Spacer(minLength: 0)
         Button {
           store.send(.stopTapped)
@@ -49,14 +56,14 @@ struct KeyboardCleaningView: View {
   }
 }
 
-/// The board with its keys; `presses` counts each key's, of which the first three show.
+/// The board with its keys, each as washed as its `presses` made it.
 private struct KeyboardBoardView: View {
   let board: KeyboardBoard
   let presses: [KeyboardKey: Int]
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    let palette = KeyPalette(colorScheme)
+    let palette = colorScheme == .dark ? KeyPalette.dark : KeyPalette.light
     ZStack(alignment: .topLeading) {
       RoundedRectangle(cornerRadius: 16, style: .continuous)
         .fill(palette.board)
@@ -65,7 +72,10 @@ private struct KeyboardBoardView: View {
             .strokeBorder(palette.boardEdge)
         }
       ForEach(board.caps) { cap in
-        KeyCapView(cap: cap, presses: cap.key.flatMap { presses[$0] } ?? 0, palette: palette)
+        let count = cap.key.flatMap { presses[$0] } ?? 0
+        KeyCapView(cap: cap, presses: count, washes: KeyboardCleaningFeature.washes(after: count), palette: palette)
+          // Only a key whose presses changed draws again.
+          .equatable()
           .frame(width: cap.frame.width, height: cap.frame.height)
           .offset(x: cap.frame.minX, y: cap.frame.minY)
       }
@@ -74,23 +84,27 @@ private struct KeyboardBoardView: View {
   }
 }
 
-/// One key: dirty at first, a step cleaner with each of its first three presses, nudged down a point by each press.
-private struct KeyCapView: View {
+/// One key: as clean as `washes` says, nudged down a point by each of its `presses`.
+private struct KeyCapView: View, Equatable {
   let cap: KeyboardBoard.Cap
   let presses: Int
+  let washes: Int
   let palette: KeyPalette
   @Environment(\.reduceMotion) private var reduceMotion
   @State private var isPressed = false
 
+  nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.cap == rhs.cap && lhs.presses == rhs.presses && lhs.washes == rhs.washes && lhs.palette == rhs.palette
+  }
+
   var body: some View {
     let shape = KeyCapShape(cap.shape)
-    let level = min(presses, KeyboardCleaningFeature.cleanest)
     if cap.shape == .touchID {
       touchID(shape)
     } else {
-      let isClean = level == KeyboardCleaningFeature.cleanest
-      shape.fill(palette.fill(level))
-        .overlay { shape.stroke(palette.edge(level), lineWidth: 2).clipShape(shape) }
+      let isClean = washes == KeyboardCleaningFeature.cleanest
+      shape.fill(palette.fill(washes))
+        .overlay { shape.stroke(palette.edge(washes), lineWidth: 2).clipShape(shape) }
         .overlay(alignment: label.alignment) {
           Text(verbatim: cap.label)
             .font(.system(size: cap.isShort ? 9 : 10))
@@ -100,9 +114,9 @@ private struct KeyCapView: View {
             .padding(.bottom, label.alignment == .center ? 0 : cap.isShort ? 3 : 5)
         }
         .background { shape.fill(palette.shadow).offset(y: 1) }
-        .opacity(palette.opacity(level))
+        .opacity(palette.opacity(washes))
         .offset(y: isPressed ? 1 : 0)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: level)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: washes)
         .task(id: presses) {
           // A press, even of a key washed clean already: down a point, back up after a moment.
           guard presses > 0, !reduceMotion else { return }
@@ -132,7 +146,7 @@ private struct KeyCapView: View {
       }
       .background { shape.fill(palette.shadow).offset(y: 1) }
       .contentShape(shape)
-      .help(Text("Don't press Touch ID: it locks your Mac, and Vortex can't block it.", bundle: .module))
+      .help(KeyboardCleaningView.touchIDWarning)
   }
 }
 
@@ -171,63 +185,50 @@ private struct KeyCapShape: Shape {
 }
 
 /// The board's monochrome colors, from the website's dark keyboard: a dirty key is its dim locked key, a clean one its
-/// bright live key; the light theme mirrors them.
-private struct KeyPalette {
-  let board: Color
-  let boardEdge: Color
-  let touchID: Color
-  let shadow: Color
-  private let dirtyFill: NSColor
-  private let cleanFill: NSColor
-  private let edgeColor: NSColor
-  private let dirtyEdge: CGFloat
-  private let cleanEdge: CGFloat
-  private let dirtyOpacity: CGFloat
-
-  init(_ scheme: ColorScheme) {
-    if scheme == .dark {
-      board = Color(nsColor: NSColor(hex: 0x141416))
-      boardEdge = Color.white.opacity(0.05)
-      touchID = Color(nsColor: NSColor(hex: 0x18181B))
-      shadow = Color.black.opacity(0.6)
-      dirtyFill = NSColor(hex: 0x1F1F23)
-      cleanFill = NSColor(hex: 0x3A3A40)
-      edgeColor = .white
-      dirtyEdge = 0.05
-      cleanEdge = 0.35
-      dirtyOpacity = 0.22
-    } else {
-      board = Color(nsColor: NSColor(hex: 0xEBEBEE))
-      boardEdge = Color.black.opacity(0.05)
-      touchID = Color(nsColor: NSColor(hex: 0xF7F7F9))
-      shadow = Color.black.opacity(0.12)
-      dirtyFill = NSColor(hex: 0xF4F4F6)
-      cleanFill = NSColor(hex: 0xFFFFFF)
-      edgeColor = .black
-      dirtyEdge = 0.04
-      cleanEdge = 0.2
-      dirtyOpacity = 0.35
-    }
-  }
+/// bright live key; the light theme mirrors them. Made once per theme, with each wash level's colors worked out.
+private struct KeyPalette: Equatable {
+  static let dark = KeyPalette(
+    board: 0x141416, boardEdge: .white.opacity(0.05), touchID: 0x18181B, shadow: .black.opacity(0.6),
+    fill: (0x1F1F23, 0x3A3A40), edge: (.white, 0.05, 0.35), dirtyOpacity: 0.22
+  )
+  static let light = KeyPalette(
+    board: 0xEBEBEE, boardEdge: .black.opacity(0.05), touchID: 0xF7F7F9, shadow: .black.opacity(0.12),
+    fill: (0xF4F4F6, 0xFFFFFF), edge: (.black, 0.04, 0.2), dirtyOpacity: 0.35
+  )
 
   /// How far each wash level is from dirty to clean: the first press takes off the most, so each one shows.
   private static let steps: [CGFloat] = [0, 0.4, 0.7, 1]
 
-  private func step(_ level: Int) -> CGFloat {
-    Self.steps[max(0, min(level, Self.steps.count - 1))]
+  let board: Color
+  let boardEdge: Color
+  let touchID: Color
+  let shadow: Color
+  private let fills: [Color]
+  private let edges: [Color]
+  private let opacities: [CGFloat]
+
+  private init(
+    board: UInt32, boardEdge: Color, touchID: UInt32, shadow: Color,
+    fill: (dirty: UInt32, clean: UInt32), edge: (color: Color, dirty: CGFloat, clean: CGFloat), dirtyOpacity: CGFloat
+  ) {
+    self.board = Color(nsColor: NSColor(hex: board))
+    self.boardEdge = boardEdge
+    self.touchID = Color(nsColor: NSColor(hex: touchID))
+    self.shadow = shadow
+    let dirty = NSColor(hex: fill.dirty)
+    let clean = NSColor(hex: fill.clean)
+    fills = Self.steps.map { Color(nsColor: dirty.blended(withFraction: $0, of: clean) ?? clean) }
+    edges = Self.steps.map { edge.color.opacity(edge.dirty + (edge.clean - edge.dirty) * $0) }
+    opacities = Self.steps.map { dirtyOpacity + (1 - dirtyOpacity) * $0 }
   }
 
-  func fill(_ level: Int) -> Color {
-    Color(nsColor: dirtyFill.blended(withFraction: step(level), of: cleanFill) ?? cleanFill)
+  private func index(_ level: Int) -> Int {
+    max(0, min(level, Self.steps.count - 1))
   }
 
-  func edge(_ level: Int) -> Color {
-    Color(nsColor: edgeColor).opacity(dirtyEdge + (cleanEdge - dirtyEdge) * step(level))
-  }
-
-  func opacity(_ level: Int) -> CGFloat {
-    dirtyOpacity + (1 - dirtyOpacity) * step(level)
-  }
+  func fill(_ level: Int) -> Color { fills[index(level)] }
+  func edge(_ level: Int) -> Color { edges[index(level)] }
+  func opacity(_ level: Int) -> CGFloat { opacities[index(level)] }
 }
 
 private extension NSColor {

@@ -12,8 +12,8 @@ struct KeyboardCleaningFeature {
   @ObservableState
   struct State: Equatable {
     var isLocked = false
-    /// How often each key went down during this lock, by its place on the board. Only in memory, for the drawing:
-    /// never kept, logged or sent, and gone when the lock ends.
+    /// How often each key went down during this lock, by its place on the board. Only in memory, for the drawing, and
+    /// gone when the lock ends; nothing stores, logs or sends it (a QA run's state shows the keys its commands press).
     var presses: [KeyboardKey: Int] = [:]
     /// The keyboard's layout as macOS said at the last lock: the lock screen draws ISO's board for ISO, ANSI's for the
     /// others.
@@ -21,15 +21,20 @@ struct KeyboardCleaningFeature {
     /// What macOS says about Accessibility, as the shell last read it.
     @SharedReader(.permissionStatuses) var statuses
 
-    /// 0 dirty, as every key starts at each lock, to `KeyboardCleaningFeature.cleanest`: each press washes a key one
-    /// step, and more presses keep it there.
+    /// How clean a key looks now: `KeyboardCleaningFeature.washes(after:)` its presses.
     func washes(of key: KeyboardKey) -> Int {
-      min(presses[key] ?? 0, KeyboardCleaningFeature.cleanest)
+      KeyboardCleaningFeature.washes(after: presses[key] ?? 0)
     }
   }
 
   /// Three presses wash a key clean.
   static let cleanest = 3
+
+  /// 0 dirty, as every key starts at each lock, to `cleanest`: each press washes a key one step, and more presses keep
+  /// it there.
+  static func washes(after presses: Int) -> Int {
+    min(presses, cleanest)
+  }
 
   enum Action: Equatable {
     case startTapped
@@ -67,12 +72,26 @@ struct KeyboardCleaningFeature {
         state.isLocked = true
         state.layout = keyboardLock.layout()
         return .run { send in
+          // Listening before the tap goes live, so no key pressed in between is lost; the unlock ends it.
+          let presses = await keyboardLock.presses()
           await window.holdKeyboard(true)
-          guard await keyboardLock.lock() else {
+          // The lock ended meanwhile, and its unlock may have run already: never lock after it.
+          guard !Task.isCancelled else {
+            await window.holdKeyboard(false)
+            return
+          }
+          let isLocked = await keyboardLock.lock()
+          guard !Task.isCancelled else {
+            // The unlock may have come before this lock: let the keys go once more.
+            if isLocked { await keyboardLock.unlock() }
+            await window.holdKeyboard(false)
+            return
+          }
+          guard isLocked else {
             await send(.lockFailed)
             return
           }
-          for await key in await keyboardLock.presses() {
+          for await key in presses {
             await send(.keyPressed(key))
           }
         }

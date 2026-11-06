@@ -2,8 +2,8 @@ import AppKit
 
 /// A key of the Mac's keyboard by its place, as keyboard cleaning draws it: a MacBook's keys, ANSI and ISO. The raw
 /// value is the virtual key code (`kVK_…`) the place sends with "Use F1, F2, etc. keys as standard function keys" on,
-/// so the brightness-down key is `f1`. Keys with no place there have no case: the numpad, F13 and up, right Control and
-/// other keyboards' own keys.
+/// so the brightness-down key is `f1`. Keys with no place there have no case and wash nothing: the numpad, F13 and up,
+/// right Control and other keyboards' own keys. Only Enter goes to `return`, as fn+Return on a MacBook sends it too.
 public enum KeyboardKey: UInt16, CaseIterable, Sendable {
   case a = 0x00, s = 0x01, d = 0x02, f = 0x03, h = 0x04, g = 0x05, z = 0x06, x = 0x07, c = 0x08, v = 0x09
   /// § left of 1 on an ISO keyboard, where an ANSI one has `grave`.
@@ -68,7 +68,8 @@ extension KeyboardKey {
 
   /// Key codes a MacBook's keys send besides their own, at the place of the key that sends them: the top row's
   /// Mission Control, Spotlight, Launchpad, Dictation and Do Not Disturb, the sound keys of keyboards that send them as
-  /// keys, and what the arrows, delete and return send with fn held.
+  /// keys, and what the arrows, delete and return send with fn held. A numpad's Enter sends what fn+Return does, so it
+  /// washes return too.
   static let sentBy: [UInt16: KeyboardKey] = [
     0xA0: .f3, // Mission Control
     0x82: .f4, // Dashboard, on older keyboards
@@ -84,7 +85,7 @@ extension KeyboardKey {
     0x74: .upArrow, // Page Up
     0x79: .downArrow, // Page Down
     0x75: .delete, // Forward Delete
-    0x4C: .return, // Enter
+    0x4C: .return, // Enter: fn+Return on a MacBook, or a numpad's
   ]
 
   /// An aux control button event (`NX_SUBTYPE_AUX_CONTROL_BUTTONS`), as the top row sends brightness, keyboard
