@@ -91,17 +91,25 @@ struct MoveToApplicationsTests {
 
   // MARK: - The answers
 
+  /// `meanwhile`: what /Applications holds once the alert is answered, when that differs from `installed`.
   func offer(
     from path: String = "/Users/someone/Downloads/Vortex.app",
     installed: InstalledApp? = nil,
+    meanwhile: InstalledApp?? = nil,
     answer: MoveToApplications.Answer? = nil,
     moveFails: Bool = false
   ) -> Bool {
     let current = copy(path)
+    let reads = LockIsolated(0)
     return withDependencies {
       $0.appInstallClient.current = { current }
       $0.appInstallClient.app = { url in
         #expect(url.path == "/Applications/Vortex.app")
+        let read = reads.withValue { count -> Int in
+          count += 1
+          return count
+        }
+        if read > 1, let meanwhile { return meanwhile }
         return installed
       }
       $0.appInstallClient.isMoveDeclined = { false }
@@ -154,6 +162,22 @@ struct MoveToApplicationsTests {
     #expect(await calls.next() == "move:/Users/someone/Downloads/Vortex.app->/Applications/Vortex.app")
     #expect(await calls.next() == "failure")
     #expect(await calls.next(timeout: .milliseconds(200)) == nil)
+  }
+
+  /// The alert may stay up for minutes: after Move, /Applications is read again. A newer Vortex or another app that
+  /// came meanwhile stays there, and Vortex just runs; an older Vortex goes to the Trash as any would.
+  @Test
+  func whatCameToApplicationsWhileTheAlertWasUpDecidesAgain() async {
+    #expect(!offer(meanwhile: InstalledApp(bundleID: vortex, version: "0.2"), answer: .move))
+    #expect(await calls.next() == "ask:false")
+    #expect(!offer(meanwhile: InstalledApp(bundleID: "com.example.vortex", version: "1.0"), answer: .move))
+    #expect(await calls.next() == "ask:false")
+    #expect(await calls.next(timeout: .milliseconds(200)) == nil)
+
+    #expect(offer(meanwhile: InstalledApp(bundleID: vortex, version: "0.1.1"), answer: .move))
+    #expect(await calls.next() == "ask:false")
+    #expect(await calls.next() == "move:/Users/someone/Downloads/Vortex.app->/Applications/Vortex.app")
+    #expect(await calls.next() == "relaunch:/Applications/Vortex.app")
   }
 
   /// Kept in /Applications, or with a newer Vortex there, nothing is asked: the alert isn't substituted here, and

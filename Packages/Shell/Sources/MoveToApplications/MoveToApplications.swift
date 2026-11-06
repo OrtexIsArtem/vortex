@@ -62,6 +62,10 @@ struct MoveToApplications {
       if dontAskAgain { install.declineMove() }
       return false
     case .move:
+      // The alert may have stayed up for minutes: what /Applications holds now decides again. Another app or a newer
+      // Vortex that came meanwhile stays, and this one just runs.
+      let installedNow = install.app(Self.destination)
+      guard case .ask = Self.decide(copy, installed: installedNow, home: home, isDeclined: false) else { return false }
       do {
         try install.move(copy, Self.destination)
       } catch {
