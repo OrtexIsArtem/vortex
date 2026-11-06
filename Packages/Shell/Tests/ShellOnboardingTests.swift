@@ -24,7 +24,8 @@ struct ShellOnboardingTests {
     disabled: [FeatureID] = [],
     statuses: [Permission: PermissionStatus]? = OnboardingNeeds.allOff,
     appVersion: AppVersion = Self.thisVersion,
-    askedBefore: Set<Permission> = []
+    askedBefore: Set<Permission> = [],
+    features: [FeatureDescriptor] = OnboardingNeeds.all + [.shelf]
   ) -> TestStoreOf<ShellFeature> {
     @Shared(.permissionStatuses) var shared
     $shared.withLock { $0 = statuses ?? [:] }
@@ -32,7 +33,7 @@ struct ShellOnboardingTests {
     settings.disabledFeatures = disabled
     var state = ShellFeature.State(
       settings: settings,
-      features: OnboardingNeeds.all + [.shelf],
+      features: features,
       onboarding: progress,
       appVersion: appVersion,
       askedBefore: askedBefore
@@ -381,20 +382,26 @@ struct ShellOnboardingTests {
     await store.receive(\.onboarding.launched)
   }
 
+  /// A feature that declares Accessibility, so it has a yellow dot.
+  static let typing = FeatureDescriptor(
+    id: "typing", title: "Typing", symbol: "keyboard",
+    permissionNeeds: [PermissionNeed(.accessibility, reason: "Types for you.")]
+  )
+
   /// A new signature: System Settings still shows Vortex on, macOS denies the new build. The page opens by itself,
-  /// with the hint to turn the switch off and on at once.
+  /// with the hint to turn the switch off and on at once. Notifications go by the bundle id, which stays: no page.
   @Test
   func aPermissionTheUpdateDroppedOpensItsPageAtLaunchWithTheHintAtOnce() async {
     let store = makeStore(progress: Self.finished(grantedBefore: [.notifications, .screenRecording]), statuses: nil)
-    await launch(store, Self.allOn(but: .screenRecording))
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    await launch(store, Self.allOn(but: .notifications, .screenRecording))
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .afterUpdate), .window))
+    #expect(store.state.onboarding.afterUpdate.isEmpty)
     #expect(await onboardingWindow.next() == "window+activate")
     #expect(store.state.onboarding.showsRecheckHint(.screenRecording))
-    // This version is recorded after the check; the dropped grant stays as one from before.
+    // This version is recorded after the check; the dropped grant stays as one from before. Only Accessibility and
+    // Screen Recording are kept.
     #expect(store.state.onboarding.progress.version == "0.1.3 (6)")
-    #expect(store.state.onboarding.progress.granted == [
-      .notifications: "0.1.3 (6)", .accessibility: "0.1.3 (6)", .screenRecording: Self.previous, .pasteboard: "0.1.3 (6)",
-    ])
+    #expect(store.state.onboarding.progress.granted == [.accessibility: "0.1.3 (6)", .screenRecording: Self.previous])
     // Granted again: ✓, and the page closes.
     await store.send(.permissionStatusesChanged(OnboardingNeeds.allOn))
     await store.receive(\.onboarding.statusesChanged)
@@ -408,26 +415,28 @@ struct ShellOnboardingTests {
   /// granted meanwhile.
   @Test
   func severalPagesOpenOneAfterAnotherInOnboardingOrder() async {
-    let store = makeStore(progress: Self.finished(grantedBefore: [.notifications, .screenRecording]), statuses: nil)
-    await launch(store, Self.allOn(but: .notifications, .screenRecording))
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .notifications, kind: .request), .window))
+    let features = OnboardingNeeds.all + [Self.typing]
+    let both = Self.finished(grantedBefore: [.accessibility, .screenRecording])
+    let store = makeStore(progress: both, statuses: nil, features: features)
+    await launch(store, Self.allOn(but: .accessibility, .screenRecording))
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .afterUpdate), .window))
     #expect(store.state.onboarding.afterUpdate == [.screenRecording])
     await store.send(.onboarding(.closeTapped))
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .afterUpdate), .window))
     await store.send(.onboarding(.closeTapped))
     #expect(store.state.onboarding.presentation == .hidden)
 
-    let granting = makeStore(progress: Self.finished(grantedBefore: [.notifications, .screenRecording]), statuses: nil)
-    await launch(granting, Self.allOn(but: .notifications, .screenRecording))
+    let granting = makeStore(progress: both, statuses: nil, features: features)
+    await launch(granting, Self.allOn(but: .accessibility, .screenRecording))
     await granting.send(.permissionStatusesChanged(Self.allOn(but: .screenRecording)))
     await granting.receive(\.onboarding.statusesChanged)
     await clock.advance(by: .milliseconds(1_500))
     await granting.receive(\.onboarding.singleCloseElapsed)
-    #expect(granting.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    #expect(granting.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .afterUpdate), .window))
 
-    let meanwhile = makeStore(progress: Self.finished(grantedBefore: [.notifications, .screenRecording]), statuses: nil)
-    await launch(meanwhile, Self.allOn(but: .notifications, .screenRecording))
-    await meanwhile.send(.permissionStatusesChanged(Self.allOn(but: .notifications)))
+    let meanwhile = makeStore(progress: both, statuses: nil, features: features)
+    await launch(meanwhile, Self.allOn(but: .accessibility, .screenRecording))
+    await meanwhile.send(.permissionStatusesChanged(Self.allOn(but: .accessibility)))
     await meanwhile.receive(\.onboarding.statusesChanged)
     await meanwhile.send(.onboarding(.closeTapped))
     #expect(meanwhile.state.onboarding.presentation == .hidden)
@@ -475,16 +484,20 @@ struct ShellOnboardingTests {
     #expect(store.state.onboarding.presentation == .hidden)
   }
 
-  /// Only permissions with a yellow dot open a page: keyboard cleaning's Accessibility waits for Home's button, whose
-  /// page then says at once to turn the switch off and on.
+  /// Only signature-bound permissions with a yellow dot open a page: keyboard cleaning's Accessibility waits for Home's
+  /// button, whose page then says at once to turn the switch off and on. Notifications, which a new signature keeps,
+  /// neither open nor say so.
   @Test
-  func onlyPermissionsAFeatureNeedsOpenAPage() async {
-    let store = makeStore(progress: Self.finished(grantedBefore: [.accessibility]), statuses: nil)
-    await launch(store, Self.allOn(but: .accessibility))
+  func onlySignatureBoundPermissionsAFeatureNeedsOpenAPage() async {
+    let store = makeStore(progress: Self.finished(grantedBefore: [.accessibility, .notifications]), statuses: nil)
+    await launch(store, Self.allOn(but: .accessibility, .notifications))
     #expect(store.state.onboarding.presentation == .hidden)
     await store.send(.permissionPageRequested(.accessibility))
     await store.receive(\.onboarding.pageRequested)
     #expect(store.state.onboarding.showsRecheckHint(.accessibility))
+    await store.send(.permissionPageRequested(.notifications))
+    await store.receive(\.onboarding.pageRequested)
+    #expect(!store.state.onboarding.showsRecheckHint(.notifications))
   }
 
   /// An unfinished onboarding and blocked mode come first, and no page of the update waits after them.
@@ -507,18 +520,31 @@ struct ShellOnboardingTests {
     #expect(blocked.state.onboarding.progress.version == "0.1.3 (6)")
   }
 
-  /// 0.1.1 and earlier kept no grants: what Vortex had asked macOS for counts as granted then.
+  /// 0.1.1 and earlier kept no grants: a signature-bound permission Vortex had asked macOS for counts as granted then.
+  /// That guess is never kept: the page the update opened shows the hint by itself, and a later page waits for System
+  /// Settings again.
   @Test
   func anInstallFromBeforeTheRecordsCountsWhatVortexHadAskedFor() async {
-    let store = makeStore(progress: .finished, statuses: nil, askedBefore: [.screenRecording, .accessibility])
+    let asked: Set<Permission> = [.notifications, .screenRecording, .accessibility]
+    let store = makeStore(progress: .finished, statuses: nil, askedBefore: asked)
     await launch(store, Self.allOn(but: .notifications, .screenRecording))
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .afterUpdate), .window))
     #expect(store.state.onboarding.afterUpdate.isEmpty)
-    #expect(store.state.onboarding.progress.granted[.screenRecording] == OnboardingFeature.State.earlierVersion)
-    #expect(store.state.onboarding.progress.granted[.accessibility] == "0.1.3 (6)")
-    #expect(store.state.onboarding.progress.granted[.notifications] == nil)
+    #expect(store.state.onboarding.progress.granted == [.accessibility: "0.1.3 (6)"])
     #expect(store.state.onboarding.showsRecheckHint(.screenRecording))
     #expect(!store.state.onboarding.showsRecheckHint(.notifications))
+    await store.send(.onboarding(.closeTapped))
+    await store.send(.permissionPageRequested(.screenRecording))
+    await store.receive(\.onboarding.pageRequested)
+    #expect(!store.state.onboarding.showsRecheckHint(.screenRecording))
+
+    // A guess an earlier build left goes at the next launch too.
+    var guessed = Self.finished(grantedBefore: [.screenRecording])
+    guessed.granted[.screenRecording] = OnboardingFeature.State.earlierVersion
+    let leftover = makeStore(progress: guessed, statuses: nil)
+    await launch(leftover, Self.allOn(but: .screenRecording))
+    #expect(leftover.state.onboarding.presentation == .hidden)
+    #expect(leftover.state.onboarding.progress.granted[.screenRecording] == nil)
 
     // A fresh install shows the onboarding, whatever was asked.
     let fresh = makeStore(progress: OnboardingProgress(), statuses: nil, askedBefore: [.screenRecording])
@@ -534,6 +560,6 @@ struct ShellOnboardingTests {
     #expect(store.state.openReason == .hotkey)
     await launch(store, Self.allOn(but: .screenRecording))
     #expect(store.state.openReason == nil)
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .afterUpdate), .window))
   }
 }

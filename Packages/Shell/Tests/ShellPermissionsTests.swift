@@ -129,11 +129,13 @@ struct ShellPermissionsTests {
     }
   }
 
-  /// What the launch records: this version, and each permission macOS grants now, also for after a relaunch.
+  /// What the launch records: this version, and each signature-bound permission (Accessibility, Screen Recording)
+  /// macOS grants now, also for after a relaunch.
   static func recordsTheLaunch(_ state: inout ShellFeature.State, _ statuses: [Permission: PermissionStatus]) {
     let version = state.appVersion.full
     state.onboarding.progress.version = version
-    for (permission, status) in statuses where status == .granted || status == .grantedAfterRestart {
+    for (permission, status) in statuses
+    where [.accessibility, .screenRecording].contains(permission) && (status == .granted || status == .grantedAfterRestart) {
       state.onboarding.progress.granted[permission] = version
     }
   }

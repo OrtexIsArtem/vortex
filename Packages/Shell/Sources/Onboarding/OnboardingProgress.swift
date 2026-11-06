@@ -23,8 +23,9 @@ struct OnboardingProgress: Codable, Equatable, Sendable {
   /// The version of Vortex that launched last, short version and build ("0.1.2 (17)"), recorded after the launch's
   /// check for permissions an update dropped; nil from a release that kept no grants yet.
   var version: String?
-  /// Each permission macOS reported granted, with the version of Vortex that saw it last. One that reads `notGranted`
-  /// under that same version was turned off and is dropped; under a later one it stays: macOS granted it before.
+  /// Of the permissions macOS ties to the signature (Accessibility, Screen Recording), each one macOS reported granted,
+  /// with the version of Vortex that saw it last. One that reads `notGranted` under that same version was turned off
+  /// and is dropped; under a later one it stays: macOS granted it before.
   var granted: [Permission: String] = [:]
 
   init() {}

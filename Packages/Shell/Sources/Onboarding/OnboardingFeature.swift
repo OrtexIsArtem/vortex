@@ -59,7 +59,7 @@ struct OnboardingFeature {
     /// This build's version, short version and build ("0.1.2 (17)"), as `progress` keeps it; the shell sets it.
     var appVersion = ""
     /// What Vortex had asked macOS for (Platform's permissions.json), read at launch: a release that kept no grants yet
-    /// counts these as granted before (`recordLaunch`).
+    /// counts these as granted then (`grantedVersion`).
     var askedBefore: Set<Permission> = []
     /// After an update, the pages still to show, in onboarding order: the next opens when a single page closes.
     var afterUpdate: [Permission] = []
@@ -68,44 +68,51 @@ struct OnboardingFeature {
       self.progress = progress
     }
 
+    /// The permissions macOS ties to Vortex's signature: a new one drops them while System Settings still shows Vortex
+    /// on. Notifications go by the bundle id, and the pasteboard never reads granted.
+    static let signatureBound: Set<Permission> = [.accessibility, .screenRecording]
+
     /// The version that stands for a release that kept no grants: 0.1.1 and earlier.
     static let earlierVersion = "earlier"
 
-    /// After an update, a version or build other than the last launch's: the permissions with a yellow dot, needed by an
-    /// enabled feature, that macOS reported granted under that last version and that read `notGranted` now, in
-    /// onboarding order. A new signature does that while System Settings still shows Vortex on.
+    /// After an update, a version or build other than the last launch's: the signature-bound permissions with a yellow
+    /// dot, needed by an enabled feature, that macOS reported granted under that last version and that read
+    /// `notGranted` now, in onboarding order.
     var lostInUpdate: [Permission] {
       let previous = progress.version ?? Self.earlierVersion
       guard previous != appVersion else { return [] }
-      return catalog.featurePermissions.filter { statuses[$0] == .notGranted && grantedVersion($0) == previous }
-    }
-
-    /// The version that last saw macOS grant `permission`; for a release that kept no grants yet, `earlierVersion` for
-    /// what Vortex had asked for. Nil when macOS never granted it, as far as Vortex knows.
-    func grantedVersion(_ permission: Permission) -> String? {
-      progress.granted[permission]
-        ?? (progress.version == nil && askedBefore.contains(permission) ? Self.earlierVersion : nil)
-    }
-
-    /// Records the launch, after its check for permissions the update dropped: a release that kept no grants yet keeps
-    /// what Vortex had asked for as granted under `earlierVersion`; then this version, and what macOS grants now.
-    mutating func recordLaunch() {
-      if progress.version == nil {
-        for permission in askedBefore where progress.granted[permission] == nil {
-          progress.granted[permission] = Self.earlierVersion
-        }
+      return catalog.featurePermissions.filter { permission in
+        Self.signatureBound.contains(permission) && statuses[permission] == .notGranted
+          && grantedVersion(permission) == previous
       }
+    }
+
+    /// The version that last saw macOS grant a signature-bound `permission`; before any launch was recorded (0.1.1 and
+    /// earlier), `earlierVersion` for one Vortex had asked for. Nil when macOS never granted it, as far as Vortex knows.
+    func grantedVersion(_ permission: Permission) -> String? {
+      if let version = progress.granted[permission] { return version }
+      guard progress.version == nil, Self.signatureBound.contains(permission), askedBefore.contains(permission) else {
+        return nil
+      }
+      return Self.earlierVersion
+    }
+
+    /// Records the launch, after its check for permissions the update dropped: this version, and what macOS grants now.
+    /// Only signature-bound permissions are kept, and never a guess about a release that kept no grants: a page the
+    /// update opened says to turn the switch off and on by itself.
+    mutating func recordLaunch() {
       progress.version = appVersion
       recordGrants()
+      progress.granted = progress.granted.filter { Self.signatureBound.contains($0.key) && $0.value != Self.earlierVersion }
     }
 
-    /// What macOS says now, under this version: a grant, also one for after a relaunch, is kept with this version; a
-    /// permission that reads `notGranted` under the version that saw it granted was turned off and is dropped. Returns
-    /// whether anything changed.
+    /// What macOS says now about the signature-bound permissions, under this version: a grant, also one for after a
+    /// relaunch, is kept with this version; one that reads `notGranted` under the version that saw it granted was
+    /// turned off and is dropped. Returns whether anything changed.
     @discardableResult
     mutating func recordGrants() -> Bool {
       let before = progress.granted
-      for (permission, status) in statuses {
+      for (permission, status) in statuses where Self.signatureBound.contains(permission) {
         if status.isOn {
           progress.granted[permission] = appVersion
         } else if status == .notGranted, progress.granted[permission] == appVersion {
@@ -284,8 +291,8 @@ struct OnboardingFeature {
 
     /// The recheck hint: "Already on in System Settings? Turn it off and on again.", or on a page the refused lock
     /// opened, "If the switch is already on, turn it off and on again." It shows once System Settings came up for the
-    /// page, and at once for a permission macOS granted before, which an update may have dropped while System Settings
-    /// still shows Vortex on.
+    /// page, and at once on a page an update opened or for a signature-bound permission macOS granted under an earlier
+    /// version: a new signature drops those while System Settings still shows Vortex on.
     func showsRecheckHint(_ permission: Permission) -> Bool {
       if let single, single.permission == permission, single.kind == .lockRefused {
         return true
@@ -296,7 +303,8 @@ struct OnboardingFeature {
       if permission == .pasteboard {
         return checkedAtLaunch.contains(.pasteboard) && rowState(.pasteboard) == .off
       }
-      return settingsOpened.contains(permission) || grantedVersion(permission) != nil
+      if let single, single.permission == permission, single.kind == .afterUpdate { return true }
+      return settingsOpened.contains(permission) || progress.granted[permission] != nil
     }
 
     /// Whether the window shows at launch: the onboarding isn't done, Vortex is blocked, a page waits for this
@@ -377,6 +385,8 @@ struct OnboardingFeature {
       case lockRefused
       /// Reopened once after the relaunch it started.
       case afterRelaunch
+      /// Opened at launch for a permission an update dropped: as a request, with the recheck hint at once.
+      case afterUpdate
     }
 
     var permission: Permission
@@ -923,7 +933,7 @@ struct OnboardingFeature {
   private func showNextAfterUpdate(_ state: inout State) -> Effect<Action>? {
     while !state.afterUpdate.isEmpty {
       let next = state.afterUpdate.removeFirst()
-      if state.statuses[next] == .notGranted { return showSingle(next, .request, activate: true, &state) }
+      if state.statuses[next] == .notGranted { return showSingle(next, .afterUpdate, activate: true, &state) }
     }
     return nil
   }
