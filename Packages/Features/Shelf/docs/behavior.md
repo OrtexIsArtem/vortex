@@ -35,7 +35,9 @@
 
 ## Expiry and the notch
 - Unpinned items leave the shelf 24 hours after they were added, checked every 10 minutes and at start.
-- While the shelf has items, the closed notch shows a tray and their number; turning the feature off hides it.
+- The closed notch shows a tray and a number only while files that came by themselves still have their dot; the number is how many such files there are, not the whole shelf.
+- What the user puts on the shelf (on the tab, on Home or by dragging to the notch) never shows in the notch.
+- The tray and its number go once the shelf counts as seen or those files leave the shelf; turning the feature off hides them too.
 
 ## On Home
 - The shelf sits in the dock as small tiles with their names; the last tile takes drops.

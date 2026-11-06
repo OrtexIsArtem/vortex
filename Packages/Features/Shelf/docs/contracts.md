@@ -2,7 +2,7 @@
 
 ## Provides
 - `ShelfModule` — id `shelf`, tab, `acceptsFileDrops`, `receiveFiles(_:)`, `setEnabled(_:)` starts and stops expiry.
-- `@Shared(.notchIndicators)["shelf"]`: tray and count (no ears while empty), flashing in a color when files arrive by themselves.
+- `@Shared(.notchIndicators)["shelf"]`: tray and the number of files that came by themselves and are not seen yet (no ears while there are none, whatever else is on the shelf), flashing in a color when such files arrive.
 - Home widget in the `dock` slot.
 
 ## Uses

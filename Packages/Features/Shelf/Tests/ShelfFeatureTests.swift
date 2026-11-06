@@ -99,9 +99,65 @@ struct ShelfFeatureTests {
     #expect(indicators[ShelfFeature.id] == NotchIndicator(
       leading: [.symbol("tray.full")], trailing: [.text("2")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
     ))
+    // Once the shelf counts as seen, the files stay on it but leave the notch, without another flash.
     await store.send(.tabHidden) { $0.fresh = [] }
+    #expect(contents(store) == [.file(Self.ipa), .file(Self.apk)])
+    #expect(indicators[ShelfFeature.id] == NotchIndicator(
+      leading: [], trailing: [], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
+    ))
     await store.send(.stop)
     #expect(indicators[ShelfFeature.id] == nil)
+  }
+
+  @Test
+  func whatTheUserPutsOnTheShelfStaysOutOfTheNotch() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.dropped([.file(Self.ipa), .image(Data([1]), fileExtension: "png")]))
+    await store.receive(\.copySaved)
+    #expect(store.state.items.count == 2)
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[ShelfFeature.id] == NotchIndicator(leading: [], trailing: [], flash: 0))
+    #expect(NotchEars(indicators: indicators).isEmpty)
+    await store.send(.stop)
+    await store.finish()
+  }
+
+  @Test
+  func theNotchCountsOnlyFilesThatCameByThemselves() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.dropped([.file(Self.notes)]))
+    await store.send(.filesReceived([Self.ipa, Self.apk]))
+    @Shared(.notchIndicators) var indicators
+    #expect(indicators[ShelfFeature.id] == NotchIndicator(
+      leading: [.symbol("tray.full")], trailing: [.text("2")], flash: 1, flashColor: ShelfSettings.defaultFlashColors[1]
+    ))
+    // Taking one of them off lowers the number; the user's own file leaving changes nothing.
+    await store.send(.removeTapped(uuid(1)))
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("1")])
+    await store.send(.removeTapped(uuid(0)))
+    #expect(indicators[ShelfFeature.id]?.trailing == [.text("1")])
+    await store.send(.clearTapped)
+    #expect(NotchEars(indicators: indicators).isEmpty)
+    await store.send(.stop)
+  }
+
+  @Test
+  func aNewFileThatExpiresLeavesTheNotch() async {
+    let store = makeStore()
+    await start(store)
+    await store.send(.dropped([.file(Self.notes)]))
+    await store.send(.pinTapped(uuid(0)))
+    await store.send(.filesReceived([Self.ipa]))
+    now.withValue { $0 += ShelfFeature.lifetime + 1 }
+    await clock.advance(by: .seconds(600))
+    await store.receive(\.expiryCheckDue)
+    #expect(contents(store) == [.file(Self.notes)])
+    @Shared(.notchIndicators) var indicators
+    #expect(NotchEars(indicators: indicators).isEmpty)
+    await store.send(.stop)
+    await store.finish()
   }
 
   @Test

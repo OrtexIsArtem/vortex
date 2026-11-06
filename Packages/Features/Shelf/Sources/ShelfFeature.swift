@@ -50,13 +50,13 @@ public struct ShelfFeature: Sendable {
 
     public init() {}
 
-    /// The tray and the number of items in the closed notch. With an empty shelf it shows no ears, but can still
-    /// flash the notch (Test in settings).
+    /// The tray and the number of fresh items in the closed notch: only what came by itself and is not seen yet, never
+    /// what the user put on the shelf. With none it shows no ears, but can still flash the notch (Test in settings).
     var indicator: NotchIndicator? {
       guard isRunning else { return nil }
       return NotchIndicator(
-        leading: items.isEmpty ? [] : [.symbol("tray.full")],
-        trailing: items.isEmpty ? [] : [.text("\(items.count)")],
+        leading: fresh.isEmpty ? [] : [.symbol("tray.full")],
+        trailing: fresh.isEmpty ? [] : [.text("\(fresh.count)")],
         flash: flashes,
         flashColor: flashColor
       )
