@@ -664,8 +664,7 @@ struct OnboardingFeature {
         // is in front, and the app macOS brings forward in its place would cover it.
         guard bundleID == Self.systemSettingsID, state.isVisible else { return .none }
         state.keepsFront = true
-        state.setSurface(.window)
-        return .merge(present(state, activate: true), keepFront())
+        return .merge(leavePanel(&state), keepFront())
 
       case let .loginItemToggled(isOn):
         if state.appliesLoginItem, !state.progress.loginItemApplied {
@@ -1069,7 +1068,7 @@ struct OnboardingFeature {
     return .none
   }
 
-  /// The panel turns back into the full window, in front.
+  /// The full window, in front: a panel that shows or stepped aside turns back into it.
   private func leavePanel(_ state: inout State) -> Effect<Action> {
     state.setSurface(.window)
     return present(state, activate: true)
