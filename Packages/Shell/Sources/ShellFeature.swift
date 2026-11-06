@@ -43,7 +43,8 @@ struct ShellFeature {
     var language: AppLanguage
     /// Language the app was started with; another choice needs a relaunch.
     let launchLanguage: AppLanguage
-    /// This build's version; the onboarding keeps it with what macOS granted.
+    /// This build's version: Settings › General shows its short version, and the onboarding keeps it with what macOS
+    /// granted.
     let appVersion: AppVersion
     /// What macOS says about each permission, as last read; empty until the first read. Only the shell writes it.
     @Shared(.permissionStatuses) var permissionStatuses
@@ -239,6 +240,8 @@ struct ShellFeature {
     case menuSettingsTapped
     case restartButtonTapped
     case quitButtonTapped
+    /// Settings › General's "Check for Updates".
+    case checkForUpdatesTapped
     case keyboardCleaning(KeyboardCleaningFeature.Action)
     /// macOS's statuses, at the first read and on every change.
     case permissionStatusesChanged([Permission: PermissionStatus])
@@ -255,6 +258,7 @@ struct ShellFeature {
   @Dependency(\.activeAppClient) var activeApp
   @Dependency(\.continuousClock) var clock
   @Dependency(\.featuresClient) var features
+  @Dependency(\.fileClient) var files
   @Dependency(\.hotkeyClient) var hotkeys
   @Dependency(\.launchAtLoginClient) var launchAtLogin
   @Dependency(\.permissionPage) var permissionPage
@@ -269,6 +273,9 @@ struct ShellFeature {
     case pointerLeaveClose
     case saveSettings
   }
+
+  /// The newest release on GitHub. "Check for Updates" opens it in the browser: Vortex itself never goes online.
+  static let latestReleaseURL = URL(string: "https://github.com/OrtexIsArtem/vortex/releases/latest")!
 
   var body: some ReducerOf<Self> {
     CombineReducers {
@@ -453,6 +460,9 @@ struct ShellFeature {
 
         case .quitButtonTapped:
           return .run { _ in await system.quit() }
+
+        case .checkForUpdatesTapped:
+          return .run { _ in await files.open(Self.latestReleaseURL) }
 
         case let .permissionStatusesChanged(statuses):
           let old = state.permissionStatuses

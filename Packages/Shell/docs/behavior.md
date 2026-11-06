@@ -56,4 +56,5 @@
 - An indicator's alarm flashes the notch, one flash after another, until the pointer comes or moves over the notch or the window opens; with the window open already it flashes three times and counts as seen; with no notch on any display it waits for one.
 - "Open at login" shows what the system decided; when the system wants approval, the caption names General › Login Items & Extensions and "Open System Settings" opens it. Nothing registers it at launch: the onboarding's Basics applies the switch (onboarding.md).
 - Settings › General has Quit, so Vortex can be quit even with the menu bar icon hidden.
+- Settings › General shows the version (the short one, as 0.1.2); "Check for Updates" opens https://github.com/OrtexIsArtem/vortex/releases/latest in the default browser, and Vortex itself makes no network request.
 - Settings are written 0.4 s after the last change and when the app quits.

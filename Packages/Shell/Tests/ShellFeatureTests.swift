@@ -600,6 +600,23 @@ struct ShellFeatureTests {
     #expect(firstLaunchSetUps.value == 0)
   }
 
+  /// Settings › General shows the short version; "Check for Updates" opens the latest release in the browser, through
+  /// the file client as other pages open, and Vortex itself makes no request.
+  @Test
+  func checkForUpdatesOpensTheLatestReleaseInTheBrowser() async {
+    let opened = LockIsolated<[URL]>([])
+    let version = AppVersion(short: "0.1.2", build: "17")
+    let store = TestStore(initialState: ShellFeature.State(features: [.timer], appVersion: version)) {
+      ShellFeature()
+    } withDependencies: {
+      $0.fileClient.open = { url in opened.withValue { $0.append(url) } }
+    }
+    #expect(store.state.appVersion.short == "0.1.2")
+    await store.send(.checkForUpdatesTapped)
+    await store.finish()
+    #expect(opened.value == [URL(string: "https://github.com/OrtexIsArtem/vortex/releases/latest")!])
+  }
+
   @Test
   func launchAtLoginShowsWhatTheSystemDecided() async {
     let store = makeStore()

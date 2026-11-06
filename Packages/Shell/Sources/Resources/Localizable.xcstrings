@@ -83,6 +83,17 @@
         }
       }
     },
+    "Check for Updates" : {
+      "comment" : "Settings › General: button that opens the latest release on GitHub in the browser",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевірити наявність оновлень"
+          }
+        }
+      }
+    },
     "Checked after restart" : {
       "localizations" : {
         "uk" : {
@@ -586,6 +597,17 @@
         }
       }
     },
+    "Opens the latest release in your browser. Vortex itself never goes online." : {
+      "comment" : "Settings › General: caption under Version, about the Check for Updates button",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкриває останній випуск у браузері. Сам Vortex в інтернет не виходить."
+          }
+        }
+      }
+    },
     "Optional" : {
       "localizations" : {
         "uk" : {
@@ -859,6 +881,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Увімкнути клавіатуру"
+          }
+        }
+      }
+    },
+    "Version" : {
+      "comment" : "Settings › General: the row with the app's version",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версія"
           }
         }
       }

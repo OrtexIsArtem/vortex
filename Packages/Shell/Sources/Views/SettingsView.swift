@@ -108,6 +108,25 @@ private struct GeneralSettings: View {
       }
       .buttonStyle(.quietCapsule)
     }
+
+    SettingsRow(
+      title: Text("Version", bundle: .module),
+      caption: Text("Opens the latest release in your browser. Vortex itself never goes online.", bundle: .module)
+    ) {
+      HStack(spacing: 10) {
+        Text(verbatim: store.appVersion.short)
+          .font(.system(size: 12).monospacedDigit())
+          .foregroundStyle(VortexColor.secondaryText)
+        Button {
+          store.send(.checkForUpdatesTapped)
+        } label: {
+          Text("Check for Updates", bundle: .module)
+        }
+        .buttonStyle(.quietCapsule)
+        // Its whole label; the caption beside it wraps instead.
+        .fixedSize()
+      }
+    }
   }
 }
 
