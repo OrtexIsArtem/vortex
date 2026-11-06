@@ -100,5 +100,7 @@ Read the module's README first. When a change contradicts a line in these docs, 
 ## Releasing
 1. Bump `MARKETING_VERSION` in `project.yml`, run `make project`, commit, and push `main`, so the commit goes through CI.
 2. Tag that commit and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
-3. GitHub Actions (`.github/workflows/release.yml`) runs the checks and tests, builds the app versioned by the tag, and signs it ad hoc. It zips the app with `LICENSE` and the third-party notices, and creates a **draft** GitHub Release.
+3. GitHub Actions (`.github/workflows/release.yml`) runs the checks and tests, builds the app versioned by the tag, signs it with the Vortex certificate (`scripts/sign-release.sh`) and checks that it launches. It zips the app with `LICENSE` and the third-party notices, and creates a **draft** GitHub Release.
 4. Download the zip, try it on your Mac, then publish the draft. The release isn't notarized; README.md tells users how to open it.
+
+Every release is signed with one self-signed certificate, "Vortex Release Signing", valid until November 2036. macOS ties Vortex's permissions to it, so they survive updates. It lives in the repository's secrets `VORTEX_SIGNING_P12` (the .p12, base64) and `VORTEX_SIGNING_PASSWORD`; the maintainer keeps a copy. `scripts/sign-release.sh` and `site/public/install.sh` pin its SHA-1 and refuse any other. A new certificate costs every user their permissions once more: change it only when this one expires, in all three places.

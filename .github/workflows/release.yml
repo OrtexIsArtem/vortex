@@ -21,13 +21,33 @@ jobs:
           xcodebuild -version
       - name: Checks and tests
         run: make check && swift test --package-path Packages
-      - name: Build, signed ad hoc, versioned by the tag
-        # Not notarized: that needs a paid Apple Developer account. See "Install" in README.md.
+      - name: Build, versioned by the tag
+        # Signed ad hoc here, then with the Vortex certificate below. Not notarized: that needs a paid Apple Developer
+        # account. See "Install" in README.md.
         run: >
           xcodebuild -project Vortex.xcodeproj -scheme Vortex -configuration Release
           -destination "platform=macOS,arch=arm64" -derivedDataPath build/Release
           -skipMacroValidation ARCHS=arm64 CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
           MARKETING_VERSION="${GITHUB_REF_NAME#v}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" build
+      - name: Sign with the Vortex certificate
+        # One self-signed certificate for every release, so macOS keeps Vortex's permissions across updates.
+        env:
+          VORTEX_SIGNING_P12: ${{ secrets.VORTEX_SIGNING_P12 }}
+          VORTEX_SIGNING_PASSWORD: ${{ secrets.VORTEX_SIGNING_PASSWORD }}
+        run: scripts/sign-release.sh build/Release/Build/Products/Release/Vortex.app
+      - name: Launch check
+        # A signature macOS refuses to load shows only at launch: the signed app must still run after a few seconds.
+        run: |
+          executable=build/Release/Build/Products/Release/Vortex.app/Contents/MacOS/Vortex
+          "$executable" > launch.log 2>&1 &
+          pid=$!
+          sleep 8
+          if ! kill -0 "$pid" 2>/dev/null; then
+            cat launch.log
+            echo "::error::Vortex quit within 8 seconds of launch"
+            exit 1
+          fi
+          kill "$pid"; sleep 2; kill -9 "$pid" 2>/dev/null || true
       - name: Third-party notices
         run: |
           {
