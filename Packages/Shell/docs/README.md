@@ -10,6 +10,6 @@ The app shell: the notch window, the menu bar icon, the sidebar, the shell setti
 | data.md | where the settings and the onboarding's progress live, what Vortex asked macOS for |
 | contracts.md | what the shell gives the app and takes from features, Core and Platform |
 
-Logic, tested: ShellFeature.swift, KeyboardCleaning/, Permissions/, Onboarding/OnboardingFeature.swift.
+Logic, tested: ShellFeature.swift, KeyboardCleaning/, Permissions/, Onboarding/OnboardingFeature.swift, MoveToApplications/MoveToApplications.swift (the move to /Applications at launch, App/docs/README.md).
 AppKit, SwiftUI: ShellController.swift (start-up, menu), Window/ (notch, ears, menu bar icon), Views/, Settings/,
-Onboarding/ (window, panel, pages, illustration, animation). Debug only: QA/, Onboarding/OnboardingQA.swift.
+Onboarding/ (window, panel, pages, illustration, animation), MoveToApplications/MoveAlertClient.swift (its alerts). Debug only: QA/, Onboarding/OnboardingQA.swift.

@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationWillFinishLaunching(_ notification: Notification) {
     quitOtherInstances()
+    // A release build outside the Applications folders may move itself there first; then it quits and opens again
+    // from /Applications, and nothing of this launch starts: no shell, no window.
+    if ShellController.moveToApplicationsIfAccepted() { return }
     // Files that launch the app arrive before it finishes launching.
     shell = ShellController()
   }

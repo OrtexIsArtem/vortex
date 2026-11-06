@@ -91,6 +91,17 @@ public final class ShellController: NSObject {
     }
   #endif
 
+  /// Call before creating the shell: a release build kept outside /Applications and ~/Applications offers to move
+  /// there (MoveToApplications). True when it moved: Vortex quits and opens again from /Applications, so nothing of this
+  /// launch should start. Debug builds, QA runs among them, never ask.
+  public static func moveToApplicationsIfAccepted() -> Bool {
+    #if DEBUG
+      false
+    #else
+      MoveToApplications().offer()
+    #endif
+  }
+
   /// Files opened with Vortex (`vortex shelf add`, `open -a Vortex`): they go to the feature that takes files.
   /// Works before `start()`, for files that launch the app.
   public func receiveFiles(_ urls: [URL]) {

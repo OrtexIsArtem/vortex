@@ -204,6 +204,28 @@
         }
       }
     },
+    "Don't ask again" : {
+      "comment" : "Checkbox of the alert that offers to move Vortex to the Applications folder",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Більше не питати"
+          }
+        }
+      }
+    },
+    "Drag Vortex to the Applications folder in Finder." : {
+      "comment" : "Text of the alert after moving Vortex to the Applications folder failed",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетягніть Vortex у папку «Програми» у Finder."
+          }
+        }
+      }
+    },
     "Features" : {
       "comment" : "Settings section",
       "localizations" : {
@@ -296,6 +318,17 @@
         }
       }
     },
+    "It then opens again from the Applications folder." : {
+      "comment" : "Text of the alert that offers to move Vortex to the Applications folder; It is Vortex",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потім він знову відкриється з папки «Програми»."
+          }
+        }
+      }
+    },
     "Keyboard cleaning mode" : {
       "comment" : "Title of the screen that covers the window while every key is locked for cleaning",
       "localizations" : {
@@ -379,6 +412,28 @@
         }
       }
     },
+    "Move to Applications" : {
+      "comment" : "Default button of the alert that offers to move Vortex to the Applications folder",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перемістити в Програми"
+          }
+        }
+      }
+    },
+    "Move Vortex to Applications?" : {
+      "comment" : "Title of the alert a release build shows at launch when it runs from outside the Applications folder",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перемістити Vortex у Програми?"
+          }
+        }
+      }
+    },
     "Next" : {
       "localizations" : {
         "uk" : {
@@ -405,6 +460,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Немає в списку? Натисніть + і виберіть Vortex."
+          }
+        }
+      }
+    },
+    "Not Now" : {
+      "comment" : "Button of the alert that offers to move Vortex to the Applications folder: Vortex runs from where it is",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не зараз"
           }
         }
       }
@@ -736,6 +802,17 @@
         }
       }
     },
+    "The older Vortex there goes to the Trash." : {
+      "comment" : "Second sentence of the alert that offers to move Vortex to Applications, when a Vortex of the same or an older version is there",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старіший Vortex, що вже там, буде переміщено в Смітник."
+          }
+        }
+      }
+    },
     "Theme" : {
       "localizations" : {
         "uk" : {
@@ -782,6 +859,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Увімкнути клавіатуру"
+          }
+        }
+      }
+    },
+    "Vortex couldn't move to Applications." : {
+      "comment" : "Title of the alert after moving Vortex to the Applications folder failed",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося перемістити Vortex у Програми."
           }
         }
       }

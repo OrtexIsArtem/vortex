@@ -2,6 +2,7 @@
 
 ## Provides
 - `ShellController` — created by App at launch: `start()`, `receiveFiles(_:)` for files opened with Vortex, `prepareToTerminate()` when the app is asked to quit (a quit System Settings asked for reopens Vortex: `QuitRequest`, `SystemClient.reopenAfterQuit`), and `saveSettings()` when it quits.
+- `ShellController.moveToApplicationsIfAccepted()`, which App calls before creating the shell: in a release build it may offer the move to /Applications (App/docs/README.md); true when Vortex moved and quits, so App starts nothing.
 - To feature tabs: `notchCutout` and `isWindowOpen` in the SwiftUI environment.
 - Puts the Home widgets of enabled features, in sidebar order, into the environment of the tab content (`homeWidgets`).
 - Puts `keyboardCleaning` there too: the action behind Home's keyboard button.
@@ -19,7 +20,7 @@
 ## Uses
 - FeatureRegistry: every `FeatureModule` — descriptor (with `permissionNeeds`), `makeTab()`, `makeSettings()`, `makeHomeWidget()`, `acceptsFileDrops`, `receiveFiles(_:)`, `setEnabled(_:)`.
 - VortexCore: `FeatureModule`, `@Shared(.notchIndicators)`, `Permission`, `PermissionPage`, design system, `AppTheme`, `AppLanguage`.
-- VortexPlatform: `HotkeyClient` (`shortcut` names "Open Vortex" in Done's hint), `LaunchAtLoginClient` (`isSetUp` starts Basics' switch from the real state), `SystemSettingsNamesClient` (the pane names of the onboarding's drawing, read at launch), `SystemClient`, `KeyboardLockClient`, `PermissionsClient`, `ActiveAppClient` (System Settings in front, quitting, its window frames); `OutsideActivity` to keep the window open during drags out of it, Quick Look and the folder picker; `QuickLook`, which the window hands the Quick Look panel to.
+- VortexPlatform: `HotkeyClient` (`shortcut` names "Open Vortex" in Done's hint), `LaunchAtLoginClient` (`isSetUp` starts Basics' switch from the real state), `SystemSettingsNamesClient` (the pane names of the onboarding's drawing, read at launch), `SystemClient` (`relaunchFrom` after the move to /Applications), `AppInstallClient` (where this copy runs, the app in /Applications, the move), `KeyboardLockClient`, `PermissionsClient`, `ActiveAppClient` (System Settings in front, quitting, its window frames); `OutsideActivity` to keep the window open during drags out of it, Quick Look and the folder picker; `QuickLook`, which the window hands the Quick Look panel to.
 
 ## QA mode (debug builds)
 - Gives App `ShellController.prepareQA()`, called first in main.swift, and `isSameQARun(pid:)`, so one instance runs per QA run.
