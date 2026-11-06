@@ -52,9 +52,11 @@ if [ "$(echo "$identity" | tr '[:upper:]' '[:lower:]')" != "$CERTIFICATE_SHA1" ]
   exit 1
 fi
 
-# The app's own entitlements, as Xcode signed them from App/Vortex.entitlements, without library validation.
-codesign -d --entitlements - --xml "$app" > "$work/entitlements.plist" 2>/dev/null || true
-[ -s "$work/entitlements.plist" ] || plutil -create xml1 "$work/entitlements.plist"
+# The app's own entitlements, as Xcode signed them from App/Vortex.entitlements, without library validation. Vortex
+# always has some (Apple Events for the browsers' page addresses): none means they couldn't be read.
+codesign -d --entitlements - --xml "$app" > "$work/entitlements.plist" 2>/dev/null
+plutil -lint -s "$work/entitlements.plist" \
+  || { echo "sign-release: can't read the app's entitlements" >&2; exit 1; }
 /usr/libexec/PlistBuddy -c "Delete :com.apple.security.cs.disable-library-validation" "$work/entitlements.plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :com.apple.security.cs.disable-library-validation bool true" "$work/entitlements.plist"
 
@@ -81,7 +83,10 @@ if [ "$requirement" != "$expected" ]; then
   echo "sign-release: designated requirement is '$requirement', expected '$expected'" >&2
   exit 1
 fi
-codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q 'com.apple.security.cs.disable-library-validation' \
-  || { echo "sign-release: library validation is still on" >&2; exit 1; }
+# Exactly the app's own entitlements plus disable-library-validation, both written by plutil to compare.
+plutil -convert xml1 -o "$work/expected.plist" "$work/entitlements.plist"
+codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -convert xml1 -o "$work/signed.plist" -
+cmp -s "$work/expected.plist" "$work/signed.plist" \
+  || { echo "sign-release: the signed entitlements aren't the app's own plus disable-library-validation" >&2; exit 1; }
 echo "Signed $app"
 echo "  designated => $requirement"

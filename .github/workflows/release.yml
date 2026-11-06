@@ -37,6 +37,8 @@ jobs:
         run: scripts/sign-release.sh build/Release/Build/Products/Release/Vortex.app
       - name: Launch check
         # A signature macOS refuses to load shows only at launch: the signed app must still run after a few seconds.
+        # Run from the build folder, it stops at the offer to move to Applications, so this proves that macOS loads
+        # its code and libraries, not more.
         run: |
           executable=build/Release/Build/Products/Release/Vortex.app/Contents/MacOS/Vortex
           "$executable" > launch.log 2>&1 &
