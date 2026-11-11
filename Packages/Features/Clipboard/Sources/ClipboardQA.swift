@@ -160,6 +160,9 @@
       /// nil while nothing is searched.
       var results: Int?
       var shown: Int
+      /// Home's rows, and how many of them are pinned.
+      var homeRows: Int
+      var homePinnedRows: Int
       var pendingUndo: String?
       var isWriting: Bool
       var queuedWrites: Int
@@ -183,6 +186,9 @@
         query = state.query
         results = state.searchResults?.count
         shown = state.shownItems.count
+        let home = state.homeItems
+        homeRows = home.count
+        homePinnedRows = home.filter(\.isPinned).count
         pendingUndo = state.pendingRemoval.map { pending in
           switch pending.reason {
           case .cleared: "cleared \(pending.items.count)"

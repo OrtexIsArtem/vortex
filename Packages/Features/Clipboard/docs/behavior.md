@@ -38,7 +38,8 @@ How long items stay, Clear with Undo, and search are in history.md.
 - Revealed secrets hide again every time the tab is shown.
 
 ## On Home
-- The clipboard sits in the dock as one-line rows of the newest 20 items, pinned first.
+- The clipboard sits in the dock as one-line rows: at most 10 pinned items, newest first, then the newest unpinned ones, 20 rows in all.
+- Pinned items past those 10 show only in the tab, even when Home has room for them.
 - A row shows a tiny picture for an image or an icon for any other kind, then the start of the item; secrets stay dots.
 - A click copies the item again and shows a check in place of the icon, or over the picture.
 - A row drags out; right-click has Copy, Pin and Delete.

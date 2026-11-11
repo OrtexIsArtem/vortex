@@ -21,6 +21,9 @@ public struct ClipboardFeature: Sendable {
   static let searchDelay: Duration = .milliseconds(150)
   /// File items whose files are checked when the tab shows, newest first; others when their card comes on screen.
   static let filesCheckedOnShow = 100
+  /// Rows on Home (`State.homeItems`), of which at most `homePinnedRows` pinned: the tab has the rest.
+  static let homeRows = 20
+  static let homePinnedRows = 10
 
   /// The whole text of a long item, whose start alone is in memory, read for a drag.
   struct WholeText: Equatable {
@@ -98,6 +101,24 @@ public struct ClipboardFeature: Sendable {
     /// found" may show; a query of spaces only is no search.
     var isSearching: Bool {
       !ClipboardFeature.searchWords(query).isEmpty
+    }
+
+    /// Home's rows, in the tab's order: at most `homePinnedRows` pinned items, newest first, then the newest unpinned
+    /// ones, `homeRows` in all. Pinned items past those show only in the tab, even when Home has room for them. The
+    /// history is pinned first, so a binary search finds where the unpinned start: nothing else of it is read.
+    var homeItems: [ClipboardItem] {
+      var low = items.startIndex
+      var high = items.endIndex
+      while low < high {
+        let middle = (low + high) / 2
+        if items[middle].isPinned {
+          low = middle + 1
+        } else {
+          high = middle
+        }
+      }
+      let pinned = items[..<low].prefix(ClipboardFeature.homePinnedRows)
+      return Array(pinned) + Array(items[low...].prefix(ClipboardFeature.homeRows - pinned.count))
     }
 
     /// What the tab shows: the history, or what the search found in it, in the same order. Never a secret: it has no

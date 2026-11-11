@@ -5,9 +5,6 @@ import VortexPlatform
 
 /// The clipboard on Home: the history as one-line rows. A click copies again, a row drags out, a drop copies.
 struct ClipboardHomeWidget: View {
-  /// Home shows the newest items only, pinned first; the tab has the rest.
-  static let rowCount = 20
-
   let store: StoreOf<ClipboardFeature>
   @Environment(\.isWindowOpen) private var isWindowOpen
   @State private var isTargeted = false
@@ -26,7 +23,8 @@ struct ClipboardHomeWidget: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 0) {
-            ForEach(Array(store.items.prefix(Self.rowCount).enumerated()), id: \.element.id) { index, item in
+            // At most 10 pinned, then the newest: 20 rows (`homeItems`); the tab has the rest.
+            ForEach(Array(store.homeItems.enumerated()), id: \.element.id) { index, item in
               if index > 0 {
                 Hairline().padding(.leading, ClipboardRow.textInset)
               }
