@@ -25,12 +25,16 @@ extension ClipboardFeatureTests {
 
   // MARK: - Order
 
+  /// A change that writes nothing, standing for a batch being written.
+  static let inFlight = HistoryWrite.delete([], folders: [])
+
   /// A loaded history while a batch of writes is being written, as after any change.
   func writingState(_ items: [ClipboardItem] = []) -> ClipboardFeature.State {
     var state = ClipboardFeature.State()
     state.items = IdentifiedArray(uniqueElements: items)
     state.isLoaded = true
-    state.isWriting = true
+    state.queuedWrites = [Self.inFlight]
+    state.writing = 1
     return state
   }
 
@@ -41,18 +45,20 @@ extension ClipboardFeatureTests {
     let typo = item("typo", id: 0, copiedAt: now.value)
     await store.send(.copied(ClipboardCopy(PasteboardCopy(content: .text("typo"), source: Self.terminal)))) {
       $0.items = [typo]
-      $0.queuedWrites = [.insert(typo)]
+      $0.queuedWrites = [Self.inFlight, .insert(typo)]
     }
     await store.send(.deleteTapped(typo.id)) {
       $0.items = []
-      $0.queuedWrites = [.insert(typo), .delete([typo.id], folders: [])]
+      $0.queuedWrites = [Self.inFlight, .insert(typo), .delete([typo.id], folders: [])]
     }
     // The batch being written is in: the queued writes go next, together and in order.
-    await store.send(.written(previews: [:])) {
-      $0.queuedWrites = []
+    await store.send(.written(done: 1, previews: [:], failed: false)) {
+      $0.queuedWrites = [.insert(typo), .delete([typo.id], folders: [])]
+      $0.writing = 2
     }
     await store.receive(\.written) {
-      $0.isWriting = false
+      $0.queuedWrites = []
+      $0.writing = 0
     }
     #expect(try rowCount() == 0)
   }
@@ -66,17 +72,19 @@ extension ClipboardFeatureTests {
     let store = makeStore(writingState([one]))
     await store.send(.pinTapped(one.id)) {
       $0.items = [pinned]
-      $0.queuedWrites = [.update(pinned)]
+      $0.queuedWrites = [Self.inFlight, .update(pinned)]
     }
     await store.send(.pinTapped(one.id)) {
       $0.items = [one]
-      $0.queuedWrites = [.update(pinned), .update(one)]
+      $0.queuedWrites = [Self.inFlight, .update(pinned), .update(one)]
     }
-    await store.send(.written(previews: [:])) {
-      $0.queuedWrites = []
+    await store.send(.written(done: 1, previews: [:], failed: false)) {
+      $0.queuedWrites = [.update(pinned), .update(one)]
+      $0.writing = 2
     }
     await store.receive(\.written) {
-      $0.isWriting = false
+      $0.queuedWrites = []
+      $0.writing = 0
     }
     #expect(try savedHistory().map(\.isPinned) == [false])
   }
@@ -89,7 +97,7 @@ extension ClipboardFeatureTests {
     await store.send(.copied(ClipboardCopy(PasteboardCopy(content: .text(Self.longText), source: Self.terminal))))
     #expect(store.state.items.first?.content == .text(Self.longText))
     #expect(store.state.items.first?.isTruncated == false)
-    await store.send(.written(previews: [:]))
+    await store.send(.written(done: 1, previews: [:], failed: false))
     await store.receive(\.written)
     #expect(store.state.items.first?.content == .text(Self.longTextStart))
     #expect(store.state.items.first?.isTruncated == true)
@@ -300,7 +308,7 @@ extension ClipboardFeatureTests {
     await start(store)
     copy(.text("hunter2"), from: Self.passwords, concealed: true)
     await store.receive(\.copied)
-    #expect(!store.state.isWriting)
+    #expect(store.state.queuedWrites.isEmpty)
     #expect(try rowCount() == 0)
 
     // Copied in an editor first, then the same text from a password manager, which marks it secret.

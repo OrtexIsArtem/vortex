@@ -49,9 +49,15 @@ public struct ClipboardFeature: Sendable {
     /// False when the saved history could not be read: this session keeps it in memory only, so nothing on disk is
     /// overwritten.
     var savesToDisk = true
-    /// Changes waiting to be written, in the order they were made; they go once the batch being written is in.
+    /// Changes not in the database yet, in the order they were made; those being written come first. A change leaves
+    /// only once it has landed, or can never be written.
     var queuedWrites: [HistoryWrite] = []
-    var isWriting = false
+    /// How many of `queuedWrites`, from the first, are being written now; 0 while none is.
+    var writing = 0
+    /// Attempts that failed in a row; each waits longer before the next (`retryPause`).
+    var failedWrites = 0
+    /// The last attempt failed: the next waits for `.retryWrites`.
+    var waitsToRetry = false
     /// The whole text of the long item the pointer was last over, so it drags out in full.
     var wholeText: WholeText?
     /// Clear or a shorter lifetime, while Undo can take it back.
@@ -96,8 +102,12 @@ public struct ClipboardFeature: Sendable {
     /// The saved history, read and ordered off the main thread.
     case loaded(IdentifiedArrayOf<ClipboardItem>)
     case loadFailed
-    /// A batch of writes is in the database. Memory keeps the long texts it inserted by their start from now on.
-    case written(previews: [ClipboardItem.ID: String])
+    /// The first `done` queued changes are in the database, or left out as they can never be written; memory keeps
+    /// the long texts they inserted by their start from now on. `failed`: the rest of the batch failed on the
+    /// database's state, and is written again after a pause.
+    case written(done: Int, previews: [ClipboardItem.ID: String], failed: Bool)
+    /// The pause after a failed write is over.
+    case retryWrites
     /// The pointer came over a card or a Home row: a long text's whole text is read, so it can be dragged out.
     case itemHovered(ClipboardItem.ID)
     case wholeTextRead(ClipboardItem.ID, String)
@@ -203,8 +213,9 @@ public struct ClipboardFeature: Sendable {
         state.savesToDisk = false
         return watch(state)
 
-      case let .written(previews):
-        state.isWriting = false
+      case let .written(done, previews, failed):
+        state.queuedWrites.removeFirst(done)
+        state.writing = 0
         for (id, preview) in previews {
           // A text that turned secret meanwhile has its row deleted next: memory keeps it whole.
           if let item = state.items[id: id], !item.isConcealed, !item.isTruncated {
@@ -218,7 +229,29 @@ public struct ClipboardFeature: Sendable {
           }
         }
         // The history changed under the search: a copy, a pin, a removal.
-        return searchAgain(state)
+        let searching = done > 0 ? searchAgain(state) : .none
+        guard failed else {
+          if state.failedWrites > 0 {
+            state.failedWrites = 0
+            return .merge(searching, .run { _ in logger.notice("Saving the clipboard history works again") })
+          }
+          return searching
+        }
+        // Never dropped: what failed stays first in the queue, and what is queued meanwhile follows it.
+        state.failedWrites += 1
+        state.waitsToRetry = true
+        let pause = Self.retryPause(after: state.failedWrites)
+        return .merge(
+          searching,
+          .run { send in
+            try await clock.sleep(for: pause)
+            await send(.retryWrites)
+          }
+        )
+
+      case .retryWrites:
+        state.waitsToRetry = false
+        return .none
 
       case let .itemHovered(id):
         guard state.items[id: id]?.isTruncated == true, state.wholeText?.id != id else { return .none }
@@ -818,27 +851,72 @@ public struct ClipboardFeature: Sendable {
     state.queuedWrites += writes
   }
 
-  /// Writes the queued changes as one batch, unless a batch is being written: its `.written` comes first, and then
-  /// this writes the rest. One batch at a time is what keeps the order: an insert followed by a delete of the same
-  /// item never leaves its row behind. Image folders go once their rows are gone.
+  /// Writes the queued changes as one batch, unless a batch is being written (its `.written` comes first, and then
+  /// this writes the rest) or a failed one waits for its pause. One batch at a time is what keeps the order: an insert
+  /// followed by a delete of the same item never leaves its row behind. Image folders go once their rows are gone.
   private func writeQueued(_ state: inout State) -> Effect<Action> {
-    guard !state.isWriting, !state.queuedWrites.isEmpty else { return .none }
+    guard state.writing == 0, !state.waitsToRetry, !state.queuedWrites.isEmpty else { return .none }
     let batch = state.queuedWrites
-    state.queuedWrites = []
-    state.isWriting = true
+    state.writing = batch.count
+    // One line in the log for a run of failures, not one per attempt.
+    let reportsFailure = state.failedWrites == 0
     return .run { [files] send in
-      var previews: [ClipboardItem.ID: String] = [:]
-      do {
-        let (written, folders) = try await database.write { db in HistoryWrite.apply(batch, db) }
-        previews = written
-        for folder in folders {
-          await files.remove(folder)
-        }
-      } catch {
-        logger.error("Saving the clipboard history failed: \(error, privacy: .public)")
+      let outcome = await Self.write(batch, to: database, reportsFailure: reportsFailure)
+      for folder in outcome.folders {
+        await files.remove(folder)
       }
-      await send(.written(previews: previews))
+      await send(.written(done: outcome.done, previews: outcome.previews, failed: outcome.failed))
     }
+  }
+
+  /// What writing a batch came to.
+  struct WriteOutcome {
+    /// Changes of the batch, from the first, that are done: in the database, or left out as they can never be written.
+    var done = 0
+    var previews: [ClipboardItem.ID: String] = [:]
+    /// Image folders whose rows are gone.
+    var folders: [URL] = []
+    /// The changes after `done` failed on the database's state (busy, full, I/O…) and are written again later.
+    var failed = false
+  }
+
+  /// Writes a batch in one transaction, so it lands whole or not at all. When a change in it can never be written (the
+  /// data breaks a rule, `HistoryWrite.isRefusedForGood`), the changes are written again one at a time, and only one
+  /// that fails on its own is left out, with a line in the log; the others still go in order.
+  static func write(_ batch: [HistoryWrite], to database: any DatabaseWriter, reportsFailure: Bool) async -> WriteOutcome {
+    do {
+      let (previews, folders) = try await database.write { db in try HistoryWrite.apply(batch, db) }
+      return WriteOutcome(done: batch.count, previews: previews, folders: folders)
+    } catch where HistoryWrite.isRefusedForGood(error) {
+      var outcome = WriteOutcome()
+      for write in batch {
+        do {
+          let (previews, folders) = try await database.write { db in try HistoryWrite.apply([write], db) }
+          outcome.previews.merge(previews) { _, new in new }
+          outcome.folders += folders
+        } catch where HistoryWrite.isRefusedForGood(error) {
+          logger.error("A change to the clipboard history can't be written and is left out: \(error, privacy: .public)")
+        } catch {
+          if reportsFailure { logFailure(error) }
+          outcome.failed = true
+          return outcome
+        }
+        outcome.done += 1
+      }
+      return outcome
+    } catch {
+      if reportsFailure { logFailure(error) }
+      return WriteOutcome(failed: true)
+    }
+  }
+
+  private static func logFailure(_ error: any Error) {
+    logger.error("Saving the clipboard history failed; it is written again in a moment: \(error, privacy: .public)")
+  }
+
+  /// The pause before writing again after `failures` failed attempts in a row: 1 s, doubling, at most 60 s.
+  static func retryPause(after failures: Int) -> Duration {
+    .seconds(min(60, 1 << min(max(failures - 1, 0), 6)))
   }
 }
 

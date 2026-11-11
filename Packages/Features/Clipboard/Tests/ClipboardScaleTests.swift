@@ -104,7 +104,7 @@ struct ClipboardScaleTests {
     try ClipboardItem.migrator.migrate(database)
     let seed = ClipboardSeed(count: 10_000, images: 500, now: Self.now)
     let writing = try time {
-      try database.write { db in _ = HistoryWrite.apply(seed.items.map(HistoryWrite.insert), db) }
+      try database.write { db in _ = try HistoryWrite.apply(seed.items.map(HistoryWrite.insert), db) }
     }
     let bytes = try database.read { db in try Int.fetchOne(db, sql: "SELECT sum(length(CAST(searchText AS BLOB))) FROM clipboard_item") ?? 0 }
     var timings: [String] = []

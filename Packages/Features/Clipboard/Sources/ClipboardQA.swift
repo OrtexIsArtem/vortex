@@ -74,7 +74,7 @@
       }
       for start in stride(from: 0, to: seed.items.count, by: 500) {
         let batch = seed.items[start..<min(start + 500, seed.items.count)].map(HistoryWrite.insert)
-        _ = try await database.write { db in HistoryWrite.apply(batch, db) }
+        _ = try await database.write { db in try HistoryWrite.apply(batch, db) }
       }
       let (items, _) = try await ClipboardFeature.loadHistory(database: database, files: files)
       store.send(.loaded(items))
@@ -96,6 +96,8 @@
       var pendingUndo: String?
       var isWriting: Bool
       var queuedWrites: Int
+      /// Failed attempts in a row; while above 0 the queue waits to be written again.
+      var failedWrites: Int
       var unavailable: Int
       var lastSeed: String?
 
@@ -117,8 +119,9 @@
           case let .lifetime(previous): "older removed \(pending.items.count), was \(previous.rawValue)"
           }
         }
-        isWriting = state.isWriting
+        isWriting = state.writing > 0
         queuedWrites = state.queuedWrites.count
+        failedWrites = state.failedWrites
         unavailable = state.unavailable.count
         self.lastSeed = lastSeed
       }

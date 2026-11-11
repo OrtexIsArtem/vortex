@@ -1,7 +1,6 @@
 import CryptoKit
 import Foundation
 import GRDB
-import os
 import VortexCore
 import VortexPlatform
 
@@ -334,71 +333,79 @@ enum HistoryWrite: Equatable, Sendable {
   /// Rows of items that are gone; their image folders go once the rows have.
   case delete([ClipboardItem.ID], folders: [URL])
 
-  /// Writes a batch in one transaction; a write that fails is logged and the others still happen. Returns the start
-  /// memory keeps of each long text inserted, and the folders whose rows are gone.
-  static func apply(_ batch: [HistoryWrite], _ db: Database) -> (previews: [ClipboardItem.ID: String], folders: [URL]) {
+  /// Writes a batch; the first change that fails stops it, so in a transaction the batch lands whole or not at all.
+  /// Returns the start memory keeps of each long text inserted, and the folders whose rows are gone.
+  static func apply(_ batch: [HistoryWrite], _ db: Database) throws -> (previews: [ClipboardItem.ID: String], folders: [URL]) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = .sortedKeys
     var previews: [ClipboardItem.ID: String] = [:]
     var folders: [URL] = []
     for write in batch {
-      do {
-        switch write {
-        case let .insert(item):
-          // The reducer never queues a secret; this holds even if it did.
-          guard !item.isConcealed else { continue }
-          let preview = item.content.text.flatMap(ClipboardItem.preview(of:))
-          try db.execute(
-            sql: """
-              INSERT INTO \(ClipboardItem.databaseTableName)
-                (id, content, source, copiedAt, isPinned, isConcealed, fingerprint, byteSize, preview, searchText)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              """,
-            arguments: [
-              item.id.uuidString,
-              String(decoding: try encoder.encode(item.content), as: UTF8.self),
-              try item.source.map { String(decoding: try encoder.encode($0), as: UTF8.self) },
-              item.copiedAt,
-              item.isPinned,
-              item.isConcealed,
-              item.fingerprint,
-              item.byteSize,
-              preview,
-              ClipboardItem.searchText(of: item.content, source: item.source),
-            ]
-          )
-          previews[item.id] = preview
-        case let .update(item):
-          guard !item.isConcealed else { continue }
-          // The app's name is the first line of the search text: only that line changes. (A row with no line yet
-          // keeps what it has after it; the next launch completes it.)
-          try db.execute(
-            sql: """
-              UPDATE \(ClipboardItem.databaseTableName)
-              SET copiedAt = ?, source = ?, isPinned = ?,
-                searchText = ? || char(10) || substr(searchText, instr(searchText, char(10)) + 1)
-              WHERE id = ?
-              """,
-            arguments: [
-              item.copiedAt,
-              try item.source.map { String(decoding: try encoder.encode($0), as: UTF8.self) },
-              item.isPinned,
-              ClipboardItem.appLine(item.source),
-              item.id.uuidString,
-            ]
-          )
-        case let .delete(ids, removedFolders):
-          let statement = try db.cachedStatement(sql: "DELETE FROM \(ClipboardItem.databaseTableName) WHERE id = ?")
-          for id in ids {
-            try statement.execute(arguments: [id.uuidString])
-          }
-          folders += removedFolders
+      switch write {
+      case let .insert(item):
+        // The reducer never queues a secret; this holds even if it did.
+        guard !item.isConcealed else { continue }
+        let preview = item.content.text.flatMap(ClipboardItem.preview(of:))
+        try db.execute(
+          sql: """
+            INSERT INTO \(ClipboardItem.databaseTableName)
+              (id, content, source, copiedAt, isPinned, isConcealed, fingerprint, byteSize, preview, searchText)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+          arguments: [
+            item.id.uuidString,
+            String(decoding: try encoder.encode(item.content), as: UTF8.self),
+            try item.source.map { String(decoding: try encoder.encode($0), as: UTF8.self) },
+            item.copiedAt,
+            item.isPinned,
+            item.isConcealed,
+            item.fingerprint,
+            item.byteSize,
+            preview,
+            ClipboardItem.searchText(of: item.content, source: item.source),
+          ]
+        )
+        previews[item.id] = preview
+      case let .update(item):
+        guard !item.isConcealed else { continue }
+        // The app's name is the first line of the search text: only that line changes. (A row with no line yet
+        // keeps what it has after it; the next launch completes it.)
+        try db.execute(
+          sql: """
+            UPDATE \(ClipboardItem.databaseTableName)
+            SET copiedAt = ?, source = ?, isPinned = ?,
+              searchText = ? || char(10) || substr(searchText, instr(searchText, char(10)) + 1)
+            WHERE id = ?
+            """,
+          arguments: [
+            item.copiedAt,
+            try item.source.map { String(decoding: try encoder.encode($0), as: UTF8.self) },
+            item.isPinned,
+            ClipboardItem.appLine(item.source),
+            item.id.uuidString,
+          ]
+        )
+      case let .delete(ids, removedFolders):
+        let statement = try db.cachedStatement(sql: "DELETE FROM \(ClipboardItem.databaseTableName) WHERE id = ?")
+        for id in ids {
+          try statement.execute(arguments: [id.uuidString])
         }
-      } catch {
-        logger.error("Saving a change to the clipboard history failed: \(error, privacy: .public)")
+        folders += removedFolders
       }
     }
     return (previews, folders)
+  }
+
+  /// Whether a change can never be written, whatever the database's state: it breaks a constraint, SQLite refuses its
+  /// values, or it doesn't encode. Any other failure (busy, locked, full, read-only, I/O, a file it can't open) comes
+  /// from the database and may pass: the change is written again later.
+  static func isRefusedForGood(_ error: any Error) -> Bool {
+    if error is CancellationError { return false }
+    guard let error = error as? DatabaseError else { return true }
+    switch error.resultCode {
+    case .SQLITE_CONSTRAINT, .SQLITE_MISMATCH, .SQLITE_TOOBIG, .SQLITE_RANGE: return true
+    default: return false
+    }
   }
 }
 
@@ -408,5 +415,3 @@ extension ClipboardItem.Content {
     if case let .text(text) = self { text } else { nil }
   }
 }
-
-private let logger = Logger(subsystem: "io.github.ortexisartem.vortex", category: "clipboard")

@@ -82,7 +82,7 @@ struct ClipboardFeatureTests {
   /// Saves rows as an earlier launch would have, through the writes the feature makes.
   func saveRows(_ items: [ClipboardItem]) throws {
     try ClipboardItem.migrator.migrate(database)
-    try database.write { db in _ = HistoryWrite.apply(items.map(HistoryWrite.insert), db) }
+    try database.write { db in _ = try HistoryWrite.apply(items.map(HistoryWrite.insert), db) }
   }
 
   func item(_ text: String, id: Int, copiedAt: Date, isPinned: Bool = false) -> ClipboardItem {
@@ -104,22 +104,29 @@ struct ClipboardFeatureTests {
     await start(store)
 
     copy(.text("SELECT * FROM orders"))
+    let first = item("SELECT * FROM orders", id: 0, copiedAt: now.value)
     await store.receive(\.copied) {
-      $0.items = [item("SELECT * FROM orders", id: 0, copiedAt: now.value)]
-      $0.isWriting = true
+      $0.items = [first]
+      $0.queuedWrites = [.insert(first)]
+      $0.writing = 1
     }
-    await store.receive(\.written) { $0.isWriting = false }
+    await store.receive(\.written) {
+      $0.queuedWrites = []
+      $0.writing = 0
+    }
     let link = URL(string: "https://github.com/OrtexIsArtem/vortex")!
     copy(.link(link))
+    let second = ClipboardItem(id: uuid(1), content: .link(link), source: Self.terminal, copiedAt: now.value,
+                               fingerprint: ClipboardCopy.fingerprint(of: .link(link)), byteSize: link.absoluteString.utf8.count)
     await store.receive(\.copied) {
-      $0.items.insert(
-        ClipboardItem(id: uuid(1), content: .link(link), source: Self.terminal, copiedAt: now.value,
-                      fingerprint: ClipboardCopy.fingerprint(of: .link(link)), byteSize: link.absoluteString.utf8.count),
-        at: 0
-      )
-      $0.isWriting = true
+      $0.items.insert(second, at: 0)
+      $0.queuedWrites = [.insert(second)]
+      $0.writing = 1
     }
-    await store.receive(\.written) { $0.isWriting = false }
+    await store.receive(\.written) {
+      $0.queuedWrites = []
+      $0.writing = 0
+    }
     await store.send(.stop)
     await store.finish()
     #expect(try savedHistory() == store.state.items.elements)
