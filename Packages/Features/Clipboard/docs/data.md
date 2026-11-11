@@ -33,6 +33,7 @@
 - An image folder goes once the delete of its row lands.
 - Turning the feature off doesn't stop queued or retried writes.
 - Writes still queued when Vortex quits are lost: the next launch shows what had landed.
+- Known limit, accepted: writes wait only while the database can't be written (locked, disk full); a lost delete of a row whose text turned secret since exposes nothing new, as that text's earlier copy saved it in plain.
 - Nothing is written before the saved history has been read.
 
 ## Keeping and reading
