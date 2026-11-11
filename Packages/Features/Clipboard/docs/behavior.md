@@ -29,12 +29,22 @@
 - A text over 4,096 bytes is held by its start: copied again, it goes whole; it drags only once the pointer has come over its card or row, which reads its whole text, and then drags whole.
 - A hidden secret doesn't drag; once the eye shows it, it does.
 - Hovering a card shows Pin and Delete; right click has Copy, Pin, Show in Finder (files) and Delete.
-- Clear shows while there is an unpinned item; the Undo toast sits under the grid.
-- When the tab is shown, files that are gone are marked "Not found"; such cards can't be copied or dragged.
+- Clear shows while there is an unpinned item and no search; the Undo toast sits under the grid.
+- Files that are gone are marked "Not found", checked when the tab is shown for the newest 100 file items and for any other card as it comes on screen; such cards can't be copied or dragged.
 - Revealed secrets hide again every time the tab is shown.
 
+## Search
+- The field sits right of the notch, the title left of it; ⌘F focuses it, in a Ukrainian or Russian layout too.
+- Esc in a non-empty field empties it; in an empty field Esc closes the window, as anywhere in the tab.
+- The cards shown are the items that hold every word of the query, in any case (Ukrainian too), pinned first, newest first.
+- An item is found by the first 16 KB of a text, a link's address percent-decoded, the names of files and the name of the app it was copied in; an image only by its app.
+- Secrets are never found, not even by their app: they have no row to search.
+- Typing pauses 150 ms before the search runs; a newer query replaces one still running. No match: "Nothing found".
+- A copy, a pin or a removal while a search is shown updates the results; found cards click, drag, pin and delete as any.
+- The search empties itself each time the tab is shown.
+
 ## On Home
-- The clipboard sits in the dock as one-line rows: a tiny picture for an image, an icon for any other kind, then the start of the item; secrets stay dots.
+- The clipboard sits in the dock as one-line rows of the newest 20 items, pinned first: a tiny picture for an image, an icon for any other kind, then the start of the item; secrets stay dots.
 - A click copies the item again and shows a check in place of the icon, or over the picture; a row drags out; right-click has Copy, Pin and Delete.
 - Secrets never drag out of Home: dropped on the shelf, one would be saved to disk.
 - Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy. Files dropped together are copied together.

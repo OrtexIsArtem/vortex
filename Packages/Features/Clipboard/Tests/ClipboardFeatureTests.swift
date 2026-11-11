@@ -295,7 +295,7 @@ struct ClipboardFeatureTests {
     copy(.files([gone]))
     await store.receive(\.copied)
     await store.send(.tabShown)
-    await store.receive(\.unavailableChecked) { $0.unavailable = [uuid(0)] }
+    await store.receive(\.filesChecked) { $0.unavailable = [uuid(0)] }
     await store.send(.itemTapped(uuid(0)))
     #expect(written.value.isEmpty)
     await store.send(.stop)
@@ -596,7 +596,7 @@ struct ClipboardFeatureTests {
     copy(.files([rebuilt]))
     await store.receive(\.copied)
     await store.send(.tabShown)
-    await store.receive(\.unavailableChecked) { $0.unavailable = [uuid(0)] }
+    await store.receive(\.filesChecked) { $0.unavailable = [uuid(0)] }
 
     // The build is made again at the same path and dragged here: it exists now, whatever the last check said.
     missingFiles.setValue([])

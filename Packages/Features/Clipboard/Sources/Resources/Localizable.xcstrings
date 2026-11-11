@@ -130,6 +130,17 @@
         }
       }
     },
+    "Clear search" : {
+      "comment" : "The button that empties the search field",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистити пошук"
+          }
+        }
+      }
+    },
     "Clipboard" : {
       "comment" : "Feature name in the sidebar, settings and the tab header",
       "localizations" : {
@@ -331,6 +342,17 @@
         }
       }
     },
+    "Nothing found" : {
+      "comment" : "The clipboard tab when the search matches nothing",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нічого не знайдено"
+          }
+        }
+      }
+    },
     "Older items removed" : {
       "comment" : "Undo toast after a shorter Keep history",
       "localizations" : {
@@ -400,6 +422,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вилучає все, крім закріпленого"
+          }
+        }
+      }
+    },
+    "Search" : {
+      "comment" : "Placeholder of the search field in the clipboard tab",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пошук"
           }
         }
       }

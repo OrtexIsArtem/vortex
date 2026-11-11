@@ -248,6 +248,18 @@ extension ClipboardItem {
     try String.fetchSet(db, sql: "SELECT id FROM \(databaseTableName)")
   }
 
+  /// Ids of the saved items whose search text holds every word (`searchText`), pinned first, newest first. A secret has
+  /// no row, so it is never found.
+  static func search(_ words: [String], _ db: Database) throws -> [ID] {
+    let holdsEveryWord = words.map { _ in "instr(searchText, ?) > 0" }.joined(separator: " AND ")
+    return try String.fetchAll(
+      db,
+      sql: "SELECT id FROM \(databaseTableName) WHERE \(holdsEveryWord) ORDER BY isPinned DESC, copiedAt DESC",
+      arguments: StatementArguments(words)
+    )
+    .compactMap(UUID.init(uuidString:))
+  }
+
   /// The whole text of a long one, whose start alone is in memory.
   static func wholeText(of id: ID, _ db: Database) throws -> String {
     let json = try Data.fetchOne(

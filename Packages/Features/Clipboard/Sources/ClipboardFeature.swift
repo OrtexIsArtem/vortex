@@ -17,6 +17,10 @@ public struct ClipboardFeature: Sendable {
   static let undoTime: Duration = .seconds(5)
   /// How often the history is checked against its lifetime while the feature is on.
   static let checkInterval: Duration = .seconds(3_600)
+  /// Typing pauses this long before a search runs.
+  static let searchDelay: Duration = .milliseconds(150)
+  /// File items whose files are checked when the tab shows, newest first; others when their card comes on screen.
+  static let filesCheckedOnShow = 100
 
   /// The whole text of a long item, whose start alone is in memory, read for a drag.
   struct WholeText: Equatable {
@@ -52,6 +56,12 @@ public struct ClipboardFeature: Sendable {
     var wholeText: WholeText?
     /// Clear or a shorter lifetime, while Undo can take it back.
     var pendingRemoval: PendingRemoval?
+    /// What the search field holds.
+    var query = ""
+    /// What the search found, pinned first, newest first; nil while nothing is searched.
+    var searchResults: [ClipboardItem.ID]?
+    /// Items whose files were checked since the tab was last shown.
+    var checkedFiles: Set<ClipboardItem.ID> = []
     /// Items whose files are gone.
     var unavailable: Set<ClipboardItem.ID> = []
     /// Concealed items the user is looking at; hidden again whenever the window opens.
@@ -70,6 +80,13 @@ public struct ClipboardFeature: Sendable {
     /// What the History row shows: every item, pinned ones too, and what they take on disk (a secret takes nothing).
     var historySize: (items: Int, bytes: Int) {
       (items.count, items.reduce(0) { $0 + $1.storedBytes })
+    }
+
+    /// What the tab shows: the history, or what the search found in it, in the same order. Never a secret: it has no
+    /// row to be found by, and one that turned secret after the search is left out here too.
+    var shownItems: [ClipboardItem] {
+      guard let searchResults else { return items.elements }
+      return searchResults.compactMap { items[id: $0] }.filter { !$0.isConcealed }
     }
   }
 
@@ -106,7 +123,11 @@ public struct ClipboardFeature: Sendable {
     case showInFinderTapped(ClipboardItem.ID)
     /// The tab became visible: the window opened on it, or the user switched to it.
     case tabShown
-    case unavailableChecked(Set<ClipboardItem.ID>)
+    /// A card came on screen: its files are checked, once per showing of the tab.
+    case cardAppeared(ClipboardItem.ID)
+    case filesChecked(checked: Set<ClipboardItem.ID>, missing: Set<ClipboardItem.ID>)
+    case queryChanged(String)
+    case searched([ClipboardItem.ID])
     case copiedMarkElapsed
     case settingsShown
     case runningAppsLoaded([AppInfo])
@@ -138,6 +159,7 @@ public struct ClipboardFeature: Sendable {
     case copiedMark
     case wholeText
     case undo
+    case search
   }
 
   public init() {}
@@ -149,11 +171,7 @@ public struct ClipboardFeature: Sendable {
         guard !state.isLoaded else { return watch(state) }
         // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
         return .run { [files] send in
-          try await database.migrate(ClipboardItem.migrator)
-          var (items, savedIDs) = try await database.read { db in
-            (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))
-          }
-          try await ClipboardItem.complete(&items, files: files, in: database)
+          let (items, savedIDs) = try await Self.loadHistory(database: database, files: files)
           // Image folders whose rows are gone, after a crash or a failed save. Before watching starts,
           // so a new image is never taken for one of them. Not while the database is only in memory: its file didn't
           // open, and the pictures are then all that is left.
@@ -162,7 +180,7 @@ public struct ClipboardFeature: Sendable {
               await files.remove(folder)
             }
           }
-          await send(.loaded(IdentifiedArray(items, uniquingIDsWith: { first, _ in first })))
+          await send(.loaded(items))
         } catch: { error, send in
           logger.error("Loading the clipboard history failed: \(error, privacy: .public)")
           await send(.loadFailed)
@@ -175,7 +193,7 @@ public struct ClipboardFeature: Sendable {
       case let .loaded(items):
         state.items = items
         state.isLoaded = true
-        return .merge(prune(&state), watch(state))
+        return .merge(prune(&state), watch(state), searchAgain(state))
 
       case .loadFailed:
         state.isLoaded = true
@@ -196,7 +214,8 @@ public struct ClipboardFeature: Sendable {
             state.pendingRemoval?.items[index].isTruncated = true
           }
         }
-        return .none
+        // The history changed under the search: a copy, a pin, a removal.
+        return searchAgain(state)
 
       case let .itemHovered(id):
         guard state.items[id: id]?.isTruncated == true, state.wholeText?.id != id else { return .none }
@@ -383,22 +402,34 @@ public struct ClipboardFeature: Sendable {
 
       case .tabShown:
         state.revealed = []
+        state.query = ""
+        state.searchResults = nil
         let pruning = prune(&state)
-        let checks = state.items.filter { !$0.fileURLs.isEmpty }.map { ($0.id, $0.fileURLs) }
-        guard !checks.isEmpty else { return pruning }
-        return .merge(pruning, .run { [files] send in
-          var missing = Set<ClipboardItem.ID>()
-          for (id, urls) in checks {
-            for url in urls where await files.info(url) == nil {
-              missing.insert(id)
-              break
-            }
-          }
-          await send(.unavailableChecked(missing))
-        })
+        // The files of the cards on top; any other card's when it comes on screen.
+        state.checkedFiles = []
+        let newest = state.items.lazy.filter { !$0.fileURLs.isEmpty }.prefix(Self.filesCheckedOnShow)
+        return .merge(.cancel(id: CancelID.search), pruning, checkFiles(Array(newest), &state))
 
-      case let .unavailableChecked(missing):
-        state.unavailable = missing
+      case let .cardAppeared(id):
+        guard let item = state.items[id: id] else { return .none }
+        return checkFiles([item], &state)
+
+      case let .filesChecked(checked, missing):
+        state.unavailable.subtract(checked)
+        state.unavailable.formUnion(missing.intersection(state.items.ids))
+        return .none
+
+      case let .queryChanged(query):
+        state.query = query
+        guard !Self.searchWords(query).isEmpty else {
+          state.searchResults = nil
+          return .cancel(id: CancelID.search)
+        }
+        return search(state, after: Self.searchDelay)
+
+      case let .searched(ids):
+        guard !Self.searchWords(state.query).isEmpty else { return .none }
+        state.searchResults = ids
         return .none
 
       case .copiedMarkElapsed:
@@ -565,6 +596,77 @@ public struct ClipboardFeature: Sendable {
   /// The pasteboard may be read: Paste from Other Apps isn't off (granted, not needed, or not read yet).
   static func mayReadPasteboard(_ statuses: [Permission: PermissionStatus]) -> Bool {
     statuses[.pasteboard] != .notGranted
+  }
+
+  /// The saved history, off the main thread: its tables made current, every readable row in `displayOrder`, rows from
+  /// before `clipboard.v2` completed. Also every saved id, readable or not.
+  static func loadHistory(
+    database: any DatabaseWriter,
+    files: FileClient
+  ) async throws -> (items: IdentifiedArrayOf<ClipboardItem>, savedIDs: Set<String>) {
+    try await database.migrate(ClipboardItem.migrator)
+    var (items, savedIDs) = try await database.read { db in
+      (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))
+    }
+    try await ClipboardItem.complete(&items, files: files, in: database)
+    return (IdentifiedArray(items, uniquingIDsWith: { first, _ in first }), savedIDs)
+  }
+
+  /// The words a query looks for, in `ClipboardItem.searchKey` form; an item matches when it holds every one.
+  static func searchWords(_ query: String) -> [String] {
+    ClipboardItem.searchKey(query).split(whereSeparator: \.isWhitespace).map(String.init)
+  }
+
+  /// Runs the search in SQL off the main thread, after `delay`, in place of one still running. A session that keeps the
+  /// history in memory only has nothing in the database: it searches memory the same way, secrets left out.
+  private func search(_ state: State, after delay: Duration? = nil) -> Effect<Action> {
+    let words = Self.searchWords(state.query)
+    let inMemory = state.savesToDisk ? nil : state.items.elements
+    return .run { send in
+      if let delay { try await clock.sleep(for: delay) }
+      let ids: [ClipboardItem.ID]
+      if let inMemory {
+        ids = inMemory.filter { item in
+          guard !item.isConcealed else { return false }
+          let text = ClipboardItem.searchText(of: item.content, source: item.source)
+          return words.allSatisfy { text.contains($0) }
+        }
+        .map(\.id)
+      } else {
+        ids = try await database.read { db in try ClipboardItem.search(words, db) }
+      }
+      await send(.searched(ids))
+    } catch: { error, _ in
+      guard !(error is CancellationError) else { return }
+      logger.error("Searching the clipboard history failed: \(error, privacy: .public)")
+    }
+    .cancellable(id: CancelID.search, cancelInFlight: true)
+  }
+
+  /// The history changed while a search is shown: its results again, at once.
+  private func searchAgain(_ state: State) -> Effect<Action> {
+    Self.searchWords(state.query).isEmpty ? .none : search(state)
+  }
+
+  /// Checks whether the files of these items are still there, each once per showing of the tab; missing ones are
+  /// marked "Not found".
+  private func checkFiles(_ items: [ClipboardItem], _ state: inout State) -> Effect<Action> {
+    let checks = items
+      .filter { !$0.fileURLs.isEmpty && !state.checkedFiles.contains($0.id) }
+      .map { (id: $0.id, urls: $0.fileURLs) }
+    guard !checks.isEmpty else { return .none }
+    let checked = Set(checks.map(\.id))
+    state.checkedFiles.formUnion(checked)
+    return .run { [files] send in
+      var missing = Set<ClipboardItem.ID>()
+      for check in checks {
+        for url in check.urls where await files.info(url) == nil {
+          missing.insert(check.id)
+          break
+        }
+      }
+      await send(.filesChecked(checked: checked, missing: missing))
+    }
   }
 
   /// What goes from the history: unpinned items last copied longer ago than `lifetime`; then the oldest unpinned ones

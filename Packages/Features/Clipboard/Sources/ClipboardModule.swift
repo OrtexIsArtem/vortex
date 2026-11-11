@@ -39,24 +39,4 @@ public enum ClipboardModule: FeatureModule {
     #endif
     store.send(isEnabled ? .start : .stop)
   }
-
-  #if DEBUG
-    private static var isRegistered = false
-
-    /// QA mode: `clipboard press=turnOn|restart` presses the Paste from Other Apps row in the settings.
-    private static func registerQACommands() {
-      guard QA.isActive, !isRegistered else { return }
-      isRegistered = true
-      QA.register(command: "clipboard") { arguments in
-        let pressed = try QAPermissions.pressRow(
-          arguments,
-          needs: permissionNeeds,
-          statuses: store.permissionStatuses,
-          turnOn: { store.send(.turnOnTapped($0)) },
-          restart: { store.send(.restartTapped) }
-        )
-        guard pressed else { throw QAError("clipboard takes press=turnOn or press=restart") }
-      }
-    }
-  #endif
 }
