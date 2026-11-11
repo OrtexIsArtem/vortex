@@ -193,6 +193,9 @@ public struct ClipboardFeature: Sendable {
       case let .loaded(items):
         state.items = items
         state.isLoaded = true
+        // Read again (QA's seed) while Undo could still take something back: its rows were still there, so the
+        // history holds those items again.
+        state.pendingRemoval = nil
         return .merge(prune(&state), watch(state), searchAgain(state))
 
       case .loadFailed:
@@ -379,8 +382,9 @@ public struct ClipboardFeature: Sendable {
         }
         // Copied again meanwhile, an item came back as a new one: that one stays, the one set aside goes for good.
         let present = Set(state.items.map(\.fingerprint))
-        let back = pending.items.filter { !present.contains($0.fingerprint) }
-        let copiedAgain = pending.items.filter { present.contains($0.fingerprint) }
+        let setAside = pending.items.filter { state.items[id: $0.id] == nil }
+        let back = setAside.filter { !present.contains($0.fingerprint) }
+        let copiedAgain = setAside.filter { present.contains($0.fingerprint) }
         state.items = IdentifiedArray(uniqueElements: (state.items.elements + back).sorted(by: Self.displayOrder))
         return .merge(.cancel(id: CancelID.undo), remove(copiedAgain, &state))
 

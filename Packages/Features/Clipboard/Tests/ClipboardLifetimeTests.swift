@@ -291,6 +291,22 @@ extension ClipboardFeatureTests {
   }
 
   @Test
+  func readingTheHistoryAgainWithinTheUndoTimeShowsWhatIsOnDisk() async throws {
+    let store = try await agedStore()
+    await store.send(.clearTapped)
+    // As QA's seed does: the rows of what Clear set aside are still there.
+    let (items, _) = try await ClipboardFeature.loadHistory(database: database, files: store.dependencies.fileClient)
+    await store.send(.loaded(items))
+    #expect(store.state.items.count == 3)
+    #expect(store.state.pendingRemoval == nil)
+    await store.send(.undoTapped)
+    await clock.advance(by: ClipboardFeature.undoTime)
+    await store.send(.stop)
+    await store.finish()
+    #expect(try rowCount() == 3)
+  }
+
+  @Test
   func quittingWithinTheUndoTimeKeepsTheClearedItems() async throws {
     let store = try await agedStore()
     await store.send(.clearTapped)
