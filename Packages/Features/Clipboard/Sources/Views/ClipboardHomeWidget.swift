@@ -185,7 +185,7 @@ private struct ClipboardRow: View {
       let line = text.prefix(300).split(whereSeparator: \.isNewline).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
       return Text(verbatim: line).font(.system(size: 11.5, design: .monospaced))
     case let .link(url):
-      return Text(verbatim: (url.host() ?? "") + url.path()).font(.system(size: 12))
+      return Text(verbatim: LinkAddress.readable((url.host() ?? "") + url.path())).font(.system(size: 12))
     case .image:
       return Text("Image", bundle: .module).font(.system(size: 12))
     case let .files(urls):

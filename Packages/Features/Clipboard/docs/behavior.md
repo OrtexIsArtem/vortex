@@ -28,6 +28,7 @@
 - Pinned items come first, then the rest; newest first in both.
 - A card shows a preview, the app it was copied in and how long ago; files go by the names Finder shows in the app's language (Downloads by its Ukrainian name in Ukrainian), extensions included.
 - Clicking a card copies it again, with the marks of the app it came from, and moves it to the top; "Copied" shows once it is on the pasteboard.
+- Link cards, Home rows and VoiceOver show a link's address with letters beyond ASCII decoded (`/привіт`); ASCII escapes (`%20`), escapes that don't spell a letter and invisible characters stay as written; copying gives the link as it was.
 - Dragging a card drops its text, link, image file or files into another app; the item stays in the history.
 - A text over 4,096 bytes is held by its start: copied again, it goes whole; it drags only once the pointer has come over its card or row, which reads its whole text, and then drags whole.
 - A hidden secret doesn't drag; once the eye shows it, it does.

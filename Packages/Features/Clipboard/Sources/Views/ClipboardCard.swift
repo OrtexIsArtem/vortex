@@ -85,7 +85,7 @@ struct ClipboardCard: View {
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(VortexColor.tertiaryText)
             .padding(.bottom, 8)
-          Text(verbatim: url.host() ?? url.absoluteString)
+          Text(verbatim: LinkAddress.readable(url.host() ?? url.absoluteString))
             .font(.system(size: 13, weight: .medium))
             .lineLimit(1)
           Text(verbatim: Self.pathAndQuery(of: url))
@@ -220,7 +220,7 @@ struct ClipboardCard: View {
     } else {
       switch item.content {
       case let .text(text): Text(verbatim: String(text.prefix(200)))
-      case let .link(url): Text(verbatim: url.absoluteString)
+      case let .link(url): Text(verbatim: LinkAddress.readable(url.absoluteString))
       case .image: Text("Image", bundle: .module)
       case let .files(urls): Text(verbatim: urls.map(FileName.shown).joined(separator: ", "))
       }
@@ -229,10 +229,11 @@ struct ClipboardCard: View {
     return content + Text(verbatim: ", ") + Text(verbatim: source.name)
   }
 
+  /// The path and query of a link, as a person reads them (`LinkAddress`); the whole address when there is no path.
   static func pathAndQuery(of url: URL) -> String {
     var path = url.path()
     if let query = url.query() { path += "?" + query }
-    return path.isEmpty || path == "/" ? url.absoluteString : path
+    return LinkAddress.readable(path.isEmpty || path == "/" ? url.absoluteString : path)
   }
 }
 
