@@ -274,10 +274,16 @@ public struct ClipboardFeature: Sendable {
         if !copy.frontApps.isDisjoint(with: ignored) || copy.source.map({ ignored.contains($0.bundleID) }) == true {
           return .none
         }
+        // The copy holds the whole text, which memory needs again if the item turns secret.
+        let wholeText: String? = if case let .text(text) = copy.content { text } else { nil }
         if let existing = state.items.first(where: { $0.fingerprint == copied.fingerprint }) {
-          // The copy holds the whole text, which memory needs again if the item turns secret.
-          let wholeText: String? = if case let .text(text) = copy.content { text } else { nil }
           return bump(existing.id, source: copy.source, isConcealed: copy.isConcealed, wholeText: wholeText, &state)
+        }
+        // Set aside by Clear or a shorter time and copied again within the 5 s: it comes back, as new. It keeps its one
+        // row, so a quit never leaves two, and a secret copy deletes that row at once.
+        if let setAside = state.pendingRemoval?.items.first(where: { $0.fingerprint == copied.fingerprint }) {
+          bringBack([setAside], &state)
+          return bump(setAside.id, source: copy.source, isConcealed: copy.isConcealed, wholeText: wholeText, &state)
         }
         var item = ClipboardItem(
           id: uuid(),
@@ -763,6 +769,21 @@ public struct ClipboardFeature: Sendable {
       await send(.undoExpired)
     }
     .cancellable(id: CancelID.undo, cancelInFlight: true)
+  }
+
+  /// Puts items set aside back where they belong in the history and takes them out of the pending removal; a Clear
+  /// with nothing left to bring back is over. One item goes in by a binary search, as a copy must not cost a sort.
+  private func bringBack(_ items: [ClipboardItem], _ state: inout State) {
+    let ids = Set(items.map(\.id))
+    state.pendingRemoval?.items.removeAll { ids.contains($0.id) }
+    if items.count == 1, let item = items.first {
+      state.items.insert(item, at: state.items.index(forNew: item))
+    } else if !items.isEmpty {
+      state.items = IdentifiedArray(uniqueElements: (state.items.elements + items).sorted(by: Self.displayOrder))
+    }
+    if let pending = state.pendingRemoval, pending.items.isEmpty, pending.reason == .cleared {
+      state.pendingRemoval = nil
+    }
   }
 
   /// The removal Undo could take back is final: its items' rows and image folders go. Its timer, if still running,

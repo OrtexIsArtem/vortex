@@ -276,12 +276,15 @@ extension ClipboardFeatureTests {
   }
 
   @Test
-  func anItemCopiedAgainDuringTheUndoTimeStaysNewAndTheOldOneGoes() async throws {
+  func anItemCopiedAgainDuringTheUndoTimeComesBackAsNewAndUndoBringsTheRest() async throws {
     let store = try await agedStore()
     await store.send(.clearTapped)
     copy(.text("10 days"))
     await store.receive(\.copied)
+    // The same item, with its row, now the newest.
     let copiedAgain = try #require(store.state.items.first)
+    #expect(copiedAgain.id == uuid(101))
+    #expect(copiedAgain.copiedAt == now.value)
     await store.send(.undoTapped)
     #expect(store.state.items.map(\.content) == [.text("10 days"), .text("1 day"), .image(fileName: "Image.png")])
     #expect(store.state.items.first?.id == copiedAgain.id)
@@ -320,6 +323,47 @@ extension ClipboardFeatureTests {
     await relaunched.receive(\.loaded)
     #expect(relaunched.state.items.count == 3)
     await relaunched.send(.stop)
+  }
+
+  /// What the next launch shows after Vortex quits now.
+  func relaunched() async -> IdentifiedArrayOf<ClipboardItem> {
+    let store = makeStore()
+    store.exhaustivity = .off
+    store.state.$settings.withLock { $0.historyLifetime = .year }
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await store.send(.stop)
+    return store.state.items
+  }
+
+  @Test
+  func aSecretCopiedWhileItsItemIsSetAsideTakesItsRowAtOnce() async throws {
+    let store = try await agedStore()
+    await store.send(.clearTapped)
+    // Within the 5 s, the text cleared is copied from a password manager.
+    copy(.text("10 days"), from: Self.passwords, concealed: true)
+    await store.receive(\.copied)
+    await store.receive(\.written)
+    #expect(try savedTexts().contains("10 days") == false)
+    // Undo never brings back a plain copy of the secret.
+    await store.send(.undoTapped)
+    #expect(store.state.items.filter { $0.content == .text("10 days") }.map(\.isConcealed) == [true])
+    await store.send(.stop)
+    await store.finish()
+    #expect(await relaunched().contains { $0.content == .text("10 days") } == false)
+  }
+
+  @Test
+  func anItemSetAsideAndCopiedAgainIsBackOnceEvenIfVortexQuits() async throws {
+    let store = try await agedStore()
+    await store.send(.clearTapped)
+    copy(.text("10 days"))
+    await store.receive(\.copied)
+    await store.receive(\.written)
+    #expect(store.state.items.map(\.content) == [.text("10 days")])
+    // Vortex quits within the 5 s.
+    await store.send(.stop)
+    #expect(await relaunched().filter { $0.content == .text("10 days") }.count == 1)
   }
 
   // MARK: - Settings
