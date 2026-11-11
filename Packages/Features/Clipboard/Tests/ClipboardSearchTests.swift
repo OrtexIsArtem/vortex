@@ -159,6 +159,31 @@ extension ClipboardFeatureTests {
     await store.send(.stop)
   }
 
+  @Test
+  func aHistoryKeptInMemoryUpdatesItsResultsOnCopiesPinsAndDeletes() async throws {
+    try await database.write { db in
+      try db.execute(sql: "CREATE TABLE clipboard_item (id TEXT PRIMARY KEY)")
+    }
+    let store = makeStore()
+    store.exhaustivity = .off
+    await store.send(.start)
+    await store.receive(\.loadFailed)
+    copy(.text("session one"))
+    await store.receive(\.copied)
+    #expect(await search("session", store) == [.text("session one")])
+    copy(.text("session two"))
+    await store.receive(\.copied)
+    await store.receive(\.searched)
+    #expect(store.state.shownItems.map(\.content) == [.text("session two"), .text("session one")])
+    await store.send(.pinTapped(uuid(0)))
+    await store.receive(\.searched)
+    #expect(store.state.shownItems.map(\.content) == [.text("session one"), .text("session two")])
+    await store.send(.deleteTapped(uuid(1)))
+    await store.receive(\.searched)
+    #expect(store.state.searchResults == [uuid(0)])
+    await store.send(.stop)
+  }
+
   // MARK: - Files on screen
 
   @Test

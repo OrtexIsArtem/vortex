@@ -70,6 +70,8 @@ public struct ClipboardFeature: Sendable {
     var query = ""
     /// What the search found, pinned first, newest first; nil while nothing is searched.
     var searchResults: [ClipboardItem.ID]?
+    /// The history kept in memory only changed: no `.written` will come, so the search runs again after this action.
+    var searchIsBehind = false
     /// Items whose files were checked since the tab was last shown.
     var checkedFiles: Set<ClipboardItem.ID> = []
     /// Items whose files are gone.
@@ -519,7 +521,9 @@ public struct ClipboardFeature: Sendable {
     }
     // Whatever an action queued goes to the database once the batch being written is in, so writes keep their order.
     Reduce { state, _ in
-      writeQueued(&state)
+      guard state.searchIsBehind else { return writeQueued(&state) }
+      state.searchIsBehind = false
+      return .merge(writeQueued(&state), searchAgain(state))
     }
   }
 
@@ -864,10 +868,10 @@ public struct ClipboardFeature: Sendable {
     guard !items.isEmpty else { return .none }
     forget(Set(items.map(\.id)), &state)
     let folders = items.compactMap { $0.imageURL?.deletingLastPathComponent() }
-    guard state.isLoaded, state.savesToDisk else { return removeFolders(folders) }
     // A secret has no row.
     save([.delete(items.filter { !$0.isConcealed }.map(\.id), folders: folders)], &state)
-    return .none
+    // No write removes the folders of a history kept in memory only: they go now.
+    return state.isLoaded && state.savesToDisk ? .none : removeFolders(folders)
   }
 
   /// Deletes image folders now: images that never had a row.
@@ -881,9 +885,14 @@ public struct ClipboardFeature: Sendable {
   }
 
   /// Queues changes for the database, in the order they are made (`writeQueued` writes them). Never before the saved
-  /// history has been read, and never in a session that keeps the history in memory only.
+  /// history has been read, and never in a session that keeps the history in memory only: there a search is run again
+  /// instead, as no `.written` comes to do it.
   private func save(_ writes: [HistoryWrite], _ state: inout State) {
-    guard state.isLoaded, state.savesToDisk, !writes.isEmpty else { return }
+    guard state.isLoaded, !writes.isEmpty else { return }
+    guard state.savesToDisk else {
+      state.searchIsBehind = true
+      return
+    }
     state.queuedWrites += writes
   }
 
