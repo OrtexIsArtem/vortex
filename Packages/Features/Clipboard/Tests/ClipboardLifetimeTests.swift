@@ -133,9 +133,15 @@ extension ClipboardFeatureTests {
     #expect(store.state.items.map(\.content) == [.text("new")])
     await store.receive(\.written)
     #expect(try savedHistory().map(\.content) == [.text("new")])
-    // Stopped, nothing more is checked.
+    // Stopped, nothing more is checked: "new" grows old, and still nothing removes it.
     await store.send(.stop)
+    now.withValue { $0 += 40 * Self.day }
     await clock.advance(by: ClipboardFeature.checkInterval * 3)
+    await store.finish()
+    // Whatever arrived since is applied to the state the store shows.
+    await store.skipReceivedActions(strict: false)
+    #expect(store.state.items.map(\.content) == [.text("new")])
+    #expect(try savedHistory().map(\.content) == [.text("new")])
   }
 
   @Test
@@ -282,8 +288,16 @@ extension ClipboardFeatureTests {
     #expect(store.state.items == before)
 
     await store.send(.clearTapped)
-    // Not even the window closing stops the time.
-    await clock.advance(by: ClipboardFeature.undoTime)
+    // The window closes and opens again half-way: closing sends the reducer nothing, opening sends what the tab and
+    // the settings section send (`.task(id: isWindowOpen)`). The removal still waits, and still ends at 5 s.
+    await clock.advance(by: .seconds(2))
+    await store.send(.tabShown)
+    await store.send(.settingsShown)
+    #expect(store.state.pendingRemoval?.reason == .cleared)
+    #expect(try rowCount() == 3)
+    await clock.advance(by: .seconds(2))
+    #expect(store.state.pendingRemoval != nil)
+    await clock.advance(by: .seconds(1))
     await store.receive(\.undoExpired)
     await store.send(.stop)
     await store.finish()

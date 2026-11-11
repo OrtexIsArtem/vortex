@@ -43,6 +43,7 @@ struct ClipboardFeatureTests {
         writes.withValue { $0.append(Write(content: content, isConcealed: isConcealed, source: source)) }
       }
       $0.appsClient.running = { [] }
+      $0.permissionsClient.refresh = {}
       $0.fileClient.write = { [savedFiles] _, url in savedFiles.withValue { $0.append(url) } }
       $0.fileClient.read = { _ in Data([1, 2, 3]) }
       $0.fileClient.contents = { _ in [] }

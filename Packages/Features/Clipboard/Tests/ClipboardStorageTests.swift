@@ -225,6 +225,40 @@ extension ClipboardFeatureTests {
   }
 
   @Test
+  func aLongTextStaysWholeOnDiskThroughPinUnpinCopyAgainAndUndo() async throws {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.text(Self.longText))
+    await store.receive(\.copied)
+    await store.receive(\.written)
+    let id = try #require(store.state.items.first?.id)
+    #expect(store.state.items[id: id]?.isTruncated == true)
+    await store.send(.pinTapped(id))
+    await store.receive(\.written)
+    await store.send(.pinTapped(id))
+    await store.receive(\.written)
+    await store.send(.itemTapped(id))
+    await store.receive(\.copiedAgain)
+    await store.receive(\.written)
+    await store.send(.clearTapped)
+    await store.send(.undoTapped)
+    // Copied again from another app: the app's line of the search text changes, the rest stays.
+    copy(.text(Self.longText), from: Self.safari)
+    await store.receive(\.copied)
+    await store.receive(\.written)
+    await finishCopiedMark(store)
+    await store.send(.stop)
+    await store.finish()
+    #expect(store.state.items[id: id]?.content == .text(Self.longTextStart))
+    let saved = try #require(try row(id))
+    #expect(try await database.read { db in try ClipboardItem.wholeText(of: id, db) } == Self.longText)
+    #expect(saved["preview"] as String? == Self.longTextStart)
+    #expect(saved["searchText"] as String? == "safari\n" + Self.longText)
+    #expect(saved["byteSize"] as Int? == Self.longText.utf8.count)
+  }
+
+  @Test
   func aReadThatEndsLateNeverReplacesTheWholeTextOfTheCardUnderThePointer() async throws {
     let store = makeStore()
     store.exhaustivity = .off
