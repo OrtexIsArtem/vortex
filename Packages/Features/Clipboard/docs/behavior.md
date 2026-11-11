@@ -32,6 +32,7 @@
 - Hovering a card shows Pin and Delete; right click has Copy, Pin, Show in Finder (files) and Delete.
 - Clear shows while there is an unpinned item and no search; the Undo toast sits under the grid.
 - Files that are gone are marked "Not found", checked when the tab is shown for the newest 100 file items and for any other card as it comes on screen; such cards can't be copied or dragged.
+- A card brought back by Undo, or by being copied again, keeps its "Not found" mark.
 - Revealed secrets hide again every time the tab is shown.
 
 ## Search

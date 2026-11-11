@@ -39,6 +39,8 @@ public struct ClipboardFeature: Sendable {
 
     var items: [ClipboardItem]
     var reason: Reason
+    /// Those of them marked "Not found": the mark comes back with them.
+    var unavailable: Set<ClipboardItem.ID> = []
   }
 
   @ObservableState
@@ -415,17 +417,11 @@ public struct ClipboardFeature: Sendable {
 
       case .undoTapped:
         guard let pending = state.pendingRemoval else { return .none }
-        state.pendingRemoval = nil
         if case let .lifetime(previous) = pending.reason {
           state.$settings.withLock { $0.historyLifetime = previous }
         }
-        // Copied again meanwhile, an item came back as a new one: that one stays, the one set aside goes for good.
-        let present = Set(state.items.map(\.fingerprint))
-        let setAside = pending.items.filter { state.items[id: $0.id] == nil }
-        let back = setAside.filter { !present.contains($0.fingerprint) }
-        let copiedAgain = setAside.filter { present.contains($0.fingerprint) }
-        state.items = IdentifiedArray(uniqueElements: (state.items.elements + back).sorted(by: Self.displayOrder))
-        return .merge(.cancel(id: CancelID.undo), remove(copiedAgain, &state))
+        putBack(&state)
+        return .cancel(id: CancelID.undo)
 
       case .undoExpired:
         return settlePendingRemoval(&state)
@@ -761,8 +757,9 @@ public struct ClipboardFeature: Sendable {
   ) -> Effect<Action> {
     let removed = state.items.filter { ids.contains($0.id) }
     state.items.removeAll { ids.contains($0.id) }
+    let marks = state.unavailable.intersection(ids)
     forget(ids, &state)
-    state.pendingRemoval = PendingRemoval(items: removed.elements, reason: reason)
+    state.pendingRemoval = PendingRemoval(items: removed.elements, reason: reason, unavailable: marks)
     // The window closing doesn't stop it.
     return .run { send in
       try await clock.sleep(for: Self.undoTime)
@@ -771,10 +768,15 @@ public struct ClipboardFeature: Sendable {
     .cancellable(id: CancelID.undo, cancelInFlight: true)
   }
 
-  /// Puts items set aside back where they belong in the history and takes them out of the pending removal; a Clear
-  /// with nothing left to bring back is over. One item goes in by a binary search, as a copy must not cost a sort.
+  /// Puts items set aside back where they belong in the history, with their "Not found" marks, and takes them out of
+  /// the pending removal; a Clear with nothing left to bring back is over. One item goes in by a binary search, as a
+  /// copy must not cost a sort.
   private func bringBack(_ items: [ClipboardItem], _ state: inout State) {
     let ids = Set(items.map(\.id))
+    if let marks = state.pendingRemoval?.unavailable.intersection(ids) {
+      state.unavailable.formUnion(marks)
+      state.pendingRemoval?.unavailable.subtract(marks)
+    }
     state.pendingRemoval?.items.removeAll { ids.contains($0.id) }
     if items.count == 1, let item = items.first {
       state.items.insert(item, at: state.items.index(forNew: item))
@@ -784,6 +786,14 @@ public struct ClipboardFeature: Sendable {
     if let pending = state.pendingRemoval, pending.items.isEmpty, pending.reason == .cleared {
       state.pendingRemoval = nil
     }
+  }
+
+  /// Undoes the pending removal: what it set aside comes back. (An item copied again meanwhile is already back, see
+  /// `.copied`.)
+  private func putBack(_ state: inout State) {
+    guard let pending = state.pendingRemoval else { return }
+    bringBack(pending.items.filter { state.items[id: $0.id] == nil }, &state)
+    state.pendingRemoval = nil
   }
 
   /// The removal Undo could take back is final: its items' rows and image folders go. Its timer, if still running,

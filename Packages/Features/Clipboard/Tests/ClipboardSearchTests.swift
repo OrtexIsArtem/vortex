@@ -203,6 +203,31 @@ extension ClipboardFeatureTests {
   }
 }
 
+extension ClipboardFeatureTests {
+  @Test
+  func undoGivesAFileItemItsNotFoundMarkBack() async throws {
+    let gone = URL(fileURLWithPath: "/tmp/gone.zip")
+    missingFiles.setValue([gone])
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.files([gone]))
+    await store.receive(\.copied)
+    await store.send(.tabShown)
+    await store.receive(\.filesChecked)
+    #expect(store.state.unavailable == [uuid(0)])
+    await store.send(.clearTapped)
+    await store.send(.undoTapped)
+    #expect(store.state.unavailable == [uuid(0)])
+    // Its card comes on screen again: it still can't be copied.
+    await store.send(.cardAppeared(uuid(0)))
+    await store.send(.itemTapped(uuid(0)))
+    await store.send(.stop)
+    await store.finish()
+    #expect(written.value.isEmpty)
+  }
+}
+
 extension ClipboardItem.Content {
   var isImageForTest: Bool {
     if case .image = self { true } else { false }
