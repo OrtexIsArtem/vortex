@@ -20,7 +20,7 @@ public struct ClipboardView: View {
     VStack(alignment: .leading, spacing: 0) {
       header
         .frame(height: VortexMetrics.headerHeight)
-      if store.searchResults != nil, items.isEmpty {
+      if store.isSearching, store.searchResults != nil, items.isEmpty {
         Text("Nothing found", bundle: .module)
           .font(.system(size: 12.5))
           .foregroundStyle(VortexColor.tertiaryText)
@@ -94,7 +94,7 @@ public struct ClipboardView: View {
     let tools = HStack(spacing: 6) {
       SearchField(query: $store.query.sending(\.queryChanged), isFocused: $isSearchFocused)
       // Clear would clear what the search hides too.
-      if store.query.isEmpty, store.items.contains(where: { !$0.isPinned }) {
+      if !store.isSearching, store.items.contains(where: { !$0.isPinned }) {
         Button {
           store.send(.clearTapped, animation: .snappy(duration: 0.22))
         } label: {

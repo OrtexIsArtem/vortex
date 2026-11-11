@@ -132,6 +132,26 @@ extension ClipboardFeatureTests {
   }
 
   @Test
+  func aQueryWithNoWordsIsNoSearch() async throws {
+    let store = try await searchableStore()
+    await store.send(.queryChanged("   "))
+    // No search is shown: Clear shows, "Nothing found" doesn't, the cards are the whole history.
+    #expect(store.state.isSearching == false)
+    #expect(store.state.searchResults == nil)
+    #expect(store.state.shownItems.count == 5)
+    // And none runs.
+    await clock.advance(by: ClipboardFeature.searchDelay)
+    await store.skipReceivedActions(strict: false)
+    #expect(store.state.searchResults == nil)
+    await store.send(.queryChanged(" notes "))
+    #expect(store.state.isSearching)
+    await clock.advance(by: ClipboardFeature.searchDelay)
+    await store.receive(\.searched)
+    #expect(store.state.shownItems.map(\.content) == [.text("Release notes for 0.1.3")])
+    await store.send(.stop)
+  }
+
+  @Test
   func theSearchEmptiesWhenTheTabShows() async throws {
     let store = try await searchableStore()
     _ = await search("release", store)

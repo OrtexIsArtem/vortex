@@ -48,4 +48,5 @@ How long items stay, Clear and Undo, and search. The choice of time is in settin
 - A copy, a pin or a removal while a search is shown updates the results, also when the history is kept in memory only.
 - Found cards click, drag, pin and delete as any.
 - The tab's Clear hides while a search is shown.
+- A query with no words (only spaces) is no search: Clear shows, "Nothing found" doesn't, and the cards are the whole history.
 - The search empties itself each time the tab is shown.

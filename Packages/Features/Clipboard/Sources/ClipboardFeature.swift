@@ -94,10 +94,16 @@ public struct ClipboardFeature: Sendable {
       (items.count, items.reduce(0) { $0 + $1.storedBytes })
     }
 
+    /// A search is shown: the query has a word. The one test for it, whether the search runs, Clear hides or "Nothing
+    /// found" may show; a query of spaces only is no search.
+    var isSearching: Bool {
+      !ClipboardFeature.searchWords(query).isEmpty
+    }
+
     /// What the tab shows: the history, or what the search found in it, in the same order. Never a secret: it has no
     /// row to be found by, and one that turned secret after the search is left out here too.
     var shownItems: [ClipboardItem] {
-      guard let searchResults else { return items.elements }
+      guard isSearching, let searchResults else { return items.elements }
       return searchResults.compactMap { items[id: $0] }.filter { !$0.isConcealed }
     }
   }
@@ -482,14 +488,14 @@ public struct ClipboardFeature: Sendable {
 
       case let .queryChanged(query):
         state.query = query
-        guard !Self.searchWords(query).isEmpty else {
+        guard state.isSearching else {
           state.searchResults = nil
           return .cancel(id: CancelID.search)
         }
         return search(state, after: Self.searchDelay)
 
       case let .searched(ids):
-        guard !Self.searchWords(state.query).isEmpty else { return .none }
+        guard state.isSearching else { return .none }
         state.searchResults = ids
         return .none
 
@@ -708,7 +714,7 @@ public struct ClipboardFeature: Sendable {
 
   /// The history changed while a search is shown: its results again, at once.
   private func searchAgain(_ state: State) -> Effect<Action> {
-    Self.searchWords(state.query).isEmpty ? .none : search(state)
+    state.isSearching ? search(state) : .none
   }
 
   /// Checks whether the files of these items are still there, each once per showing of the tab; missing ones are
