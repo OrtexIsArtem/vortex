@@ -62,6 +62,8 @@ public struct ClipboardFeature: Sendable {
     var waitsToRetry = false
     /// The whole text of the long item the pointer was last over, so it drags out in full.
     var wholeText: WholeText?
+    /// The long item the pointer came over last: a read of any other's whole text, ending late, is left unused.
+    var hoveredLongText: ClipboardItem.ID?
     /// Clear or a shorter lifetime, while Undo can take it back.
     var pendingRemoval: PendingRemoval?
     /// What the search field holds.
@@ -256,7 +258,10 @@ public struct ClipboardFeature: Sendable {
         return .none
 
       case let .itemHovered(id):
-        guard state.items[id: id]?.isTruncated == true, state.wholeText?.id != id else { return .none }
+        guard state.items[id: id]?.isTruncated == true else { return .none }
+        state.hoveredLongText = id
+        // Back over the card whose text is read: a read still running for another card goes unused.
+        guard state.wholeText?.id != id else { return .cancel(id: CancelID.wholeText) }
         return .run { send in
           let text = try await database.read { db in try ClipboardItem.wholeText(of: id, db) }
           await send(.wholeTextRead(id, text))
@@ -266,7 +271,7 @@ public struct ClipboardFeature: Sendable {
         .cancellable(id: CancelID.wholeText, cancelInFlight: true)
 
       case let .wholeTextRead(id, text):
-        guard state.items[id: id]?.isTruncated == true else { return .none }
+        guard id == state.hoveredLongText, state.items[id: id]?.isTruncated == true else { return .none }
         state.wholeText = WholeText(id: id, text: text)
         return .none
 

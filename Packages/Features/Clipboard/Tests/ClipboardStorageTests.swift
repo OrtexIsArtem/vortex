@@ -225,6 +225,30 @@ extension ClipboardFeatureTests {
   }
 
   @Test
+  func aReadThatEndsLateNeverReplacesTheWholeTextOfTheCardUnderThePointer() async throws {
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    let other = "b" + Self.longText
+    copy(.text(Self.longText))
+    await store.receive(\.copied)
+    await store.receive(\.written)
+    copy(.text(other))
+    await store.receive(\.copied)
+    await store.receive(\.written)
+    let (y, x) = (store.state.items[0], store.state.items[1])
+    await store.send(.itemHovered(x.id))
+    await store.receive(\.wholeTextRead)
+    // The pointer goes over Y, whose read starts, and back to X before it ends.
+    await store.send(.itemHovered(y.id))
+    await store.send(.itemHovered(x.id))
+    await store.send(.wholeTextRead(y.id, other))
+    #expect(store.state.wholeText?.id == x.id)
+    #expect(x.dragItems(isRevealed: false, wholeText: store.state.wholeText?.text) == [.text(Self.longText)])
+    await store.send(.stop)
+  }
+
+  @Test
   func aLongTextLoadsWithItsStartOnlyAndItsWholeTextUnread() async throws {
     let long = item(Self.longText, id: 5, copiedAt: now.value)
     try saveRows([long])
