@@ -20,7 +20,7 @@ public struct ClipboardView: View {
         Spacer()
         if store.items.contains(where: { !$0.isPinned }) {
           Button {
-            store.send(.clearTapped)
+            store.send(.clearTapped, animation: .snappy(duration: 0.22))
           } label: {
             Text("Clear", bundle: .module)
           }
@@ -59,7 +59,15 @@ public struct ClipboardView: View {
         }
         .scrollIndicators(.never)
       }
+      // Under the grid rather than over it, as in Tasks: laid over a scroll view, a toast doesn't get the click.
+      if let pending = store.pendingRemoval {
+        UndoToast(reason: pending.reason) { store.send(.undoTapped, animation: .snappy(duration: 0.22)) }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+      }
     }
+    .animation(.snappy(duration: 0.22), value: store.pendingRemoval != nil)
     .task(id: isWindowOpen) {
       if isWindowOpen { store.send(.tabShown) }
     }

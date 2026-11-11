@@ -2,9 +2,9 @@
 
 | What | Where | How long |
 | --- | --- | --- |
-| The history | table `clipboard_item` in DataFolder/vortex.sqlite | Until the item drops out of the last ten, is deleted or cleared |
+| The history | table `clipboard_item` in DataFolder/vortex.sqlite | Until the item is older than Keep history, past the 10,000-item or 1 GB backstop, deleted, or cleared (5 s later) |
 | Copied images | DataFolder/Clipboard/<item id>/Image <date> at <time>.png, its words in the app's language | Deleted with their item |
-| Ignored apps | DataFolder/clipboard.json | Until changed |
+| Ignored apps, Keep history | DataFolder/clipboard.json | Until changed |
 
 - DataFolder is ~/Library/Application Support/Vortex.
 - `clipboard_item` columns: id, content (JSON: text, link, image file name or file URLs), source (JSON: bundle id and name), copiedAt, isPinned, isConcealed, fingerprint (SHA-256 of the content).
@@ -17,6 +17,7 @@
 - Writes reach the database in the order the changes were made, one batch at a time: an insert followed at once by a delete of the same item leaves no row.
 - Rows written by a newer Vortex are never changed or deleted: every write names its rows by id, and a row the load can't read (or a preview on anything but a text) is skipped.
 - A saved text longer than 4,096 bytes is kept in memory by its preview; its whole text is read from the database when it is copied again, and for a drag when the pointer comes over its card or row.
+- Removal by age or by the backstops deletes the rows at once; Clear and a shorter Keep history delete them after the 5 s of Undo, so rows stay if Vortex quits within them.
 - Nothing is written before the saved history has been read.
 - Image folders without a row are deleted at start, unless the database is only in memory because its file didn't open. If the history can't be read, the session keeps it in memory only.
 - An image folder goes once its row is gone.

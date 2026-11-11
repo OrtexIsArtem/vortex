@@ -46,6 +46,15 @@ public struct ClipboardItem: Identifiable, Equatable, Sendable {
     return Self.imagesFolder.appending(path: id.uuidString).appending(path: fileName)
   }
 
+  var isImage: Bool {
+    if case .image = content { true } else { false }
+  }
+
+  /// What the item takes on disk: a secret, kept in memory only, takes nothing.
+  var storedBytes: Int {
+    isConcealed ? 0 : byteSize
+  }
+
   /// Files the item depends on: the image file, or the referenced files.
   var fileURLs: [URL] {
     switch content {

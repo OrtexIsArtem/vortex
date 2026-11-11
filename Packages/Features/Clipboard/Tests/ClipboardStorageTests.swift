@@ -95,12 +95,12 @@ extension ClipboardFeatureTests {
     #expect(store.state.items.first?.isTruncated == true)
   }
 
-  @Test(arguments: [10, 10_000])
-  func aCopyChangesOneRowWhateverTheHistorySize(historySize: Int) async throws {
-    // Pinned items, which any number of stay; the ten kept count unpinned ones only.
+  @Test(arguments: [(10, false), (10_000, false), (10, true), (10_000, true)])
+  func aCopyChangesOneRowWhateverTheHistorySize(historySize: Int, pinned: Bool) async throws {
+    // Copied over the last hours; pinned items don't count toward the 10,000.
     let first = now.value
     try saveRows((0..<historySize).map { index in
-      item("pinned \(index)", id: 100_000 + index, copiedAt: first - Double(index), isPinned: true)
+      item("item \(index)", id: 100_000 + index, copiedAt: first - Double(index), isPinned: pinned)
     })
     let store = makeStore()
     store.exhaustivity = .off
@@ -118,17 +118,22 @@ extension ClipboardFeatureTests {
     await store.receive(\.written)
     let beforeBump = try changes()
     // Copied again: it moves up.
-    copy(.text("pinned \(historySize / 2)"))
+    copy(.text("item \(historySize / 2)"))
     await store.receive(\.copied)
     await store.receive(\.written)
     let afterBump = try changes()
     await store.send(.pinTapped(uuid(0)))
     await store.receive(\.written)
     let afterPin = try changes()
-    #expect(beforeBump - beforeInsert == 1)
+    // The 10,001st unpinned item pushes the oldest out: its row goes in the same batch.
+    #expect(beforeBump - beforeInsert == (!pinned && historySize == ClipboardFeature.maxItems ? 2 : 1))
     #expect(afterBump - beforeBump == 1)
     #expect(afterPin - afterBump == 1)
-    print("history of \(historySize): rows changed by an insert \(beforeBump - beforeInsert), a copy again \(afterBump - beforeBump), a pin \(afterPin - afterBump); loaded in \(loaded)")
+    print("""
+      history of \(historySize) \(pinned ? "pinned" : "unpinned") items: rows changed by a new copy \
+      \(beforeBump - beforeInsert), a copy again \(afterBump - beforeBump), a pin \(afterPin - afterBump); \
+      loaded in \(loaded)
+      """)
     await store.send(.stop)
   }
 
@@ -339,21 +344,27 @@ extension ClipboardFeatureTests {
       try database.read { db in try Row.fetchAll(db, sql: "SELECT * FROM clipboard_item WHERE id LIKE '%F_' ORDER BY id") }
     }
     let before = try futureRows()
+    // An item past the lifetime goes at launch.
+    try saveRows([item("old", id: 99, copiedAt: now.value - 40 * 86_400)])
     let store = makeStore()
     store.exhaustivity = .off
-    await start(store)
+    await store.send(.start)
+    await store.receive(\.loaded)
     #expect(store.state.items.isEmpty)
-    for index in 0..<12 {
+    for index in 0..<4 {
       copy(.text("item \(index)"))
       await store.receive(\.copied)
     }
-    await store.send(.pinTapped(uuid(11)))
-    await store.send(.deleteTapped(uuid(10)))
+    await store.send(.pinTapped(uuid(3)))
+    await store.send(.deleteTapped(uuid(2)))
     await store.send(.clearTapped)
+    await clock.advance(by: ClipboardFeature.undoTime)
+    await store.receive(\.undoExpired)
+    await store.send(.lifetimeChanged(.week))
     await store.send(.stop)
     await store.finish()
     #expect(try futureRows() == before)
-    #expect(try savedHistory().map(\.content) == [.text("item 11")])
+    #expect(try savedHistory().map(\.content) == [.text("item 3")])
   }
 
   // MARK: - Columns

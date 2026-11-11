@@ -5,7 +5,16 @@
 - Text that is a single http or https address becomes a link; text with anything around it stays text.
 - Files win over the icon and name Finder copies with them; an image copied in a browser stays an image.
 - Copying something already in the history moves that item to the top instead of adding it again.
-- Ten items are kept; the oldest unpinned one goes when an eleventh arrives. Pinned items are not counted.
+
+## Keeping
+- An unpinned item goes once its last copy is older than Keep history (7, 30, 90 or 365 days; Forever never by age); copying it again, from any app or by clicking it, makes it new.
+- Past 10,000 unpinned items the oldest go; past 1 GB of unpinned items (image files plus text) the oldest images go first, then, with none left, the oldest of any kind.
+- Pinned items never go by time, count or size, and don't count toward either limit; a secret counts as an item that takes 0 bytes.
+- Removal by time happens at launch, after each copy, when the tab shows and every hour while the feature is on.
+- A shorter Keep history removes the older items at once and shows "Older items removed · Undo" for 5 s; Undo brings them and the previous choice back. Nothing older: nothing removed, no Undo.
+- Clear, in the tab or in Settings, removes every unpinned item at once and shows "History cleared · Undo" for 5 s; Undo brings them back.
+- Rows and image files of what Clear or a shorter time removed go only after the 5 s; if Vortex quits within them, the items are back at the next launch.
+- A new Clear or another Keep history within the 5 s makes the earlier removal final first. A copy within them is recorded as usual; one of the items removed copied again stays as the new item, and Undo drops its old one.
 - Copies made while an ignored app was in front (since the previous check) are not recorded; what was recorded before stays.
 - Copies apps mark as transient or auto-generated (nspasteboard.org, text expanders) are not recorded; what Vortex copies itself is not recorded again.
 - Copies marked secret (password managers) are shown as •••• until the eye is clicked, kept in memory only and gone when Vortex quits; secret images are not recorded.
@@ -20,7 +29,7 @@
 - A text over 4,096 bytes is held by its start: copied again, it goes whole; it drags only once the pointer has come over its card or row, which reads its whole text, and then drags whole.
 - A hidden secret doesn't drag; once the eye shows it, it does.
 - Hovering a card shows Pin and Delete; right click has Copy, Pin, Show in Finder (files) and Delete.
-- Clear removes everything except pinned items.
+- Clear shows while there is an unpinned item; the Undo toast sits under the grid.
 - When the tab is shown, files that are gone are marked "Not found"; such cards can't be copied or dragged.
 - Revealed secrets hide again every time the tab is shown.
 

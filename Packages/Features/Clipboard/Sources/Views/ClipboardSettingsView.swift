@@ -3,13 +3,60 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The clipboard's section in Settings › Features: apps whose copies are not kept.
+/// The clipboard's section in Settings › Features: how long the history is kept, its size with Clear, and apps whose
+/// copies are not kept.
 struct ClipboardSettingsView: View {
   let store: StoreOf<ClipboardFeature>
   @Environment(\.isWindowOpen) private var isWindowOpen
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
+      SettingsRow(
+        title: Text("Keep history", bundle: .module),
+        caption: Text(
+          "Pinned items stay. The history holds at most 10,000 items and 1 GB; past that the oldest pictures go first.",
+          bundle: .module
+        )
+      ) {
+        Picker(selection: Binding(get: { store.settings.historyLifetime }, set: { store.send(.lifetimeChanged($0)) })) {
+          ForEach(HistoryLifetime.allCases, id: \.self) { lifetime in
+            lifetime.title.tag(lifetime)
+          }
+        } label: {
+          Text("Keep history", bundle: .module)
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .fixedSize()
+      }
+
+      let size = store.historySize
+      if size.items > 0 {
+        SettingsRow(title: Text("History", bundle: .module)) {
+          HStack(spacing: 10) {
+            (Text("\(size.items) items", bundle: .module) + Text(verbatim: " · ") + Text(Int64(size.bytes), format: .byteCount(style: .file)))
+              .font(.system(size: 12).monospacedDigit())
+              .foregroundStyle(VortexColor.secondaryText)
+            if store.items.contains(where: { !$0.isPinned }) {
+              Button {
+                store.send(.clearTapped, animation: .snappy(duration: 0.22))
+              } label: {
+                Text("Clear", bundle: .module)
+              }
+              .buttonStyle(.quietCapsule)
+              .help(Text("Removes everything except pinned items", bundle: .module))
+            }
+          }
+        }
+      }
+
+      if let pending = store.pendingRemoval {
+        UndoToast(reason: pending.reason) { store.send(.undoTapped, animation: .snappy(duration: 0.22)) }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .transition(.opacity)
+      }
+
       SettingsRow(
         title: Text("Ignored apps", bundle: .module),
         caption: Text("Nothing copied in these apps is kept. Passwords marked secret are shown hidden and kept only until Vortex quits.", bundle: .module)
@@ -60,8 +107,21 @@ struct ClipboardSettingsView: View {
         restart: { store.send(.restartTapped) }
       )
     }
+    .animation(.snappy(duration: 0.22), value: store.pendingRemoval != nil)
     .task(id: isWindowOpen) {
       if isWindowOpen { store.send(.settingsShown) }
+    }
+  }
+}
+
+extension HistoryLifetime {
+  var title: Text {
+    switch self {
+    case .week: Text("A week", bundle: .module)
+    case .month: Text("A month", bundle: .module)
+    case .threeMonths: Text("3 months", bundle: .module)
+    case .year: Text("A year", bundle: .module)
+    case .forever: Text("Forever", bundle: .module)
     }
   }
 }

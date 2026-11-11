@@ -20,6 +20,8 @@ struct ClipboardPermissionTests {
     let store = TestStore(initialState: ClipboardFeature.State()) {
       ClipboardFeature()
     } withDependencies: {
+      // The hourly check waits on it; it never moves here.
+      $0.continuousClock = TestClock()
       $0.database = VortexDatabase.inMemory()
       $0.date = .constant(Date(timeIntervalSinceReferenceDate: 800_000_000))
       $0.uuid = .incrementing

@@ -5,16 +5,36 @@ import os
 import VortexCore
 import VortexPlatform
 
-/// History of what the user copies: the last ten items plus pinned ones, saved across launches.
+/// History of what the user copies, kept for the time the user chooses (a month by default) with backstops on count
+/// and size, plus pinned ones, saved across launches.
 @Reducer
 public struct ClipboardFeature: Sendable {
-  /// Unpinned items kept; pinned ones come on top of these.
-  static let historyLimit = 10
+  /// Unpinned items kept at most, whatever their age; pinned ones come on top of these.
+  static let maxItems = 10_000
+  /// What unpinned items may take on disk, image files plus text; past it the oldest images go first.
+  static let maxBytes = 1_000_000_000
+  /// How long Clear or a shorter lifetime can be taken back.
+  static let undoTime: Duration = .seconds(5)
+  /// How often the history is checked against its lifetime while the feature is on.
+  static let checkInterval: Duration = .seconds(3_600)
 
   /// The whole text of a long item, whose start alone is in memory, read for a drag.
   struct WholeText: Equatable {
     var id: ClipboardItem.ID
     var text: String
+  }
+
+  /// Items taken out of the history that Undo can still put back, for `undoTime`: their rows and image files stay
+  /// until then.
+  struct PendingRemoval: Equatable {
+    enum Reason: Equatable {
+      case cleared
+      /// A shorter lifetime was chosen; Undo brings the previous one back too.
+      case lifetime(previous: HistoryLifetime)
+    }
+
+    var items: [ClipboardItem]
+    var reason: Reason
   }
 
   @ObservableState
@@ -30,6 +50,8 @@ public struct ClipboardFeature: Sendable {
     var isWriting = false
     /// The whole text of the long item the pointer was last over, so it drags out in full.
     var wholeText: WholeText?
+    /// Clear or a shorter lifetime, while Undo can take it back.
+    var pendingRemoval: PendingRemoval?
     /// Items whose files are gone.
     var unavailable: Set<ClipboardItem.ID> = []
     /// Concealed items the user is looking at; hidden again whenever the window opens.
@@ -44,6 +66,11 @@ public struct ClipboardFeature: Sendable {
     @SharedReader(.permissionStatuses) var permissionStatuses
 
     public init() {}
+
+    /// What the History row shows: every item, pinned ones too, and what they take on disk (a secret takes nothing).
+    var historySize: (items: Int, bytes: Int) {
+      (items.count, items.reduce(0) { $0 + $1.storedBytes })
+    }
   }
 
   public enum Action: Equatable, Sendable {
@@ -67,7 +94,14 @@ public struct ClipboardFeature: Sendable {
     case copiedAgain(ClipboardItem.ID)
     case pinTapped(ClipboardItem.ID)
     case deleteTapped(ClipboardItem.ID)
+    /// Clear, in the tab or in Settings: every unpinned item, with a moment to take it back.
     case clearTapped
+    /// Keep history in Settings; a shorter time removes the older items, with a moment to take it back.
+    case lifetimeChanged(HistoryLifetime)
+    case undoTapped
+    case undoExpired
+    /// An hour has passed: items older than the lifetime go.
+    case hourPassed
     case revealTapped(ClipboardItem.ID)
     case showInFinderTapped(ClipboardItem.ID)
     /// The tab became visible: the window opened on it, or the user switched to it.
@@ -103,6 +137,7 @@ public struct ClipboardFeature: Sendable {
     case watch
     case copiedMark
     case wholeText
+    case undo
   }
 
   public init() {}
@@ -140,7 +175,7 @@ public struct ClipboardFeature: Sendable {
       case let .loaded(items):
         state.items = items
         state.isLoaded = true
-        return watch(state)
+        return .merge(prune(&state), watch(state))
 
       case .loadFailed:
         state.isLoaded = true
@@ -151,9 +186,15 @@ public struct ClipboardFeature: Sendable {
         state.isWriting = false
         for (id, preview) in previews {
           // A text that turned secret meanwhile has its row deleted next: memory keeps it whole.
-          guard let item = state.items[id: id], !item.isConcealed, !item.isTruncated else { continue }
-          state.items[id: id]?.content = .text(preview)
-          state.items[id: id]?.isTruncated = true
+          if let item = state.items[id: id], !item.isConcealed, !item.isTruncated {
+            state.items[id: id]?.content = .text(preview)
+            state.items[id: id]?.isTruncated = true
+          }
+          // Or it was cleared meanwhile, and may come back.
+          if let index = state.pendingRemoval?.items.firstIndex(where: { $0.id == id && !$0.isConcealed }) {
+            state.pendingRemoval?.items[index].content = .text(preview)
+            state.pendingRemoval?.items[index].isTruncated = true
+          }
         }
         return .none
 
@@ -181,8 +222,7 @@ public struct ClipboardFeature: Sendable {
         if let existing = state.items.first(where: { $0.fingerprint == copied.fingerprint }) {
           // The copy holds the whole text, which memory needs again if the item turns secret.
           let wholeText: String? = if case let .text(text) = copy.content { text } else { nil }
-          bump(existing.id, source: copy.source, isConcealed: copy.isConcealed, wholeText: wholeText, &state)
-          return .none
+          return bump(existing.id, source: copy.source, isConcealed: copy.isConcealed, wholeText: wholeText, &state)
         }
         var item = ClipboardItem(
           id: uuid(),
@@ -218,8 +258,10 @@ public struct ClipboardFeature: Sendable {
       case let .imageSaved(item):
         // The same image may have been copied again while the file was written.
         if let existing = state.items.first(where: { $0.fingerprint == item.fingerprint }) {
-          bump(existing.id, source: item.source, isConcealed: item.isConcealed, &state)
-          return removeFolders([item.imageURL?.deletingLastPathComponent()].compactMap { $0 })
+          return .merge(
+            bump(existing.id, source: item.source, isConcealed: item.isConcealed, &state),
+            removeFolders([item.imageURL?.deletingLastPathComponent()].compactMap { $0 })
+          )
         }
         return insert(item, &state)
 
@@ -274,12 +316,14 @@ public struct ClipboardFeature: Sendable {
       case let .copiedAgain(id):
         guard let item = state.items[id: id] else { return .none }
         state.justCopied = id
-        bump(id, source: item.source, isConcealed: item.isConcealed, &state)
-        return .run { send in
-          try await clock.sleep(for: .seconds(1.2))
-          await send(.copiedMarkElapsed)
-        }
-        .cancellable(id: CancelID.copiedMark, cancelInFlight: true)
+        return .merge(
+          bump(id, source: item.source, isConcealed: item.isConcealed, &state),
+          .run { send in
+            try await clock.sleep(for: .seconds(1.2))
+            await send(.copiedMarkElapsed)
+          }
+          .cancellable(id: CancelID.copiedMark, cancelInFlight: true)
+        )
 
       case let .pinTapped(id):
         guard var item = state.items.remove(id: id) else { return .none }
@@ -293,9 +337,39 @@ public struct ClipboardFeature: Sendable {
         return remove([item], &state)
 
       case .clearTapped:
-        let cleared = state.items.filter { !$0.isPinned }
-        state.items.removeAll { !$0.isPinned }
-        return remove(Array(cleared), &state)
+        // A removal waiting for Undo is final once another one is made.
+        let settling = settlePendingRemoval(&state)
+        let cleared = Set(state.items.lazy.filter { !$0.isPinned }.map(\.id))
+        guard !cleared.isEmpty else { return settling }
+        return .merge(settling, setAside(cleared, reason: .cleared, &state))
+
+      case let .lifetimeChanged(lifetime):
+        let previous = state.settings.historyLifetime
+        guard lifetime != previous else { return .none }
+        let settling = settlePendingRemoval(&state)
+        state.$settings.withLock { $0.historyLifetime = lifetime }
+        let removed = Set(Self.removals(state.items, lifetime: lifetime, now: now))
+        guard !removed.isEmpty else { return settling }
+        return .merge(settling, setAside(removed, reason: .lifetime(previous: previous), &state))
+
+      case .undoTapped:
+        guard let pending = state.pendingRemoval else { return .none }
+        state.pendingRemoval = nil
+        if case let .lifetime(previous) = pending.reason {
+          state.$settings.withLock { $0.historyLifetime = previous }
+        }
+        // Copied again meanwhile, an item came back as a new one: that one stays, the one set aside goes for good.
+        let present = Set(state.items.map(\.fingerprint))
+        let back = pending.items.filter { !present.contains($0.fingerprint) }
+        let copiedAgain = pending.items.filter { present.contains($0.fingerprint) }
+        state.items = IdentifiedArray(uniqueElements: (state.items.elements + back).sorted(by: Self.displayOrder))
+        return .merge(.cancel(id: CancelID.undo), remove(copiedAgain, &state))
+
+      case .undoExpired:
+        return settlePendingRemoval(&state)
+
+      case .hourPassed:
+        return prune(&state)
 
       case let .revealTapped(id):
         if state.revealed.remove(id) == nil {
@@ -309,9 +383,10 @@ public struct ClipboardFeature: Sendable {
 
       case .tabShown:
         state.revealed = []
+        let pruning = prune(&state)
         let checks = state.items.filter { !$0.fileURLs.isEmpty }.map { ($0.id, $0.fileURLs) }
-        guard !checks.isEmpty else { return .none }
-        return .run { [files] send in
+        guard !checks.isEmpty else { return pruning }
+        return .merge(pruning, .run { [files] send in
           var missing = Set<ClipboardItem.ID>()
           for (id, urls) in checks {
             for url in urls where await files.info(url) == nil {
@@ -320,7 +395,7 @@ public struct ClipboardFeature: Sendable {
             }
           }
           await send(.unavailableChecked(missing))
-        }
+        })
 
       case let .unavailableChecked(missing):
         state.unavailable = missing
@@ -450,8 +525,20 @@ public struct ClipboardFeature: Sendable {
 
   /// Records copies, except while Paste from Other Apps reads `notGranted`: macOS then enforces pasteboard
   /// privacy and Vortex isn't allowed, so reading a copy could make macOS alert. The pasteboard isn't read at all then,
-  /// nothing is recorded, and watching starts again when the status changes.
+  /// nothing is recorded, and watching starts again when the status changes. Every hour, old items go.
   private func watch(_ state: State) -> Effect<Action> {
+    .merge(
+      watchPasteboard(state),
+      .run { send in
+        for await _ in clock.timer(interval: Self.checkInterval) {
+          await send(.hourPassed)
+        }
+      }
+    )
+    .cancellable(id: CancelID.watch, cancelInFlight: true)
+  }
+
+  private func watchPasteboard(_ state: State) -> Effect<Action> {
     .run { [statuses = state.$permissionStatuses] send in
       let (changes, continuation) = AsyncStream.makeStream(of: Bool.self, bufferingPolicy: .bufferingNewest(1))
       let subscription = statuses.publisher
@@ -473,7 +560,6 @@ public struct ClipboardFeature: Sendable {
         }
       }
     }
-    .cancellable(id: CancelID.watch, cancelInFlight: true)
   }
 
   /// The pasteboard may be read: Paste from Other Apps isn't off (granted, not needed, or not read yet).
@@ -481,17 +567,79 @@ public struct ClipboardFeature: Sendable {
     statuses[.pasteboard] != .notGranted
   }
 
-  /// Adds a new item where it belongs, on top of the unpinned ones, and drops the oldest unpinned ones beyond the
-  /// limit. No sort: the history stays in `displayOrder` as it is.
+  /// What goes from the history: unpinned items last copied longer ago than `lifetime`; then the oldest unpinned ones
+  /// beyond `maxItems`; then, while unpinned items take more than `maxBytes`, the oldest unpinned images, and once no
+  /// image is left the oldest unpinned items of any kind. Pinned items never go. `items` is in `displayOrder`, so the
+  /// unpinned ones come after the pinned, newest first.
+  static func removals(_ items: IdentifiedArrayOf<ClipboardItem>, lifetime: HistoryLifetime, now: Date) -> [ClipboardItem.ID] {
+    let unpinned = items.firstIndex { !$0.isPinned } ?? items.endIndex
+    var end = items.endIndex
+    if let days = lifetime.days {
+      let oldest = now.addingTimeInterval(-Double(days) * 86_400)
+      while end > unpinned, items[end - 1].copiedAt < oldest {
+        end -= 1
+      }
+    }
+    end = min(end, unpinned + maxItems)
+    let removed = items[end...].map(\.id)
+    var bytes = items[unpinned..<end].reduce(0) { $0 + $1.storedBytes }
+    guard bytes > maxBytes else { return removed }
+    var overSize = Set<Int>()
+    for imagesOnly in [true, false] {
+      for index in (unpinned..<end).reversed() where bytes > maxBytes && !overSize.contains(index) {
+        // Images first; then any kind, though an item that takes nothing (a secret) frees nothing.
+        guard imagesOnly ? items[index].isImage : items[index].storedBytes > 0 else { continue }
+        overSize.insert(index)
+        bytes -= items[index].storedBytes
+      }
+    }
+    return removed + overSize.map { items[$0].id }
+  }
+
+  /// Removes for good what the lifetime and the backstops say must go (`removals`): from memory, then rows and image
+  /// folders. After the load, after each copy, when the tab shows and every hour.
+  private func prune(_ state: inout State) -> Effect<Action> {
+    let ids = Set(Self.removals(state.items, lifetime: state.settings.historyLifetime, now: now))
+    guard !ids.isEmpty else { return .none }
+    let removed = state.items.filter { ids.contains($0.id) }
+    state.items.removeAll { ids.contains($0.id) }
+    return remove(removed.elements, &state)
+  }
+
+  /// Takes items out of the history for `undoTime`, as Clear or a shorter lifetime does: Undo puts them back, and their
+  /// rows and image files stay until the time is over (`settlePendingRemoval`), so they are back at the next launch if
+  /// Vortex quits meanwhile.
+  private func setAside(
+    _ ids: Set<ClipboardItem.ID>,
+    reason: PendingRemoval.Reason,
+    _ state: inout State
+  ) -> Effect<Action> {
+    let removed = state.items.filter { ids.contains($0.id) }
+    state.items.removeAll { ids.contains($0.id) }
+    forget(ids, &state)
+    state.pendingRemoval = PendingRemoval(items: removed.elements, reason: reason)
+    // The window closing doesn't stop it.
+    return .run { send in
+      try await clock.sleep(for: Self.undoTime)
+      await send(.undoExpired)
+    }
+    .cancellable(id: CancelID.undo, cancelInFlight: true)
+  }
+
+  /// The removal Undo could take back is final: its items' rows and image folders go. Its timer, if still running,
+  /// later finds nothing to settle; a new removal's timer replaces it.
+  private func settlePendingRemoval(_ state: inout State) -> Effect<Action> {
+    guard let pending = state.pendingRemoval else { return .none }
+    state.pendingRemoval = nil
+    return remove(pending.items, &state)
+  }
+
+  /// Adds a new item where it belongs, on top of the unpinned ones, then removes what has to go. No sort: the history
+  /// stays in `displayOrder` as it is.
   private func insert(_ item: ClipboardItem, _ state: inout State) -> Effect<Action> {
     state.items.insert(item, at: state.items.index(forNew: item))
     save(item.isConcealed ? [] : [.insert(item)], &state)
-    let pinned = state.items.prefix { $0.isPinned }.count
-    let dropped = Array(state.items.dropFirst(pinned + Self.historyLimit))
-    for item in dropped {
-      state.items.remove(id: item.id)
-    }
-    return remove(dropped, &state)
+    return prune(&state)
   }
 
   /// Moves an item copied again to the top of its group. A secret stays one: copied again from an app that does not
@@ -503,8 +651,8 @@ public struct ClipboardFeature: Sendable {
     isConcealed: Bool,
     wholeText: String? = nil,
     _ state: inout State
-  ) {
-    guard var item = state.items.remove(id: id) else { return }
+  ) -> Effect<Action> {
+    guard var item = state.items.remove(id: id) else { return .none }
     let turnsSecret = isConcealed && !item.isConcealed
     item.copiedAt = now
     item.source = source
@@ -522,18 +670,24 @@ public struct ClipboardFeature: Sendable {
     } else if !item.isConcealed {
       save([.update(item)], &state)
     }
+    // Time has passed since the last check.
+    return prune(&state)
   }
 
-  /// Items that left the history: forgets them, deletes their rows, then their image folders; referenced files are
-  /// never touched. In a session that keeps the history in memory only, just the image folders go.
-  private func remove(_ items: [ClipboardItem], _ state: inout State) -> Effect<Action> {
-    guard !items.isEmpty else { return .none }
-    let ids = Set(items.map(\.id))
+  /// What is kept about items that are no longer shown.
+  private func forget(_ ids: Set<ClipboardItem.ID>, _ state: inout State) {
     state.unavailable.subtract(ids)
     state.revealed.subtract(ids)
     if let wholeText = state.wholeText, ids.contains(wholeText.id) {
       state.wholeText = nil
     }
+  }
+
+  /// Items that left the history for good: forgets them, deletes their rows, then their image folders; referenced files
+  /// are never touched. In a session that keeps the history in memory only, just the image folders go.
+  private func remove(_ items: [ClipboardItem], _ state: inout State) -> Effect<Action> {
+    guard !items.isEmpty else { return .none }
+    forget(Set(items.map(\.id)), &state)
     let folders = items.compactMap { $0.imageURL?.deletingLastPathComponent() }
     guard state.isLoaded, state.savesToDisk else { return removeFolders(folders) }
     // A secret has no row.

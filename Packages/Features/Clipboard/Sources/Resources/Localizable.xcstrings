@@ -1,6 +1,103 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld items" : {
+      "comment" : "The History row: how many items the clipboard history holds, pinned ones too",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld item"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld items"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld елемент"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld елементи"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld елементів"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld елемента"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "3 months" : {
+      "comment" : "Keep history: one of the times",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 місяці"
+          }
+        }
+      }
+    },
+    "A month" : {
+      "comment" : "Keep history: one of the times, the default",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Місяць"
+          }
+        }
+      }
+    },
+    "A week" : {
+      "comment" : "Keep history: one of the times",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тиждень"
+          }
+        }
+      }
+    },
+    "A year" : {
+      "comment" : "Keep history: one of the times",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рік"
+          }
+        }
+      }
+    },
     "Add app" : {
       "localizations" : {
         "uk" : {
@@ -95,6 +192,17 @@
         }
       }
     },
+    "Forever" : {
+      "comment" : "Keep history: never removed by age (macOS Messages says «Завжди»)",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завжди"
+          }
+        }
+      }
+    },
     "Hidden item" : {
       "comment" : "VoiceOver label of a password kept hidden",
       "localizations" : {
@@ -113,6 +221,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сховати"
+          }
+        }
+      }
+    },
+    "History" : {
+      "comment" : "Settings row: how many items the clipboard history holds and their size",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Історія"
+          }
+        }
+      }
+    },
+    "History cleared" : {
+      "comment" : "Undo toast after Clear",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Історію очищено"
           }
         }
       }
@@ -144,6 +274,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зображення %@ о %@"
+          }
+        }
+      }
+    },
+    "Keep history" : {
+      "comment" : "Settings › Features › Clipboard: how long copies stay in the history",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зберігати історію"
           }
         }
       }
@@ -190,6 +331,17 @@
         }
       }
     },
+    "Older items removed" : {
+      "comment" : "Undo toast after a shorter Keep history",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старіші елементи вилучено"
+          }
+        }
+      }
+    },
     "Other…" : {
       "comment" : "Picks an app in /Applications to ignore",
       "localizations" : {
@@ -207,6 +359,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закріпити"
+          }
+        }
+      }
+    },
+    "Pinned items stay. The history holds at most 10,000 items and 1 GB; past that the oldest pictures go first." : {
+      "comment" : "Caption of Keep history",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закріплені елементи лишаються. Історія вміщує щонайбільше 10 000 елементів і 1 ГБ; понад це першими зникають найстаріші зображення."
           }
         }
       }
@@ -258,6 +421,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показати у Finder"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "comment" : "Takes Clear or a shorter Keep history back",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відмінити"
           }
         }
       }

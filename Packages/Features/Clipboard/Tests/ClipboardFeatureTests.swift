@@ -142,7 +142,7 @@ struct ClipboardFeatureTests {
   }
 
   @Test
-  func keepsTenItemsPlusPinnedOnes() async {
+  func copiesWithinTheLifetimeAreAllKeptPinnedOnesFirst() async {
     let store = makeStore()
     store.exhaustivity = .off
     await start(store)
@@ -153,9 +153,9 @@ struct ClipboardFeatureTests {
       copy(.text("item \(index)"))
       await store.receive(\.copied)
     }
-    #expect(store.state.items.count == 11)
+    #expect(store.state.items.count == 12)
     #expect(store.state.items.first?.content == .text("pinned"))
-    #expect(store.state.items.last?.content == .text("item 2"))
+    #expect(store.state.items.last?.content == .text("item 1"))
     await store.send(.stop)
   }
 
@@ -280,6 +280,8 @@ struct ClipboardFeatureTests {
     await store.send(.pinTapped(uuid(0)))
     await store.send(.clearTapped)
     #expect(store.state.items.map(\.content) == [.text("keep")])
+    await clock.advance(by: ClipboardFeature.undoTime)
+    await store.receive(\.undoExpired)
     await store.send(.stop)
   }
 
@@ -385,6 +387,8 @@ struct ClipboardFeatureTests {
     store.exhaustivity = .off
     await store.send(.copied(ClipboardCopy(PasteboardCopy(content: .text("copied too early")))))
     await store.send(.clearTapped)
+    await clock.advance(by: ClipboardFeature.undoTime)
+    await store.receive(\.undoExpired)
     await store.finish()
     #expect(try savedHistory() == [pinned])
   }
