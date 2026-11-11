@@ -11,14 +11,25 @@ public struct ClipboardFeature: Sendable {
   /// Unpinned items kept; pinned ones come on top of these.
   static let historyLimit = 10
 
+  /// The whole text of a long item, whose start alone is in memory, read for a drag.
+  struct WholeText: Equatable {
+    var id: ClipboardItem.ID
+    var text: String
+  }
+
   @ObservableState
   public struct State: Equatable {
-    /// Pinned items first, then the others; newest first in both groups.
+    /// Pinned items first, then the others; newest first in both groups (`displayOrder`).
     public var items: IdentifiedArrayOf<ClipboardItem> = []
     var isLoaded = false
     /// False when the saved history could not be read: this session keeps it in memory only, so nothing on disk is
     /// overwritten.
     var savesToDisk = true
+    /// Changes waiting to be written, in the order they were made; they go once the batch being written is in.
+    var queuedWrites: [HistoryWrite] = []
+    var isWriting = false
+    /// The whole text of the long item the pointer was last over, so it drags out in full.
+    var wholeText: WholeText?
     /// Items whose files are gone.
     var unavailable: Set<ClipboardItem.ID> = []
     /// Concealed items the user is looking at; hidden again whenever the window opens.
@@ -38,8 +49,14 @@ public struct ClipboardFeature: Sendable {
   public enum Action: Equatable, Sendable {
     case start
     case stop
-    case loaded([ClipboardItem])
+    /// The saved history, read and ordered off the main thread.
+    case loaded(IdentifiedArrayOf<ClipboardItem>)
     case loadFailed
+    /// A batch of writes is in the database. Memory keeps the long texts it inserted by their start from now on.
+    case written(previews: [ClipboardItem.ID: String])
+    /// The pointer came over a card or a Home row: a long text's whole text is read, so it can be dragged out.
+    case itemHovered(ClipboardItem.ID)
+    case wholeTextRead(ClipboardItem.ID, String)
     case copied(ClipboardCopy)
     /// Something dropped on the clipboard on Home: copied, as if the user had copied it.
     case dropped([DroppedItem])
@@ -84,8 +101,8 @@ public struct ClipboardFeature: Sendable {
   private enum CancelID {
     case load
     case watch
-    case save
     case copiedMark
+    case wholeText
   }
 
   public init() {}
@@ -98,9 +115,10 @@ public struct ClipboardFeature: Sendable {
         // `databaseIsOnDisk` is read in the effect: reading it opens the database, which stays off the main thread.
         return .run { [files] send in
           try await database.migrate(ClipboardItem.migrator)
-          let (items, savedIDs) = try await database.read { db in
+          var (items, savedIDs) = try await database.read { db in
             (try ClipboardItem.fetchAllReadable(db), try ClipboardItem.savedIDs(db))
           }
+          try await ClipboardItem.complete(&items, files: files, in: database)
           // Image folders whose rows are gone, after a crash or a failed save. Before watching starts,
           // so a new image is never taken for one of them. Not while the database is only in memory: its file didn't
           // open, and the pictures are then all that is left.
@@ -109,7 +127,7 @@ public struct ClipboardFeature: Sendable {
               await files.remove(folder)
             }
           }
-          await send(.loaded(items))
+          await send(.loaded(IdentifiedArray(items, uniquingIDsWith: { first, _ in first })))
         } catch: { error, send in
           logger.error("Loading the clipboard history failed: \(error, privacy: .public)")
           await send(.loadFailed)
@@ -120,8 +138,7 @@ public struct ClipboardFeature: Sendable {
         return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.watch))
 
       case let .loaded(items):
-        state.items = IdentifiedArray(items, uniquingIDsWith: { first, _ in first })
-        state.items.sort(by: Self.displayOrder)
+        state.items = items
         state.isLoaded = true
         return watch(state)
 
@@ -130,6 +147,31 @@ public struct ClipboardFeature: Sendable {
         state.savesToDisk = false
         return watch(state)
 
+      case let .written(previews):
+        state.isWriting = false
+        for (id, preview) in previews {
+          // A text that turned secret meanwhile has its row deleted next: memory keeps it whole.
+          guard let item = state.items[id: id], !item.isConcealed, !item.isTruncated else { continue }
+          state.items[id: id]?.content = .text(preview)
+          state.items[id: id]?.isTruncated = true
+        }
+        return .none
+
+      case let .itemHovered(id):
+        guard state.items[id: id]?.isTruncated == true, state.wholeText?.id != id else { return .none }
+        return .run { send in
+          let text = try await database.read { db in try ClipboardItem.wholeText(of: id, db) }
+          await send(.wholeTextRead(id, text))
+        } catch: { error, _ in
+          logger.error("Reading the whole text of an item failed: \(error, privacy: .public)")
+        }
+        .cancellable(id: CancelID.wholeText, cancelInFlight: true)
+
+      case let .wholeTextRead(id, text):
+        guard state.items[id: id]?.isTruncated == true else { return .none }
+        state.wholeText = WholeText(id: id, text: text)
+        return .none
+
       case let .copied(copied):
         let copy = copied.copy
         let ignored = Set(state.settings.ignoredApps.map(\.bundleID))
@@ -137,7 +179,10 @@ public struct ClipboardFeature: Sendable {
           return .none
         }
         if let existing = state.items.first(where: { $0.fingerprint == copied.fingerprint }) {
-          return bump(existing.id, source: copy.source, isConcealed: copy.isConcealed, &state)
+          // The copy holds the whole text, which memory needs again if the item turns secret.
+          let wholeText: String? = if case let .text(text) = copy.content { text } else { nil }
+          bump(existing.id, source: copy.source, isConcealed: copy.isConcealed, wholeText: wholeText, &state)
+          return .none
         }
         var item = ClipboardItem(
           id: uuid(),
@@ -145,7 +190,8 @@ public struct ClipboardFeature: Sendable {
           source: copy.source,
           copiedAt: now,
           isConcealed: copy.isConcealed,
-          fingerprint: copied.fingerprint
+          fingerprint: copied.fingerprint,
+          byteSize: copied.byteSize
         )
         switch copy.content {
         case let .text(text):
@@ -172,15 +218,13 @@ public struct ClipboardFeature: Sendable {
       case let .imageSaved(item):
         // The same image may have been copied again while the file was written.
         if let existing = state.items.first(where: { $0.fingerprint == item.fingerprint }) {
-          return .merge(
-            removeFiles(of: [item]),
-            bump(existing.id, source: item.source, isConcealed: item.isConcealed, &state)
-          )
+          bump(existing.id, source: item.source, isConcealed: item.isConcealed, &state)
+          return removeFolders([item.imageURL?.deletingLastPathComponent()].compactMap { $0 })
         }
         return insert(item, &state)
 
       case let .dropped(items):
-        // Before the saved history is read, a drop would be saved over it: a save deletes the rows not in memory.
+        // Before the saved history is read there is nothing to add to: the load would replace it.
         guard state.isLoaded else { return .none }
         return .run { [files] send in
           guard let content = await Self.copiedContent(of: items, files: files) else { return }
@@ -204,10 +248,19 @@ public struct ClipboardFeature: Sendable {
 
       case let .itemTapped(id):
         guard let item = state.items[id: id], !state.unavailable.contains(id) else { return .none }
+        let wholeText = state.wholeText?.id == id ? state.wholeText?.text : nil
         return .run { [files] send in
           let content: PasteboardContent
           switch item.content {
-          case let .text(text): content = .text(text)
+          case let .text(text):
+            if !item.isTruncated {
+              content = .text(text)
+            } else if let wholeText {
+              content = .text(wholeText)
+            } else {
+              // Memory holds only the start of a long text: the whole of it is read here, off the main thread.
+              content = .text(try await database.read { db in try ClipboardItem.wholeText(of: id, db) })
+            }
           case let .link(url): content = .link(url)
           case let .files(urls): content = .files(urls)
           case .image: content = .image(try await files.read(item.imageURL!))
@@ -221,30 +274,28 @@ public struct ClipboardFeature: Sendable {
       case let .copiedAgain(id):
         guard let item = state.items[id: id] else { return .none }
         state.justCopied = id
-        return .merge(
-          .run { send in
-            try await clock.sleep(for: .seconds(1.2))
-            await send(.copiedMarkElapsed)
-          }
-          .cancellable(id: CancelID.copiedMark, cancelInFlight: true),
-          bump(id, source: item.source, isConcealed: item.isConcealed, &state)
-        )
+        bump(id, source: item.source, isConcealed: item.isConcealed, &state)
+        return .run { send in
+          try await clock.sleep(for: .seconds(1.2))
+          await send(.copiedMarkElapsed)
+        }
+        .cancellable(id: CancelID.copiedMark, cancelInFlight: true)
 
       case let .pinTapped(id):
-        state.items[id: id]?.isPinned.toggle()
-        state.items.sort(by: Self.displayOrder)
-        return save(state)
+        guard var item = state.items.remove(id: id) else { return .none }
+        item.isPinned.toggle()
+        state.items.insert(item, at: state.items.index(forNew: item))
+        save(item.isConcealed ? [] : [.update(item)], &state)
+        return .none
 
       case let .deleteTapped(id):
         guard let item = state.items.remove(id: id) else { return .none }
-        state.unavailable.remove(id)
-        state.revealed.remove(id)
-        return .merge(removeFiles(of: [item]), save(state))
+        return remove([item], &state)
 
       case .clearTapped:
         let cleared = state.items.filter { !$0.isPinned }
         state.items.removeAll { !$0.isPinned }
-        return .merge(removeFiles(of: Array(cleared)), save(state))
+        return remove(Array(cleared), &state)
 
       case let .revealTapped(id):
         if state.revealed.remove(id) == nil {
@@ -315,6 +366,10 @@ public struct ClipboardFeature: Sendable {
         state.$settings.withLock { $0.ignoredApps.removeAll { $0.bundleID == bundleID } }
         return .none
       }
+    }
+    // Whatever an action queued goes to the database once the batch being written is in, so writes keep their order.
+    Reduce { state, _ in
+      writeQueued(&state)
     }
   }
 
@@ -426,32 +481,68 @@ public struct ClipboardFeature: Sendable {
     statuses[.pasteboard] != .notGranted
   }
 
-  /// Adds a new item on top and drops the oldest unpinned ones beyond the limit.
+  /// Adds a new item where it belongs, on top of the unpinned ones, and drops the oldest unpinned ones beyond the
+  /// limit. No sort: the history stays in `displayOrder` as it is.
   private func insert(_ item: ClipboardItem, _ state: inout State) -> Effect<Action> {
-    state.items.append(item)
-    state.items.sort(by: Self.displayOrder)
-    let dropped = state.items.filter { !$0.isPinned }.dropFirst(Self.historyLimit)
+    state.items.insert(item, at: state.items.index(forNew: item))
+    save(item.isConcealed ? [] : [.insert(item)], &state)
+    let pinned = state.items.prefix { $0.isPinned }.count
+    let dropped = Array(state.items.dropFirst(pinned + Self.historyLimit))
     for item in dropped {
       state.items.remove(id: item.id)
-      state.unavailable.remove(item.id)
-      state.revealed.remove(item.id)
     }
-    return .merge(removeFiles(of: Array(dropped)), save(state))
+    return remove(dropped, &state)
   }
 
   /// Moves an item copied again to the top of its group. A secret stays one: copied again from an app that does not
-  /// mark it, such as an editor it was pasted into, it is still the content the first app marked.
-  private func bump(_ id: ClipboardItem.ID, source: AppInfo?, isConcealed: Bool, _ state: inout State) -> Effect<Action> {
-    state.items[id: id]?.copiedAt = now
-    state.items[id: id]?.source = source
-    if isConcealed { state.items[id: id]?.isConcealed = true }
-    state.items.sort(by: Self.displayOrder)
-    return save(state)
+  /// mark it, such as an editor it was pasted into, it is still the content the first app marked. An item that turns
+  /// secret loses its row at once, and memory keeps its whole text again (`wholeText`, from the copy).
+  private func bump(
+    _ id: ClipboardItem.ID,
+    source: AppInfo?,
+    isConcealed: Bool,
+    wholeText: String? = nil,
+    _ state: inout State
+  ) {
+    guard var item = state.items.remove(id: id) else { return }
+    let turnsSecret = isConcealed && !item.isConcealed
+    item.copiedAt = now
+    item.source = source
+    if turnsSecret {
+      item.isConcealed = true
+      if item.isTruncated, let wholeText {
+        item.content = .text(wholeText)
+        item.isTruncated = false
+      }
+    }
+    state.items.insert(item, at: state.items.index(forNew: item))
+    if turnsSecret {
+      // Its image file, if any, stays until the item goes.
+      save([.delete([id], folders: [])], &state)
+    } else if !item.isConcealed {
+      save([.update(item)], &state)
+    }
   }
 
-  /// Deletes the image files of items that are gone; referenced files are never touched.
-  private func removeFiles(of items: [ClipboardItem]) -> Effect<Action> {
+  /// Items that left the history: forgets them, deletes their rows, then their image folders; referenced files are
+  /// never touched. In a session that keeps the history in memory only, just the image folders go.
+  private func remove(_ items: [ClipboardItem], _ state: inout State) -> Effect<Action> {
+    guard !items.isEmpty else { return .none }
+    let ids = Set(items.map(\.id))
+    state.unavailable.subtract(ids)
+    state.revealed.subtract(ids)
+    if let wholeText = state.wholeText, ids.contains(wholeText.id) {
+      state.wholeText = nil
+    }
     let folders = items.compactMap { $0.imageURL?.deletingLastPathComponent() }
+    guard state.isLoaded, state.savesToDisk else { return removeFolders(folders) }
+    // A secret has no row.
+    save([.delete(items.filter { !$0.isConcealed }.map(\.id), folders: folders)], &state)
+    return .none
+  }
+
+  /// Deletes image folders now: images that never had a row.
+  private func removeFolders(_ folders: [URL]) -> Effect<Action> {
     guard !folders.isEmpty else { return .none }
     return .run { [files] _ in
       for folder in folders {
@@ -460,17 +551,52 @@ public struct ClipboardFeature: Sendable {
     }
   }
 
-  /// Writes the history, secrets left out; a newer save cancels an older one that has not finished. Never before the
-  /// saved history has been read: a save deletes the rows that are not in memory.
-  private func save(_ state: State) -> Effect<Action> {
-    guard state.isLoaded, state.savesToDisk else { return .none }
-    let items = state.items.filter { !$0.isConcealed }
-    return .run { _ in
-      try await database.write { db in try ClipboardItem.save(Array(items), in: db) }
-    } catch: { error, _ in
-      logger.error("Saving the clipboard history failed: \(error, privacy: .public)")
+  /// Queues changes for the database, in the order they are made (`writeQueued` writes them). Never before the saved
+  /// history has been read, and never in a session that keeps the history in memory only.
+  private func save(_ writes: [HistoryWrite], _ state: inout State) {
+    guard state.isLoaded, state.savesToDisk, !writes.isEmpty else { return }
+    state.queuedWrites += writes
+  }
+
+  /// Writes the queued changes as one batch, unless a batch is being written: its `.written` comes first, and then
+  /// this writes the rest. One batch at a time is what keeps the order: an insert followed by a delete of the same
+  /// item never leaves its row behind. Image folders go once their rows are gone.
+  private func writeQueued(_ state: inout State) -> Effect<Action> {
+    guard !state.isWriting, !state.queuedWrites.isEmpty else { return .none }
+    let batch = state.queuedWrites
+    state.queuedWrites = []
+    state.isWriting = true
+    return .run { [files] send in
+      var previews: [ClipboardItem.ID: String] = [:]
+      do {
+        let (written, folders) = try await database.write { db in HistoryWrite.apply(batch, db) }
+        previews = written
+        for folder in folders {
+          await files.remove(folder)
+        }
+      } catch {
+        logger.error("Saving the clipboard history failed: \(error, privacy: .public)")
+      }
+      await send(.written(previews: previews))
     }
-    .cancellable(id: CancelID.save, cancelInFlight: true)
+  }
+}
+
+extension IdentifiedArray where Element == ClipboardItem {
+  /// Where an item goes so the history stays in `displayOrder`: after every item that comes before it. A binary search,
+  /// as a copy must not cost a sort of the whole history.
+  func index(forNew item: ClipboardItem) -> Int {
+    var low = startIndex
+    var high = endIndex
+    while low < high {
+      let middle = (low + high) / 2
+      if ClipboardFeature.displayOrder(self[middle], item) {
+        low = middle + 1
+      } else {
+        high = middle
+      }
+    }
+    return low
   }
 }
 

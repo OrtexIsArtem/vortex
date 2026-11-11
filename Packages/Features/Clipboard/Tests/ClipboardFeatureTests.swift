@@ -79,6 +79,19 @@ struct ClipboardFeatureTests {
     try database.read(ClipboardItem.fetchAllReadable).sorted(by: ClipboardFeature.displayOrder)
   }
 
+  /// Saves rows as an earlier launch would have, through the writes the feature makes.
+  func saveRows(_ items: [ClipboardItem]) throws {
+    try ClipboardItem.migrator.migrate(database)
+    try database.write { db in _ = HistoryWrite.apply(items.map(HistoryWrite.insert), db) }
+  }
+
+  func item(_ text: String, id: Int, copiedAt: Date, isPinned: Bool = false) -> ClipboardItem {
+    ClipboardItem(
+      id: uuid(id), content: .text(text), source: Self.terminal, copiedAt: copiedAt, isPinned: isPinned,
+      fingerprint: ClipboardCopy.fingerprint(of: .text(text)), byteSize: text.utf8.count
+    )
+  }
+
   func uuid(_ value: Int) -> UUID {
     UUID(uuidString: "00000000-0000-0000-0000-\(String(format: "%012x", value))")!
   }
@@ -92,18 +105,21 @@ struct ClipboardFeatureTests {
 
     copy(.text("SELECT * FROM orders"))
     await store.receive(\.copied) {
-      $0.items = [ClipboardItem(id: uuid(0), content: .text("SELECT * FROM orders"), source: Self.terminal,
-                                copiedAt: now.value, fingerprint: ClipboardCopy.fingerprint(of: .text("SELECT * FROM orders")))]
+      $0.items = [item("SELECT * FROM orders", id: 0, copiedAt: now.value)]
+      $0.isWriting = true
     }
+    await store.receive(\.written) { $0.isWriting = false }
     let link = URL(string: "https://github.com/OrtexIsArtem/vortex")!
     copy(.link(link))
     await store.receive(\.copied) {
       $0.items.insert(
-        ClipboardItem(id: uuid(1), content: .link(link), source: Self.terminal,
-                      copiedAt: now.value, fingerprint: ClipboardCopy.fingerprint(of: .link(link))),
+        ClipboardItem(id: uuid(1), content: .link(link), source: Self.terminal, copiedAt: now.value,
+                      fingerprint: ClipboardCopy.fingerprint(of: .link(link)), byteSize: link.absoluteString.utf8.count),
         at: 0
       )
+      $0.isWriting = true
     }
+    await store.receive(\.written) { $0.isWriting = false }
     await store.send(.stop)
     await store.finish()
     #expect(try savedHistory() == store.state.items.elements)
@@ -345,13 +361,9 @@ struct ClipboardFeatureTests {
 
   @Test
   func aDropBeforeTheHistoryLoadsChangesNothing() async throws {
-    // A pinned item saved by an earlier launch; saving after the drop would delete it, as it is not in memory yet.
-    try ClipboardItem.migrator.migrate(database)
-    let pinned = ClipboardItem(
-      id: uuid(7), content: .text("pinned"), source: Self.terminal, copiedAt: now.value, isPinned: true,
-      fingerprint: ClipboardCopy.fingerprint(of: .text("pinned"))
-    )
-    try await database.write { db in try ClipboardItem.save([pinned], in: db) }
+    // A pinned item saved by an earlier launch.
+    let pinned = item("pinned", id: 7, copiedAt: now.value, isPinned: true)
+    try saveRows([pinned])
 
     // The store is not started, so its history is not loaded. The drop leaves no effect behind, nothing is received.
     let store = makeStore()
@@ -364,13 +376,9 @@ struct ClipboardFeatureTests {
 
   @Test
   func nothingIsSavedBeforeTheHistoryLoads() async throws {
-    // A pinned item saved by an earlier launch; a save before it is read would delete it, as it is not in memory yet.
-    try ClipboardItem.migrator.migrate(database)
-    let pinned = ClipboardItem(
-      id: uuid(7), content: .text("pinned"), source: Self.terminal, copiedAt: now.value, isPinned: true,
-      fingerprint: ClipboardCopy.fingerprint(of: .text("pinned"))
-    )
-    try await database.write { db in try ClipboardItem.save([pinned], in: db) }
+    // A pinned item saved by an earlier launch.
+    let pinned = item("pinned", id: 7, copiedAt: now.value, isPinned: true)
+    try saveRows([pinned])
 
     // The store is not started, so its history is not loaded; whatever changes it now is not written.
     let store = makeStore()

@@ -8,6 +8,8 @@ struct ClipboardCard: View {
   let isUnavailable: Bool
   let isRevealed: Bool
   let isJustCopied: Bool
+  /// The whole text of a long item, once read: without it a long text doesn't drag.
+  let wholeText: String?
   let now: Date
   let send: @MainActor (ClipboardFeature.Action) -> Void
   @State private var isHovered = false
@@ -33,9 +35,13 @@ struct ClipboardCard: View {
     .opacity(isUnavailable ? 0.45 : 1)
     .overlay {
       DragSourceArea(
-        items: { isUnavailable ? [] : item.dragItems(isRevealed: isRevealed) },
+        items: { isUnavailable ? [] : item.dragItems(isRevealed: isRevealed, wholeText: wholeText) },
         onClick: { _ in send(.itemTapped(item.id)) },
-        onHover: { isHovered = $0 }
+        onHover: { isHovered in
+          self.isHovered = isHovered
+          // A long text drags out whole: its whole text is read while the pointer is over it.
+          if isHovered, item.isTruncated { send(.itemHovered(item.id)) }
+        }
       )
     }
     .overlay(alignment: .topTrailing) { buttons }

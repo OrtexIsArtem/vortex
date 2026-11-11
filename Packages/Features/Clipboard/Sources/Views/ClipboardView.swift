@@ -44,6 +44,7 @@ public struct ClipboardView: View {
                   isUnavailable: store.unavailable.contains(item.id),
                   isRevealed: store.revealed.contains(item.id),
                   isJustCopied: store.justCopied == item.id,
+                  wholeText: store.wholeText?.id == item.id ? store.wholeText?.text : nil,
                   now: timeline.date
                 ) { action in
                   store.send(action, animation: .snappy(duration: 0.25))

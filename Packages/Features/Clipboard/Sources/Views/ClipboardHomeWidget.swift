@@ -30,7 +30,8 @@ struct ClipboardHomeWidget: View {
               ClipboardRow(
                 item: item,
                 isUnavailable: store.unavailable.contains(item.id),
-                isJustCopied: store.justCopied == item.id
+                isJustCopied: store.justCopied == item.id,
+                wholeText: store.wholeText?.id == item.id ? store.wholeText?.text : nil
               ) { store.send($0, animation: .snappy(duration: 0.25)) }
             }
           }
@@ -70,6 +71,8 @@ private struct ClipboardRow: View {
   let item: ClipboardItem
   let isUnavailable: Bool
   let isJustCopied: Bool
+  /// The whole text of a long item, once read: without it a long text doesn't drag.
+  let wholeText: String?
   let send: @MainActor (ClipboardFeature.Action) -> Void
 
   /// The column of the picture or the icon, as wide as a picture in every row, so all the text starts at one place.
@@ -92,8 +95,12 @@ private struct ClipboardRow: View {
     .overlay {
       DragSourceArea(
         // Home has no eye to show a secret, so a secret never drags from here.
-        items: { isUnavailable ? [] : item.dragItems(isRevealed: false) },
-        onClick: { _ in send(.itemTapped(item.id)) }
+        items: { isUnavailable ? [] : item.dragItems(isRevealed: false, wholeText: wholeText) },
+        onClick: { _ in send(.itemTapped(item.id)) },
+        // A long text drags out whole: its whole text is read while the pointer is over it.
+        onHover: { isHovered in
+          if isHovered, item.isTruncated { send(.itemHovered(item.id)) }
+        }
       )
     }
     .contextMenu {
