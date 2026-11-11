@@ -2,6 +2,7 @@
   import AppKit
   import ComposableArchitecture
   import GRDB
+  import SwiftUI
   import VortexCore
   import VortexPlatform
 
@@ -9,19 +10,27 @@
     private static var isRegistered = false
     /// The last `seed`: how many items it wrote and how long that took, for the state dump.
     private static var lastSeed: String?
+    /// The `clipboard-settings` window, made at its first snapshot.
+    private static var settingsWindow: NSWindow?
 
     /// QA mode's `clipboard` command:
     /// - `press=turnOn|restart` presses the Paste from Other Apps row in the settings;
     /// - `press=clear|undo` presses Clear or Undo, refused while it doesn't show (nothing unpinned, no Undo);
     /// - `keep=week|month|threeMonths|year|forever` chooses Keep history;
     /// - `search text=<query>` types the query (empty: no search);
+    /// - `card n=<1-based place among the cards shown> do=click|hover|unhover|pin|unpin|delete` acts on a card as the
+    ///   pointer does: `click` copies it again, `hover` reads a long text's whole text, `unhover` sends nothing (the card
+    ///   only hides its buttons), `pin` and `unpin` press the pin button that shows, `delete` its ×;
     /// - `seed count=<n> [images=<n>]` adds generated items spread over the last year, through the real writes, and
     ///   reads the history again; Keep history removes the older ones as usual, so choose `keep=forever` first.
-    /// The state section `clipboard` has the counts, the choice, the search and a pending Undo.
+    /// The state section `clipboard` has the counts, the choice, the search, a pending Undo and the whole text the
+    /// hover read holds (`wholeTextID`, `wholeTextBytes`). `snapshot window=clipboard-settings` draws the settings
+    /// section with the live store, whole, at the Settings window's width, off every display.
     static func registerQACommands() {
       guard QA.isActive, !isRegistered else { return }
       isRegistered = true
       QA.registerState(section: "clipboard") { QAState(store.state, lastSeed: lastSeed) }
+      QA.registerWindow(id: "clipboard-settings") { qaSettingsWindow() }
       QA.register(command: "clipboard") { arguments in
         let pressedRow = try QAPermissions.pressRow(
           arguments,
@@ -41,6 +50,10 @@
           store.send(.lifetimeChanged(lifetime))
         } else if arguments["search"] != nil {
           store.send(.queryChanged(arguments["text"] ?? ""))
+        } else if arguments["card"] != nil {
+          if let action = try cardAction(arguments, shown: store.shownItems) {
+            store.send(action)
+          }
         } else {
           switch arguments["press"] {
           case "clear":
@@ -50,10 +63,64 @@
             guard store.pendingRemoval != nil else { throw QAError("no Undo shows") }
             store.send(.undoTapped)
           default:
-            throw QAError("clipboard takes seed count= [images=], keep=, search text=, press=clear|undo|turnOn|restart")
+            throw QAError("""
+              clipboard takes seed count= [images=], keep=, search text=, card n= do=, press=clear|undo|turnOn|restart
+              """)
           }
         }
       }
+    }
+
+    /// What `card n= do=` sends: the action the card's views send for that pointer action, or nil when they send
+    /// none (`unhover`, `hover` on anything but a long text).
+    static func cardAction(_ arguments: [String: String], shown: [ClipboardItem]) throws -> ClipboardFeature.Action? {
+      guard let place = Int(arguments["n"] ?? ""), shown.indices.contains(place - 1) else {
+        throw QAError("card takes n=<1…\(shown.count)>, a place among the cards shown")
+      }
+      let item = shown[place - 1]
+      switch arguments["do"] {
+      case "click":
+        return .itemTapped(item.id)
+      case "hover":
+        // The card reads the whole text of a long one only (ClipboardCard's DragSourceArea).
+        return item.isTruncated ? .itemHovered(item.id) : nil
+      case "unhover":
+        return nil
+      case "pin":
+        guard !item.isPinned else { throw QAError("card \(place) is pinned: its button is Unpin") }
+        return .pinTapped(item.id)
+      case "unpin":
+        guard item.isPinned else { throw QAError("card \(place) isn't pinned: its button is Pin") }
+        return .pinTapped(item.id)
+      case "delete":
+        return .deleteTapped(item.id)
+      default:
+        throw QAError("card takes do=click|hover|unhover|pin|unpin|delete")
+      }
+    }
+
+    /// The settings section as Settings › Features shows it, with the live store, at the content width of the
+    /// Settings window and as tall as the section is now. Never on a display: off every one, and never ordered in.
+    private static func qaSettingsWindow() -> NSWindow {
+      let window = settingsWindow ?? {
+        // The window's width less the sidebar and the paddings of the settings' scroll view (SettingsView).
+        let width = VortexMetrics.windowSize.width - VortexMetrics.sidebarWidth - 10 - 18
+        let content = ClipboardSettingsView(store: store)
+          .frame(width: width)
+          .padding(.vertical, 6)
+          .font(.system(size: 13))
+          .foregroundStyle(VortexColor.primaryText)
+          .toggleStyle(.vortex)
+          .background(VortexColor.windowBackground)
+        let window = NSWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: content)
+        settingsWindow = window
+        return window
+      }()
+      let size = window.contentView?.fittingSize ?? .zero
+      window.setFrame(QA.offscreen(CGRect(origin: .zero, size: size)), display: false)
+      return window
     }
 
     /// Writes generated items as copies do (`HistoryWrite.insert`, 500 to a transaction, image files first), then
@@ -99,6 +166,9 @@
       /// Failed attempts in a row; while above 0 the queue waits to be written again.
       var failedWrites: Int
       var unavailable: Int
+      /// The item whose whole text the hover read holds, and its size in UTF-8.
+      var wholeTextID: String?
+      var wholeTextBytes: Int?
       var lastSeed: String?
 
       @MainActor
@@ -123,6 +193,8 @@
         queuedWrites = state.queuedWrites.count
         failedWrites = state.failedWrites
         unavailable = state.unavailable.count
+        wholeTextID = state.wholeText?.id.uuidString
+        wholeTextBytes = state.wholeText?.text.utf8.count
         self.lastSeed = lastSeed
       }
     }
