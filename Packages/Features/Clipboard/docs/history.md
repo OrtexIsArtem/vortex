@@ -32,6 +32,7 @@ How long items stay, Clear and Undo, and search. The choice of time is in settin
 - An item removed and copied again within the 5 s comes back as new, with its one row.
 - Copied again as a secret within the 5 s, it loses that row at once.
 - A card brought back by Undo, or by being copied again, keeps its "Not found" mark.
+- A file card brought back by a drop of its files loses the mark: the drop proves they exist.
 
 ## Search
 - The field sits right of the notch, the title left of it.

@@ -617,6 +617,32 @@ struct ClipboardFeatureTests {
     await store.send(.stop)
   }
 
+  @Test
+  func droppedFilesBringBackTheirClearedItemWithoutItsOldNotFoundMark() async {
+    let rebuilt = URL(fileURLWithPath: "/tmp/app-release.apk")
+    missingFiles.setValue([rebuilt])
+    let store = makeStore()
+    store.exhaustivity = .off
+    await start(store)
+    copy(.files([rebuilt]))
+    await store.receive(\.copied)
+    await store.send(.tabShown)
+    await store.receive(\.filesChecked) { $0.unavailable = [uuid(0)] }
+    await store.send(.clearTapped)
+
+    // Rebuilt and dragged here within the 5 s: it comes back, and the drop proves its files are there.
+    missingFiles.setValue([])
+    await store.send(.dropped([.file(rebuilt)]))
+    await store.receive(\.copied)
+    #expect(store.state.items.map(\.id) == [uuid(0)])
+    #expect(store.state.unavailable.isEmpty)
+    await store.send(.itemTapped(uuid(0)))
+    await store.receive(\.copiedAgain)
+    #expect(written.value == [.files([rebuilt]), .files([rebuilt])])
+    await finishCopiedMark(store)
+    await store.send(.stop)
+  }
+
   // MARK: - Saving
 
   @Test

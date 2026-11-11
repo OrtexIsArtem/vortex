@@ -350,6 +350,11 @@ public struct ClipboardFeature: Sendable {
           if case .files = existing.content { state.unavailable.remove(existing.id) }
           // The history already holds it: copying that item again keeps its marks, so a secret stays one.
           if !state.unavailable.contains(existing.id) { return .send(.itemTapped(existing.id)) }
+        } else if let setAside = state.pendingRemoval?.items.first(where: { $0.fingerprint == copied.fingerprint }),
+                  case .files = setAside.content {
+          // Set aside by Clear or a shorter time, it comes back with the copy below: without the mark, for the same
+          // reason.
+          state.pendingRemoval?.unavailable.remove(setAside.id)
         }
         let content = copied.copy.content
         return .run { send in
