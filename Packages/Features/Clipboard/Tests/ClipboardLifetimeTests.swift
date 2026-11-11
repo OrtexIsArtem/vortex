@@ -160,17 +160,16 @@ extension ClipboardFeatureTests {
 
   // MARK: - A shorter time, Clear, Undo
 
-  /// A history aged 1, 10 and 40 days, kept for a year.
-  func agedStore() async throws -> TestStoreOf<ClipboardFeature> {
+  /// A history aged 1, 10 and 40 days, kept for a year (or `lifetime`, which may remove some at launch).
+  func agedStore(_ lifetime: HistoryLifetime = .year) async throws -> TestStoreOf<ClipboardFeature> {
     // Ids the store's own never reach.
     let images = [image(id: 102, copiedAt: now.value - 40 * Self.day, bytes: 10)]
     try saveRows([item("1 day", id: 100, copiedAt: now.value - Self.day), item("10 days", id: 101, copiedAt: now.value - 10 * Self.day)] + images)
     let store = makeStore()
     store.exhaustivity = .off
-    store.state.$settings.withLock { $0.historyLifetime = .year }
+    store.state.$settings.withLock { $0.historyLifetime = lifetime }
     await store.send(.start)
     await store.receive(\.loaded)
-    #expect(store.state.items.count == 3)
     return store
   }
 
@@ -223,20 +222,52 @@ extension ClipboardFeatureTests {
   }
 
   @Test
-  func anotherChoiceWithinTheFiveSecondsSettlesTheRemovalFirst() async throws {
-    let store = try await agedStore()
-    await store.send(.lifetimeChanged(.month))
-    #expect(store.state.items.count == 2)
-    // Removes the 10-day item too; the 40-day one is gone for good.
+  func choosingThePreviousTimeAgainWithinTheFiveSecondsWorksAsUndo() async throws {
+    let store = try await agedStore(.month)
+    #expect(store.state.items.map(\.content) == [.text("1 day"), .text("10 days")])
     await store.send(.lifetimeChanged(.week))
-    #expect(store.state.pendingRemoval?.items.map(\.content) == [.text("10 days")])
-    #expect(store.state.pendingRemoval?.reason == .lifetime(previous: .month))
-    await store.send(.undoTapped)
+    #expect(store.state.items.map(\.content) == [.text("1 day")])
+    await store.send(.lifetimeChanged(.month))
     #expect(store.state.settings.historyLifetime == .month)
     #expect(store.state.items.map(\.content) == [.text("1 day"), .text("10 days")])
+    #expect(store.state.pendingRemoval == nil)
+    await clock.advance(by: ClipboardFeature.undoTime)
     await store.send(.stop)
     await store.finish()
     #expect(try savedHistory().map(\.content) == [.text("1 day"), .text("10 days")])
+  }
+
+  @Test
+  func anotherTimeWithinTheFiveSecondsUndoesTheFirstAndItsUndoGoesBackToTheChoiceBefore() async throws {
+    let store = try await agedStore()
+    #expect(store.state.items.count == 3)
+    await store.send(.lifetimeChanged(.month))
+    #expect(store.state.items.count == 2)
+    await store.send(.lifetimeChanged(.week))
+    #expect(store.state.items.map(\.content) == [.text("1 day")])
+    #expect(store.state.pendingRemoval?.reason == .lifetime(previous: .year))
+    await store.send(.undoTapped)
+    #expect(store.state.settings.historyLifetime == .year)
+    #expect(store.state.items.count == 3)
+    await store.send(.stop)
+    await store.finish()
+    #expect(try rowCount() == 3)
+    #expect(removedFiles.value.isEmpty)
+  }
+
+  @Test
+  func aTimeChosenWithinTheFiveSecondsOfAClearLetsTheClearStand() async throws {
+    let store = try await agedStore()
+    await store.send(.clearTapped)
+    await store.send(.lifetimeChanged(.week))
+    #expect(store.state.items.isEmpty)
+    #expect(store.state.pendingRemoval == nil)
+    await store.send(.undoTapped)
+    #expect(store.state.items.isEmpty)
+    #expect(store.state.settings.historyLifetime == .week)
+    await store.send(.stop)
+    await store.finish()
+    #expect(try rowCount() == 0)
   }
 
   @Test

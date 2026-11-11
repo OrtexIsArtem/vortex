@@ -414,11 +414,21 @@ public struct ClipboardFeature: Sendable {
         return .merge(settling, setAside(cleared, reason: .cleared, &state))
 
       case let .lifetimeChanged(lifetime):
-        let previous = state.settings.historyLifetime
+        var previous = state.settings.historyLifetime
         guard lifetime != previous else { return .none }
-        let settling = settlePendingRemoval(&state)
+        var settling = Effect<Action>.none
+        if case let .lifetime(before) = state.pendingRemoval?.reason {
+          // Within the 5 s of another time: that one is undone first, so the previous time again works as Undo, and
+          // a new removal's Undo goes back to the choice before the first.
+          putBack(&state)
+          previous = before
+        } else {
+          // A pending Clear stands.
+          settling = settlePendingRemoval(&state)
+        }
         state.$settings.withLock { $0.historyLifetime = lifetime }
         let removed = Set(Self.removals(state.items, lifetime: lifetime, now: now))
+        // Nothing removed: no Undo shows; the earlier timer, if any, then finds nothing to settle.
         guard !removed.isEmpty else { return settling }
         return .merge(settling, setAside(removed, reason: .lifetime(previous: previous), &state))
 

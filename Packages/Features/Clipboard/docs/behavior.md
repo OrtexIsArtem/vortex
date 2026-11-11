@@ -14,7 +14,9 @@
 - A shorter Keep history removes the older items at once and shows "Older items removed · Undo" for 5 s; Undo brings them and the previous choice back. Nothing older: nothing removed, no Undo.
 - Clear, in the tab or in Settings, removes every unpinned item at once and shows "History cleared · Undo" for 5 s; Undo brings them back.
 - Rows and image files of what Clear or a shorter time removed go only after the 5 s; if Vortex quits within them, the items are back at the next launch.
-- A new Clear or another Keep history within the 5 s makes the earlier removal final first.
+- Another Keep history within the 5 s of a shorter one first brings back what that one removed and goes back to the choice before it, then applies the new one.
+- So choosing the previous time again within the 5 s works as Undo, and a new removal's Undo goes back to the choice before the first change.
+- A new Clear within the 5 s makes the earlier removal final first; so does a time chosen within the 5 s of a Clear.
 - An item removed and copied again within the 5 s comes back as new, with its one row; copied as a secret, it loses that row at once.
 - Copies made while an ignored app was in front (since the previous check) are not recorded; what was recorded before stays.
 - Copies apps mark as transient or auto-generated (nspasteboard.org, text expanders) are not recorded; what Vortex copies itself is not recorded again.
