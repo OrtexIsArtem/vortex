@@ -63,7 +63,7 @@ private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
 }
 
 /// An image's data decoded for search: a longer side over `searchedPixels` scaled down to it, a smaller image as it is,
-/// turned as its orientation says.
+/// turned as its orientation says, and with nothing left to show through (`opaque`).
 func searchedImage(_ data: Data) throws -> CGImage {
   let options: [CFString: Any] = [
     kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -73,7 +73,61 @@ func searchedImage(_ data: Data) throws -> CGImage {
   guard let source = CGImageSourceCreateWithData(data as CFData, nil),
         let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
   else { throw NotAnImage() }
-  return image
+  return opaque(image)
+}
+
+/// An image as Vision should read it. Vision takes a transparent pixel for black, so dark text with nothing behind it (a
+/// diagram, a logo, a text layer copied from a design app) would read as nothing. Such an image is drawn over white, or
+/// over black when what it shows is light on average, as white text is: text of one color gets the most contrast,
+/// which small text needs (over mid-gray, 9–11 px text is lost). An opaque image is read as it is.
+func opaque(_ image: CGImage) -> CGImage {
+  guard let background = background(for: image),
+        let space = CGColorSpace(name: CGColorSpace.sRGB),
+        let context = CGContext(
+          data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        )
+  else { return image }
+  let whole = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+  context.setFillColor(background)
+  context.fill(whole)
+  context.draw(image, in: whole)
+  return context.makeImage() ?? image
+}
+
+/// The side of the square, in pixels, an image is drawn into to see what shows through it (`background(for:)`).
+let shadeSide = 256
+
+/// What to read an image over: nil when nothing shows through it; black when what it shows is light on average, each
+/// pixel counting as much as it is opaque; white otherwise. Measured on the image drawn into a `shadeSide` px square,
+/// which keeps that average, in a few milliseconds.
+private func background(for image: CGImage) -> CGColor? {
+  switch image.alphaInfo {
+  case .none, .noneSkipFirst, .noneSkipLast: return nil
+  default: break
+  }
+  guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+        let context = CGContext(
+          data: nil, width: shadeSide, height: shadeSide, bitsPerComponent: 8, bytesPerRow: shadeSide * 4, space: space,
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+  else { return nil }
+  context.interpolationQuality = .high
+  context.draw(image, in: CGRect(x: 0, y: 0, width: shadeSide, height: shadeSide))
+  guard let data = context.data else { return nil }
+  let pixels = UnsafeRawBufferPointer(start: data, count: shadeSide * shadeSide * 4)
+  // Premultiplied, so a color already counts as much as its pixel is opaque. Lightness by Rec. 709's weights, which
+  // add up to 10,000.
+  var lightness = 0
+  var opacity = 0
+  var showsThrough = false
+  for pixel in stride(from: 0, to: pixels.count, by: 4) {
+    lightness += 2_126 * Int(pixels[pixel]) + 7_152 * Int(pixels[pixel + 1]) + 722 * Int(pixels[pixel + 2])
+    opacity += Int(pixels[pixel + 3])
+    showsThrough = showsThrough || pixels[pixel + 3] < 255
+  }
+  guard showsThrough else { return nil }
+  return lightness > 5_000 * opacity ? CGColor.black : CGColor.white
 }
 
 /// Lines top to bottom; pieces of text side by side on one row (columns, a sender and a time) left to right. Vision
