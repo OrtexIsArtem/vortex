@@ -129,9 +129,13 @@ public struct ClipboardItem: Identifiable, Equatable, Sendable {
   }
 
   /// What search keeps of the text read from an image, after the app's line: its first `searchedBytes`, as of a text,
-  /// in `searchKey` form with look-alike letters folded (`lookAlike`).
+  /// in `searchKey` form with look-alike letters folded (`lookAlike`), each line once. Lines are compared as kept,
+  /// before the bytes are counted: Vision may read a line of an image that shows through again over the other
+  /// background, in other letters ("HOBA TEMA" in Latin, then "НОВА ТЕМА"), and a repeat finds nothing more.
   static func imageSearchBody(_ text: String) -> String {
-    lookAlike(searchKey(String(text.prefix(utf8Bytes: searchedBytes))))
+    var kept = Set<String>()
+    let lines = text.split(separator: "\n").filter { kept.insert(lookAlike(searchKey(String($0)))).inserted }
+    return lookAlike(searchKey(String(lines.joined(separator: "\n").prefix(utf8Bytes: searchedBytes))))
   }
 }
 

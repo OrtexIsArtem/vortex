@@ -150,6 +150,34 @@ extension ClipboardFeatureTests {
     #expect(ClipboardItem.imageSearchBody("") == "")
   }
 
+  /// Read over white and then over black, as an image that shows through is, a line may come back in other letters
+  /// the second time, as Vision read a dark card: kept lowercased and folded, it is the same line, so it is kept once,
+  /// where it first came, and takes none of the 16 KB.
+  @Test
+  func aLineReadAgainInOtherCasesOrAlphabetsIsKeptOnce() {
+    let overWhite = [
+      "Підключіть МС\u{50} сервер до Claude", // a Latin P
+      "Copy the TOKEH now",
+      "\u{48}\u{4F}\u{42}\u{41} \u{54}\u{45}\u{4D}\u{41}", // HOBA TEMA, in Latin
+      "Код: ХАОС",
+    ]
+    let overBlack = [
+      "Підключіть МС\u{420} сервер до Claude", // a Cyrillic Р
+      "COPY THE TOKEH NOW",
+      "\u{41D}\u{41E}\u{412}\u{410} \u{422}\u{415}\u{41C}\u{410}", // НОВА ТЕМА, in Cyrillic
+      "Код: ХАОС",
+    ]
+    #expect(
+      ClipboardItem.imageSearchBody((overWhite + overBlack).joined(separator: "\n"))
+        == "пiдkлючitь mcp cepbep дo claude\ncopy the tokeh now\nhoba tema\nkoд: xaoc"
+    )
+    // Its copy would have pushed "mcp" past the 16 KB.
+    let long = String(repeating: "a", count: 9_000)
+    let lines = ClipboardItem.imageSearchBody("\(long)\n\(long.uppercased())\nmcp").split(separator: "\n")
+    #expect(lines.map(\.count) == [9_000, 3])
+    #expect(lines.last == "mcp")
+  }
+
   /// Exhaustive: each image waits its turn in `imagesToRead`, and the reader is asked for the next only once the one
   /// before returns.
   @Test

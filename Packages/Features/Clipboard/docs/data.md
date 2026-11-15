@@ -15,6 +15,7 @@
 - Rows saved before `clipboard.v2`, or since by an older Vortex, have byteSize 0.
 - The load works out their byteSize, preview and searchText and writes them; an image's size comes from its file, and the text read from it stays.
 - An image saved since this version is read once, in the background, one at a time: the first 16 KB of its text, lowercased, with Cyrillic look-alikes as their Latin twins (а→a, н→h, с→c…).
+- A line that comes again in that form, as one read over white and again over black may ("HOBA TEMA", then "НОВА ТЕМА"), is kept once and takes none of the 16 KB.
 - A secret is never read, nor an image in a session that keeps the history in memory only; the text is never logged.
 - An image left unread when Vortex quits, the feature is turned off or the item goes stays unread, as do images saved before this version.
 - A read that fails leaves one line in the log, without the text, and the image unread: it is never tried again.
