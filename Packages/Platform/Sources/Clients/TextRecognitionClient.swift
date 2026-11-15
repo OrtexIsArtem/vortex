@@ -9,8 +9,9 @@ public struct TextRecognitionClient: Sendable {
   /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background.
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
   /// The same from an image's data (a PNG file's), for search: read without language correction, which costs twice as
-  /// much and finds nothing more, from the image scaled down to at most `searchedPixels` on its longer side. Throws
-  /// for data that isn't an image. Runs in the background, and stops when its task is cancelled (`SearchRead`).
+  /// much and finds nothing more, from the image scaled down to at most `searchedPixels` on its longer side; an image
+  /// that shows through over white, then over black (`backgrounds`), a line read in both once. Throws for data that
+  /// isn't an image. Runs in the background, and stops when its task is cancelled (`SearchRead`).
   public var recognizeForSearch: @Sendable (_ imageData: Data) async throws -> String
 }
 
@@ -79,9 +80,10 @@ private func lines(readBy request: VNRecognizeTextRequest) -> String {
 }
 
 /// One read for search, which its caller may give up, as Clipboard does when it stops: given up before Vision starts,
-/// the image is neither decoded nor read; given up while Vision reads, Vision stops. Either way the read ends in
-/// `CancellationError`. Vision itself reads one request at a time, so a read given up and not stopped would hold up the
-/// next one and keep its image in memory until it ended.
+/// the image is neither decoded nor read; given up while Vision reads, Vision stops; given up the moment before Vision
+/// starts, which then reads to the end, what it read is dropped. Either way the read ends in `CancellationError`.
+/// Vision itself reads one request at a time, so a read given up and not stopped would hold up the next one and keep
+/// its image in memory until it ended.
 private final class SearchRead: @unchecked Sendable {
   private let lock = NSLock()
   private var isGivenUp = false
@@ -94,9 +96,22 @@ private final class SearchRead: @unchecked Sendable {
     }
   }
 
+  /// The image read over each of its `backgrounds`, one after the other: the lines of the first read, then those of
+  /// the next one that the first didn't read, so a line read over both, as one on an opaque part is, comes once.
   func text(of imageData: Data) throws -> String {
-    if lock.withLock({ isGivenUp }) { throw CancellationError() }
+    try checkGivenUp()
     let image = try searchedImage(imageData)
+    var lines: [String] = []
+    for background in backgrounds(for: image) {
+      try checkGivenUp()
+      let known = Set(lines)
+      lines += try read(drawn(image, over: background)).filter { !known.contains($0) }
+    }
+    return lines.joined(separator: "\n")
+  }
+
+  /// Vision's lines of one image, in `readingOrder`.
+  private func read(_ image: CGImage) throws -> [String] {
     let request = textRequest(correctsLanguage: false)
     try lock.withLock {
       if isGivenUp { throw CancellationError() }
@@ -108,12 +123,18 @@ private final class SearchRead: @unchecked Sendable {
       // A request cancelled throws Vision's own error.
       throw lock.withLock { isGivenUp } ? CancellationError() : error
     }
-    return lines(readBy: request)
+    // Vision ignores a cancel that comes before it starts.
+    try checkGivenUp()
+    return readingOrder(request.results ?? [])
+  }
+
+  private func checkGivenUp() throws {
+    if lock.withLock({ isGivenUp }) { throw CancellationError() }
   }
 }
 
 /// An image's data decoded for search: a longer side over `searchedPixels` scaled down to it, a smaller image as it is,
-/// turned as its orientation says, and with nothing left to show through (`opaque`).
+/// and turned as its orientation says.
 func searchedImage(_ data: Data) throws -> CGImage {
   let options: [CFString: Any] = [
     kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -123,15 +144,22 @@ func searchedImage(_ data: Data) throws -> CGImage {
   guard let source = CGImageSourceCreateWithData(data as CFData, nil),
         let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
   else { throw NotAnImage() }
-  return opaque(image)
+  return image
 }
 
-/// An image as Vision should read it. Vision takes a transparent pixel for black, so dark text with nothing behind it (a
-/// diagram, a logo, a text layer copied from a design app) would read as nothing. Such an image is drawn over white, or
-/// over black when what it shows is light on average, as white text is: text of one color gets the most contrast,
-/// which small text needs (over mid-gray, 9–11 px text is lost). An opaque image is read as it is.
-func opaque(_ image: CGImage) -> CGImage {
-  guard let background = background(for: image),
+/// What search reads an image over, one after the other; nil: the image as it is. Vision takes a transparent pixel for
+/// black, so text with nothing behind it (a diagram, a logo, a text layer copied from a design app) would be read only
+/// when it is light. An image that shows through is read over white, then over black: text of either shade gets the
+/// most contrast in one of them, which small text needs (over mid-gray, 9–11 px text is lost), whatever sits beside it.
+/// One background for the whole image, picked by its shade, would hide text of the other shade, such as a logo's light
+/// name beside its larger dark mark. An opaque image is read once, as it is.
+func backgrounds(for image: CGImage) -> [CGColor?] {
+  showsThrough(image) ? [CGColor.white, CGColor.black] : [nil]
+}
+
+/// The image drawn over `background`, so that nothing shows through it; the image itself for nil.
+func drawn(_ image: CGImage, over background: CGColor?) -> CGImage {
+  guard let background,
         let space = CGColorSpace(name: CGColorSpace.sRGB),
         let context = CGContext(
           data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
@@ -145,39 +173,27 @@ func opaque(_ image: CGImage) -> CGImage {
   return context.makeImage() ?? image
 }
 
-/// The side of the square, in pixels, an image is drawn into to see what shows through it (`background(for:)`).
-let shadeSide = 256
+/// The side of the square, in pixels, an image is drawn into to see whether any of it shows through.
+let probeSide = 256
 
-/// What to read an image over: nil when nothing shows through it; black when what it shows is light on average, each
-/// pixel counting as much as it is opaque; white otherwise. Measured on the image drawn into a `shadeSide` px square,
-/// which keeps that average, in a few milliseconds.
-private func background(for image: CGImage) -> CGColor? {
+/// Whether any of an image shows through, seen on the image drawn into a `probeSide` px square, in a few milliseconds.
+/// An image with an alpha channel and nothing transparent, as many PNGs are, doesn't.
+private func showsThrough(_ image: CGImage) -> Bool {
   switch image.alphaInfo {
-  case .none, .noneSkipFirst, .noneSkipLast: return nil
+  case .none, .noneSkipFirst, .noneSkipLast: return false
   default: break
   }
   guard let space = CGColorSpace(name: CGColorSpace.sRGB),
         let context = CGContext(
-          data: nil, width: shadeSide, height: shadeSide, bitsPerComponent: 8, bytesPerRow: shadeSide * 4, space: space,
+          data: nil, width: probeSide, height: probeSide, bitsPerComponent: 8, bytesPerRow: probeSide * 4, space: space,
           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        )
-  else { return nil }
+        ),
+        context.data != nil
+  else { return false }
   context.interpolationQuality = .high
-  context.draw(image, in: CGRect(x: 0, y: 0, width: shadeSide, height: shadeSide))
-  guard let data = context.data else { return nil }
-  let pixels = UnsafeRawBufferPointer(start: data, count: shadeSide * shadeSide * 4)
-  // Premultiplied, so a color already counts as much as its pixel is opaque. Lightness by Rec. 709's weights, which
-  // add up to 10,000.
-  var lightness = 0
-  var opacity = 0
-  var showsThrough = false
-  for pixel in stride(from: 0, to: pixels.count, by: 4) {
-    lightness += 2_126 * Int(pixels[pixel]) + 7_152 * Int(pixels[pixel + 1]) + 722 * Int(pixels[pixel + 2])
-    opacity += Int(pixels[pixel + 3])
-    showsThrough = showsThrough || pixels[pixel + 3] < 255
-  }
-  guard showsThrough else { return nil }
-  return lightness > 5_000 * opacity ? CGColor.black : CGColor.white
+  context.draw(image, in: CGRect(x: 0, y: 0, width: probeSide, height: probeSide))
+  let pixels = UnsafeRawBufferPointer(start: context.data, count: probeSide * probeSide * 4)
+  return stride(from: 3, to: pixels.count, by: 4).contains { pixels[$0] < 255 }
 }
 
 /// Lines top to bottom; pieces of text side by side on one row (columns, a sender and a time) left to right. Vision

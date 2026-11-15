@@ -11,14 +11,15 @@ import UniformTypeIdentifiers
 /// down to at most 4,096 px.
 struct TextRecognitionForSearchTests {
   /// A PNG `width` × `height` px with an alpha channel: lines of `color` text `size` px high on `background` (nil:
-  /// transparent), one row each from the top, each from its own `x`.
+  /// transparent), one row each from the top, each from its own `x`, over `fills` (rounded by their `radius`).
   static func png(
     width: Int,
     height: Int,
     size: CGFloat,
     lines: [(text: String, x: CGFloat)],
     color: CGColor = CGColor(gray: 0, alpha: 1),
-    background: CGColor? = CGColor(gray: 1, alpha: 1)
+    background: CGColor? = CGColor(gray: 1, alpha: 1),
+    fills: [(rect: CGRect, radius: CGFloat, color: CGColor)] = []
   ) -> Data {
     let context = CGContext(
       data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
@@ -27,6 +28,11 @@ struct TextRecognitionForSearchTests {
     if let background {
       context.setFillColor(background)
       context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    }
+    for fill in fills {
+      context.setFillColor(fill.color)
+      context.addPath(CGPath(roundedRect: fill.rect, cornerWidth: fill.radius, cornerHeight: fill.radius, transform: nil))
+      context.fillPath()
     }
     let font = CTFontCreateUIFontForLanguage(.system, size, nil)!
     for (row, line) in lines.enumerated() {
@@ -96,22 +102,54 @@ struct TextRecognitionForSearchTests {
     #expect(text.contains("mcp server release"))
   }
 
+  /// "vortex" in `gray`, 120 px high, on transparency beside a larger rounded badge of the other shade, as a logo has
+  /// its name beside its mark.
+  static func wordmark(gray: CGFloat) -> Data {
+    png(
+      width: 1_200, height: 400, size: 120, lines: [("vortex", 40)], color: CGColor(gray: gray, alpha: 1),
+      background: nil, fills: [(CGRect(x: 780, y: 20, width: 360, height: 360), 72, CGColor(gray: 1 - gray, alpha: 1))]
+    )
+  }
+
+  /// A title in `gray` on transparency, over a card of the other shade that takes three quarters of the image and
+  /// holds a line in `gray` of its own.
+  static func titledCard(gray: CGFloat) -> Data {
+    png(
+      width: 1_200, height: 600, size: 48, lines: [("mcp server", 48), ("release notes", 48)],
+      color: CGColor(gray: gray, alpha: 1), background: nil,
+      fills: [(CGRect(x: 0, y: 0, width: 1_200, height: 460), 0, CGColor(gray: 1 - gray, alpha: 1))]
+    )
+  }
+
   @Test
-  func anImageThatShowsThroughIsReadOverWhiteOrOverBlackWhenWhatItShowsIsLightAndAnOpaqueOneAsItIs() throws {
-    func decoded(color: CGColor, background: CGColor?) throws -> CGImage {
-      try searchedImage(
-        Self.png(width: 600, height: 200, size: 48, lines: [("mcp", 48)], color: color, background: background)
-      )
-    }
+  func anImageThatShowsThroughIsReadOverWhiteThenOverBlackAndAnOpaqueOneOnceAsItIs() throws {
     let black = CGColor(gray: 0, alpha: 1)
     let white = CGColor(gray: 1, alpha: 1)
-    #expect(Self.corner(try decoded(color: black, background: nil)) == [255, 255, 255, 255])
-    #expect(Self.corner(try decoded(color: CGColor(gray: 0, alpha: 0.5), background: nil)) == [255, 255, 255, 255])
-    #expect(Self.corner(try decoded(color: white, background: nil)) == [0, 0, 0, 255])
+    for color in [black, CGColor(gray: 0, alpha: 0.5), white] {
+      let image = try searchedImage(
+        Self.png(width: 600, height: 200, size: 48, lines: [("mcp", 48)], color: color, background: nil)
+      )
+      let read = backgrounds(for: image).map { Self.corner(drawn(image, over: $0)) }
+      #expect(read == [[255, 255, 255, 255], [0, 0, 0, 255]])
+    }
     // Drawn on white, the PNG still has an alpha channel, but nothing shows through.
-    let opaqueImage = try decoded(color: black, background: white)
-    #expect(opaque(opaqueImage) === opaqueImage)
-    #expect(Self.corner(opaqueImage) == [255, 255, 255, 255])
+    let opaqueImage = try searchedImage(
+      Self.png(width: 600, height: 200, size: 48, lines: [("mcp", 48)], color: black, background: white)
+    )
+    #expect(backgrounds(for: opaqueImage).map { $0 == nil } == [true])
+    #expect(drawn(opaqueImage, over: nil) === opaqueImage)
+  }
+
+  /// Text on transparency is read whatever its shade and whatever sits beside it, such as a larger fill of the other
+  /// shade, which one background picked for the whole image would hide it on: a logo's name beside its mark, a title
+  /// over a card. A line read over both backgrounds, as the card's own is, comes once.
+  @Test(arguments: [0, 1] as [CGFloat])
+  func textOnTransparencyBesideALargerFillOfTheOtherShadeIsRead(gray: CGFloat) async throws {
+    let read = TextRecognitionClient.liveValue.recognizeForSearch
+    #expect(try await read(Self.wordmark(gray: gray)).lowercased().contains("vortex"))
+    let card = try await read(Self.titledCard(gray: gray)).lowercased().split(separator: "\n")
+    #expect(card.contains { $0.contains("mcp server") })
+    #expect(card.filter { $0.contains("release notes") }.count == 1)
   }
 
   /// A PNG Vision takes about a second to read on the owner's Mac: 82 long rows of 24 px text on a 4,000 px square.
