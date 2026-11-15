@@ -114,6 +114,32 @@ struct TextRecognitionForSearchTests {
     #expect(Self.corner(opaqueImage) == [255, 255, 255, 255])
   }
 
+  /// A PNG Vision takes about a second to read on the owner's Mac: 82 long rows of 24 px text on a 4,000 px square.
+  static let longRead = png(
+    width: 4_000, height: 4_000, size: 24,
+    lines: (0..<82).map { row in
+      (String(repeating: "row \(row): mcp server release, налаштування сервера \(row * 7); ", count: 4), 40)
+    }
+  )
+
+  @Test
+  func aReadGivenUpBeforeItStartsReadsNothing() async {
+    let png = Self.longRead
+    let read = Task { try await TextRecognitionClient.liveValue.recognizeForSearch(png) }
+    read.cancel()
+    await #expect(throws: CancellationError.self) { try await read.value }
+  }
+
+  @Test
+  func aReadGivenUpWhileVisionReadsStopsVisionAndBringsNoText() async throws {
+    let png = Self.longRead
+    let read = Task { try await TextRecognitionClient.liveValue.recognizeForSearch(png) }
+    // Decoded by now, and Vision a third of the way through it, or still busy with another test's read first.
+    try await Task.sleep(for: .milliseconds(300))
+    read.cancel()
+    await #expect(throws: CancellationError.self) { try await read.value }
+  }
+
   @Test
   func dataThatIsNotAnImageThrows() async {
     await #expect(throws: (any Error).self) {

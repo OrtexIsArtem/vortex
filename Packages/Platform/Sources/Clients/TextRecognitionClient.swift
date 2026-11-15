@@ -10,7 +10,7 @@ public struct TextRecognitionClient: Sendable {
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
   /// The same from an image's data (a PNG file's), for search: read without language correction, which costs twice as
   /// much and finds nothing more, from the image scaled down to at most `searchedPixels` on its longer side. Throws
-  /// for data that isn't an image. Runs in the background.
+  /// for data that isn't an image. Runs in the background, and stops when its task is cancelled (`SearchRead`).
   public var recognizeForSearch: @Sendable (_ imageData: Data) async throws -> String
 }
 
@@ -20,7 +20,12 @@ extension TextRecognitionClient: DependencyKey {
       try await inBackground { try text(in: image.cgImage, correctsLanguage: true) }
     },
     recognizeForSearch: { imageData in
-      try await inBackground { try text(in: searchedImage(imageData), correctsLanguage: false) }
+      let read = SearchRead()
+      return try await withTaskCancellationHandler {
+        try await inBackground { try read.text(of: imageData) }
+      } onCancel: {
+        read.giveUp()
+      }
     }
   )
 
@@ -54,12 +59,57 @@ private func inBackground(_ reading: @escaping @Sendable () throws -> String) as
 
 /// Vision's accurate reading of an image: its lines in `readingOrder`, joined by "\n"; empty when there is no text.
 private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
+  let request = textRequest(correctsLanguage: correctsLanguage)
+  try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+  return lines(readBy: request)
+}
+
+/// Vision's accurate reading, in `recognitionLanguages`.
+private func textRequest(correctsLanguage: Bool) -> VNRecognizeTextRequest {
   let request = VNRecognizeTextRequest()
   request.recognitionLevel = .accurate
   request.recognitionLanguages = recognitionLanguages
   request.usesLanguageCorrection = correctsLanguage
-  try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
-  return readingOrder(request.results ?? []).joined(separator: "\n")
+  return request
+}
+
+/// What a request read: its lines in `readingOrder`, joined by "\n"; empty when there is no text.
+private func lines(readBy request: VNRecognizeTextRequest) -> String {
+  readingOrder(request.results ?? []).joined(separator: "\n")
+}
+
+/// One read for search, which its caller may give up, as Clipboard does when it stops: given up before Vision starts,
+/// the image is neither decoded nor read; given up while Vision reads, Vision stops. Either way the read ends in
+/// `CancellationError`. Vision itself reads one request at a time, so a read given up and not stopped would hold up the
+/// next one and keep its image in memory until it ended.
+private final class SearchRead: @unchecked Sendable {
+  private let lock = NSLock()
+  private var isGivenUp = false
+  private var request: VNRecognizeTextRequest?
+
+  func giveUp() {
+    lock.withLock {
+      isGivenUp = true
+      request?.cancel()
+    }
+  }
+
+  func text(of imageData: Data) throws -> String {
+    if lock.withLock({ isGivenUp }) { throw CancellationError() }
+    let image = try searchedImage(imageData)
+    let request = textRequest(correctsLanguage: false)
+    try lock.withLock {
+      if isGivenUp { throw CancellationError() }
+      self.request = request
+    }
+    do {
+      try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+    } catch {
+      // A request cancelled throws Vision's own error.
+      throw lock.withLock { isGivenUp } ? CancellationError() : error
+    }
+    return lines(readBy: request)
+  }
 }
 
 /// An image's data decoded for search: a longer side over `searchedPixels` scaled down to it, a smaller image as it is,
