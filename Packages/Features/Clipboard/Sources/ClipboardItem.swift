@@ -272,8 +272,8 @@ extension ClipboardItem {
 
   /// Ids of the saved items whose search text holds every word (`searchText`), pinned first, newest first. A secret has
   /// no row, so it is never found. The text read from an image is kept with look-alike letters folded
-  /// (`imageSearchBody`), so in an image a word is also looked for folded (`lookAlike`); a text, a link or files are
-  /// matched only as typed.
+  /// (`imageSearchBody`), so in that text a word is also looked for folded (`lookAlike`); the app's name, a text, a link
+  /// or files are matched only as typed.
   static func search(_ words: [String], _ db: Database) throws -> [ID] {
     var conditions: [String] = []
     var arguments: [String] = []
@@ -283,10 +283,12 @@ extension ClipboardItem {
         conditions.append("instr(searchText, ?) > 0")
         arguments.append(word)
       } else {
-        // An image's fingerprint starts with "image:" (`ClipboardCopy.fingerprint`).
-        conditions.append(
-          "(instr(searchText, ?) > 0 OR (substr(fingerprint, 1, 6) = 'image:' AND instr(searchText, ?) > 0))"
-        )
+        // An image's fingerprint starts with "image:" (`ClipboardCopy.fingerprint`); the text read from it follows the
+        // app's line, which always ends in a line break (`searchText(of:source:)`).
+        conditions.append("""
+          (instr(searchText, ?) > 0 OR (substr(fingerprint, 1, 6) = 'image:' \
+          AND instr(substr(searchText, instr(searchText, char(10)) + 1), ?) > 0))
+          """)
         arguments += [word, folded]
       }
     }

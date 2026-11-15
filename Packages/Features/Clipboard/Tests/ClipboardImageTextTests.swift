@@ -113,6 +113,31 @@ extension ClipboardFeatureTests {
   }
 
   @Test
+  func anImagesAppNameMatchesOnlyAsTypedAndOnlyTheTextReadFromItMatchesLookAlikes() async throws {
+    // An image copied before this version, never read, and a text, both from Terminal.
+    let old = ClipboardItem(
+      id: uuid(10), content: .image(fileName: "Image.png"), source: Self.terminal,
+      copiedAt: now.value.addingTimeInterval(-120), fingerprint: "image:10", byteSize: 10
+    )
+    try saveRows([old, item("hello", id: 11, copiedAt: now.value.addingTimeInterval(-60))])
+    let store = makeStore()
+    store.exhaustivity = .off
+    _ = readImages(store, texts: [uuid(0): "Тест"])
+    await store.send(.start)
+    await store.receive(\.loaded)
+    await copyImage(Data("new".utf8), store)
+    await finishReading(store)
+    let new = try #require(store.state.items[id: uuid(0)]?.content)
+
+    // The Cyrillic "те" starts the text read from the new image ("tect", folded), and never matches "terminal".
+    #expect(await search("те", store) == [new])
+    #expect(await search("тест", store) == [new])
+    #expect(await search("тerminal", store).isEmpty)
+    #expect(await search("terminal", store) == [new, .text("hello"), old.content])
+    await store.send(.stop)
+  }
+
+  @Test
   func anImagesTextIsKeptLowercasedWithLookAlikesFoldedAndOnlyItsFirst16KB() {
     #expect(ClipboardItem.lookAlike("мср токен") == "mcp tokeh")
     #expect(ClipboardItem.lookAlike("авекмнорстухіјѕ") == "abekmhopctyxijs")
