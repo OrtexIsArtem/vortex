@@ -418,6 +418,23 @@ struct QAClientsTests {
   }
 
   @Test
+  func searchReadsTheSimulatedTextOrWithLiveTheImageItself() async throws {
+    defer { QASimulation.update { $0 = QASimulation() } }
+    let recognition = TextRecognitionClient.qa
+    let notAnImage = Data("not an image".utf8)
+    QASimulation.update { $0.recognizedText = "mcp server" }
+    #expect(try await recognition.recognizeForSearch(notAnImage) == "mcp server")
+    // Only the size is logged, never the text.
+    #expect(QALog.events.value.last { $0.event == "recognizeForSearch" }?.detail == ["bytes": "\(notAnImage.count)"])
+
+    // `live` reads with Apple Vision, as plain Vortex does: a real image's text, and anything else throws.
+    QASimulation.update { $0.recognizedText = "live" }
+    let png = TextRecognitionForSearchTests.png(width: 800, height: 200, size: 48, lines: [("release notes", 48)])
+    #expect(try await recognition.recognizeForSearch(png).lowercased().contains("release notes"))
+    await #expect(throws: (any Error).self) { try await recognition.recognizeForSearch(notAnImage) }
+  }
+
+  @Test
   func theKeyboardLockIsNeverATap() async {
     let lock = KeyboardLockClient.qa
     QAPermissions.simulated.set(.accessibility, to: .denied)

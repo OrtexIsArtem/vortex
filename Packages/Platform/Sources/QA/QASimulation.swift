@@ -32,7 +32,8 @@
     var chooseFolder: String?
     /// The bundle id the app picker returns without showing; nil is Cancel.
     var chooseApp: String?
-    /// What text recognition finds on any image.
+    /// What text recognition finds on any image. `live` makes search read an image's data with Apple Vision, as plain
+    /// Vortex does.
     var recognizedText = "QA text"
     /// Results of commands, the first whose `match` the command contains; without one a command exits 0, silent.
     var commandRules: [CommandRule] = []

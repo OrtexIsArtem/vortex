@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import ImageIO
 import Vision
 
 /// Text on images, recognized on this Mac by Apple Vision, offline: Ukrainian, Russian and English.
@@ -7,25 +8,19 @@ import Vision
 public struct TextRecognitionClient: Sendable {
   /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background.
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
+  /// The same from an image's data (a PNG file's), for search: read without language correction, which costs twice as
+  /// much and finds nothing more, from the image scaled down to at most `searchedPixels` on its longer side. Throws
+  /// for data that isn't an image. Runs in the background.
+  public var recognizeForSearch: @Sendable (_ imageData: Data) async throws -> String
 }
 
 extension TextRecognitionClient: DependencyKey {
   public static let liveValue = TextRecognitionClient(
     recognize: { image in
-      try await withCheckedThrowingContinuation { continuation in
-        DispatchQueue.global(qos: .utility).async {
-          let request = VNRecognizeTextRequest()
-          request.recognitionLevel = .accurate
-          request.recognitionLanguages = ["uk-UA", "ru-RU", "en-US"]
-          request.usesLanguageCorrection = true
-          do {
-            try VNImageRequestHandler(cgImage: image.cgImage, options: [:]).perform([request])
-            continuation.resume(returning: readingOrder(request.results ?? []).joined(separator: "\n"))
-          } catch {
-            continuation.resume(throwing: error)
-          }
-        }
-      }
+      try await inBackground { try text(in: image.cgImage, correctsLanguage: true) }
+    },
+    recognizeForSearch: { imageData in
+      try await inBackground { try text(in: searchedImage(imageData), correctsLanguage: false) }
     }
   )
 
@@ -37,6 +32,48 @@ extension DependencyValues {
     get { self[TextRecognitionClient.self] }
     set { self[TextRecognitionClient.self] = newValue }
   }
+}
+
+/// The languages Vision reads, the same for both entry points. Without language correction their order makes no
+/// difference.
+let recognitionLanguages = ["uk-UA", "ru-RU", "en-US"]
+
+/// An image's longer side, in pixels, past which search reads it scaled down.
+let searchedPixels = 4_096
+
+struct NotAnImage: Error {}
+
+/// Runs a reading on the utility queue, off the caller's thread.
+private func inBackground(_ reading: @escaping @Sendable () throws -> String) async throws -> String {
+  try await withCheckedThrowingContinuation { continuation in
+    DispatchQueue.global(qos: .utility).async {
+      continuation.resume(with: Result(catching: reading))
+    }
+  }
+}
+
+/// Vision's accurate reading of an image: its lines in `readingOrder`, joined by "\n"; empty when there is no text.
+private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
+  let request = VNRecognizeTextRequest()
+  request.recognitionLevel = .accurate
+  request.recognitionLanguages = recognitionLanguages
+  request.usesLanguageCorrection = correctsLanguage
+  try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+  return readingOrder(request.results ?? []).joined(separator: "\n")
+}
+
+/// An image's data decoded for search: a longer side over `searchedPixels` scaled down to it, a smaller image as it is,
+/// turned as its orientation says.
+func searchedImage(_ data: Data) throws -> CGImage {
+  let options: [CFString: Any] = [
+    kCGImageSourceCreateThumbnailFromImageAlways: true,
+    kCGImageSourceCreateThumbnailWithTransform: true,
+    kCGImageSourceThumbnailMaxPixelSize: searchedPixels,
+  ]
+  guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+        let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+  else { throw NotAnImage() }
+  return image
 }
 
 /// Lines top to bottom; pieces of text side by side on one row (columns, a sender and a time) left to right. Vision

@@ -387,12 +387,18 @@
   }
 
   extension TextRecognitionClient {
-    /// Every image says `recognizedText`.
+    /// Every image says `recognizedText`. For search, `live` reads the image with Apple Vision as plain Vortex does, so
+    /// a run can go end to end on images it renders itself. Only sizes are logged, never the text.
     static let qa: TextRecognitionClient = {
       var client = TextRecognitionClient()
       client.recognize = { image in
         QALog.record("textRecognition", "recognize", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
         return simulation.recognizedText
+      }
+      client.recognizeForSearch = { imageData in
+        QALog.record("textRecognition", "recognizeForSearch", ["bytes": "\(imageData.count)"])
+        let text = simulation.recognizedText
+        return text == "live" ? try await TextRecognitionClient.liveValue.recognizeForSearch(imageData) : text
       }
       return client
     }()
