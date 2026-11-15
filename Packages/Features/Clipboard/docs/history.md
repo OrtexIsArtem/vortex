@@ -41,7 +41,10 @@ How long items stay, Clear and Undo, and search. The choice of time is in settin
 - The cards shown are the items that hold every word of the query, in any case (Ukrainian too).
 - They keep the history's order: pinned first, newest first.
 - An item is found by the first 16 KB of a text, a link's address percent-decoded, the names of files and its app's name.
-- An image is found only by its app's name.
+- An image copied since this version is also found by the first 16 KB of the text on it, once that is read (data.md).
+- An older image, one never read (the history kept in memory only) or one whose reading failed or never finished is found only by its app's name.
+- In an image's text, look-alike Latin and Cyrillic letters match: "mcp" finds one read as "МСР", "токен" one read as "TOKEH".
+- A text, a link or files match only as typed: "tokeh" doesn't find "токен", nor "так" "take".
 - Secrets are never found, not even by their app: they have no row to search.
 - Typing pauses 150 ms before the search runs; a newer query replaces one still running.
 - No match shows "Nothing found".

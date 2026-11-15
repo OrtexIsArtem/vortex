@@ -85,12 +85,22 @@ public struct ClipboardFeature: Sendable {
     var justCopied: ClipboardItem.ID?
     /// Running apps, offered when the user adds an app to ignore.
     var runningApps: [AppInfo] = []
+    /// Images copied in this session that wait to be read for search, in the order they were saved.
+    var imagesToRead: [ClipboardItem.ID] = []
+    /// The image being read now: one at a time, so a burst of copies never starts Vision requests side by side.
+    var readingImage: ClipboardItem.ID?
     @Shared(.clipboardSettings) var settings
     /// What macOS says about Paste from Other Apps, read by the shell: the settings row, and no recording while it
     /// reads `notGranted`.
     @SharedReader(.permissionStatuses) var permissionStatuses
 
     public init() {}
+
+    /// An item of the history, or one set aside by Clear or a shorter time that Undo can still bring back: either way
+    /// its row is still there, unless it is a secret.
+    func itemOrSetAside(_ id: ClipboardItem.ID) -> ClipboardItem? {
+      items[id: id] ?? pendingRemoval?.items.first { $0.id == id }
+    }
 
     /// What the History row shows: every item, pinned ones too, and what they take on disk (a secret takes nothing).
     var historySize: (items: Int, bytes: Int) {
@@ -150,6 +160,8 @@ public struct ClipboardFeature: Sendable {
     /// What a drop comes to once Vortex's own files are read and the content is hashed, both off the main actor.
     case dropPrepared(ClipboardCopy)
     case imageSaved(ClipboardItem)
+    /// The text read from a new image, in `ClipboardItem.imageSearchBody` form; nil when reading it failed.
+    case imageRead(ClipboardItem.ID, body: String?)
     case itemTapped(ClipboardItem.ID)
     case copiedAgain(ClipboardItem.ID)
     case pinTapped(ClipboardItem.ID)
@@ -194,6 +206,7 @@ public struct ClipboardFeature: Sendable {
   @Dependency(\.permissionPage) var permissionPage
   @Dependency(\.permissionsClient) var permissions
   @Dependency(\.systemClient) var system
+  @Dependency(\.textRecognitionClient) var textRecognition
   @Dependency(\.uuid) var uuid
 
   private enum CancelID {
@@ -203,6 +216,7 @@ public struct ClipboardFeature: Sendable {
     case wholeText
     case undo
     case search
+    case imageText
   }
 
   public init() {}
@@ -231,7 +245,10 @@ public struct ClipboardFeature: Sendable {
         .cancellable(id: CancelID.load, cancelInFlight: true)
 
       case .stop:
-        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.watch))
+        // Images not read yet stay unread: found by their app only.
+        state.imagesToRead = []
+        state.readingImage = nil
+        return .merge(.cancel(id: CancelID.load), .cancel(id: CancelID.watch), .cancel(id: CancelID.imageText))
 
       case let .loaded(items):
         state.items = items
@@ -360,7 +377,22 @@ public struct ClipboardFeature: Sendable {
             removeFolders([item.imageURL?.deletingLastPathComponent()].compactMap { $0 })
           )
         }
-        return insert(item, &state)
+        let inserting = insert(item, &state)
+        // A new image is read once for search, never a secret, and not in a session that keeps the history in memory
+        // only: nothing would keep its text.
+        guard state.isLoaded, state.savesToDisk, !item.isConcealed else { return inserting }
+        state.imagesToRead.append(item.id)
+        return .merge(inserting, readNextImage(&state))
+
+      case let .imageRead(id, body):
+        guard state.readingImage == id else { return .none }
+        state.readingImage = nil
+        // An item set aside by Clear still has its row, so Undo brings it back with its text; one that left for good,
+        // or turned secret meanwhile, gets nothing.
+        if let body, !body.isEmpty, let item = state.itemOrSetAside(id), !item.isConcealed {
+          save([.text(id, body: body)], &state)
+        }
+        return readNextImage(&state)
 
       case let .dropped(items):
         // Before the saved history is read there is nothing to add to: the load would replace it.
@@ -861,6 +893,27 @@ public struct ClipboardFeature: Sendable {
     state.items.insert(item, at: state.items.index(forNew: item))
     save(item.isConcealed ? [] : [.insert(item)], &state)
     return prune(&state)
+  }
+
+  /// Reads the next image waiting, unless one is being read: its PNG file and Vision both off the main thread, one
+  /// image at a time. An image that left the history meanwhile, or turned secret, is skipped unread. A failed read is
+  /// logged without its text, and the image stays unread; there is no retry.
+  private func readNextImage(_ state: inout State) -> Effect<Action> {
+    guard state.readingImage == nil else { return .none }
+    while !state.imagesToRead.isEmpty {
+      let id = state.imagesToRead.removeFirst()
+      guard let item = state.itemOrSetAside(id), !item.isConcealed, let url = item.imageURL else { continue }
+      state.readingImage = id
+      return .run { [files, textRecognition] send in
+        let text = try await textRecognition.recognizeForSearch(try await files.read(url))
+        await send(.imageRead(id, body: ClipboardItem.imageSearchBody(text)))
+      } catch: { error, send in
+        logger.error("Reading the text of a copied image failed: \(error, privacy: .public)")
+        await send(.imageRead(id, body: nil))
+      }
+      .cancellable(id: CancelID.imageText, cancelInFlight: true)
+    }
+    return .none
   }
 
   /// Moves an item copied again to the top of its group. A secret stays one: copied again from an app that does not

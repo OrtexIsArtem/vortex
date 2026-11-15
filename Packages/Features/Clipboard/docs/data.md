@@ -11,14 +11,19 @@
 - Added by `clipboard.v2`, with an index on copiedAt:
   - byteSize: an image's PNG file, the UTF-8 of a text or a link, the paths of files;
   - preview: the first 4,096 bytes of a text longer than that, cut between characters; NULL for anything else;
-  - searchText: the app's name on the first line, then the first 16 KB of a text, a link's address percent-decoded or the names of files, lowercased; an image has only the app's name.
+  - searchText: the app's name on the first line, then the first 16 KB of a text, a link's address percent-decoded or the names of files, lowercased; an image has the app's name, then the text read from it (below).
 - Rows saved before `clipboard.v2`, or since by an older Vortex, have byteSize 0.
-- The load works out their byteSize, preview and searchText and writes them; an image's size comes from its file.
+- The load works out their byteSize, preview and searchText and writes them; an image's size comes from its file, and the text read from it stays.
+- An image saved since this version is read once, in the background, one at a time: the first 16 KB of its text, lowercased, with Cyrillic look-alikes as their Latin twins (а→a, н→h, с→c…).
+- A secret is never read, nor an image in a session that keeps the history in memory only; the text is never logged.
+- An image left unread when Vortex quits, the feature is turned off or the item goes stays unread, as do images saved before this version.
+- A read that fails leaves one line in the log, without the text, and the image unread: it is never tried again.
 
 ## Writes
 - Each change writes only its own rows, named by id.
 - A new item is inserted whole.
 - A copy again or a pin updates copiedAt, source, isPinned and the app's line of searchText.
+- An image's text is written once read, after its insert, in the same queue; only what follows the app's line changes.
 - A removal deletes rows by id.
 - Content is never written after the insert.
 - Writes reach the database in the order the changes were made, one batch at a time.

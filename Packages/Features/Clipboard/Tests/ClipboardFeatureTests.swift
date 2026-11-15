@@ -51,6 +51,8 @@ struct ClipboardFeatureTests {
       $0.fileClient.info = { [missingFiles] url in
         missingFiles.value.contains(url) ? nil : FileInfo(size: 1, isDirectory: false)
       }
+      // A new image is read for search: it says nothing unless a test gives it text (`readImages`).
+      $0.textRecognitionClient.recognizeForSearch = { _ in "" }
     }
   }
 

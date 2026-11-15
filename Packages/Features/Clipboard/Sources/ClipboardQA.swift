@@ -23,9 +23,10 @@
     ///   only hides its buttons), `pin` and `unpin` press the pin button that shows, `delete` its ×;
     /// - `seed count=<n> [images=<n>]` adds generated items spread over the last year, through the real writes, and
     ///   reads the history again; Keep history removes the older ones as usual, so choose `keep=forever` first.
-    /// The state section `clipboard` has the counts, the choice, the search, a pending Undo and the whole text the
-    /// hover read holds (`wholeTextID`, `wholeTextBytes`). `snapshot window=clipboard-settings` draws the settings
-    /// section with the live store, whole, at the Settings window's width, off every display.
+    /// The state section `clipboard` has the counts, the choice, the search, a pending Undo, the whole text the hover
+    /// read holds (`wholeTextID`, `wholeTextBytes`) and the images waiting to be read for search (`imagesToRead`,
+    /// `isReadingImage`). `snapshot window=clipboard-settings` draws the settings section with the live store, whole,
+    /// at the Settings window's width, off every display.
     static func registerQACommands() {
       guard QA.isActive, !isRegistered else { return }
       isRegistered = true
@@ -172,6 +173,9 @@
       /// The item whose whole text the hover read holds, and its size in UTF-8.
       var wholeTextID: String?
       var wholeTextBytes: Int?
+      /// New images waiting to be read for search, and whether one is being read: reading is over at 0 and false.
+      var imagesToRead: Int
+      var isReadingImage: Bool
       var lastSeed: String?
 
       @MainActor
@@ -201,6 +205,8 @@
         unavailable = state.unavailable.count
         wholeTextID = state.wholeText?.id.uuidString
         wholeTextBytes = state.wholeText?.text.utf8.count
+        imagesToRead = state.imagesToRead.count
+        isReadingImage = state.readingImage != nil
         self.lastSeed = lastSeed
       }
     }

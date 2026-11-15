@@ -81,8 +81,9 @@ public struct ClipboardItem: Identifiable, Equatable, Sendable {
   }
 
   /// What search looks through, in `searchKey` form: the app's name on the first line, then the first
-  /// `searchedBytes` of a text, a link's address percent-decoded or the names of files; an image only has the app's.
-  /// The app's name comes first so a copy from another app can change it in place (`HistoryWrite.update`).
+  /// `searchedBytes` of a text, a link's address percent-decoded or the names of files. An image has only the app's
+  /// until the text read from it follows (`HistoryWrite.text`, `imageSearchBody`). The app's name comes first so a
+  /// copy from another app can change it in place (`HistoryWrite.update`).
   static func searchText(of content: Content, source: AppInfo?) -> String {
     let body: String = switch content {
     case let .text(text): String(text.prefix(utf8Bytes: searchedBytes))
@@ -109,6 +110,28 @@ public struct ClipboardItem: Identifiable, Equatable, Sendable {
   /// name from the file system may come decomposed.
   static func searchKey(_ text: String) -> String {
     text.lowercased().precomposedStringWithCanonicalMapping
+  }
+
+  /// Lowercase Cyrillic letters and the Latin letters they look like, which OCR takes for each other both ways ("TOKEH"
+  /// for "ТОКЕН", "МСР" for "MCP"). Twins only in uppercase (В Н К М Т) are here too: keys are lowercase on both sides.
+  private static let latinTwins: [Unicode.Scalar: Unicode.Scalar] = [
+    "а": "a", "в": "b", "е": "e", "к": "k", "м": "m", "н": "h", "о": "o", "р": "p", "с": "c", "т": "t", "у": "y",
+    "х": "x", "і": "i", "ј": "j", "ѕ": "s",
+  ]
+
+  /// A key in `searchKey` form with each Cyrillic letter that has a Latin twin written as that twin; everything else
+  /// stays. The text read from an image is kept in this form, and a query's word is looked for in it in this form too,
+  /// so look-alike letters never block a match.
+  static func lookAlike(_ key: String) -> String {
+    var folded = String.UnicodeScalarView()
+    folded.append(contentsOf: key.unicodeScalars.lazy.map { latinTwins[$0] ?? $0 })
+    return String(folded)
+  }
+
+  /// What search keeps of the text read from an image, after the app's line: its first `searchedBytes`, as of a text,
+  /// in `searchKey` form with look-alike letters folded (`lookAlike`).
+  static func imageSearchBody(_ text: String) -> String {
+    lookAlike(searchKey(String(text.prefix(utf8Bytes: searchedBytes))))
   }
 }
 
@@ -248,13 +271,32 @@ extension ClipboardItem {
   }
 
   /// Ids of the saved items whose search text holds every word (`searchText`), pinned first, newest first. A secret has
-  /// no row, so it is never found.
+  /// no row, so it is never found. The text read from an image is kept with look-alike letters folded
+  /// (`imageSearchBody`), so in an image a word is also looked for folded (`lookAlike`); a text, a link or files are
+  /// matched only as typed.
   static func search(_ words: [String], _ db: Database) throws -> [ID] {
-    let holdsEveryWord = words.map { _ in "instr(searchText, ?) > 0" }.joined(separator: " AND ")
+    var conditions: [String] = []
+    var arguments: [String] = []
+    for word in words {
+      let folded = lookAlike(word)
+      if folded == word {
+        conditions.append("instr(searchText, ?) > 0")
+        arguments.append(word)
+      } else {
+        // An image's fingerprint starts with "image:" (`ClipboardCopy.fingerprint`).
+        conditions.append(
+          "(instr(searchText, ?) > 0 OR (substr(fingerprint, 1, 6) = 'image:' AND instr(searchText, ?) > 0))"
+        )
+        arguments += [word, folded]
+      }
+    }
     return try String.fetchAll(
       db,
-      sql: "SELECT id FROM \(databaseTableName) WHERE \(holdsEveryWord) ORDER BY isPinned DESC, copiedAt DESC",
-      arguments: StatementArguments(words)
+      sql: """
+        SELECT id FROM \(databaseTableName) WHERE \(conditions.joined(separator: " AND "))
+        ORDER BY isPinned DESC, copiedAt DESC
+        """,
+      arguments: StatementArguments(arguments)
     )
     .compactMap(UUID.init(uuidString:))
   }
@@ -272,13 +314,16 @@ extension ClipboardItem {
 
   /// Rows saved before `clipboard.v2`, or since by an older Vortex, have no size (0), preview or search text: works
   /// them out from the items as loaded, which then hold their whole content, and writes them. An image's size is its
-  /// file's, read through `files`; memory then keeps a long text by its start. Called once the history is read.
+  /// file's, read through `files`, and its search text keeps what follows the app's line: the text read from it.
+  /// Memory then keeps a long text by its start. Called once the history is read.
   static func complete(_ items: inout [ClipboardItem], files: FileClient, in database: any DatabaseWriter) async throws {
     struct Completion: Sendable {
       var index: Int
       var byteSize: Int
       var preview: String?
+      /// The whole search text; for an image only the app's line, as what follows it stays (`keepsBody`).
       var searchText: String
+      var keepsBody: Bool
     }
     var completions: [Completion] = []
     for (index, item) in items.enumerated() where item.byteSize == 0 && !item.isTruncated {
@@ -299,7 +344,13 @@ extension ClipboardItem {
         byteSize = urls.reduce(0) { $0 + $1.path.utf8.count }
       }
       completions.append(
-        Completion(index: index, byteSize: byteSize, preview: preview, searchText: searchText(of: item.content, source: item.source))
+        Completion(
+          index: index,
+          byteSize: byteSize,
+          preview: preview,
+          searchText: item.isImage ? appLine(item.source) : searchText(of: item.content, source: item.source),
+          keepsBody: item.isImage
+        )
       )
     }
     guard !completions.isEmpty else { return }
@@ -308,8 +359,15 @@ extension ClipboardItem {
       let statement = try db.cachedStatement(
         sql: "UPDATE \(databaseTableName) SET byteSize = ?, preview = ?, searchText = ? WHERE id = ?"
       )
+      // The app's line, then whatever follows it now, as `HistoryWrite.update` writes it.
+      let keepingBody = try db.cachedStatement(sql: """
+        UPDATE \(databaseTableName)
+        SET byteSize = ?, preview = ?, searchText = ? || char(10) || substr(searchText, instr(searchText, char(10)) + 1)
+        WHERE id = ?
+        """)
       for (completion, id) in zip(completions, ids) {
-        try statement.execute(arguments: [completion.byteSize, completion.preview, completion.searchText, id])
+        try (completion.keepsBody ? keepingBody : statement)
+          .execute(arguments: [completion.byteSize, completion.preview, completion.searchText, id])
       }
     }
     for completion in completions {
@@ -332,6 +390,9 @@ enum HistoryWrite: Equatable, Sendable {
   case update(ClipboardItem)
   /// Rows of items that are gone; their image folders go once the rows have.
   case delete([ClipboardItem.ID], folders: [URL])
+  /// The text read from an image, in `ClipboardItem.imageSearchBody` form: it follows the app's line of the search
+  /// text, which stays. Queued once, after the image's insert.
+  case text(ClipboardItem.ID, body: String)
 
   /// Writes a batch; the first change that fails stops it, so in a transaction the batch lands whole or not at all.
   /// Returns the start memory keeps of each long text inserted, and the folders whose rows are gone.
@@ -391,6 +452,15 @@ enum HistoryWrite: Equatable, Sendable {
           try statement.execute(arguments: [id.uuidString])
         }
         folders += removedFolders
+      case let .text(id, body):
+        try db.execute(
+          sql: """
+            UPDATE \(ClipboardItem.databaseTableName)
+            SET searchText = substr(searchText, 1, instr(searchText, char(10))) || ?
+            WHERE id = ?
+            """,
+          arguments: [body, id.uuidString]
+        )
       }
     }
     return (previews, folders)

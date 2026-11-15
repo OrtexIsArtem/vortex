@@ -58,7 +58,7 @@ extension ClipboardFeatureTests {
     #expect(await search("київ", store) == [.link(URL(string: "https://uk.wikipedia.org/wiki/%D0%9A%D0%B8%D1%97%D0%B2")!)])
     #expect(await search("звіт жовтень", store) == [.files([URL(fileURLWithPath: "/tmp/Звіт за жовтень.pdf")])])
     #expect(await search("safari", store).count == 1)
-    // An image only by its app.
+    // An image with no text on it only by its app.
     #expect(await search("preview", store).first?.isImageForTest == true)
     #expect(await search("image", store).isEmpty)
     #expect(await search("png", store).isEmpty)

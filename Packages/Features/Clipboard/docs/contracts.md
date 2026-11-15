@@ -8,7 +8,7 @@
 ## Uses
 - VortexCore: `FeatureModule`, `@Dependency(\.database)`, `databaseIsOnDisk` with its own migrator (`clipboard.v1`, `clipboard.v2`), `DataFolder`, design system, `SettingsRow`, `PermissionRows`; `@SharedReader(.permissionStatuses)` (the row, and recording nothing while Paste from Other Apps reads `notGranted`) and `permissionPage.open`.
 - VortexPlatform permissions: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex".
-- VortexPlatform: `PasteboardClient` (copies and writing), `FileClient` (image files and their sizes, missing files, Show in Finder), `FileName` (the names search looks through), `AppsClient` and `AppIcon` (sources, ignored apps), `DragSourceArea` (dragging cards and rows out), `dropTarget` (drops on the Home widget), `FileThumbnail`, `FileIcon`.
+- VortexPlatform: `PasteboardClient` (copies and writing), `FileClient` (image files and their sizes, missing files, Show in Finder), `TextRecognitionClient.recognizeForSearch` (the text on a new image, for search), `FileName` (the names search looks through), `AppsClient` and `AppIcon` (sources, ignored apps), `DragSourceArea` (dragging cards and rows out), `dropTarget` (drops on the Home widget), `FileThumbnail`, `FileIcon`.
 
 ## Not yet
 - "Make key" for Secrets; "Paste right away".

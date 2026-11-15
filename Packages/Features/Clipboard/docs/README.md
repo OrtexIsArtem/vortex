@@ -7,7 +7,7 @@ Keeps what the user copied for the time they choose (a month by default), plus p
 | behavior.md | what is recorded, the cards, clicks and drags, the widget on Home |
 | history.md | how long items stay, Clear and Undo, search |
 | settings.md | Keep history, the History row, ignored apps |
-| data.md | the history table, its writes and image files |
+| data.md | the history table, its writes, image files and the text read from them |
 | contracts.md | what it takes from Core and Platform |
 
 Code: ClipboardFeature.swift (logic, tested), ClipboardItem.swift (the item, its table and writes), ClipboardSettings.swift, LinkAddress.swift,
