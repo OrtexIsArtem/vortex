@@ -15,6 +15,11 @@ import VortexPlatform
 struct ClipboardScaleTests {
   static let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
+  /// How much looser the time bounds are on CI (`CI` is set): a shared runner running every suite at once took 1.6 s
+  /// for the first layout a Mac does in 12 ms. A stall still fails there, and a Mac, as before every push, keeps the
+  /// tight bounds.
+  static let slack = ProcessInfo.processInfo.environment["CI"] == nil ? 1 : 10
+
   /// The seed as the load gives it: long texts by their start, in `displayOrder`.
   static func loaded(_ seed: ClipboardSeed) -> IdentifiedArrayOf<ClipboardItem> {
     let items = seed.items.map { item -> ClipboardItem in
@@ -92,9 +97,9 @@ struct ClipboardScaleTests {
     let (results, searched) = untilChanged(from: afterDelete)
     print("10,000 items: first layout \(first); until the tab shows a delete \(change), 3,000 results \(results)")
     #expect(opened != nil && afterDelete != opened && searched != afterDelete)
-    #expect(first < .seconds(1))
-    #expect(change < .milliseconds(250))
-    #expect(results < .milliseconds(250))
+    #expect(first < .seconds(1) * Self.slack)
+    #expect(change < .milliseconds(250) * Self.slack)
+    #expect(results < .milliseconds(250) * Self.slack)
     window.contentView = nil
   }
 
@@ -115,7 +120,7 @@ struct ClipboardScaleTests {
         found = try database.read { db in try ClipboardItem.search(words, db) }
       }
       timings.append("\(query): \(found.count) in \(took)")
-      #expect(took < .milliseconds(400), "\(query)")
+      #expect(took < .milliseconds(400) * Self.slack, "\(query)")
     }
     print("search over 10,000 items (\(bytes / 1_000_000) MB of search text, written in \(writing)): \(timings.joined(separator: "; "))")
   }
