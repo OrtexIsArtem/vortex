@@ -4,7 +4,7 @@ description: A free, open-source NotchNook alternative for Mac. Vortex, NotchNoo
 heading: 'A free NotchNook alternative: Vortex, NotchNook and Boring Notch compared'
 label: NotchNook alternative
 published: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-16
 faq:
   - q: Is there a free NotchNook alternative?
     a: >-
@@ -54,7 +54,7 @@ As checked on 1 November 2026. NotchNook facts are from its official page as arc
 | Runs on | macOS 14+, Apple silicon | macOS 14.6+ | macOS 14+, Apple silicon or Intel |
 | Notarized by Apple | No | Not listed | No |
 | Timer | Yes, one at a time | Not listed | Not listed |
-| Clipboard history | Yes, the last 10 plus pins | Not listed | Not listed |
+| Clipboard history | Yes: a month by default, up to forever, with search and pins | Not listed | Not listed |
 | File shelf | Yes, and it watches build folders | Yes | Yes |
 | AirDrop | No | Not listed | Yes |
 | Music controls | No | Yes, a Media Player widget | Yes |

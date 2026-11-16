@@ -65,9 +65,9 @@ export const es: Copy = {
   clipboardChapter: {
     ...en.clipboardChapter,
     title: 'El historial del portapapeles, siempre a mano.',
-    titleQuiet: 'Tus diez últimas copias, más las que fijes.',
-    body: 'Los textos, enlaces, imágenes y archivos se guardan a medida que los copias. Haz clic en uno para volver a copiarlo, arrástralo a cualquier app o fíjalo para más tarde. Las copias que los gestores de contraseñas marcan como secretas se muestran como puntos, solo se guardan en memoria y se borran cuando sales de Vortex.',
-    facts: ['10 recientes, las fijadas arriba', 'Textos, enlaces, imágenes y archivos', 'Las apps que excluyas nunca se registran'],
+    titleQuiet: 'Todo lo que copiaste en el último mes, más lo que fijes.',
+    body: 'Los textos, enlaces, imágenes y archivos se guardan a medida que los copias, durante un mes o el tiempo que quieras. Haz clic en uno para volver a copiarlo, arrástralo a cualquier app o fíjalo para más tarde. Las copias que los gestores de contraseñas marcan como secretas se muestran como puntos, solo se guardan en memoria y se borran cuando sales de Vortex.',
+    facts: ['Búsqueda, incluso en el texto de las capturas', 'Textos, enlaces, imágenes y archivos', 'Las apps que excluyas nunca se registran'],
     tryIt: 'Copia cualquier frase de esta página.',
     thisPage: 'Esta página',
     samples: {

@@ -99,9 +99,9 @@ export const en = {
   clipboardChapter: {
     label: 'Clipboard',
     title: 'Clipboard history, one hover away.',
-    titleQuiet: 'Your last ten copies, plus the ones you pin.',
-    body: 'Text, links, images and files are kept as you copy them. Click one to copy it again, drag it into any app, or pin it for later. Copies that password managers mark as secret show as dots, stay in memory and are gone when Vortex quits.',
-    facts: ['10 recent, pins on top', 'Text, links, images, files', 'Apps you exclude are never recorded'],
+    titleQuiet: 'Everything you copied this month, plus the ones you pin.',
+    body: 'Text, links, images and files are kept as you copy them, for a month or as long as you choose. Click one to copy it again, drag it into any app, or pin it for later. Copies that password managers mark as secret show as dots, stay in memory and are gone when Vortex quits.',
+    facts: ['Search, even the text in screenshots', 'Text, links, images, files', 'Apps you exclude are never recorded'],
     tryIt: 'Copy any sentence on this page.',
     copied: 'Copied',
     /** A card's buttons name the card they act on; a secret's is never spoken (null). */

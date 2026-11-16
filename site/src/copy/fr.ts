@@ -66,9 +66,9 @@ export const fr: Copy = {
   clipboardChapter: {
     ...en.clipboardChapter,
     title: 'L’historique du presse-papiers, en un survol.',
-    titleQuiet: 'Vos dix derniers éléments copiés, et ceux que vous épinglez.',
-    body: 'Textes, liens, images et fichiers sont conservés au fil de vos copies. Cliquez sur un élément pour le copier à nouveau, faites-le glisser dans n’importe quelle app ou épinglez-le pour plus tard. Ce que les gestionnaires de mots de passe marquent comme secret s’affiche sous forme de points, reste en mémoire et disparaît quand vous quittez Vortex.',
-    facts: ['10 récents, épinglés en tête', 'Texte, liens, images, fichiers', 'Les apps que vous excluez sont ignorées'],
+    titleQuiet: 'Tout ce que vous avez copié depuis un mois, et ce que vous épinglez.',
+    body: 'Textes, liens, images et fichiers sont conservés au fil de vos copies, pendant un mois ou aussi longtemps que vous le souhaitez. Cliquez sur un élément pour le copier à nouveau, faites-le glisser dans n’importe quelle app ou épinglez-le pour plus tard. Ce que les gestionnaires de mots de passe marquent comme secret s’affiche sous forme de points, reste en mémoire et disparaît quand vous quittez Vortex.',
+    facts: ['Recherche, même dans le texte des captures d’écran', 'Texte, liens, images, fichiers', 'Les apps que vous excluez sont ignorées'],
     tryIt: 'Copiez une phrase de cette page.',
     thisPage: 'Cette page',
     samples: {

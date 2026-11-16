@@ -65,9 +65,9 @@ export const ptBr: Copy = {
   clipboardChapter: {
     ...en.clipboardChapter,
     title: 'Histórico da área de transferência, ao alcance do ponteiro.',
-    titleQuiet: 'Suas dez últimas cópias, mais as que você fixar.',
-    body: 'Textos, links, imagens e arquivos ficam guardados à medida que você copia. Clique em um item para copiá-lo de novo, arraste-o para qualquer app ou fixe-o para depois. Cópias que os gerenciadores de senhas marcam como secretas aparecem como pontos, ficam só na memória e somem quando o Vortex é encerrado.',
-    facts: ['10 recentes, fixados no topo', 'Textos, links, imagens, arquivos', 'Apps que você exclui nunca são registrados'],
+    titleQuiet: 'Tudo o que você copiou no último mês, mais o que você fixar.',
+    body: 'Textos, links, imagens e arquivos ficam guardados à medida que você copia, por um mês ou pelo tempo que quiser. Clique em um item para copiá-lo de novo, arraste-o para qualquer app ou fixe-o para depois. Cópias que os gerenciadores de senhas marcam como secretas aparecem como pontos, ficam só na memória e somem quando o Vortex é encerrado.',
+    facts: ['Busca até no texto das capturas de tela', 'Textos, links, imagens, arquivos', 'Apps que você exclui nunca são registrados'],
     tryIt: 'Copie qualquer frase desta página.',
     thisPage: 'Esta página',
     samples: {

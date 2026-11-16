@@ -65,9 +65,9 @@ export const de: Copy = {
   clipboardChapter: {
     ...en.clipboardChapter,
     title: 'Der Zwischenablage-Verlauf, immer griffbereit.',
-    titleQuiet: 'Deine letzten zehn Kopien und alles, was du anheftest.',
-    body: 'Texte, Links, Bilder und Dateien landen im Verlauf, sobald du sie kopierst. Klicke auf einen Eintrag, um ihn erneut zu kopieren, ziehe ihn in eine beliebige App oder hefte ihn für später an. Was Passwortmanager als geheim markieren, erscheint als Punkte, bleibt nur im Arbeitsspeicher und ist weg, sobald Vortex beendet wird.',
-    facts: ['10 neueste, Angeheftete oben', 'Text, Links, Bilder, Dateien', 'Ausgeschlossene Apps werden nie erfasst'],
+    titleQuiet: 'Alles, was du im letzten Monat kopiert hast, und alles, was du anheftest.',
+    body: 'Texte, Links, Bilder und Dateien landen im Verlauf, sobald du sie kopierst, und bleiben einen Monat oder so lange, wie du willst. Klicke auf einen Eintrag, um ihn erneut zu kopieren, ziehe ihn in eine beliebige App oder hefte ihn für später an. Was Passwortmanager als geheim markieren, erscheint als Punkte, bleibt nur im Arbeitsspeicher und ist weg, sobald Vortex beendet wird.',
+    facts: ['Suche, sogar nach Text in Bildschirmfotos', 'Text, Links, Bilder, Dateien', 'Ausgeschlossene Apps werden nie erfasst'],
     tryIt: 'Kopiere irgendeinen Satz auf dieser Seite.',
     thisPage: 'Diese Seite',
     samples: {

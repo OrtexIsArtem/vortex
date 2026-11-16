@@ -7,7 +7,7 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 **Website:** [vortex-notch.web.app](https://vortex-notch.web.app), where you can try every feature in your browser. **Download:** [the latest release](https://github.com/OrtexIsArtem/vortex/releases/latest).
 
 - **Timer**: set the minutes on a drum and watch the countdown in the notch. When time is up, it plays a sound, flashes and shows a notification.
-- **Clipboard**: your last copies plus pinned ones: text, links, images and files.
+- **Clipboard**: what you copied this month, or as long as you choose, plus pinned items: text, links, images and files. Search finds them by their words, even the text in a screenshot.
 - **Shelf**: put files aside and drag them out later, into any app. Unpinned files clear after a day.
 - **Tasks**: press «+» in the Tasks tab, or a shortcut you set, to freeze the screen. Frame an area and press Return. You get a task with the screenshot, its recognized text and the page address from your browser.
 - **Keys for Claude**: keep database URLs, API tokens and passwords in the macOS keychain. Claude Code runs commands with `{{key}}` placeholders through a local MCP server and never sees a value. Vortex asks you once per key per session.
