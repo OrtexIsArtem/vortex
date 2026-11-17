@@ -184,21 +184,19 @@ final class WindowController: NSObject {
   // MARK: - Window
 
   func present(_ reason: OpenReason) {
-    guard let panel = mainPanel, let placement = placement(for: reason) else { return }
+    guard let shown = mainPanel, let placement = placement(for: reason) else { return }
     seeAlarms()
     generation += 1
     let current = generation
 
     if isOffscreenQA {
-      presentOffscreen(panel, placement)
+      presentOffscreen(shown, placement)
       return
     }
 
-    if !panel.isVisible { presentation.isExpanded = false }
+    if !shown.isVisible { presentation.isExpanded = false }
     presentation.notch = placement.notch
-    panel.hasShadow = false
-    panel.setFrame(placement.frame, display: true)
-    panel.orderFrontRegardless()
+    let panel = orderFrontOnActiveSpace(shown, frame: placement.frame)
     // A visible QA run never takes the keyboard either.
     if !reason.isPassing, !isQA { panel.makeKey() }
     panel.contentView?.updateTrackingAreas()
@@ -293,6 +291,23 @@ final class WindowController: NSObject {
     let size = VortexMetrics.windowSize
     panel.setFrame(CGRect(x: 0, y: 0, width: size.width + shoulder * 2, height: size.height), display: false)
     root.layoutSubtreeIfNeeded()
+    return panel
+  }
+
+  /// Orders the window in at `frame`, without a shadow. Stuck on another Space (`VortexPanel.replacement`), it would
+  /// open there, out of sight, and every hover after would find it open: a new window takes its content and opens here.
+  private func orderFrontOnActiveSpace(_ shown: VortexPanel, frame: CGRect) -> VortexPanel {
+    shown.hasShadow = false
+    shown.setFrame(frame, display: true)
+    shown.orderFrontRegardless()
+    guard !shown.isOnActiveSpace else { return shown }
+    let wasKey = shown.isKeyWindow
+    let panel = shown.replacement()
+    // Closed rather than ordered out, so the window server takes it off its Space as well.
+    shown.close()
+    mainPanel = panel
+    panel.orderFrontRegardless()
+    if wasKey { panel.makeKey() }
     return panel
   }
 

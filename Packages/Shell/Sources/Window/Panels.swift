@@ -10,7 +10,17 @@ final class VortexPanel: NSPanel {
   private let acceptsKey: Bool
 
   /// A panel showing SwiftUI `content` inside the AppKit `root` view.
-  init(acceptsKey: Bool, root: NSView, content: some View) {
+  convenience init(acceptsKey: Bool, root: NSView, content: some View) {
+    let hosting = NSHostingView(rootView: content)
+    hosting.sizingOptions = []
+    hosting.autoresizingMask = [.width, .height]
+    root.addSubview(hosting)
+    self.init(acceptsKey: acceptsKey, root: root)
+    hosting.frame = root.bounds
+  }
+
+  /// A panel showing `root` with whatever it holds already.
+  private init(acceptsKey: Bool, root: NSView) {
     self.acceptsKey = acceptsKey
     super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
     isFloatingPanel = true
@@ -23,13 +33,36 @@ final class VortexPanel: NSPanel {
     isMovable = false
     isReleasedWhenClosed = false
     animationBehavior = .none
-
-    let hosting = NSHostingView(rootView: content)
-    hosting.sizingOptions = []
-    hosting.autoresizingMask = [.width, .height]
-    root.addSubview(hosting)
     contentView = root
-    hosting.frame = root.bounds
+  }
+
+  /// A new panel set up as this one, holding this one's content view, which this one gives up: the views inside, their
+  /// SwiftUI state, their callbacks and the keyboard focus move as they are.
+  ///
+  /// macOS sometimes keeps a panel that joins all Spaces on one full-screen Space only, until that Space goes: ordered
+  /// in from another Space, it shows there, out of sight. Nothing set on the panel brings it back (its collection
+  /// behavior, level, ordering out and in), while a new window joins all Spaces again.
+  func replacement() -> VortexPanel {
+    let focused = focusedView
+    let root = contentView ?? NSView()
+    contentView = NSView()
+    let panel = VortexPanel(acceptsKey: acceptsKey, root: root)
+    panel.onEscape = onEscape
+    panel.ignoresMouseEvents = ignoresMouseEvents
+    panel.hasShadow = hasShadow
+    panel.setFrame(frame, display: false)
+    if let focused, focused.isDescendant(of: root) {
+      panel.makeFirstResponder(focused)
+    }
+    return panel
+  }
+
+  /// The view with the keyboard focus: for a text field being edited, the field rather than its field editor.
+  private var focusedView: NSView? {
+    if let editor = firstResponder as? NSText, editor.isFieldEditor {
+      return editor.delegate as? NSView
+    }
+    return firstResponder as? NSView
   }
 
   @available(*, unavailable)
