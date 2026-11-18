@@ -36,8 +36,12 @@ struct FeaturePageView: View {
         ScrollView {
           details(state)
             .padding(.bottom, 18)
+            // Erase Data's fill reaches past the text's left edge, and a scroll view clips what lies outside: the
+            // details get that room here and the scroll view takes it back below, so nothing moves.
+            .padding(.leading, EraseDataButton.inset)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .padding(.leading, -EraseDataButton.inset)
       }
       .padding(.leading, 10)
       .padding(.trailing, 18)
@@ -103,25 +107,9 @@ struct FeaturePageView: View {
         .padding(.top, 2)
 
       if case let .removed(bytes) = state {
-        Button {
-          store.send(.eraseTapped(feature.id))
-        } label: {
-          HStack(spacing: 6) {
-            Image(systemName: "trash")
-            Text("Erase Data…", bundle: .module)
-            // Rows in the database have no size of their own to show.
-            if let bytes, bytes > 0 {
-              Text(bytes.formatted(.byteCount(style: .file))).foregroundStyle(VortexColor.tertiaryText)
-            }
-          }
-          .font(.system(size: 12))
-          .foregroundStyle(VortexColor.secondaryText)
-          .padding(.horizontal, 8)
-          .frame(height: 28)
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.leading, -8)
+        EraseDataButton(bytes: bytes) { store.send(.eraseTapped(feature.id)) }
+          // The bin lines up with the text above it; the fill under the pointer reaches past it.
+          .padding(.leading, -EraseDataButton.inset)
       }
     }
   }
@@ -277,6 +265,47 @@ struct FeaturePageView: View {
     case .added:
       nil
     }
+  }
+}
+
+/// Erase Data under a removed feature's buttons: the bin, its words and the size of what the feature keeps. Under the
+/// pointer it lights up as the app's other quiet controls do, its words brightened on a rounded fill, and pressed it
+/// dims; the pointer stays the arrow, as on every button in the app.
+private struct EraseDataButton: View {
+  /// How far the fill reaches past the label on each side.
+  static let inset: CGFloat = 8
+  /// What the feature keeps on disk, if known.
+  let bytes: Int64?
+  let action: () -> Void
+  @State private var isHovered = false
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 6) {
+        Image(systemName: "trash")
+        Text("Erase Data…", bundle: .module)
+        // Rows in the database have no size of their own to show.
+        if let bytes, bytes > 0 {
+          Text(bytes.formatted(.byteCount(style: .file)))
+            .foregroundStyle(isHovered ? VortexColor.secondaryText : VortexColor.tertiaryText)
+        }
+      }
+      .font(.system(size: 12))
+      .foregroundStyle(isHovered ? VortexColor.primaryText : VortexColor.secondaryText)
+      .padding(.horizontal, Self.inset)
+      .frame(height: 28)
+      .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(isHovered ? VortexColor.raised : .clear))
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(DimmedWhilePressed())
+    .onHover { isHovered = $0 }
+  }
+}
+
+/// A button drawn by its label alone that dims while pressed, as the capsule buttons do.
+private struct DimmedWhilePressed: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label.opacity(configuration.isPressed ? 0.7 : 1)
   }
 }
 
