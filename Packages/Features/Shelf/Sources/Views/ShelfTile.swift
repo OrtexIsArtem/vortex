@@ -10,7 +10,7 @@ struct ShelfTile: View {
   let isFresh: Bool
   let isUnavailable: Bool
   let now: Date
-  /// Smaller, for the dock on Home: a lower preview and the name only.
+  /// Smaller, for the widget on Home: a lower preview and the name only.
   var isCompact = false
   let dragItems: @MainActor () -> [DragItem]
   let send: @MainActor (ShelfFeature.Action) -> Void

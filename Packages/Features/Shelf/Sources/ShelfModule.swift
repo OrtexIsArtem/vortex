@@ -35,7 +35,9 @@ public enum ShelfModule: FeatureModule {
         id: "shelf.files",
         feature: id,
         title: LocalizedStringResource("Files", bundle: .atURL(Bundle.module.bundleURL)),
-        place: .grid([.medium, .wide]),
+        // Large first, the size Home's first layout gives it: the shelf as Home had it before its grid, half the width
+        // and the full height.
+        place: .grid([.large, .medium, .wide]),
         view: ShelfHomeWidget(store: store)
       ),
     ]

@@ -27,7 +27,8 @@ struct ShelfHomeWidget: View {
       ScrollView {
         TimelineView(.everyMinute) { timeline in
           LazyVGrid(
-            // Three tiles across a medium widget, six across a wide one.
+            // Three tiles across a large or a medium widget, both two cells wide, six across a wide one; a large one
+            // shows more rows.
             columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: size == .wide ? 6 : 3),
             spacing: 10
           ) {

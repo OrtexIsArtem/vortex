@@ -5,6 +5,12 @@ import VortexCore
 
 @testable import VortexShell
 
+// Home's first layout is its own (`HomeLayout`), read here to check the shipped features' widgets together; a build
+// without Home, as any feature can be removed, leaves the check out.
+#if canImport(FeatureHome)
+  @testable import FeatureHome
+#endif
+
 /// The features the app ships describe themselves for the catalog.
 @MainActor
 struct FeatureRegistryTests {
@@ -26,6 +32,31 @@ struct FeatureRegistryTests {
       #expect(HomeWidget.problems(module.makeHomeWidgets(), feature: module.id) == [], "\(module.id)")
     }
   }
+
+  #if canImport(FeatureHome)
+    /// Home's first layout of the shipped features, in the default sidebar order, is Home as it was before its grid:
+    /// the timer in the row next to the notch, Clipboard's history and the shelf side by side, 2×2 each. A new user
+    /// starts with it, and so does the update from that Home.
+    @Test
+    func theShippedFeaturesFirstLayoutIsHomeAsItWasBeforeItsGrid() {
+      let widgets = FeatureRegistry.all.flatMap { module in
+        module.makeHomeWidgets().map { widget in
+          HomeWidgetInfo(
+            id: widget.id, feature: widget.feature, place: widget.place, name: widget.id, featureName: module.id,
+            featureSymbol: module.symbol
+          )
+        }
+      }
+      let layout = HomeLayout.initial(widgets)
+      #expect(layout.notchRow == "timer.timer")
+      #expect(
+        layout.placed == [
+          Placement(widget: "clipboard.history", size: .large, column: 0, row: 0),
+          Placement(widget: "shelf.files", size: .large, column: 2, row: 0),
+        ]
+      )
+    }
+  #endif
 
   @Test
   func onlyHomeIsBuiltInAndKeysIsTheOneNotRecommended() {

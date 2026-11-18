@@ -45,5 +45,5 @@
 - Turning the feature off hides the tray.
 
 ## On Home
-- The shelf sits in the dock as small tiles with their names; the last tile takes drops.
+- The Files widget shows the shelf as small tiles with their names: three across at Large 2×2 and Medium 2×1, six at Wide 4×1; the last tile takes drops.
 - Tiles drag out, open on double-click and have the same menu as in the tab; the whole widget takes drops.
