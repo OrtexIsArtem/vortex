@@ -8,6 +8,8 @@ struct WindowClient: Sendable {
   var events: @Sendable () async -> AsyncStream<WindowEvent> = { .finished }
   var present: @Sendable (_ reason: OpenReason) async -> Void
   var dismiss: @Sendable () async -> Void
+  /// Grows or shrinks the window, keeping its left edge; a closed window takes the size at its next open.
+  var setSize: @Sendable (_ size: WindowSize) async -> Void
   var setMenuBarIconVisible: @Sendable (_ isVisible: Bool) async -> Void
   /// Whether files may be dropped on the menu bar icon: only while some feature takes them.
   var setAcceptsFiles: @Sendable (_ acceptsFiles: Bool) async -> Void
@@ -22,6 +24,7 @@ extension WindowClient: DependencyKey {
     events: { await WindowController.shared.events() },
     present: { reason in await WindowController.shared.present(reason) },
     dismiss: { await WindowController.shared.dismiss() },
+    setSize: { size in await WindowController.shared.setSize(size) },
     setMenuBarIconVisible: { isVisible in await WindowController.shared.setMenuBarIconVisible(isVisible) },
     setAcceptsFiles: { acceptsFiles in await WindowController.shared.setAcceptsFiles(acceptsFiles) },
     holdKeyboard: { isHeld in await WindowController.shared.holdKeyboard(isHeld) },

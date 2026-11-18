@@ -62,7 +62,10 @@ final class WindowController: NSObject {
 
   private struct Placement {
     let frame: CGRect
-    let notch: CGSize?
+    /// Where the notch cuts into the content, see `WindowPresentationModel.notch`.
+    let notch: CGRect?
+    /// The screen the window opens on; nil in a QA run that shows nothing.
+    var screen: NSScreen?
   }
 
   @SharedReader(.notchIndicators) private var allIndicators
@@ -115,6 +118,12 @@ final class WindowController: NSObject {
   private let isQAVisible: Bool
   /// A QA run that shows nothing: the window opens off the displays, without animation (`qaPlacement`).
   private var isOffscreenQA: Bool { isQA && !isQAVisible }
+  /// The screen the open window is on, where a change of size places it.
+  private var shownScreen: NSScreen?
+  /// The last change of size and where the pointer was then, until the pointer moves: a leave it caused isn't one.
+  private var lastResize: (kind: WindowSizeRules.Resize, pointer: NSPoint)?
+  /// Incremented on every change of size, so a finished animation never acts on a newer one.
+  private var resizeGeneration = 0
   /// QA: whether the pretended pointer is inside the window, as it is after opening it from the notch.
   private var isQAPointerInWindow = false
   /// QA: the shell listens for events; until then an event a command makes would be lost.
@@ -140,7 +149,7 @@ final class WindowController: NSObject {
     menuBarMenu = menu
     presentation.notch = isOffscreenQA
       ? qaPlacement(for: .click).notch
-      : NSScreen.screens.lazy.compactMap(\.notchRect).first?.size
+      : NSScreen.screens.first { $0.notchRect != nil }.flatMap { placement(on: $0).notch }
     presentation.onNotchTapped = { [weak self] in self?.emit(.notchClicked(feature: nil)) }
     mainPanel = makeMainPanel(content: AnyView(content))
     rebuildEars()
@@ -202,6 +211,9 @@ final class WindowController: NSObject {
 
     if !shown.isVisible { presentation.isExpanded = false }
     presentation.notch = placement.notch
+    withoutAnimation { presentation.shownWidth = presentation.size.size.width }
+    shownScreen = placement.screen
+    lastResize = nil
     let panel = orderFrontOnActiveSpace(shown, frame: placement.frame)
     // A visible QA run never takes the keyboard either.
     if !reason.isPassing, !isQA { panel.makeKey() }
@@ -244,6 +256,68 @@ final class WindowController: NSObject {
       panel.orderOut(nil)
       self.resetNotchHover()
     }
+  }
+
+  // MARK: - Size
+
+  /// Grows or shrinks the open window, keeping its left edge where the screen allows: the content takes its new size at
+  /// once, and the window's outline follows with the opening's spring, or at once with Reduce Motion. A closed window
+  /// takes the size at its next open.
+  func setSize(_ size: WindowSize) {
+    guard size != presentation.size else { return }
+    let grows = size.size.width > presentation.size.size.width
+    guard let panel = mainPanel, panel.isVisible else {
+      withoutAnimation {
+        presentation.size = size
+        presentation.shownWidth = size.size.width
+      }
+      return
+    }
+    let placement: Placement
+    if isOffscreenQA {
+      placement = qaPlacement(for: presentation.notch == nil ? .hotkey : .click, size: size)
+    } else if let screen = shownScreen {
+      placement = self.placement(on: screen, size: size)
+    } else {
+      return
+    }
+    resizeGeneration += 1
+    let current = resizeGeneration
+    lastResize = (grows ? .grow : .shrink, NSEvent.mouseLocation)
+    // Growing, the window takes its new frame first and the outline widens into it; shrinking, the outline narrows
+    // first and the frame follows.
+    withoutAnimation { presentation.size = size }
+    if grows || isOffscreenQA {
+      presentation.notch = placement.notch
+      panel.setFrame(placement.frame, display: true)
+    }
+    let finish = { [weak self] in
+      guard let self, self.resizeGeneration == current, !grows, !self.isOffscreenQA else { return }
+      self.presentation.notch = placement.notch
+      panel.setFrame(placement.frame, display: true)
+      panel.contentView?.updateTrackingAreas()
+    }
+    if isOffscreenQA || reduceMotion {
+      withoutAnimation { presentation.shownWidth = size.size.width }
+      finish()
+    } else {
+      withAnimation(openAnimation) {
+        presentation.shownWidth = size.size.width
+      } completion: {
+        finish()
+      }
+    }
+    panel.contentView?.updateTrackingAreas()
+  }
+
+  /// The pointer came into the window or left it. A leave right after the window shrank away from a still pointer
+  /// isn't one (`WindowSizeRules`).
+  private func pointerHoverChanged(_ isInside: Bool) {
+    let resize = lastResize
+    let moved = resize.map { NSEvent.mouseLocation != $0.pointer } ?? true
+    if moved { lastResize = nil }
+    guard isInside || WindowSizeRules.closesOnPointerLeave(after: resize?.kind, pointerMoved: moved) else { return }
+    emit(.pointerInsideWindowChanged(isInside: isInside))
   }
 
   // MARK: - Indicators
@@ -295,7 +369,7 @@ final class WindowController: NSObject {
   private func makeMainPanel(content: AnyView) -> VortexPanel {
     let root = HoverTrackingView()
     root.onHoverChanged = { [weak self] isInside in
-      self?.emit(.pointerInsideWindowChanged(isInside: isInside))
+      self?.pointerHoverChanged(isInside)
     }
     let panel = VortexPanel(acceptsKey: true, root: root, content: WindowChromeView(model: presentation, content: content))
     panel.onEscape = { [weak self] in self?.emit(.escapePressed) }
@@ -303,7 +377,7 @@ final class WindowController: NSObject {
     panel.ignoresMouseEvents = isQAVisible
     // Lay the content out once while hidden, so opening only has to animate it.
     let shoulder = presentation.notch == nil ? 0 : VortexMetrics.shoulder
-    let size = VortexMetrics.windowSize
+    let size = presentation.size.size
     panel.setFrame(CGRect(x: 0, y: 0, width: size.width + shoulder * 2, height: size.height), display: false)
     root.layoutSubtreeIfNeeded()
     return panel
@@ -341,35 +415,51 @@ final class WindowController: NSObject {
       menuBarItem?.button?.window?.screen ?? pointerScreen
     }
     guard let screen else { return nil }
+    return placement(on: screen)
+  }
 
-    let size = VortexMetrics.windowSize
+  /// Where the window goes on the screen: out of its notch, or under the menu bar icon on a screen without one.
+  private func placement(on screen: NSScreen, size: WindowSize? = nil) -> Placement {
+    let size = size ?? presentation.size
     if let notch = screen.notchRect {
+      let frame = ScreenGeometry.notchWindowFrame(
+        notch: notch,
+        screenFrame: screen.frame,
+        visibleFrame: screen.visibleFrame,
+        size: size,
+        shoulder: VortexMetrics.shoulder
+      )
       return Placement(
-        frame: ScreenGeometry.notchWindowFrame(notch: notch, screenFrame: screen.frame, size: size, shoulder: VortexMetrics.shoulder),
-        notch: notch.size
+        frame: frame,
+        notch: ScreenGeometry.notchCutout(notch: notch, windowFrame: frame, shoulder: VortexMetrics.shoulder),
+        screen: screen
       )
     }
     let iconFrame = menuBarItem?.button?.window.flatMap { $0.screen == screen ? $0.frame : nil }
     let anchor = iconFrame ?? CGRect(x: screen.visibleFrame.maxX - 60, y: screen.visibleFrame.maxY, width: 1, height: 1)
     return Placement(
       frame: ScreenGeometry.menuBarWindowFrame(anchor: anchor, visibleFrame: screen.visibleFrame, size: size),
-      notch: nil
+      notch: nil,
+      screen: screen
     )
   }
 
   /// QA: where the window would open on the displays the run pretends to have, moved off the real ones. The pointer
   /// is on the main display, at its notch when it has one; the menu bar icon is there too.
-  private func qaPlacement(for reason: OpenReason) -> Placement {
+  private func qaPlacement(for reason: OpenReason, size: WindowSize? = nil) -> Placement {
     #if DEBUG
       let screens = QA.screens
       let screen: QALaunch.Screen? = switch reason {
       case .hover, .click, .fileDrag: screens.contains(.notch) ? .notch : screens.first
       case .hotkey, .menuBarIcon: screens.first
       }
-      let size = VortexMetrics.windowSize
+      let size = (size ?? presentation.size).size
       if screen == .notch {
         let frame = CGRect(x: 0, y: 0, width: size.width + VortexMetrics.shoulder * 2, height: size.height)
-        return Placement(frame: QA.offscreen(frame), notch: QA.notchSize)
+        // The notch stays where it is over the regular window, which the large one keeps the left edge of.
+        let notch = QA.notchSize
+        let x = (WindowSize.regular.size.width - notch.width) / 2
+        return Placement(frame: QA.offscreen(frame), notch: CGRect(x: x, y: 0, width: notch.width, height: notch.height))
       }
       return Placement(frame: QA.offscreen(CGRect(origin: .zero, size: size)), notch: nil)
     #else
@@ -381,6 +471,7 @@ final class WindowController: NSObject {
   /// user types in even while Vortex is not in front.
   private func presentOffscreen(_ panel: VortexPanel, _ placement: Placement) {
     presentation.notch = placement.notch
+    withoutAnimation { presentation.shownWidth = presentation.size.size.width }
     panel.hasShadow = false
     panel.setFrame(placement.frame, display: true)
     panel.orderFrontRegardless()

@@ -24,7 +24,8 @@ struct ShellWindowView: View {
         KeyboardCleaningView(store: store.scope(state: \.keyboardCleaning, action: \.keyboardCleaning))
       }
     }
-    .frame(width: VortexMetrics.windowSize.width, height: VortexMetrics.windowSize.height)
+    // As large as the window chrome lays it out: the regular size, or the large one for the catalog.
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .font(.system(size: 13))
     .foregroundStyle(VortexColor.primaryText)
   }
@@ -38,6 +39,8 @@ private struct TabContent: View {
       switch store.selectedTab {
       case .settings:
         SettingsView(store: store)
+      case .catalog, .catalogPage:
+        CatalogView(store: store)
       case let .feature(id):
         // Only a running feature's tab is made; the selected tab leaves a feature that stops.
         if store.state.isAvailable(.feature(id)), let tab = FeatureViews.shared.tab(id) {

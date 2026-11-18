@@ -30,6 +30,8 @@ struct ShellFeatureTests {
   let permissionReads = LockIsolated(0)
   let hiddenIndicatorOwners = LockIsolated<[Set<FeatureID>]>([])
   let trials = LockIsolated<[FeatureID]>([])
+  /// The window's sizes and opens, in order.
+  let windowLog = LockIsolated<[String]>([])
 
   func makeStore(
     features: [FeatureDescriptor] = [.timer, .shelf, .tasks],
@@ -44,7 +46,11 @@ struct ShellFeatureTests {
       ShellFeature()
     } withDependencies: {
       $0.continuousClock = clock
-      $0.windowClient.present = { [presented] reason in presented.withValue { $0.append(reason) } }
+      $0.windowClient.present = { [presented, windowLog] reason in
+        presented.withValue { $0.append(reason) }
+        windowLog.withValue { $0.append("present:\(reason)") }
+      }
+      $0.windowClient.setSize = { [windowLog] size in windowLog.withValue { $0.append("size:\(size)") } }
       $0.windowClient.dismiss = { [dismissals] in dismissals.withValue { $0 += 1 } }
       $0.windowClient.setMenuBarIconVisible = { [menuBarIcon] isVisible in menuBarIcon.withValue { $0.append(isVisible) } }
       $0.settingsClient.save = { [saved] settings in saved.withValue { $0.append(settings) } }
@@ -305,6 +311,50 @@ struct ShellFeatureTests {
     await clock.advance(by: .milliseconds(400))
     await store.finish()
     #expect(presented.value == [.hotkey])
+  }
+
+  // MARK: - The catalog's large window
+
+  /// Going to the catalog grows the window and counts as a deliberate open: a window opened on the way past stays open
+  /// when the pointer leaves it. The catalog isn't remembered as the last tab.
+  @Test
+  func theCatalogOpensLargeAndCountsAsADeliberateOpen() async {
+    let store = makeStore { $0.lastTab = "feature:tasks" }
+    await openByHover(store)
+    await store.send(.tabSelected(.catalog)) {
+      $0.selectedTab = .catalog
+      $0.openReason = .click
+    }
+    await store.send(.window(.pointerInsideWindowChanged(isInside: false)))
+    await clock.advance(by: .seconds(5))
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large"])
+    #expect(store.state.settings.lastTab == "feature:tasks")
+    #expect(dismissals.value == 0)
+  }
+
+  /// Every open starts at the regular size on an ordinary tab, even after settings that remember the catalog.
+  @Test
+  func openingAlwaysStartsRegularOnAnOrdinaryTab() async {
+    let store = makeStore { $0.lastTab = "catalog" }
+    #expect(store.state.selectedTab == .feature("timer"))
+    await openByHover(store)
+    #expect(store.state.selectedTab == .feature("timer"))
+    #expect(windowLog.value == ["size:regular", "present:hover"])
+  }
+
+  /// Closing leaves the catalog: the next open shows the last ordinary tab.
+  @Test
+  func closingLeavesTheCatalog() async {
+    let store = makeStore { $0.lastTab = "feature:shelf" }
+    await openByHover(store)
+    await store.send(.tabSelected(.catalog)) {
+      $0.selectedTab = .catalog
+      $0.openReason = .click
+    }
+    await store.send(.window(.escapePressed)) {
+      $0.openReason = nil
+      $0.selectedTab = .feature("shelf")
+    }
   }
 
   // MARK: - Closing

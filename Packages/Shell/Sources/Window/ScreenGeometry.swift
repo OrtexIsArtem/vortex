@@ -1,4 +1,5 @@
 import AppKit
+import VortexCore
 
 /// Pure geometry of the notch and the window around it.
 /// All rects are in global screen coordinates with the origin at the bottom left, as in AppKit.
@@ -16,24 +17,43 @@ enum ScreenGeometry {
     return CGRect(x: screenFrame.minX + leftAreaWidth, y: screenFrame.maxY - topInset, width: width, height: topInset)
   }
 
-  /// The window hanging from the notch: centered on it, its top edge at the top of the screen,
-  /// wide enough for the concave shoulders on both sides.
-  static func notchWindowFrame(notch: CGRect, screenFrame: CGRect, size: CGSize, shoulder: CGFloat) -> CGRect {
-    let width = size.width + shoulder * 2
-    return CGRect(x: notch.midX - width / 2, y: screenFrame.maxY - size.height, width: width, height: size.height)
+  /// The window hanging from the notch, its top edge at the top of the screen, wide enough for the concave shoulders
+  /// on both sides. The regular window is centered on the notch; the large one keeps its left edge and grows right,
+  /// moving left only as far as the visible area needs.
+  static func notchWindowFrame(
+    notch: CGRect,
+    screenFrame: CGRect,
+    visibleFrame: CGRect,
+    size: WindowSize,
+    shoulder: CGFloat
+  ) -> CGRect {
+    let regularX = notch.midX - (WindowSize.regular.size.width + shoulder * 2) / 2
+    let content = size.size
+    let width = content.width + shoulder * 2
+    let x = size == .regular ? regularX : max(min(regularX, visibleFrame.maxX - width), visibleFrame.minX)
+    return CGRect(x: x, y: screenFrame.maxY - content.height, width: width, height: content.height)
   }
 
-  /// The window under the menu bar icon on screens without a notch, kept inside the visible area.
+  /// The window under the menu bar icon on screens without a notch, kept inside the visible area: the regular window
+  /// is centered under the icon, the large one keeps its left edge and grows right as far as there is room.
   static func menuBarWindowFrame(
     anchor: CGRect,
     visibleFrame: CGRect,
-    size: CGSize,
+    size: WindowSize,
     gap: CGFloat = 6,
     margin: CGFloat = 8
   ) -> CGRect {
-    let preferredX = anchor.midX - size.width / 2
-    let x = min(max(preferredX, visibleFrame.minX + margin), visibleFrame.maxX - margin - size.width)
-    return CGRect(x: x, y: visibleFrame.maxY - gap - size.height, width: size.width, height: size.height)
+    let regular = WindowSize.regular.size.width
+    let regularX = min(max(anchor.midX - regular / 2, visibleFrame.minX + margin), visibleFrame.maxX - margin - regular)
+    let content = size.size
+    let x = max(min(regularX, visibleFrame.maxX - margin - content.width), visibleFrame.minX + margin)
+    return CGRect(x: x, y: visibleFrame.maxY - gap - content.height, width: content.width, height: content.height)
+  }
+
+  /// Where the notch cuts into the window's content (the window without its shoulders), in the content's coordinates
+  /// with the origin at the top left.
+  static func notchCutout(notch: CGRect, windowFrame: CGRect, shoulder: CGFloat) -> CGRect {
+    CGRect(x: notch.minX - windowFrame.minX - shoulder, y: 0, width: notch.width, height: notch.height)
   }
 
   /// The closed notch with ears of the given width on both sides; just the notch when there are no ears.

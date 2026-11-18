@@ -175,13 +175,17 @@
 
     // MARK: - The window's controls
 
-    /// `tab id=<feature id>|settings [section=general|activation|features]`: a click on the sidebar, in the open window.
+    /// `tab id=<feature id>|settings|catalog|catalog:<feature id> [section=general|activation|features]`: a click on
+    /// the sidebar, in the open window; `catalog:<id>` is the feature's page in the catalog.
     static func selectTab(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
       guard store.isOpen else { throw QAError("the window is closed") }
-      guard let id = arguments["id"] else { throw QAError("tab needs id=<feature id> or id=settings") }
-      let tab: ShellFeature.Tab = id == "settings" ? .settings : .feature(id)
+      guard let id = arguments["id"] else { throw QAError("tab needs id=<feature id>, settings, catalog or catalog:<id>") }
+      let tab: ShellFeature.Tab = id == "settings" || id == "catalog" || id.hasPrefix("catalog:")
+        ? ShellFeature.Tab(storageValue: id)
+        : .feature(id)
       guard store.state.isAvailable(tab) else {
-        throw QAError("no tab \(id); tabs: \((store.sidebarFeatures.map(\.id) + ["settings"]).joined(separator: ", "))")
+        let tabs = store.sidebarFeatures.map(\.id) + ["settings", "catalog"]
+        throw QAError("no tab \(id); tabs: \(tabs.joined(separator: ", "))")
       }
       store.send(.tabSelected(tab))
       if let name = arguments["section"] {

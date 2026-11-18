@@ -50,6 +50,7 @@ struct ShellOnboardingTests {
       $0.windowClient.setAcceptsFiles = { _ in }
       $0.windowClient.holdKeyboard = { _ in }
       $0.windowClient.setHiddenIndicatorOwners = { _ in }
+      $0.windowClient.setSize = { _ in }
       $0.hotkeyClient.presses = { _ in .finished }
       $0.keyboardLockClient.layout = { .ansi }
       $0.keyboardLockClient.presses = { .finished }

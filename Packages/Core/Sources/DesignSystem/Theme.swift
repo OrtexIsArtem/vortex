@@ -52,8 +52,23 @@ extension NSColor {
   }
 }
 
+/// The sizes the window takes. Every tab fits the regular one; a few pages, such as the catalog, need the large one,
+/// which grows right from the regular window's left edge, so the sidebar stays where it is.
+public enum WindowSize: Sendable, Equatable {
+  case regular
+  case large
+
+  public var size: CGSize {
+    switch self {
+    case .regular: VortexMetrics.windowSize
+    case .large: CGSize(width: 880, height: 440)
+    }
+  }
+}
+
 /// Sizes of the window that grows out of the notch.
 public enum VortexMetrics {
+  /// The regular window, `WindowSize.regular`.
   public static let windowSize = CGSize(width: 680, height: 440)
   public static let sidebarWidth: CGFloat = 56
   /// Height of the top row that flanks the notch.

@@ -215,9 +215,10 @@ struct ShellFeature {
       BlockState(isRead: !permissionStatuses.isEmpty, isBlocked: isBlocked)
     }
 
-    /// The last tab the user chose if it still exists; otherwise the first feature, then settings.
+    /// The last ordinary tab the user chose if it still exists; otherwise the first feature, then settings. The
+    /// catalog is never restored: every open starts at the regular size.
     var restoredTab: Tab {
-      if let last = settings.lastTab.map(Tab.init(storageValue:)), isAvailable(last) {
+      if let last = settings.lastTab.map(Tab.init(storageValue:)), !last.isCatalog, isAvailable(last) {
         return last
       }
       return sidebarFeatures.first.map { .feature($0.id) } ?? .settings
@@ -225,9 +226,15 @@ struct ShellFeature {
 
     func isAvailable(_ tab: Tab) -> Bool {
       switch tab {
-      case .settings: true
+      case .settings, .catalog: true
       case let .feature(id): sidebarFeatures.contains { $0.id == id }
+      case let .catalogPage(id): features.contains { $0.id == id && !$0.isBuiltIn }
       }
+    }
+
+    /// The catalog needs the large window; every other tab fits the regular one.
+    var windowSize: WindowSize {
+      selectedTab.isCatalog ? .large : .regular
     }
   }
 
@@ -253,16 +260,38 @@ struct ShellFeature {
   enum Tab: Hashable, Sendable {
     case feature(FeatureID)
     case settings
+    /// The catalog's list of features.
+    case catalog
+    /// A feature's page in the catalog.
+    case catalogPage(FeatureID)
+
+    /// The catalog and its pages, which the large window shows and `lastTab` never keeps.
+    var isCatalog: Bool {
+      switch self {
+      case .catalog, .catalogPage: true
+      case .feature, .settings: false
+      }
+    }
 
     var storageValue: String {
       switch self {
       case let .feature(id): "feature:\(id)"
       case .settings: "settings"
+      case .catalog: "catalog"
+      case let .catalogPage(id): "catalog:\(id)"
       }
     }
 
     init(storageValue: String) {
-      self = storageValue.hasPrefix("feature:") ? .feature(String(storageValue.dropFirst("feature:".count))) : .settings
+      if storageValue.hasPrefix("feature:") {
+        self = .feature(String(storageValue.dropFirst("feature:".count)))
+      } else if storageValue == "catalog" {
+        self = .catalog
+      } else if storageValue.hasPrefix("catalog:") {
+        self = .catalogPage(String(storageValue.dropFirst("catalog:".count)))
+      } else {
+        self = .settings
+      }
     }
   }
 
@@ -471,8 +500,15 @@ struct ShellFeature {
         case let .tabSelected(tab):
           guard state.isAvailable(tab) else { return .none }
           state.selectedTab = tab
-          state.settings.lastTab = tab.storageValue
-          return .none
+          guard tab.isCatalog else {
+            state.settings.lastTab = tab.storageValue
+            return .none
+          }
+          // Going to the catalog is a deliberate open, as a click on the notch is: the window no longer closes when the
+          // pointer leaves it, and certainly not as it grows away from a still pointer.
+          guard state.isOpen else { return .none }
+          state.openReason = .click
+          return .cancel(id: CancelID.pointerLeaveClose)
 
         case let .featureDropped(dragged, onto: target):
           var ids = state.orderedFeatures.map(\.id)
@@ -613,6 +649,13 @@ struct ShellFeature {
     .onChange(of: \.language) { _, language in
       Reduce { _, _ in
         .run { _ in system.setLanguage(language) }
+      }
+    }
+    .onChange(of: \.windowSize) { _, size in
+      Reduce { state, _ in
+        // A closed window takes its size as it opens, always the regular one.
+        guard state.isOpen else { return .none }
+        return .run { _ in await window.setSize(size) }
       }
     }
     .onChange(of: \.isMenuBarIconVisible) { _, isVisible in
@@ -778,7 +821,11 @@ struct ShellFeature {
     if reason == .fileDrag { selectDropTab(&state) }
     return .merge(
       .cancel(id: CancelID.hoverOpen),
-      .run { _ in await window.present(reason) },
+      // Every open starts at the regular size, set before the window shows.
+      .run { _ in
+        await window.setSize(.regular)
+        await window.present(reason)
+      },
       // Notifications send no signal when they change, and the window opening activates no app: read again.
       .run { _ in await permissions.refresh() }
     )
@@ -799,6 +846,10 @@ struct ShellFeature {
     guard !state.keyboardCleaning.isLocked else { return .none }
     state.openReason = nil
     state.isPointerInsideWindow = false
+    // The catalog is left as the window closes, so it never shows at the next open.
+    if state.selectedTab.isCatalog {
+      state.selectedTab = state.restoredTab
+    }
     return .merge(
       .cancel(id: CancelID.hoverOpen),
       .cancel(id: CancelID.pointerLeaveClose),

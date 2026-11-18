@@ -115,6 +115,7 @@ struct ShellPermissionsTests {
       $0.permissionsClient.setFrequentChecks = { _ in }
       $0.windowClient.dismiss = {}
       $0.windowClient.setHiddenIndicatorOwners = { _ in }
+      $0.windowClient.setSize = { _ in }
       $0.hotkeyClient.presses = { _ in .finished }
     }
   }
