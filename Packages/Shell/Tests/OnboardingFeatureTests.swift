@@ -31,10 +31,12 @@ struct OnboardingFeatureTests {
     required: Set<Permission> = [],
     steps: [FeatureID] = [],
     statuses: [Permission: PermissionStatus]? = OnboardingNeeds.allOff,
-    appliesLoginItem: Bool = false
+    appliesLoginItem: Bool = false,
+    choosable: [FeatureDescriptor] = []
   ) -> TestStoreOf<OnboardingFeature> {
     write(statuses ?? [:])
     var state = OnboardingFeature.State(progress: progress)
+    state.choosable = choosable
     state.catalog = PermissionCatalog(features: features, required: required)
     state.steps = steps
     state.stepOrder = steps
@@ -181,6 +183,29 @@ struct OnboardingFeatureTests {
     #expect(state.page == .step("tasks"))
     state.stepOrder = ["tasks", "secrets"]
     #expect(state.page == .done)
+  }
+
+  /// With features to choose, their page comes right after Welcome, and Get started goes there; Next is always there.
+  @Test
+  func theFeaturesPageFollowsWelcome() async {
+    let store = makeStore(choosable: [OnboardingNeeds.timer, OnboardingNeeds.tasks])
+    #expect(Array(store.state.pages.prefix(3)) == [.welcome, .features, .basics])
+    await store.send(.launched)
+    await go(store, .getStartedTapped)
+    #expect(store.state.page == .features)
+    #expect(store.state.buttons == OnboardingFeature.Buttons(nextVisible: true, nextEnabled: true, skipVisible: false))
+    await go(store, .nextTapped)
+    #expect(store.state.page == .basics)
+  }
+
+  /// An onboarding saved on a page after Features, by an earlier build or before a relaunch, resumes there.
+  @Test
+  func anOnboardingSavedOnALaterPageSkipsIt() {
+    var state = makeStore(progress: .at(.basics)).state
+    state.choosable = [OnboardingNeeds.timer]
+    #expect(state.page == .basics)
+    state.progress.page = OnboardingPage.features.id
+    #expect(state.page == .features)
   }
 
   @Test

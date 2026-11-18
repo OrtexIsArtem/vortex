@@ -25,12 +25,14 @@ struct ShellOnboardingTests {
     statuses: [Permission: PermissionStatus]? = OnboardingNeeds.allOff,
     appVersion: AppVersion = Self.thisVersion,
     askedBefore: Set<Permission> = [],
-    features: [FeatureDescriptor] = OnboardingNeeds.all + [.shelf]
+    features: [FeatureDescriptor] = OnboardingNeeds.all + [.shelf],
+    featuresChosen: Bool = true
   ) -> TestStoreOf<ShellFeature> {
     @Shared(.permissionStatuses) var shared
     $shared.withLock { $0 = statuses ?? [:] }
     var settings = ShellSettings()
     settings.addedFeatures = features.map(\.id).filter { !disabled.contains($0) }
+    settings.featuresChosen = featuresChosen
     var state = ShellFeature.State(
       settings: settings,
       features: features,
@@ -379,6 +381,58 @@ struct ShellOnboardingTests {
       statuses[permission] = .notGranted
     }
     return statuses
+  }
+
+  // MARK: - Choosing features
+
+  /// Unchecking a feature on the Features page drops the pages of the permissions only it needs; checking it brings
+  /// them back. Nothing starts meanwhile, and nothing is tried.
+  @Test
+  func choosingAFeatureAddsItsPermissionPage() async {
+    let store = makeStore(progress: .at(.features), featuresChosen: false)
+    store.dependencies.featuresClient.setEnabled = { _, _ in Issue.record("nothing starts before the user chooses") }
+    #expect(store.state.onboarding.chosen.contains("tasks"))
+    await store.send(.onboarding(.featureToggled("tasks")))
+    #expect(!store.state.onboarding.chosen.contains("tasks"))
+    #expect(!store.state.onboarding.pages.contains(.permission(.screenRecording)))
+    await store.send(.onboarding(.featureToggled("tasks")))
+    #expect(store.state.onboarding.pages.contains(.permission(.screenRecording)))
+    #expect(store.state.runningFeatures.map(\.id) == [])
+  }
+
+  /// Leaving the Features page is the user's choice: the chosen features start.
+  @Test
+  func featuresStartWhenTheUserLeavesThePage() async {
+    let started = LockIsolated<[String]>([])
+    let store = makeStore(
+      progress: .at(.features),
+      statuses: nil,
+      features: [OnboardingNeeds.timer, OnboardingNeeds.tasks, .shelf],
+      featuresChosen: false
+    )
+    store.dependencies.featuresClient.setEnabled = { id, isEnabled in started.withValue { $0.append("\(id):\(isEnabled)") } }
+    await store.send(.onboarding(.featureToggled("shelf")))
+    await launch(store, OnboardingNeeds.allOff)
+    #expect(store.state.onboarding.page == .features)
+    await clock.advance(by: .milliseconds(300))
+    await store.send(.onboarding(.nextTapped))
+    #expect(store.state.settings.featuresChosen)
+    // The start runs as an effect: let it.
+    for _ in 0..<20 where started.value.isEmpty {
+      await Task.yield()
+    }
+    #expect(started.value == ["timer:true", "tasks:true"])
+  }
+
+  /// Closing the onboarding on the Features page chooses what is checked.
+  @Test
+  func closingTheOnboardingChoosesTheCheckedFeatures() async {
+    let store = makeStore(progress: .at(.features), statuses: nil, features: [OnboardingNeeds.timer], featuresChosen: false)
+    store.dependencies.featuresClient.setEnabled = { _, _ in }
+    await launch(store, OnboardingNeeds.allOff)
+    #expect(!store.state.settings.featuresChosen)
+    await store.send(.onboarding(.closeTapped))
+    #expect(store.state.settings.featuresChosen)
   }
 
   /// The launch's first read, then its decision.

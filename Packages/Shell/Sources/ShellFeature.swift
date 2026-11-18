@@ -212,11 +212,15 @@ struct ShellFeature {
       // Features with their own step, running or not, in sidebar order; only a running one shows its step.
       let stepOrder = orderedFeatures.map(\.id).filter(stepFeatures.contains)
       let running = Set(runningFeatures.map(\.id))
+      // The Features page shows only in an onboarding not done yet; a finished one has nothing to choose there.
+      let choosable = onboarding.progress.completed ? [] : catalogFeatures.filter { $0.suspension == nil }
       return OnboardingContext(
         catalog: permissionCatalog,
         steps: stepOrder.filter(running.contains),
         stepOrder: stepOrder,
-        hint: doneHint
+        hint: doneHint,
+        choosable: choosable,
+        chosen: Set(choosable.filter(isAdded).map(\.id))
       )
     }
 
@@ -321,12 +325,16 @@ struct ShellFeature {
     var steps: [FeatureID]
     var stepOrder: [FeatureID]
     var hint: OnboardingFeature.DoneHint
+    var choosable: [FeatureDescriptor]
+    var chosen: Set<FeatureID>
 
     func apply(to onboarding: inout OnboardingFeature.State) {
       onboarding.catalog = catalog
       onboarding.steps = steps
       onboarding.stepOrder = stepOrder
       onboarding.doneHint = hint
+      onboarding.choosable = choosable
+      onboarding.chosen = chosen
     }
   }
 
@@ -499,6 +507,14 @@ struct ShellFeature {
           )
 
         case .keyboardCleaning:
+          return .none
+
+        case let .onboarding(.featureToggled(id)):
+          // Added or removed at once, without a trial or a page: before the user's choice nothing runs anyway, and the
+          // onboarding then asks only for the chosen features' permissions.
+          guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, feature.suspension == nil
+          else { return .none }
+          state.setAdded(id, !state.isAdded(feature))
           return .none
 
         case .onboarding:
@@ -793,6 +809,21 @@ struct ShellFeature {
         // opens. During a lock this waits for the lock to end.
         guard new.isBlocked, !old.isBlocked, old.isRead, !state.keyboardCleaning.isLocked else { return .none }
         return .merge(close(&state), .send(.onboarding(.blocked)))
+      }
+    }
+    .onChange(of: \.onboarding.progress.page) { old, _ in
+      Reduce { state, _ in
+        // Leaving the Features page is the user's choice: from now on the chosen features run. Before the observer of
+        // `runningFeatures` below, so it starts them in this same action.
+        if old == OnboardingPage.features.id { state.settings.featuresChosen = true }
+        return .none
+      }
+    }
+    .onChange(of: \.onboarding.isVisible) { _, isVisible in
+      Reduce { state, _ in
+        // So is closing the onboarding, wherever it was.
+        if !isVisible { state.settings.featuresChosen = true }
+        return .none
       }
     }
     .onChange(of: \.runningFeatures) { old, new in

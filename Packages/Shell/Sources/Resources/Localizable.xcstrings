@@ -23,6 +23,17 @@
         }
       }
     },
+    "%lld of %lld features chosen" : {
+      "comment" : "Onboarding: the Features page's footer",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вибрано функцій: %1$lld з %2$lld"
+          }
+        }
+      }
+    },
     "Activation" : {
       "comment" : "Settings section: how the window opens and closes",
       "localizations" : {
@@ -188,6 +199,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Буде перевірено після перезапуску"
+          }
+        }
+      }
+    },
+    "Choose your features" : {
+      "comment" : "Onboarding: the Features page's title",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виберіть функції"
           }
         }
       }
@@ -642,6 +664,17 @@
         }
       }
     },
+    "Next, Vortex asks for: %@" : {
+      "comment" : "Onboarding: the Features page's footer; the argument lists permissions",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Далі Vortex попросить: %@"
+          }
+        }
+      }
+    },
     "No features yet" : {
       "localizations" : {
         "uk" : {
@@ -908,6 +941,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рекомендовано"
+          }
+        }
+      }
+    },
+    "Recommended ones are already on. You can add or remove any of them later in Features." : {
+      "comment" : "Onboarding: the Features page",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рекомендовані вже ввімкнено. Будь-яку функцію можна додати чи прибрати пізніше у Функціях."
           }
         }
       }

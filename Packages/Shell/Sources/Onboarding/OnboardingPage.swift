@@ -1,10 +1,12 @@
 import Foundation
 import VortexCore
 
-/// A page of the onboarding, in its order: Welcome, Basics, one page per hard permission, the features' own
+/// A page of the onboarding, in its order: Welcome, Features, Basics, one page per hard permission, the features' own
 /// steps, Done.
 enum OnboardingPage: Hashable, Sendable {
   case welcome
+  /// The features to start with: the recommended ones come checked.
+  case features
   /// Notifications and the login item, which macOS grants in place.
   case basics
   /// Accessibility, Screen Recording or the pasteboard, which need System Settings.
@@ -18,6 +20,7 @@ enum OnboardingPage: Hashable, Sendable {
   var id: String {
     switch self {
     case .welcome: "welcome"
+    case .features: "features"
     case .basics: "basics"
     case let .permission(permission): "permission:\(permission.rawValue)"
     case let .step(feature): "step:\(feature)"
@@ -28,6 +31,7 @@ enum OnboardingPage: Hashable, Sendable {
   init?(id: String) {
     switch id {
     case "welcome": self = .welcome
+    case "features": self = .features
     case "basics": self = .basics
     case "done": self = .done
     default:

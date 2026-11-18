@@ -34,6 +34,8 @@ struct OnboardingView: View {
     switch page {
     case .welcome:
       WelcomePage(store: store)
+    case .features:
+      FeaturesPage(store: store)
     case .basics:
       PageScaffold(store: store, title: Text("Basics", bundle: .module)) {
         BasicsContent(store: store)

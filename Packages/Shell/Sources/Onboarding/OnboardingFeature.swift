@@ -21,6 +21,10 @@ struct OnboardingFeature {
     var steps: [FeatureID] = []
     /// Every feature with a step, on or off, in sidebar order: where a step's page sits in the order.
     var stepOrder: [FeatureID] = []
+    /// The features the Features page offers: every one but the built-in and the paused ones, in sidebar order.
+    var choosable: [FeatureDescriptor] = []
+    /// The ones checked there: those the user has added.
+    var chosen: Set<FeatureID> = []
     @SharedReader(.permissionStatuses) var statuses
     @SharedReader(.onboardingStepsDone) var stepsDone
     /// Whether the window shows, what, and as the full window or the guide panel.
@@ -169,7 +173,9 @@ struct OnboardingFeature {
 
     /// Every page of this onboarding, in order. A permission macOS doesn't ask for here has no page.
     var pages: [OnboardingPage] {
-      var pages: [OnboardingPage] = [.welcome, .basics]
+      var pages: [OnboardingPage] = [.welcome]
+      if !choosable.isEmpty { pages.append(.features) }
+      pages.append(.basics)
       pages += catalog.entries.map(\.permission)
         .filter { !$0.isGrantedInPlace && statuses[$0] != .notNeeded }
         .map(OnboardingPage.permission)
@@ -182,8 +188,9 @@ struct OnboardingFeature {
     func rank(_ page: OnboardingPage) -> Int {
       switch page {
       case .welcome: 0
-      case .basics: 1
-      case let .permission(permission): 2 + (Permission.allCases.firstIndex(of: permission) ?? 0)
+      case .features: 1
+      case .basics: 2
+      case let .permission(permission): 3 + (Permission.allCases.firstIndex(of: permission) ?? 0)
       case let .step(feature): 100 + (stepOrder.firstIndex(of: feature) ?? stepOrder.count)
       case .done: 10_000
       }
@@ -205,7 +212,7 @@ struct OnboardingFeature {
       case .basics:
         catalog.entry(for: .notifications) != nil && statuses[.notifications] != .notNeeded ? [.notifications] : []
       case let .permission(permission): [permission]
-      case .welcome, .step, .done: []
+      case .welcome, .features, .step, .done: []
       }
     }
 
@@ -250,6 +257,8 @@ struct OnboardingFeature {
       switch page {
       case .welcome, .done:
         return Buttons(nextVisible: false, nextEnabled: false, skipVisible: false)
+      case .features:
+        return Buttons(nextVisible: true, nextEnabled: true, skipVisible: false)
       case let .step(feature):
         let isDone = stepsDone.contains(feature)
         return Buttons(nextVisible: isDone, nextEnabled: isDone, skipVisible: !isDone)
@@ -436,6 +445,8 @@ struct OnboardingFeature {
     case launched
     /// Welcome's "Get started".
     case getStartedTapped
+    /// A feature's checkbox on the Features page; the shell adds or removes the feature.
+    case featureToggled(FeatureID)
     case nextTapped
     case skipTapped
     /// Done's final button: "Start using Vortex" or "Restart and start".
@@ -530,7 +541,10 @@ struct OnboardingFeature {
 
       case .getStartedTapped:
         guard state.isFlow, state.page == .welcome, !state.isNavigationLocked, !state.isRelaunching else { return .none }
-        return go(to: .basics, &state)
+        return go(to: state.pages.dropFirst().first ?? .basics, &state)
+
+      case .featureToggled:
+        return .none
 
       case .nextTapped:
         guard state.isFlow, !state.isNavigationLocked, !state.isRelaunching, state.buttons.nextEnabled else { return .none }

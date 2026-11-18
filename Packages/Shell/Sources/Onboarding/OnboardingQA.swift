@@ -24,7 +24,7 @@
         } else {
           throw QAError(
             "onboarding takes press=next|skip|close|escape|start|restart|restartNow|later|back|getStarted|turnOn:<p>|"
-              + "row:<p>|pane:<p>|loginItem:on|off|loginItems, open, or reset"
+              + "row:<p>|pane:<p>|loginItem:on|off|loginItems|feature:<id>, open, or reset"
           )
         }
       }
@@ -106,6 +106,12 @@
       case "loginItem":
         try need(isFlow && state.page == .basics, "Open at login is only on Basics")
         action = .loginItemToggled(parts.count > 1 && parts[1] == "on")
+      case "feature":
+        // A feature's checkbox on the Features page.
+        guard parts.count > 1 else { throw QAError("feature:<feature id>") }
+        try need(isFlow && state.page == .features, "feature checkboxes are only on the Features page")
+        try need(state.choosable.contains { $0.id == parts[1] }, "\(parts[1]) isn't on the Features page")
+        action = .featureToggled(parts[1])
       case "loginItems":
         try need(isFlow && state.page == .basics && state.loginItem == .requiresApproval, "the login item's Open System Settings isn't shown")
         action = .openLoginItemsTapped
@@ -165,6 +171,9 @@
       var completed: Bool
       /// After an update, the pages still to show, the next as a single page closes.
       var afterUpdate: [Permission]
+      /// The Features page: what it offers, in order, and what is checked.
+      var choosable: [FeatureID]
+      var chosen: [FeatureID]
       var saved: OnboardingProgress
       var windows: [String: Frame]
       /// For each illustration mounted in the window or the panel: whether Core Animation plays its pointer and switch.
@@ -222,6 +231,8 @@
         }
         completed = state.progress.completed
         afterUpdate = state.afterUpdate
+        choosable = state.choosable.map(\.id)
+        chosen = state.choosable.map(\.id).filter(state.chosen.contains)
         saved = state.progress
         var windows: [String: Frame] = [:]
         let controller = OnboardingWindowController.shared
