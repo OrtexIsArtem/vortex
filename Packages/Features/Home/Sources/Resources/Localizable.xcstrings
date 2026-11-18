@@ -65,6 +65,17 @@
         }
       }
     },
+    "Add" : {
+      "comment" : "The editor's panel: puts the widget on Home where its copy shows",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати"
+          }
+        }
+      }
+    },
     "Clear search" : {
       "localizations" : {
         "uk" : {
@@ -162,6 +173,17 @@
         }
       }
     },
+    "No room" : {
+      "comment" : "The editor's panel: the widget's size fits nowhere on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає місця"
+          }
+        }
+      }
+    },
     "No widgets on Home" : {
       "comment" : "Home with no widget on it",
       "localizations" : {
@@ -205,6 +227,17 @@
         }
       }
     },
+    "Remove a widget or choose a smaller size." : {
+      "comment" : "The editor's panel, under No room",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приберіть віджет або виберіть менший розмір."
+          }
+        }
+      }
+    },
     "Remove from Home" : {
       "comment" : "The editor: a widget's −",
       "localizations" : {
@@ -223,6 +256,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пошук віджетів"
+          }
+        }
+      }
+    },
+    "Widgets" : {
+      "comment" : "The editor's panel: back from a feature's widgets to the list",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Віджети"
           }
         }
       }

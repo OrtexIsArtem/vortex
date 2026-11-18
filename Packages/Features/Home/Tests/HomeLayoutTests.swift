@@ -56,6 +56,18 @@ struct HomeLayoutTests {
     #expect(twoRows.notchRow == "timer.timer" && twoRows.placed.isEmpty)
   }
 
+  /// A dragged widget lands on the cell nearest to its top left corner, wherever it was grabbed.
+  @Test
+  func aDraggedWidgetLandsOnTheCellNearestItsCorner() {
+    let shelf = Placement(widget: "shelf.files", size: .medium, column: 2, row: 0)
+    #expect(shelf.cell(movedBy: .zero) == GridCell(column: 2, row: 0))
+    #expect(shelf.cell(movedBy: CGSize(width: 0, height: 194)) == GridCell(column: 2, row: 1))
+    #expect(shelf.cell(movedBy: CGSize(width: -150, height: 10)) == GridCell(column: 1, row: 0))
+    // Past half a cell it goes on to the next one.
+    #expect(shelf.cell(movedBy: CGSize(width: 80, height: 100)) == GridCell(column: 3, row: 1))
+    #expect(shelf.cell(movedBy: CGSize(width: 70, height: 90)) == GridCell(column: 2, row: 0))
+  }
+
   /// A place written without `isAway`, by hand or by a build before it, reads as a widget that shows.
   @Test
   func aPlaceSavedWithoutAwayShows() throws {

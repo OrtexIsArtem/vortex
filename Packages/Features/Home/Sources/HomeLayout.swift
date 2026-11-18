@@ -38,6 +38,23 @@ struct Placement: Codable, Equatable, Sendable {
   }
 }
 
+/// A cell of Home's grid.
+struct GridCell: Hashable, Sendable {
+  var column: Int
+  var row: Int
+}
+
+extension Placement {
+  /// The cell nearest to the widget's top left corner once it is moved by `offset`, as when it is dragged: wherever it
+  /// was grabbed, past half a cell it goes on to the next one.
+  func cell(movedBy offset: CGSize) -> GridCell {
+    let frame = HomeGrid.frame(column: column, row: row, size: size)
+    let column = (frame.minX + offset.width - HomeGrid.sideInset) / (HomeGrid.cell.width + HomeGrid.gap)
+    let row = (frame.minY + offset.height) / (HomeGrid.cell.height + HomeGrid.gap)
+    return GridCell(column: Int(column.rounded()), row: Int(row.rounded()))
+  }
+}
+
 /// Where the widgets are on Home: one in the row next to the notch, the rest on the 4×2 grid. Widgets never overlap and
 /// never leave the grid; places that free up stay free.
 struct HomeLayout: Codable, Equatable, Sendable {

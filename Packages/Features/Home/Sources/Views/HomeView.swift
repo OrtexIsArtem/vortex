@@ -23,7 +23,7 @@ struct HomeView: View {
     let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     HStack(spacing: 0) {
       VStack(spacing: 0) {
-        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] })
+        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] }, byID: byID)
         GridArea(store: store, byID: byID)
       }
       .frame(width: Self.gridWidth)
@@ -43,7 +43,7 @@ struct HomeView: View {
         }
       }
       if store.isEditing {
-        HomeEditorPanel(store: store, showCatalog: showCatalog)
+        HomeEditorPanel(store: store, byID: byID, showCatalog: showCatalog)
           .frame(width: Self.panelWidth)
       }
     }
@@ -72,10 +72,22 @@ struct HomeView: View {
 private struct NotchRow: View {
   let store: StoreOf<HomeFeature>
   let widget: HomeWidget?
+  let byID: [String: HomeWidget]
 
   var body: some View {
     Group {
-      if let widget {
+      if widget == nil, case let .notchRow(id) = store.preview, let copy = byID[id] {
+        // The copy of a widget from the panel, in the row it would go to.
+        copy.view
+          .opacity(0.45)
+          .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+              .strokeBorder(VortexColor.secondaryText, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+              .padding(8)
+          )
+          .allowsHitTesting(false)
+          .accessibilityHidden(true)
+      } else if let widget {
         widget.view
           // The ring and "−" stay inside the row, clear of the window's top edge.
           .modifier(EditorChrome(isEditing: store.isEditing, cornerRadius: 14, inset: 8, widget: widget) {
@@ -93,10 +105,18 @@ private struct NotchRow: View {
   }
 }
 
-/// The 4×2 grid: the cards of the widgets on Home and, in the editor, the free cells, dashed.
+/// The 4×2 grid: the cards of the widgets on Home and, in the editor, the free cells dashed, the copy of a widget from
+/// the panel, and where a dragged widget would land.
 private struct GridArea: View {
   let store: StoreOf<HomeFeature>
   let byID: [String: HomeWidget]
+  @State private var drag: Drag?
+
+  /// A widget being dragged, and how far.
+  struct Drag: Equatable {
+    var widget: String
+    var offset: CGSize
+  }
 
   var body: some View {
     let visible = store.visible
@@ -105,7 +125,8 @@ private struct GridArea: View {
     } else {
       ZStack(alignment: .topLeading) {
         if store.isEditing {
-          ForEach(Self.freeCells(visible), id: \.self) { cell in
+          // The copy's cells aren't free: their outlines would show through it.
+          ForEach(Self.freeCells(visible + [store.preview].compactMap(\.?.placement)), id: \.self) { cell in
             let frame = HomeGrid.frame(column: cell.column, row: cell.row, size: .small)
             RoundedRectangle(cornerRadius: 18, style: .continuous)
               .strokeBorder(VortexColor.dropOutline, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -113,30 +134,65 @@ private struct GridArea: View {
               .offset(x: frame.minX, y: frame.minY)
               .accessibilityHidden(true)
           }
+          if case let .at(placement) = store.preview, let widget = byID[placement.widget] {
+            let frame = HomeGrid.frame(column: placement.column, row: placement.row, size: placement.size)
+            WidgetCopy(widget: widget, size: placement.size)
+              .offset(x: frame.minX, y: frame.minY)
+          }
+          if let landing = landing(visible) {
+            let frame = HomeGrid.frame(column: landing.column, row: landing.row, size: landing.size)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+              .strokeBorder(VortexColor.secondaryText, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+              .frame(width: frame.width, height: frame.height)
+              .offset(x: frame.minX, y: frame.minY)
+              .accessibilityHidden(true)
+          }
         }
         ForEach(visible, id: \.widget) { placement in
           if let widget = byID[placement.widget] {
-            HomeWidgetCard(widget: widget, placement: placement, isEditing: store.isEditing) {
-              store.send(.removeTapped(placement.widget))
-            }
+            let isDragged = drag?.widget == placement.widget
+            HomeWidgetCard(
+              widget: widget,
+              placement: placement,
+              isEditing: store.isEditing,
+              dragOffset: isDragged ? drag?.offset ?? .zero : .zero,
+              onDrag: { drag = Drag(widget: placement.widget, offset: $0) },
+              onDrop: { offset in
+                let cell = placement.cell(movedBy: offset)
+                withAnimation(.snappy(duration: 0.25)) {
+                  // Lands only where it fits whole; otherwise it goes back.
+                  store.send(.dropped(placement.widget, column: cell.column, row: cell.row))
+                  drag = nil
+                }
+              },
+              remove: { store.send(.removeTapped(placement.widget)) }
+            )
+            .zIndex(isDragged ? 1 : 0)
           }
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      // Done or the window closing mid-drag: nothing stays lifted.
+      .onChange(of: store.isEditing) { drag = nil }
     }
   }
 
-  struct Cell: Hashable {
-    var column: Int
-    var row: Int
+  /// Where the dragged widget would land: the cell its top left corner is nearest, when it fits whole there.
+  private func landing(_ visible: [Placement]) -> Placement? {
+    guard let drag, let placement = visible.first(where: { $0.widget == drag.widget }) else { return nil }
+    let cell = placement.cell(movedBy: drag.offset)
+    let fits = HomeLayout(notchRow: nil, placed: visible)
+      .fits(placement.size, column: cell.column, row: cell.row, ignoring: [placement.widget])
+    guard fits, cell.column != placement.column || cell.row != placement.row else { return nil }
+    return Placement(widget: placement.widget, size: placement.size, column: cell.column, row: cell.row)
   }
 
   /// The cells no widget covers.
-  static func freeCells(_ visible: [Placement]) -> [Cell] {
+  static func freeCells(_ visible: [Placement]) -> [GridCell] {
     let layout = HomeLayout(notchRow: nil, placed: visible)
     return (0..<HomeGrid.rows).flatMap { row in
       (0..<HomeGrid.columns).compactMap { column in
-        layout.fits(.small, column: column, row: row, ignoring: []) ? Cell(column: column, row: row) : nil
+        layout.fits(.small, column: column, row: row, ignoring: []) ? GridCell(column: column, row: row) : nil
       }
     }
   }

@@ -16,6 +16,22 @@ struct HomeFeatureTests {
   var clipboard: WidgetInfo { info("clipboard.history", .grid([.large, .medium]), name: "History", featureName: "Clipboard") }
   var shelf: WidgetInfo { info("shelf.files", .grid([.medium, .wide]), name: "Files", featureName: "Shelf") }
   var tasks: WidgetInfo { info("tasks.list", .grid([.medium]), name: "List", featureName: "Tasks") }
+  var pinned: WidgetInfo { info("clipboard.pinned", .grid([.small, .medium]), name: "Pinned", featureName: "Clipboard") }
+
+  /// Home as an update from stage 1 lays it out, in the editor: Timer in the notch row, Clipboard's history large at
+  /// (0,0), Shelf medium at (2,0); Clipboard's pinned widget is off Home.
+  func editingStore(saved: HomeLayout? = nil) async -> TestStoreOf<HomeFeature> {
+    let widgets = [timer, clipboard, pinned, shelf]
+    let store = makeStore(saved: saved ?? HomeLayout.initial([timer, clipboard, shelf]))
+    await store.send(.widgetsChanged(widgets)) { $0.widgets = widgets }
+    await store.send(.editTapped) { $0.isEditing = true }
+    return store
+  }
+
+  /// A grid that one full widget fills.
+  var fullGrid: HomeLayout {
+    HomeLayout(notchRow: "timer.timer", placed: [Placement(widget: "shelf.files", size: .full, column: 0, row: 0)])
+  }
 
   func makeStore(saved: HomeLayout? = nil) -> TestStoreOf<HomeFeature> {
     @Shared(.homeLayout) var layout
@@ -179,5 +195,169 @@ struct HomeFeatureTests {
     #expect(state.panelSections.onHome.isEmpty && state.panelSections.more == ["tasks"])
     state.search = "zzz"
     #expect(state.panelSections.onHome.isEmpty && state.panelSections.more.isEmpty)
+  }
+
+  // MARK: - Sizes, the copy, Add and moving
+
+  /// A feature's row opens its widgets in the panel; another feature or back to the list takes the copy away.
+  @Test
+  func aFeatureOpensItsWidgetsAndBackReturns() async {
+    let store = await editingStore()
+    await store.send(.featureTapped("clipboard")) { $0.panel = .feature("clipboard") }
+    await store.send(.hovered("clipboard.pinned")) {
+      $0.preview = .at(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
+    }
+    await store.send(.featureTapped("shelf")) {
+      $0.panel = .feature("shelf")
+      $0.preview = nil
+    }
+    await store.send(.hovered("clipboard.pinned")) {
+      $0.preview = .at(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
+    }
+    await store.send(.backTapped) {
+      $0.panel = .features
+      $0.preview = nil
+    }
+  }
+
+  /// While a widget's feature is away its place is free: another widget can take it, and the away one doesn't move.
+  @Test
+  func aWidgetCanTakeThePlaceOfOneWhoseFeatureWent() async {
+    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
+    await store.send(.widgetsChanged([timer, tasks])) {
+      $0.widgets = [self.timer, self.tasks]
+      $0.$saved.withLock { layout in
+        layout?.placed[0].isAway = true
+        layout?.placed[1].isAway = true
+      }
+    }
+    await store.send(.editTapped) { $0.isEditing = true }
+    await store.send(.hovered("tasks.list")) {
+      $0.preview = .at(Placement(widget: "tasks.list", size: .medium, column: 0, row: 0))
+    }
+    // The grid is empty, yet an away widget isn't dragged anywhere.
+    await store.send(.dropped("clipboard.history", column: 2, row: 0))
+  }
+
+  /// Outside the editor nothing changes Home's layout.
+  @Test
+  func editsNeedTheEditor() async {
+    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+    }
+    await store.send(.addTapped("clipboard.pinned"))
+    await store.send(.sizeTapped("clipboard.history", .medium))
+    await store.send(.dropped("shelf.files", column: 2, row: 1))
+  }
+
+  /// Hovering a widget in the panel puts its copy where it would go: its chosen size in the first place it fits.
+  @Test
+  func hoveringAWidgetShowsItsCopyWhereItWouldGo() async {
+    let store = await editingStore()
+    await store.send(.hovered("clipboard.pinned")) {
+      $0.preview = .at(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
+    }
+    await store.send(.hovered(nil)) { $0.preview = nil }
+    // A widget already on Home has no copy.
+    await store.send(.hovered("shelf.files"))
+    let full = await editingStore(saved: fullGrid)
+    await full.send(.hovered("clipboard.pinned")) { $0.preview = .noRoom("clipboard.pinned") }
+  }
+
+  /// A size chosen in the panel is the one the copy and Add use.
+  @Test
+  func aChosenSizeIsWhatTheCopyAndAddUse() async {
+    let store = await editingStore()
+    await store.send(.hovered("clipboard.pinned")) {
+      $0.preview = .at(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
+    }
+    await store.send(.sizeTapped("clipboard.pinned", .medium)) {
+      $0.chosenSizes["clipboard.pinned"] = .medium
+      $0.preview = .at(Placement(widget: "clipboard.pinned", size: .medium, column: 2, row: 1))
+    }
+    await store.send(.addTapped("clipboard.pinned")) {
+      $0.$saved.withLock { $0?.placed.append(Placement(widget: "clipboard.pinned", size: .medium, column: 2, row: 1)) }
+      $0.preview = nil
+    }
+    // The next edit starts with every widget at its first size again.
+    await store.send(.doneTapped) {
+      $0.isEditing = false
+      $0.chosenSizes = [:]
+    }
+  }
+
+  /// Add puts the widget where its copy was, and saves.
+  @Test
+  func addPutsTheWidgetWhereItsCopyWas() async {
+    let store = await editingStore()
+    await store.send(.hovered("clipboard.pinned")) {
+      $0.preview = .at(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
+    }
+    await store.send(.addTapped("clipboard.pinned")) {
+      $0.$saved.withLock { $0?.placed.append(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1)) }
+      $0.preview = nil
+    }
+    #expect(store.state.panelSections.onHome == ["timer", "clipboard", "shelf"])
+    // On Home already: a second Add changes nothing.
+    await store.send(.addTapped("clipboard.pinned"))
+  }
+
+  /// Without room Add does nothing.
+  @Test
+  func addDoesNothingWithoutRoom() async {
+    let store = await editingStore(saved: fullGrid)
+    await store.send(.addTapped("clipboard.pinned"))
+    #expect(store.state.saved == fullGrid)
+  }
+
+  /// A widget of the notch row goes back to its row, while the row is free.
+  @Test
+  func aNotchRowWidgetGoesBackToItsRow() async {
+    let store = await editingStore()
+    // The row holds one widget.
+    let clock = info("clock.row", .notchRow, name: "Clock", featureName: "Clock")
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf, clock])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf, clock]
+    }
+    await store.send(.hovered("clock.row")) { $0.preview = .noRoom("clock.row") }
+    await store.send(.hovered(nil)) { $0.preview = nil }
+    await store.send(.removeTapped("timer.timer")) { $0.$saved.withLock { $0?.notchRow = nil } }
+    await store.send(.hovered("timer.timer")) { $0.preview = .notchRow("timer.timer") }
+    await store.send(.addTapped("timer.timer")) {
+      $0.$saved.withLock { $0?.notchRow = "timer.timer" }
+      $0.preview = nil
+    }
+  }
+
+  /// A widget on Home changes size in place, its top left corner kept, and only when the new size fits there.
+  @Test
+  func aPlacedWidgetChangesSizeOnlyIfItFits() async {
+    let store = await editingStore()
+    // Wide from (2,0) would leave the grid.
+    await store.send(.sizeTapped("shelf.files", .wide))
+    await store.send(.sizeTapped("clipboard.history", .medium)) {
+      $0.$saved.withLock { $0?.placed[0].size = .medium }
+    }
+    // Large again fits: its cells are free.
+    await store.send(.sizeTapped("clipboard.history", .large)) {
+      $0.$saved.withLock { $0?.placed[0].size = .large }
+    }
+    // A size the widget doesn't offer is never applied.
+    await store.send(.sizeTapped("clipboard.history", .small))
+  }
+
+  /// A dragged widget lands with its top left corner on a cell, and only where it fits whole.
+  @Test
+  func droppingSnapsToTheCellOnlyWhereItFits() async {
+    let store = await editingStore()
+    await store.send(.dropped("shelf.files", column: 2, row: 1)) {
+      $0.$saved.withLock { $0?.placed[1].row = 1 }
+    }
+    // Onto Clipboard's cells, and past the grid's edge: it stays.
+    await store.send(.dropped("shelf.files", column: 1, row: 0))
+    await store.send(.dropped("shelf.files", column: 3, row: 1))
+    // A widget that isn't on Home doesn't move in.
+    await store.send(.dropped("clipboard.pinned", column: 2, row: 0))
   }
 }

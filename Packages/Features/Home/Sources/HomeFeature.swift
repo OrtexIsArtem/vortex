@@ -41,6 +41,25 @@ struct HomeFeature: Sendable {
     var panel: Panel = .features
     /// The panel's search; empty shows every feature with widgets.
     var search = ""
+    /// The copy of the widget under the pointer in the panel: where it would go, or that it fits nowhere.
+    var preview: Preview?
+    /// The size chosen in the panel for a widget that isn't on Home: the one its copy and Add use.
+    var chosenSizes: [String: HomeWidgetSize] = [:]
+
+    /// Where a widget that isn't on Home would go now: to the notch row while it is free, or at its chosen size (its
+    /// first one until another is chosen) in the first free place. Nil for a widget on Home or one no feature offers.
+    func place(for id: String) -> Preview? {
+      guard let widget = widgets.first(where: { $0.id == id }), !shownWidgets.contains(id) else { return nil }
+      switch widget.place {
+      case .notchRow:
+        return notchRowWidget == nil ? .notchRow(id) : .noRoom(id)
+      case let .grid(sizes):
+        guard let size = chosenSizes[id] ?? sizes.first,
+              let fit = HomeLayout(notchRow: nil, placed: visible).firstFit([size], ignoring: [])
+        else { return .noRoom(id) }
+        return .at(Placement(widget: id, size: fit.size, column: fit.column, row: fit.row))
+      }
+    }
 
     /// The features with widgets, in sidebar order: those with a widget on Home, then the others. A search keeps the
     /// features whose name, or one of whose widgets' names, holds it, in any case.
@@ -71,6 +90,28 @@ struct HomeFeature: Sendable {
     case feature(FeatureID)
   }
 
+  /// Where a widget from the panel would go.
+  enum Preview: Equatable, Sendable {
+    /// On the grid: a copy at its real size shows there.
+    case at(Placement)
+    /// In the row next to the notch.
+    case notchRow(String)
+    /// Nowhere: no free place takes its size.
+    case noRoom(String)
+
+    var widget: String {
+      switch self {
+      case let .at(placement): placement.widget
+      case let .notchRow(id), let .noRoom(id): id
+      }
+    }
+
+    /// Where on the grid the copy shows, if it does.
+    var placement: Placement? {
+      if case let .at(placement) = self { placement } else { nil }
+    }
+  }
+
   enum Action: Equatable {
     /// The running features' widgets, sent by Home's view whenever they change.
     case widgetsChanged([WidgetInfo])
@@ -82,6 +123,16 @@ struct HomeFeature: Sendable {
     /// A widget's "−", or Delete on the focused widget.
     case removeTapped(String)
     case searchChanged(String)
+    /// A feature's row in the panel: its widgets.
+    case featureTapped(FeatureID)
+    case backTapped
+    /// The pointer over a widget in the panel, or nil once it leaves.
+    case hovered(String?)
+    /// A size in a widget's switcher in the panel.
+    case sizeTapped(String, HomeWidgetSize)
+    case addTapped(String)
+    /// A widget on Home dragged so its top left corner is over a cell.
+    case dropped(String, column: Int, row: Int)
   }
 
   var body: some ReducerOf<Self> {
@@ -108,6 +159,8 @@ struct HomeFeature: Sendable {
         state.isEditing = false
         state.panel = .features
         state.search = ""
+        state.preview = nil
+        state.chosenSizes = [:]
         return .none
 
       case let .removeTapped(id):
@@ -121,6 +174,64 @@ struct HomeFeature: Sendable {
 
       case let .searchChanged(text):
         state.search = text
+        return .none
+
+      case let .featureTapped(feature):
+        state.panel = .feature(feature)
+        state.preview = nil
+        return .none
+
+      case .backTapped:
+        state.panel = .features
+        state.preview = nil
+        return .none
+
+      case let .hovered(id):
+        state.preview = id.flatMap { state.place(for: $0) }
+        return .none
+
+      case let .sizeTapped(id, size):
+        guard state.isEditing, let widget = state.widgets.first(where: { $0.id == id }),
+              case let .grid(sizes) = widget.place, sizes.contains(size)
+        else { return .none }
+        guard state.shownWidgets.contains(id), let index = state.saved?.placed.firstIndex(where: { $0.widget == id })
+        else {
+          // Off Home: the size waits for Add, and the copy takes it at once.
+          state.chosenSizes[id] = size
+          if state.preview?.widget == id { state.preview = state.place(for: id) }
+          return .none
+        }
+        // On Home: the new size keeps the top left corner, and only if it fits there.
+        guard let placement = state.saved?.placed[index],
+              HomeLayout(notchRow: nil, placed: state.visible)
+                .fits(size, column: placement.column, row: placement.row, ignoring: [id])
+        else { return .none }
+        state.$saved.withLock { $0?.placed[index].size = size }
+        return .none
+
+      case let .addTapped(id):
+        guard state.isEditing, let place = state.place(for: id) else { return .none }
+        switch place {
+        case let .at(placement):
+          state.$saved.withLock { $0?.placed.append(placement) }
+        case .notchRow:
+          state.$saved.withLock { $0?.notchRow = id }
+        case .noRoom:
+          return .none
+        }
+        state.preview = nil
+        return .none
+
+      case let .dropped(id, column, row):
+        guard state.isEditing, state.shownWidgets.contains(id),
+              let index = state.saved?.placed.firstIndex(where: { $0.widget == id }),
+              let placement = state.saved?.placed[index],
+              HomeLayout(notchRow: nil, placed: state.visible).fits(placement.size, column: column, row: row, ignoring: [id])
+        else { return .none }
+        state.$saved.withLock { layout in
+          layout?.placed[index].column = column
+          layout?.placed[index].row = row
+        }
         return .none
       }
     }
