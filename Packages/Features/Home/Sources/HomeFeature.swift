@@ -9,12 +9,16 @@ extension SharedKey where Self == FileStorageKey<HomeLayout?>.Default {
   }
 }
 
-/// Home: the layout of the running features' widgets, saved in home.json.
+/// Home: the layout of the running features' widgets, saved in home.json. The editor changes a draft of it, which only
+/// Done keeps.
 @Reducer
 struct HomeFeature: Sendable {
   @ObservableState
   struct State: Equatable {
     @Shared(.homeLayout) var saved
+    /// The editor's copy of the layout, taken as it opens: every edit changes only this, and only Done keeps it in
+    /// `saved`. Nil outside the editor.
+    var draft: HomeLayout?
     /// The widgets the running features offer now, in sidebar order, as the shell tells them.
     var widgets: [HomeWidgetInfo] = []
     /// Features' pages asking for their first widget on Home.
@@ -24,15 +28,20 @@ struct HomeFeature: Sendable {
 
     var available: Set<String> { Set(widgets.map(\.id)) }
 
+    /// The layout Home shows: the editor's draft while it is open, the saved one otherwise.
+    var layout: HomeLayout? {
+      isEditing ? draft : saved
+    }
+
     /// The widgets on the grid now: those whose feature runs. An away widget's feature doesn't run: once its feature
     /// is back, the widget either shows again or has left the layout.
     var visible: [Placement] {
-      saved?.visible(available) ?? []
+      layout?.visible(available) ?? []
     }
 
     /// The widget in the row next to the notch, while its feature runs.
     var notchRowWidget: String? {
-      saved?.notchRowWidget(available)
+      layout?.notchRowWidget(available)
     }
 
     /// The widgets that show on Home now: on the grid or in the row next to the notch.
@@ -40,9 +49,12 @@ struct HomeFeature: Sendable {
       Set(visible.map(\.widget) + [notchRowWidget].compactMap { $0 })
     }
 
-    /// The features with a widget that shows on Home now.
-    var featuresShown: Set<FeatureID> {
-      Set(widgets.filter { shownWidgets.contains($0.id) }.map(\.feature))
+    /// The features with a widget on Home as it is saved: what the shell hears. The editor's draft counts once Done
+    /// keeps it.
+    var featuresKept: Set<FeatureID> {
+      let grid = (saved?.visible(available) ?? []).map(\.widget)
+      let kept = Set(grid + [saved?.notchRowWidget(available)].compactMap { $0 })
+      return Set(widgets.filter { kept.contains($0.id) }.map(\.feature))
     }
 
     /// Home is the editor: the window is wider, with the panel of widgets on the right.
@@ -75,7 +87,7 @@ struct HomeFeature: Sendable {
     /// the grid while dragging both read this, so the drop keeps what showed.
     func layout(moving id: String, column: Int, row: Int) -> HomeLayout? {
       guard isEditing else { return nil }
-      return saved?.moving(id, column: column, row: row, available: available)
+      return draft?.moving(id, column: column, row: row, available: available)
     }
 
     /// The features with widgets, in sidebar order: those with a widget on Home, then the others. A search keeps the
@@ -139,8 +151,11 @@ struct HomeFeature: Sendable {
     case addRequestsChanged([FeatureID])
     /// The pencil, or "Edit Home" in Home's menu.
     case editTapped
+    /// Done keeps the edits; so does "More widgets in Features", which is Done, then the catalog.
     case doneTapped
-    /// The window closed, however it did: the editor ends with it.
+    /// Cancel, and leaving Home's tab: Home goes back to how it was when the editor opened.
+    case cancelTapped
+    /// The window closed, however it did: the editor ends with it, as with Cancel.
     case windowClosed
     /// A widget's "−", or Delete on the focused widget.
     case removeTapped(String)
@@ -171,50 +186,49 @@ struct HomeFeature: Sendable {
         return .cancel(id: CancelID.following)
 
       case let .addRequestsChanged(features):
-        guard !features.isEmpty else { return .none }
-        // Each feature's first widget, in the order asked; one write for all.
-        let before = state.saved ?? HomeLayout()
-        let after = features.reduce(before) { layout, feature in
-          guard let widget = state.widgets.first(where: { $0.feature == feature }) else { return layout }
-          return layout.adding(widget, available: state.available)
-        }
-        if after != before { state.$saved.withLock { $0 = after } }
+        // While the editor is open a request waits: it goes on Home as the editor ends, into the layout kept.
+        guard !features.isEmpty, !state.isEditing else { return .none }
+        let after = adding(features, to: state.saved, state)
+        if after != state.saved { state.$saved.withLock { $0 = after } }
         // Each request goes once taken, with or without room.
         state.$addRequests.withLock { $0.removeAll { features.contains($0) } }
         return .none
 
       case let .widgetsChanged(widgets):
         state.widgets = widgets
+        let available = Set(widgets.map(\.id))
         if let saved = state.saved {
-          let reconciled = saved.reconciled(available: Set(widgets.map(\.id)))
+          let reconciled = saved.reconciled(available: available)
           if reconciled != saved { state.$saved.withLock { $0 = reconciled } }
         } else if !widgets.isEmpty {
           // The first layout waits for a widget: before the user chooses features there is none, and an empty layout
           // saved then would leave the chosen ones off as if added later.
           state.$saved.withLock { $0 = HomeLayout.initial(widgets) }
         }
+        // The draft follows the same rules on its own, so whichever layout the editor leaves has followed them: Done's
+        // or the one from before. A draft taken before there was a layout is the first one.
+        if state.isEditing {
+          state.draft = state.draft?.reconciled(available: available) ?? state.saved
+        }
         return .none
 
       case .editTapped:
+        guard !state.isEditing else { return .none }
         state.isEditing = true
+        state.draft = state.saved
         return .none
 
-      case .doneTapped, .windowClosed:
-        // The next edit starts again with the feature list.
-        state.isEditing = false
-        state.panel = .features
-        state.search = ""
-        state.preview = nil
-        state.chosenSizes = [:]
-        return .none
+      case .doneTapped:
+        return endEditing(&state, keepingDraft: true)
+
+      case .cancelTapped, .windowClosed:
+        return endEditing(&state, keepingDraft: false)
 
       case let .removeTapped(id):
         guard state.isEditing else { return .none }
-        // Edits are saved at once; the other widgets stay where they are.
-        state.$saved.withLock { layout in
-          layout?.placed.removeAll { $0.widget == id }
-          if layout?.notchRow == id { layout?.notchRow = nil }
-        }
+        // The other widgets stay where they are.
+        state.draft?.placed.removeAll { $0.widget == id }
+        if state.draft?.notchRow == id { state.draft?.notchRow = nil }
         return .none
 
       case let .searchChanged(text):
@@ -239,7 +253,7 @@ struct HomeFeature: Sendable {
         guard state.isEditing, let widget = state.widgets.first(where: { $0.id == id }),
               case let .grid(sizes) = widget.place, sizes.contains(size)
         else { return .none }
-        guard state.shownWidgets.contains(id), let index = state.saved?.placed.firstIndex(where: { $0.widget == id })
+        guard state.shownWidgets.contains(id), let index = state.draft?.placed.firstIndex(where: { $0.widget == id })
         else {
           // Off Home: the size waits for Add, and the copy takes it at once.
           state.chosenSizes[id] = size
@@ -247,20 +261,20 @@ struct HomeFeature: Sendable {
           return .none
         }
         // On Home: the new size keeps the top left corner, and only if it fits there.
-        guard let placement = state.saved?.placed[index],
+        guard let placement = state.draft?.placed[index],
               HomeLayout(notchRow: nil, placed: state.visible)
                 .fits(size, column: placement.column, row: placement.row, ignoring: [id])
         else { return .none }
-        state.$saved.withLock { $0?.placed[index].size = size }
+        state.draft?.placed[index].size = size
         return .none
 
       case let .addTapped(id):
         guard state.isEditing, let place = state.place(for: id) else { return .none }
         switch place {
         case let .at(placement):
-          state.$saved.withLock { $0?.placed.append(placement) }
+          state.draft?.placed.append(placement)
         case .notchRow:
-          state.$saved.withLock { $0?.notchRow = id }
+          state.draft?.notchRow = id
         case .noRoom:
           return .none
         }
@@ -270,17 +284,48 @@ struct HomeFeature: Sendable {
       case let .dropped(id, column, row):
         // The widgets in its way move aside; where they can't, it goes back and nothing moves.
         guard let moved = state.layout(moving: id, column: column, row: row) else { return .none }
-        state.$saved.withLock { $0 = moved }
+        state.draft = moved
         return .none
       }
     }
-    // The shell's "On Home" follows what shows, however it changed.
-    .onChange(of: \.featuresShown) { _, features in
+    // The shell's "On Home" follows what is kept, however it changed.
+    .onChange(of: \.featuresKept) { _, features in
       Reduce { state, _ in
         state.$featuresOnHome.withLock { $0 = features }
         return .none
       }
     }
+  }
+
+  /// Ends the editor; the next one starts again with the feature list. Done keeps the draft, in one write and none when
+  /// nothing changed; any other way out leaves the saved layout as it was. Requests that waited for the editor go on
+  /// Home now, into the layout kept, in the same write.
+  private func endEditing(_ state: inout State, keepingDraft: Bool) -> Effect<Action> {
+    let wasEditing = state.isEditing
+    let draft = state.draft
+    state.isEditing = false
+    state.draft = nil
+    state.panel = .features
+    state.search = ""
+    state.preview = nil
+    state.chosenSizes = [:]
+    guard wasEditing else { return .none }
+    let requests = state.addRequests
+    let kept = adding(requests, to: keepingDraft ? draft : state.saved, state)
+    if kept != state.saved { state.$saved.withLock { $0 = kept } }
+    if !requests.isEmpty { state.$addRequests.withLock { $0.removeAll { requests.contains($0) } } }
+    return .none
+  }
+
+  /// `layout` with each feature's first widget put on it, in the order asked, as "Add to Home" puts it.
+  private func adding(_ features: [FeatureID], to layout: HomeLayout?, _ state: State) -> HomeLayout? {
+    guard !features.isEmpty else { return layout }
+    let before = layout ?? HomeLayout()
+    let after = features.reduce(before) { layout, feature in
+      guard let widget = state.widgets.first(where: { $0.feature == feature }) else { return layout }
+      return layout.adding(widget, available: state.available)
+    }
+    return after == before ? layout : after
   }
 
   /// Follows the shell's running widgets and the pages' requests, in the order they change: the shell tells the widgets

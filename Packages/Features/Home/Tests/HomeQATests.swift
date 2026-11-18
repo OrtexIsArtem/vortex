@@ -21,6 +21,7 @@ struct HomeQATests {
   func aHomeCommandSendsWhatTheEditorSends() throws {
     #expect(try actions("edit") == [.editTapped])
     #expect(try actions("done") == [.doneTapped])
+    #expect(try actions("cancel") == [.cancelTapped])
     #expect(try actions("feature id=clipboard") == [.featureTapped("clipboard")])
     #expect(try actions("back") == [.backTapped])
     #expect(try actions("hover id=clipboard.pinned") == [.hovered("clipboard.pinned")])
@@ -46,7 +47,8 @@ struct HomeQATests {
     #expect(throws: QAError.self) { try actions("dance") }
   }
 
-  /// The state section `home`: the layout, what shows, the editor, the copy and the requests, as plain words.
+  /// The state section `home`: the layout, the editor's draft, what shows, the editor, the copy and the requests, as
+  /// plain words.
   @Test
   func theStateSectionTellsTheLayoutAndTheEditor() {
     var state = HomeFeature.State()
@@ -62,12 +64,18 @@ struct HomeQATests {
       HomeWidgetInfo(id: "timer.timer", feature: "timer", place: .notchRow, name: "Timer", featureName: "Timer", featureSymbol: "timer"),
       HomeWidgetInfo(id: "clipboard.history", feature: "clipboard", place: .grid([.large]), name: "History", featureName: "Clipboard", featureSymbol: "doc"),
     ]
+    #expect(HomeModule.QAState(state).draft == nil)
     state.isEditing = true
+    state.draft = HomeLayout(
+      notchRow: nil,
+      placed: [Placement(widget: "clipboard.history", size: .medium, column: 2, row: 1)]
+    )
     state.panel = .feature("clipboard")
     state.preview = .noRoom("clipboard.pinned")
     let section = HomeModule.QAState(state)
     #expect(section.notchRow == "timer.timer")
     #expect(section.placed == ["clipboard.history large (0,0)", "tasks.list medium (2,1) away"])
+    #expect(section.draft == .init(notchRow: nil, placed: ["clipboard.history medium (2,1)"]))
     #expect(section.visible == ["clipboard.history"])
     #expect(section.widgets == ["timer.timer", "clipboard.history"])
     #expect(section.isEditing)

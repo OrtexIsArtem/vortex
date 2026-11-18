@@ -2,8 +2,8 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// The editor's panel on the right: Done, then the features with widgets (those on Home, then the others) with a search
-/// and the way to the catalog, or one feature's widgets.
+/// The editor's panel on the right: Cancel and Done, then the features with widgets (those on Home, then the others)
+/// with a search and the way to the catalog, or one feature's widgets.
 struct HomeEditorPanel: View {
   let store: StoreOf<HomeFeature>
   let byID: [String: HomeWidget]
@@ -11,8 +11,14 @@ struct HomeEditorPanel: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack {
-        Spacer(minLength: 0)
+      // Right-aligned by a frame rather than a spacer, whose gap would leave "Скасувати" short of room.
+      HStack(spacing: 8) {
+        Button {
+          store.send(.cancelTapped)
+        } label: {
+          Text("Cancel", bundle: .module)
+        }
+        .buttonStyle(.quietCapsule)
         Button {
           store.send(.doneTapped)
         } label: {
@@ -20,7 +26,8 @@ struct HomeEditorPanel: View {
         }
         .buttonStyle(.primaryCapsule)
       }
-      .frame(height: 34)
+      .lineLimit(1)
+      .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34, alignment: .trailing)
 
       switch store.panel {
       case .features:

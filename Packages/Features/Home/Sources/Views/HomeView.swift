@@ -54,10 +54,11 @@ struct HomeView: View {
     .onChange(of: isWindowOpen) { _, isOpen in
       if !isOpen { store.send(.windowClosed) }
     }
-    // Left for another tab, as the menu bar menu's Settings does: the editor ends and gives the window back.
+    // Left for another tab, as the menu bar menu's Settings does: the editor ends as Cancel ends it, and gives the
+    // window back.
     .onDisappear {
       guard store.isEditing else { return }
-      store.send(.doneTapped)
+      store.send(.cancelTapped)
       windowRequest?(.regular)
     }
   }

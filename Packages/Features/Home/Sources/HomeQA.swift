@@ -7,14 +7,14 @@
     private static var isRegistered = false
 
     /// QA mode's `home` command, while the open window shows Home. Each sends what the editor's control sends:
-    /// - `edit`, `done`: the pencil and Done;
+    /// - `edit`, `done`, `cancel`: the pencil, Done and Cancel;
     /// - `feature id=<feature>`, `back`: a feature's row in the panel, and back to the list;
     /// - `hover [id=<widget>]`: the pointer over a widget in the panel, or off it;
     /// - `resize id=<widget> size=small|medium|wide|large|full`: a size in the widget's switcher;
     /// - `add id=<widget> [size=]`: Add, after choosing the size;
     /// - `remove id=<widget>`: its "−";
     /// - `move id=<widget> column=<0-3> row=<0-1>`: a drag that lands its top left corner on that cell.
-    /// The state section `home` tells the layout, what shows, the editor and the copy (`QAState`).
+    /// The state section `home` tells the layout, the editor's draft, what shows, the editor and the copy (`QAState`).
     static func registerQACommands() {
       guard QA.isActive, !isRegistered else { return }
       isRegistered = true
@@ -33,7 +33,9 @@
       var notchRow: String?
       /// Every place in home.json, in its order.
       var placed: [String]
-      /// The widgets on the grid now.
+      /// The editor's draft, which only Done keeps in home.json; nil outside the editor.
+      var draft: Layout?
+      /// The widgets on the grid now: the draft's in the editor.
       var visible: [String]
       /// The running features' widgets, as the shell told them.
       var widgets: [String]
@@ -48,6 +50,12 @@
       var addRequests: [String]
       var featuresOnHome: [String]
 
+      /// A layout as plain words: its notch row, and its places in their order.
+      struct Layout: Encodable, Equatable {
+        var notchRow: String?
+        var placed: [String]
+      }
+
       init(_ state: HomeFeature.State) {
         func words(_ placement: Placement) -> String {
           "\(placement.widget) \(placement.size.rawValue) (\(placement.column),\(placement.row))"
@@ -55,6 +63,9 @@
         }
         notchRow = state.saved?.notchRow
         placed = (state.saved?.placed ?? []).map(words)
+        draft = state.isEditing
+          ? Layout(notchRow: state.draft?.notchRow, placed: (state.draft?.placed ?? []).map(words))
+          : nil
         visible = state.visible.map(\.widget)
         widgets = state.widgets.map(\.id)
         isEditing = state.isEditing
@@ -77,7 +88,7 @@
     }
 
     static func qaActions(_ arguments: [String: String]) throws -> [HomeFeature.Action] {
-      let verbs = ["edit", "done", "feature", "back", "hover", "resize", "add", "remove", "move"]
+      let verbs = ["edit", "done", "cancel", "feature", "back", "hover", "resize", "add", "remove", "move"]
       let named = verbs.filter { arguments[$0] == "" }
       guard named.count == 1, let verb = named.first else {
         throw QAError("home takes one of \(verbs.joined(separator: ", "))")
@@ -98,6 +109,8 @@
         return [.editTapped]
       case "done":
         return [.doneTapped]
+      case "cancel":
+        return [.cancelTapped]
       case "feature":
         guard let feature = arguments["id"], !feature.isEmpty else { throw QAError("feature takes id=<feature>") }
         return [.featureTapped(FeatureID(feature))]

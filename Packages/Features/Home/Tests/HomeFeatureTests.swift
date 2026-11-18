@@ -1,8 +1,28 @@
 import ComposableArchitecture
+import Foundation
+@_spi(Internals) import Sharing
 import Testing
 import VortexCore
 
 @testable import FeatureHome
+
+/// home.json in a file system of the test's own: what it holds, and how many times it was written.
+struct HomeFile {
+  let files = LockIsolated<[URL: Data]>([:])
+  let writes = LockIsolated(0)
+
+  var storage: FileStorage {
+    // Each write is saved at once and then asks for a later one, which finds nothing more to save.
+    .inMemory(fileSystem: files, asyncAfter: { [writes] _, work in
+      writes.withValue { $0 += 1 }
+      work.perform()
+    })
+  }
+
+  var layout: HomeLayout? {
+    files.value.values.first.flatMap { try? JSONDecoder().decode(HomeLayout.self, from: $0) }
+  }
+}
 
 /// Home's layout as it lives on: saved in home.json, through features that go and come back.
 @MainActor
@@ -29,7 +49,10 @@ struct HomeFeatureTests {
       $0.widgets = widgets
       $0.$featuresOnHome.withLock { $0 = Set(widgets.filter { shown.contains($0.id) }.map(\.feature)) }
     }
-    await store.send(.editTapped) { $0.isEditing = true }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = layout
+    }
     return store
   }
 
@@ -154,15 +177,23 @@ struct HomeFeatureTests {
 
   // MARK: - The editor
 
-  /// Edit Home turns Home into the editor, with the feature list in the panel; Done ends it and clears the search.
+  /// Edit Home turns Home into the editor, with the feature list in the panel and a draft of the layout; Done ends it
+  /// and clears the search.
   @Test
   func editingStartsWithTheFeatureListAndDoneEndsIt() async {
-    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
-    await store.send(.editTapped) { $0.isEditing = true }
+    let saved = HomeLayout.initial([timer, clipboard, shelf])
+    let store = makeStore(saved: saved)
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
     #expect(store.state.panel == .features)
     await store.send(.searchChanged("cl")) { $0.search = "cl" }
+    // A second Edit Home changes nothing.
+    await store.send(.editTapped)
     await store.send(.doneTapped) {
       $0.isEditing = false
+      $0.draft = nil
       $0.search = ""
     }
   }
@@ -170,42 +201,55 @@ struct HomeFeatureTests {
   /// Closing the window, however it closes, ends the editor.
   @Test
   func closingTheWindowEndsEditing() async {
-    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
-    await store.send(.editTapped) { $0.isEditing = true }
-    await store.send(.windowClosed) { $0.isEditing = false }
+    let saved = HomeLayout.initial([timer, clipboard, shelf])
+    let store = makeStore(saved: saved)
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
+    await store.send(.windowClosed) {
+      $0.isEditing = false
+      $0.draft = nil
+    }
   }
 
-  /// Removing a widget in the editor frees its cells at once, in home.json too; the others don't move.
+  /// Removing a widget in the editor frees its cells at once; the others don't move.
   @Test
   func removingAWidgetFreesItsCells() async {
-    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
+    let saved = HomeLayout.initial([timer, clipboard, shelf])
+    let store = makeStore(saved: saved)
     await store.send(.widgetsChanged([timer, clipboard, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.shelf]
       $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
     // Outside the editor nothing is removed.
     await store.send(.removeTapped("shelf.files"))
-    await store.send(.editTapped) { $0.isEditing = true }
-    await store.send(.removeTapped("shelf.files")) {
-      $0.$saved.withLock { $0?.placed.removeAll { $0.widget == "shelf.files" } }
-      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
     }
-    #expect(store.state.saved?.placed == [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)])
-    #expect(store.state.saved?.fits(.medium, column: 2, row: 0, ignoring: []) == true)
+    await store.send(.removeTapped("shelf.files")) {
+      $0.draft?.placed.removeAll { $0.widget == "shelf.files" }
+    }
+    #expect(store.state.visible == [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)])
+    #expect(store.state.draft?.fits(.medium, column: 2, row: 0, ignoring: []) == true)
   }
 
   /// Removing the widget in the row next to the notch leaves the row to Home's title.
   @Test
   func removingTheNotchRowWidgetEmptiesTheRow() async {
-    let store = makeStore(saved: HomeLayout.initial([timer, clipboard]))
+    let saved = HomeLayout.initial([timer, clipboard])
+    let store = makeStore(saved: saved)
     await store.send(.widgetsChanged([timer, clipboard])) {
       $0.widgets = [self.timer, self.clipboard]
       $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
     }
-    await store.send(.editTapped) { $0.isEditing = true }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
     await store.send(.removeTapped("timer.timer")) {
-      $0.$saved.withLock { $0?.notchRow = nil }
-      $0.$featuresOnHome.withLock { $0 = ["clipboard"] }
+      $0.draft?.notchRow = nil
     }
     #expect(store.state.notchRowWidget == nil)
   }
@@ -269,7 +313,11 @@ struct HomeFeatureTests {
       }
       $0.$featuresOnHome.withLock { $0 = ["timer"] }
     }
-    await store.send(.editTapped) { $0.isEditing = true }
+    let saved = store.state.saved
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
     await store.send(.hovered("tasks.list")) {
       $0.preview = .at(Placement(widget: "tasks.list", size: .medium, column: 0, row: 0))
     }
@@ -316,17 +364,20 @@ struct HomeFeatureTests {
       $0.preview = .at(Placement(widget: "clipboard.pinned", size: .medium, column: 2, row: 1))
     }
     await store.send(.addTapped("clipboard.pinned")) {
-      $0.$saved.withLock { $0?.placed.append(Placement(widget: "clipboard.pinned", size: .medium, column: 2, row: 1)) }
+      $0.draft?.placed.append(Placement(widget: "clipboard.pinned", size: .medium, column: 2, row: 1))
       $0.preview = nil
     }
     // The next edit starts with every widget at its first size again.
+    let draft = store.state.draft
     await store.send(.doneTapped) {
       $0.isEditing = false
+      $0.$saved.withLock { $0 = draft }
+      $0.draft = nil
       $0.chosenSizes = [:]
     }
   }
 
-  /// Add puts the widget where its copy was, and saves.
+  /// Add puts the widget where its copy was.
   @Test
   func addPutsTheWidgetWhereItsCopyWas() async {
     let store = await editingStore()
@@ -334,7 +385,7 @@ struct HomeFeatureTests {
       $0.preview = .at(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
     }
     await store.send(.addTapped("clipboard.pinned")) {
-      $0.$saved.withLock { $0?.placed.append(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1)) }
+      $0.draft?.placed.append(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 1))
       $0.preview = nil
     }
     #expect(store.state.panelSections.onHome == ["timer", "clipboard", "shelf"])
@@ -362,14 +413,12 @@ struct HomeFeatureTests {
     await store.send(.hovered("clock.row")) { $0.preview = .noRoom("clock.row") }
     await store.send(.hovered(nil)) { $0.preview = nil }
     await store.send(.removeTapped("timer.timer")) {
-      $0.$saved.withLock { $0?.notchRow = nil }
-      $0.$featuresOnHome.withLock { $0 = ["clipboard", "shelf"] }
+      $0.draft?.notchRow = nil
     }
     await store.send(.hovered("timer.timer")) { $0.preview = .notchRow("timer.timer") }
     await store.send(.addTapped("timer.timer")) {
-      $0.$saved.withLock { $0?.notchRow = "timer.timer" }
+      $0.draft?.notchRow = "timer.timer"
       $0.preview = nil
-      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
   }
 
@@ -380,11 +429,11 @@ struct HomeFeatureTests {
     // Wide from (2,0) would leave the grid.
     await store.send(.sizeTapped("shelf.files", .wide))
     await store.send(.sizeTapped("clipboard.history", .medium)) {
-      $0.$saved.withLock { $0?.placed[0].size = .medium }
+      $0.draft?.placed[0].size = .medium
     }
     // Large again fits: its cells are free.
     await store.send(.sizeTapped("clipboard.history", .large)) {
-      $0.$saved.withLock { $0?.placed[0].size = .large }
+      $0.draft?.placed[0].size = .large
     }
     // A size the widget doesn't offer is never applied.
     await store.send(.sizeTapped("clipboard.history", .small))
@@ -403,19 +452,260 @@ struct HomeFeatureTests {
     await store.send(.dropped("clipboard.history", column: 1, row: 0))
     // Onto Shelf: they swap.
     await store.send(.dropped("clipboard.history", column: 0, row: 0)) {
-      $0.$saved.withLock { layout in
-        layout?.placed[0].column = 2
-        layout?.placed[1].column = 0
-      }
+      $0.draft?.placed[0].column = 2
+      $0.draft?.placed[1].column = 0
     }
     // Nothing in the way.
     await store.send(.dropped("shelf.files", column: 2, row: 1)) {
-      $0.$saved.withLock { $0?.placed[0].row = 1 }
+      $0.draft?.placed[0].row = 1
     }
     // Past the grid's edge it stays.
     await store.send(.dropped("shelf.files", column: 3, row: 1))
     // A widget that isn't on Home doesn't move in.
     await store.send(.dropped("clipboard.pinned", column: 2, row: 0))
+  }
+
+  // MARK: - What Done keeps, and every other way out
+
+  /// The editor's four kinds of edit, each changing only its draft: Clipboard dragged onto Shelf, Shelf removed,
+  /// Clipboard made medium, and Clipboard's pinned widget added at medium.
+  func edit(_ store: TestStoreOf<HomeFeature>) async {
+    await store.send(.dropped("clipboard.history", column: 2, row: 0)) {
+      $0.draft?.placed[0].column = 2
+      $0.draft?.placed[1].column = 0
+    }
+    await store.send(.removeTapped("shelf.files")) {
+      $0.draft?.placed.remove(at: 1)
+    }
+    await store.send(.sizeTapped("clipboard.history", .medium)) {
+      $0.draft?.placed[0].size = .medium
+    }
+    await store.send(.sizeTapped("clipboard.pinned", .medium)) {
+      $0.chosenSizes["clipboard.pinned"] = .medium
+    }
+    await store.send(.addTapped("clipboard.pinned")) {
+      $0.draft?.placed.append(Placement(widget: "clipboard.pinned", size: .medium, column: 0, row: 0))
+    }
+  }
+
+  /// Cancel puts Home back as it was when the editor opened: a drop, a remove, a size and an Add all go.
+  @Test
+  func cancelPutsHomeBack() async {
+    await editsGo(by: .cancelTapped)
+  }
+
+  /// So does the window closing, however it closes (Esc, a click outside, a shortcut, the menu bar icon).
+  @Test
+  func closingTheWindowPutsHomeBack() async {
+    await editsGo(by: .windowClosed)
+  }
+
+  /// Each way out but Done, as its own test: the cases of one parameterized test share their shared state.
+  func editsGo(by wayOut: HomeFeature.Action) async {
+    let store = await editingStore()
+    let saved = store.state.saved
+    let shown = store.state.visible
+    await edit(store)
+    #expect(store.state.visible != shown)
+    await store.send(wayOut) {
+      $0.isEditing = false
+      $0.draft = nil
+      $0.chosenSizes = [:]
+    }
+    #expect(store.state.saved == saved)
+    #expect(store.state.visible == shown)
+    #expect(store.state.notchRowWidget == "timer.timer")
+  }
+
+  /// Nothing the editor changes reaches home.json before Done; Done writes it once, and not at all when nothing
+  /// changed.
+  @Test
+  func doneWritesHomeJSONOnceAndNothingIsWrittenBefore() async throws {
+    let file = HomeFile()
+    try await withDependencies { $0.defaultFileStorage = file.storage } operation: {
+      let store = await editingStore()
+      let before = try #require(file.layout)
+      let writes = file.writes.value
+      await edit(store)
+      #expect(file.layout == before)
+      #expect(file.writes.value == writes)
+      let draft = store.state.draft
+      // Not exhaustive for Done alone: an expectation's `$saved.withLock` writes home.json itself.
+      store.exhaustivity = .off
+      await store.send(.doneTapped)
+      store.exhaustivity = .on
+      #expect(store.state.saved == draft)
+      #expect(!store.state.isEditing && store.state.draft == nil)
+      #expect(store.state.featuresOnHome == ["timer", "clipboard"])
+      #expect(file.writes.value == writes + 1)
+      #expect(file.layout == draft)
+      await store.send(.editTapped) {
+        $0.isEditing = true
+        $0.draft = draft
+      }
+      await store.send(.doneTapped) {
+        $0.isEditing = false
+        $0.draft = nil
+      }
+      #expect(file.writes.value == writes + 1)
+      // Nor does Cancel.
+      await store.send(.editTapped) {
+        $0.isEditing = true
+        $0.draft = draft
+      }
+      await store.send(.removeTapped("clipboard.pinned")) {
+        $0.draft?.placed.remove(at: 1)
+      }
+      await store.send(.cancelTapped) {
+        $0.isEditing = false
+        $0.draft = nil
+      }
+      #expect(file.writes.value == writes + 1)
+      #expect(file.layout == draft)
+    }
+  }
+
+  /// A feature that goes while the editor is open takes its widget away from what is saved and from the draft alike,
+  /// and its place is free in both. After Done the widget that took the place keeps it, and the one coming back leaves.
+  @Test
+  func aWidgetThatWentWhileEditingLeavesWhenDoneGaveItsPlaceAway() async {
+    let store = await widgetGoesWhileEditing(then: .doneTapped)
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+      $0.$saved.withLock { $0?.placed.remove(at: 1) }
+    }
+  }
+
+  /// After Cancel nobody took its place, and the widget shows there again.
+  @Test
+  func aWidgetThatWentWhileEditingShowsAgainAfterCancel() async {
+    let store = await widgetGoesWhileEditing(then: .cancelTapped)
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+      $0.$saved.withLock { $0?.placed[1].away = nil }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
+    }
+  }
+
+  /// Shelf goes while the editor is open, Clipboard's pinned widget takes its place in the draft, and the editor ends.
+  func widgetGoesWhileEditing(then wayOut: HomeFeature.Action) async -> TestStoreOf<HomeFeature> {
+    let store = await editingStore()
+    await store.send(.widgetsChanged([timer, clipboard, pinned])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned]
+      $0.$saved.withLock { $0?.placed[1].away = 1 }
+      $0.draft?.placed[1].away = 1
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+    }
+    await store.send(.addTapped("clipboard.pinned")) {
+      $0.draft?.placed.append(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 0))
+    }
+    let draft = store.state.draft
+    await store.send(wayOut) {
+      $0.isEditing = false
+      if wayOut == .doneTapped { $0.$saved.withLock { $0 = draft } }
+      $0.draft = nil
+    }
+    return store
+  }
+
+  /// A widget that comes back while the editor is open shows again where it can, in each layout on its own: in what is
+  /// saved its place is free; in the draft another widget took it, so it leaves. Done keeps the draft.
+  @Test
+  func aWidgetThatCameBackWhileEditingIsOffAfterDone() async {
+    let store = await widgetComesBackWhileEditing()
+    let draft = store.state.draft
+    await store.send(.doneTapped) {
+      $0.isEditing = false
+      $0.$saved.withLock { $0 = draft }
+      $0.draft = nil
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+    }
+  }
+
+  /// Cancel keeps what is saved, where it showed again.
+  @Test
+  func aWidgetThatCameBackWhileEditingShowsAfterCancel() async {
+    let store = await widgetComesBackWhileEditing()
+    await store.send(.cancelTapped) {
+      $0.isEditing = false
+      $0.draft = nil
+    }
+    #expect(store.state.visible.map(\.widget) == ["clipboard.history", "shelf.files"])
+  }
+
+  /// Shelf is away as the editor opens, Clipboard's pinned widget takes its place in the draft, and Shelf comes back.
+  func widgetComesBackWhileEditing() async -> TestStoreOf<HomeFeature> {
+    var away = Placement(widget: "shelf.files", size: .medium, column: 2, row: 0)
+    away.away = 1
+    let saved = HomeLayout(
+      notchRow: "timer.timer",
+      placed: [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0), away]
+    )
+    let store = makeStore(saved: saved)
+    await store.send(.widgetsChanged([timer, clipboard, pinned])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+    }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
+    await store.send(.addTapped("clipboard.pinned")) {
+      $0.draft?.placed.append(Placement(widget: "clipboard.pinned", size: .small, column: 2, row: 0))
+    }
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+      $0.$saved.withLock { $0?.placed[1].away = nil }
+      $0.draft?.placed.remove(at: 1)
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
+    }
+    return store
+  }
+
+  /// An "Add to Home" that comes while the editor is open waits for it to end, then goes on Home as usual: here into
+  /// Shelf's place, which Done freed.
+  @Test
+  func anAddRequestWhileEditingGoesIntoWhatDoneKeeps() async {
+    let store = await addRequestWhileEditing()
+    await store.send(.doneTapped) {
+      $0.isEditing = false
+      $0.draft = nil
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$saved.withLock { $0?.placed[1] = Placement(widget: "tasks.list", size: .medium, column: 2, row: 0) }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "tasks"] }
+    }
+  }
+
+  /// After Cancel it goes into the layout from before, where Shelf still is.
+  @Test
+  func anAddRequestWhileEditingGoesIntoWhatCancelPutsBack() async {
+    let store = await addRequestWhileEditing()
+    await store.send(.cancelTapped) {
+      $0.isEditing = false
+      $0.draft = nil
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$saved.withLock { $0?.placed.append(Placement(widget: "tasks.list", size: .medium, column: 2, row: 1)) }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf", "tasks"] }
+    }
+  }
+
+  /// Tasks' page asks for its widget while the editor is open, with Shelf removed in the draft: nothing happens yet.
+  func addRequestWhileEditing() async -> TestStoreOf<HomeFeature> {
+    let saved = HomeLayout.initial([timer, clipboard, shelf])
+    let store = makeStore(saved: saved, addRequests: ["tasks"])
+    await store.send(.widgetsChanged([timer, clipboard, shelf, tasks])) {
+      $0.widgets = [self.timer, self.clipboard, self.shelf, self.tasks]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
+    }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
+    await store.send(.removeTapped("shelf.files")) {
+      $0.draft?.placed.remove(at: 1)
+    }
+    await store.send(.addRequestsChanged(["tasks"]))
+    return store
   }
 
   // MARK: - Add to Home, and what the shell hears back
@@ -469,17 +759,27 @@ struct HomeFeatureTests {
     #expect(store.state.saved == fullGrid)
   }
 
-  /// The shell hears which features have a widget on Home, as it changes: their pages say "On Home".
+  /// The shell hears which features have a widget on Home, as it changes: their pages say "On Home". An edit counts
+  /// once Done keeps it.
   @Test
-  func featuresOnHomeFollowWhatShows() async {
-    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
+  func featuresOnHomeFollowWhatIsKept() async {
+    let saved = HomeLayout.initial([timer, clipboard, shelf])
+    let store = makeStore(saved: saved)
     await store.send(.widgetsChanged([timer, clipboard, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.shelf]
       $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
-    await store.send(.editTapped) { $0.isEditing = true }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = saved
+    }
     await store.send(.removeTapped("shelf.files")) {
+      $0.draft?.placed.removeAll { $0.widget == "shelf.files" }
+    }
+    await store.send(.doneTapped) {
+      $0.isEditing = false
       $0.$saved.withLock { $0?.placed.removeAll { $0.widget == "shelf.files" } }
+      $0.draft = nil
       $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
     }
     // Clipboard goes: its widget is away.

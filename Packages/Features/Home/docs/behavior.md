@@ -27,18 +27,23 @@
 - Widgets not in its way move only when that is the only way to make room; where the others can't all fit, it goes back and nothing moves.
 - While it is dragged, the widgets in its way already slide where they would go, an outline shows where it lands, and the dashed free cells follow; the drop keeps exactly that.
 - An away widget takes no part in a drag: its place is free, and it keeps it; the notch row stays as it is.
-- The panel on the right: Done, a search of feature and widget names in any case, "On Home" and "More" in sidebar order, and "More widgets in Features", which ends the editor and opens the catalog.
+- The panel on the right: Cancel and Done, a search of feature and widget names in any case, "On Home" and "More" in sidebar order, and "More widgets in Features", which is Done, then the catalog.
 - A feature's row says "N widgets · M on Home", "1 widget · on Home", "N widgets" or "In the notch row", and opens the feature's widgets.
 - A widget in the panel: its preview, its name, "On Home", "No room" or Add, and its sizes as chips: "2×1".
 - On Home a size applies in place, keeping the top left corner, and only if it fits there; a size that doesn't is dimmed.
 - Off Home a size is chosen for Add, and under the pointer the widget's copy shows at its real size, faint and dashed, where Add would put it, named "Files · 2×1".
 - Without room the panel says "No room" and "Remove a widget or choose a smaller size."
 - A notch row widget's copy shows in the row while it is free, and Add puts it there.
-- Edits are saved at once. Done, closing the window (Esc, a click outside, a shortcut, the menu bar icon) or leaving the tab ends the editor; the next open is regular.
+- Nothing the editor changes is kept until Done, which keeps every edit.
+- Cancel puts Home back as it was when the editor opened; so does every other way out: Esc, a click outside, a shortcut, the menu bar icon, the window closing any other way, leaving the tab (the menu bar's Settings), quitting.
+- However the editor ends, the window goes back to regular; the next open is regular too.
+- The editor's large window is a deliberate open: it doesn't close when the pointer leaves it.
+- A feature that goes or comes back while the editor is open changes what is saved and the editor's draft alike, each by the rules above, so Done and Cancel both leave a layout that follows them.
 
 ## Add to Home
 - "Add to Home" on a feature's page puts its first widget on Home: in the notch row while it is free, or at its first size that fits in the first free place; without room nothing happens.
-- Home tells the shell which features have a widget on it: their pages say "On Home".
+- An "Add to Home" that comes while the editor is open waits for it to end, then goes into the layout kept.
+- Home tells the shell which features have a widget on it as saved: their pages say "On Home"; the editor's edits count once Done keeps them.
 
 ## The corner buttons
 - A capsule in Home's bottom right corner holds the keyboard button, while the shell offers it, and the pencil; it hides in the editor.
