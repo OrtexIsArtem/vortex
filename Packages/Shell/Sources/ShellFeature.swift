@@ -54,7 +54,7 @@ struct ShellFeature {
     var requiredPermissions = OnboardingConfig.requiredPermissions
     /// The first-run onboarding and the single permission page, in their own window.
     var onboarding: OnboardingFeature.State
-    /// Features that bring their own onboarding step, whether on or off.
+    /// Features that bring their own onboarding step (`FeatureModule.hasOnboardingStep`), running or not.
     var stepFeatures: Set<FeatureID>
     /// An entry point used before the first status read; it is decided once the statuses are in.
     var pendingEntry: OpenReason?
@@ -109,9 +109,30 @@ struct ShellFeature {
         .map(\.element)
     }
 
-    /// Added features in sidebar order.
-    var sidebarFeatures: [FeatureDescriptor] {
+    /// The features the user added, in sidebar order; a built-in one always is. An added feature may still not run.
+    var addedFeatures: [FeatureDescriptor] {
       orderedFeatures.filter(isAdded)
+    }
+
+    /// The added features whose code runs, in sidebar order: a built-in one always; any other once the user has chosen
+    /// features, unless it is paused in this release or was stopped after a crash. Nothing of any other feature runs:
+    /// no start, no views, no onboarding step, no notch indicator, no shortcut.
+    var runningFeatures: [FeatureDescriptor] {
+      addedFeatures.filter { feature in
+        feature.isBuiltIn
+          || (settings.featuresChosen && feature.suspension == nil && !settings.stoppedFeatures.contains(feature.id))
+      }
+    }
+
+    /// The sidebar shows the features that run.
+    var sidebarFeatures: [FeatureDescriptor] {
+      runningFeatures
+    }
+
+    /// Features whose notch indicators stay hidden: every feature that doesn't run, as one may leave its indicator
+    /// behind when it stops. Keys that are no feature's id, such as `debug`, never hide.
+    var hiddenIndicatorOwners: Set<FeatureID> {
+      Set(features.map(\.id)).subtracting(runningFeatures.map(\.id))
     }
 
     /// Whether the user added the feature; a built-in one always is.
@@ -142,18 +163,19 @@ struct ShellFeature {
       settings.showMenuBarIcon || isMenuBarIconRequired || isBlocked || !onboarding.progress.completed
     }
 
-    /// The enabled feature that gets files given to Vortex, see `FeatureModule.acceptsFileDrops`.
+    /// The running feature that gets files given to Vortex, see `FeatureModule.acceptsFileDrops`.
     var fileFeature: FeatureDescriptor? {
-      sidebarFeatures.first(where: \.acceptsFileDrops)
+      runningFeatures.first(where: \.acceptsFileDrops)
     }
 
     var needsRestartForLanguage: Bool {
       language != launchLanguage
     }
 
-    /// The permissions the enabled features and the shell need now, and why.
+    /// The permissions the added features and the shell need, and why: a feature that waits for the user's choice or
+    /// was stopped after a crash still needs its permissions; one paused in this release asks for none.
     var permissionCatalog: PermissionCatalog {
-      PermissionCatalog(features: sidebarFeatures, required: requiredPermissions)
+      PermissionCatalog(features: addedFeatures.filter { $0.suspension == nil }, required: requiredPermissions)
     }
 
     /// A required permission that something enabled needs reads `notGranted`; never before the first read.
@@ -164,12 +186,12 @@ struct ShellFeature {
 
     /// What the onboarding needs to know about the shell; kept current after every action.
     var onboardingContext: OnboardingContext {
-      // Features with their own step, on or off, in sidebar order.
+      // Features with their own step, running or not, in sidebar order; only a running one shows its step.
       let stepOrder = orderedFeatures.map(\.id).filter(stepFeatures.contains)
-      let enabled = Set(sidebarFeatures.map(\.id))
+      let running = Set(runningFeatures.map(\.id))
       return OnboardingContext(
         catalog: permissionCatalog,
-        steps: stepOrder.filter(enabled.contains),
+        steps: stepOrder.filter(running.contains),
         stepOrder: stepOrder,
         hint: doneHint
       )
@@ -290,10 +312,12 @@ struct ShellFeature {
   @Dependency(\.systemSettingsNamesClient) var systemSettingsNames
   @Dependency(\.windowClient) var window
 
-  private enum CancelID {
+  private enum CancelID: Hashable {
     case hoverOpen
     case pointerLeaveClose
     case saveSettings
+    /// The listener for the shortcut that opens a feature's tab.
+    case tabHotkey(FeatureID)
   }
 
   /// The newest release on GitHub. "Check for Updates" opens it in the browser: Vortex itself never goes online.
@@ -345,11 +369,17 @@ struct ShellFeature {
           return .send(.onboarding(.appTerminated(bundleID)))
 
         case .task:
-          let featureSwitches = state.orderedFeatures.map { ($0.id, state.isAdded($0)) }
+          // Only the running features start; nothing of the others runs, not even a stop.
+          let running = state.runningFeatures.map(\.id)
           return .merge(
-            .run { [isVisible = state.isMenuBarIconVisible, acceptsFiles = state.fileFeature != nil] send in
+            .run { [
+              isVisible = state.isMenuBarIconVisible,
+              acceptsFiles = state.fileFeature != nil,
+              hidden = state.hiddenIndicatorOwners
+            ] send in
               await window.setMenuBarIconVisible(isVisible)
               await window.setAcceptsFiles(acceptsFiles)
+              await window.setHiddenIndicatorOwners(hidden)
               for await event in await window.events() {
                 await send(.window(event))
               }
@@ -359,17 +389,11 @@ struct ShellFeature {
                 await send(.openHotkeyPressed)
               }
             },
-            .merge(state.features.map { feature in
-              .run { send in
-                for await _ in hotkeys.presses(.open(feature.id)) {
-                  await send(.featureHotkeyPressed(feature.id))
-                }
-              }
-            }),
+            .merge(running.map(listenForTabHotkey)),
             .run { [theme = state.settings.theme] send in
               await system.applyTheme(theme)
-              for (id, isEnabled) in featureSwitches {
-                await features.setEnabled(id, isEnabled)
+              for id in running {
+                await features.setEnabled(id, true)
               }
               // No silent registration at launch: the onboarding's Basics applies "Open at login".
               await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
@@ -440,11 +464,9 @@ struct ShellFeature {
           return .none
 
         case let .featureEnabledChanged(id, isEnabled):
+          // What starts and stops follows from the features that run, `.onChange(of: \.runningFeatures)`.
           state.setAdded(id, isEnabled)
-          if !state.isAvailable(state.selectedTab) {
-            state.selectedTab = state.restoredTab
-          }
-          return .run { _ in await features.setEnabled(id, isEnabled) }
+          return .none
 
         case .settingsShown:
           // The user may have changed the login item in System Settings meanwhile.
@@ -522,6 +544,11 @@ struct ShellFeature {
         return .merge(close(&state), .send(.onboarding(.blocked)))
       }
     }
+    .onChange(of: \.runningFeatures) { old, new in
+      Reduce { state, _ in
+        syncRunning(from: old, to: new, &state)
+      }
+    }
     .onChange(of: \.onboardingContext) { _, context in
       Reduce { state, _ in
         context.apply(to: &state.onboarding)
@@ -557,6 +584,48 @@ struct ShellFeature {
         .run { _ in await window.setAcceptsFiles(feature != nil) }
       }
     }
+  }
+
+  /// However the features that run changed (added, removed, chosen, stopped after a crash): each one that stopped runs
+  /// nothing anymore, each new one starts, and the sidebar leaves a tab that went.
+  private func syncRunning(
+    from old: [FeatureDescriptor],
+    to new: [FeatureDescriptor],
+    _ state: inout State
+  ) -> Effect<Action> {
+    let oldIDs = old.map(\.id)
+    let newIDs = new.map(\.id)
+    let stopped = oldIDs.filter { !newIDs.contains($0) }
+    let started = newIDs.filter { !oldIDs.contains($0) }
+    guard !stopped.isEmpty || !started.isEmpty else { return .none }
+    if !state.isAvailable(state.selectedTab) {
+      state.selectedTab = state.restoredTab
+    }
+    let hidden = state.hiddenIndicatorOwners
+    let cancellations: [Effect<Action>] = stopped.map { .cancel(id: CancelID.tabHotkey($0)) }
+    return .merge(
+      .merge(cancellations),
+      .merge(started.map(listenForTabHotkey)),
+      .run { _ in
+        for id in stopped {
+          await features.setEnabled(id, false)
+        }
+        for id in started {
+          await features.setEnabled(id, true)
+        }
+        await window.setHiddenIndicatorOwners(hidden)
+      }
+    )
+  }
+
+  /// Listens for the shortcut that opens the feature's tab while the feature runs; cancelling it frees the keys.
+  private func listenForTabHotkey(_ id: FeatureID) -> Effect<Action> {
+    .run { send in
+      for await _ in hotkeys.presses(.open(id)) {
+        await send(.featureHotkeyPressed(id))
+      }
+    }
+    .cancellable(id: CancelID.tabHotkey(id), cancelInFlight: true)
   }
 
   private func handle(_ event: WindowEvent, state: inout State) -> Effect<Action> {

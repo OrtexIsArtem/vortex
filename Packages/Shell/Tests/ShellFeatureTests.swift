@@ -28,6 +28,7 @@ struct ShellFeatureTests {
   let receivedFiles = LockIsolated<[String]>([])
   let acceptsFiles = LockIsolated<[Bool]>([])
   let permissionReads = LockIsolated(0)
+  let hiddenIndicatorOwners = LockIsolated<[Set<FeatureID>]>([])
 
   func makeStore(
     features: [FeatureDescriptor] = [.timer, .shelf, .tasks],
@@ -52,7 +53,30 @@ struct ShellFeatureTests {
       }
       $0.windowClient.setAcceptsFiles = { [acceptsFiles] accepts in acceptsFiles.withValue { $0.append(accepts) } }
       $0.permissionsClient.refresh = { [permissionReads] in permissionReads.withValue { $0 += 1 } }
+      $0.windowClient.setHiddenIndicatorOwners = { [hiddenIndicatorOwners] owners in
+        hiddenIndicatorOwners.withValue { $0.append(owners) }
+      }
+      $0.hotkeyClient.presses = { _ in .finished }
     }
+  }
+
+  /// Sends the launch's `.task` with every system listener ending at once, and waits until the shell has started.
+  @discardableResult
+  func launch(_ store: TestStoreOf<ShellFeature>) async -> TestStoreTask {
+    let names = SystemSettingsNames(privacyAndSecurity: "Privacy & Security", accessibility: "Accessibility")
+    store.dependencies.windowClient.events = { .finished }
+    store.dependencies.systemClient.applyTheme = { _ in }
+    store.dependencies.launchAtLoginClient.status = { .disabled }
+    store.dependencies.permissionsClient.updates = { .finished }
+    store.dependencies.permissionPage.requests = { .finished }
+    store.dependencies.activeAppClient.activations = { .finished }
+    store.dependencies.activeAppClient.terminations = { .finished }
+    store.dependencies.systemSettingsNamesClient.names = { names }
+    let task = await store.send(.task)
+    await store.receive(\.launchAtLoginStatusLoaded)
+    await store.receive(\.onboarding.systemSettingsNamesLoaded) { $0.onboarding.settingsNames = names }
+    await store.receive(\.started) { $0.isStarted = true }
+    return task
   }
 
   /// Opens by hovering the notch for the default delay.
@@ -145,7 +169,7 @@ struct ShellFeatureTests {
   func clickingTheEarOfAFeatureThatIsOffOpensTheLastTab() async {
     let store = makeStore {
       $0.lastTab = "feature:tasks"
-      $0.disabledFeatures = ["timer"]
+      $0.addedFeatures = ["shelf", "tasks"]
     }
     await store.send(.window(.notchClicked(feature: "timer"))) {
       $0.openReason = .click
@@ -211,7 +235,7 @@ struct ShellFeatureTests {
   func hoveringTheEarOfAFeatureWithoutATabOpensTheLastTab(ear: FeatureID) async {
     let store = makeStore {
       $0.lastTab = "feature:tasks"
-      $0.disabledFeatures = ["timer"]
+      $0.addedFeatures = ["shelf", "tasks"]
     }
     await store.send(.window(.notchPointerOver(feature: ear))) { $0.hoveredEar = ear }
     await store.send(.window(.notchHoverChanged(isInside: true)))
@@ -610,7 +634,7 @@ struct ShellFeatureTests {
   func launchStartsFeaturesAndSetsUpTheShell() async {
     let firstLaunchSetUps = LockIsolated(0)
     let names = SystemSettingsNames(privacyAndSecurity: "Datenschutz & Sicherheit", accessibility: "Bedienungshilfen")
-    let store = makeStore { $0.disabledFeatures = ["tasks"] }
+    let store = makeStore { $0.addedFeatures = ["timer", "shelf"] }
     store.dependencies.windowClient.events = { .finished }
     store.dependencies.hotkeyClient.presses = { _ in .finished }
     store.dependencies.systemClient.applyTheme = { _ in }
@@ -628,8 +652,98 @@ struct ShellFeatureTests {
     await store.receive(\.started) { $0.isStarted = true }
     await store.finish()
     #expect(menuBarIcon.value == [true])
-    #expect(featureSwitches.value == ["timer:true", "shelf:true", "tasks:false"])
+    // A feature that isn't added isn't even stopped: none of its code runs.
+    #expect(featureSwitches.value == ["timer:true", "shelf:true"])
     #expect(firstLaunchSetUps.value == 0)
+  }
+
+  // MARK: - Only features that run
+
+  /// A feature the user hasn't added runs no code: the launch starts the added ones and stops none.
+  @Test
+  func launchStartsOnlyAddedFeatures() async {
+    let store = makeStore(features: [.home, .timer, .shelf, .tasks]) { $0.addedFeatures = ["home", "timer", "tasks"] }
+    await launch(store)
+    await store.finish()
+    #expect(featureSwitches.value == ["home:true", "timer:true", "tasks:true"])
+  }
+
+  /// On a fresh install the recommended features are added but wait for the user's choice: only Home runs meanwhile.
+  @Test
+  func nothingButHomeRunsBeforeTheUserChooses() async {
+    let store = makeStore(features: [.home, .timer, .shelf]) {
+      $0.addedFeatures = ["home", "timer", "shelf"]
+      $0.featuresChosen = false
+    }
+    #expect(store.state.runningFeatures.map(\.id) == ["home"])
+    #expect(store.state.sidebarFeatures.map(\.id) == ["home"])
+    await launch(store)
+    await store.finish()
+    #expect(featureSwitches.value == ["home:true"])
+  }
+
+  /// A feature the maintainer paused for this release stays added, but it never runs and its permissions aren't asked
+  /// for.
+  @Test
+  func aPausedFeatureNeverRunsButItsPermissionStaysOut() {
+    let paused = FeatureDescriptor(
+      id: "clipboard",
+      title: "Clipboard",
+      symbol: "list.clipboard",
+      permissionNeeds: [PermissionNeed(.pasteboard, reason: "Keeps your clipboard history.")],
+      suspension: "Doesn't work on this macOS yet."
+    )
+    let state = ShellFeature.State(features: [.home, .timer, paused], onboarding: .finished)
+    #expect(state.addedFeatures.map(\.id) == ["home", "timer", "clipboard"])
+    #expect(state.runningFeatures.map(\.id) == ["home", "timer"])
+    #expect(state.permissionCatalog.entry(for: .pasteboard) == nil)
+  }
+
+  /// Indicators a feature left in the notch hide while it doesn't run, from the launch on and as it is removed.
+  @Test
+  func indicatorsOfFeaturesThatDontRunAreHidden() async {
+    let store = makeStore(features: [.home, .timer, .shelf, .tasks]) { $0.addedFeatures = ["home", "timer", "tasks"] }
+    await launch(store)
+    await store.finish()
+    #expect(hiddenIndicatorOwners.value == [["shelf"]])
+    await store.send(.featureEnabledChanged("timer", isEnabled: false)) { $0.settings.addedFeatures = ["home", "tasks"] }
+    await clock.advance(by: .milliseconds(400))
+    await store.finish()
+    #expect(hiddenIndicatorOwners.value == [["shelf"], ["shelf", "timer"]])
+  }
+
+  /// The shortcut that opens a feature's tab is listened for only while the feature runs: removing it frees the keys.
+  @Test
+  func aRemovedFeaturesShortcutIsReleased() async {
+    let listening = LockIsolated<Set<String>>([])
+    let store = makeStore(features: [.home, .timer, .tasks])
+    store.dependencies.hotkeyClient.presses = { hotkey in
+      AsyncStream { continuation in
+        listening.withValue { _ = $0.insert(hotkey.name) }
+        continuation.onTermination = { _ in listening.withValue { _ = $0.remove(hotkey.name) } }
+      }
+    }
+    let task = await launch(store)
+    #expect(listening.value == ["openVortex", "open-home", "open-timer", "open-tasks"])
+    await store.send(.featureEnabledChanged("tasks", isEnabled: false)) { $0.settings.addedFeatures = ["home", "timer"] }
+    await clock.advance(by: .milliseconds(400))
+    #expect(listening.value == ["openVortex", "open-home", "open-timer"])
+    await task.cancel()
+    await store.finish()
+  }
+
+  /// Files go to the first running feature that takes them: none while Shelf isn't added, or before the user chooses.
+  @Test
+  func filesGoToTheFirstRunningFeatureThatTakesThem() {
+    var notAdded = ShellSettings()
+    notAdded.addedFeatures = ["home", "timer"]
+    #expect(ShellFeature.State(settings: notAdded, features: [.home, .timer, .shelf]).fileFeature == nil)
+    var notChosen = ShellSettings()
+    notChosen.addedFeatures = ["home", "shelf"]
+    notChosen.featuresChosen = false
+    #expect(ShellFeature.State(settings: notChosen, features: [.home, .shelf]).fileFeature == nil)
+    notChosen.featuresChosen = true
+    #expect(ShellFeature.State(settings: notChosen, features: [.home, .shelf]).fileFeature?.id == "shelf")
   }
 
   /// Settings › General shows the short version; "Check for Updates" opens the latest release in the browser, through

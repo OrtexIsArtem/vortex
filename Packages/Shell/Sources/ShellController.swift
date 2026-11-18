@@ -8,8 +8,6 @@ import VortexPlatform
 @MainActor
 public final class ShellController: NSObject {
   private let store: StoreOf<ShellFeature>
-  /// The features' own onboarding steps, made once.
-  private let onboardingSteps: [FeatureID: OnboardingStep]
   private var continueSetupItem: NSMenuItem?
   private var continueSetupObservation: ObserveToken?
   #if DEBUG
@@ -23,11 +21,7 @@ public final class ShellController: NSObject {
     @Dependency(\.onboardingProgress) var onboardingProgress
     @Dependency(\.permissionsClient) var permissions
     @Dependency(\.installHistory) var installHistory
-    var steps: [FeatureID: OnboardingStep] = [:]
-    for module in FeatureRegistry.all {
-      if let step = module.makeOnboardingStep() { steps[module.id] = step }
-    }
-    onboardingSteps = steps
+    // Plain data: no feature's code runs to describe it.
     let descriptors = FeatureRegistry.all.map { $0.descriptor }
     // Before the shell state settles them as an update: a fresh install gets the recommended features, not yet chosen.
     var settings = settingsClient.load()
@@ -37,7 +31,7 @@ public final class ShellController: NSObject {
       features: descriptors,
       language: system.language(),
       onboarding: onboardingProgress.load(),
-      stepFeatures: Set(steps.keys),
+      stepFeatures: Set(descriptors.filter(\.hasOnboardingStep).map(\.id)),
       askedBefore: permissions.requested()
     )
     store = Store(initialState: state) {
@@ -136,7 +130,7 @@ public final class ShellController: NSObject {
     let onboarding = store.scope(state: \.onboarding, action: \.onboarding)
     let controller = OnboardingWindowController.shared
     controller.install(
-      window: OnboardingView(store: onboarding, steps: onboardingSteps),
+      window: OnboardingView(store: onboarding, step: { FeatureViews.shared.onboardingStep($0) }),
       panel: GuidePanelView(store: onboarding)
     )
     controller.onClose = { [store] in store.send(.onboarding(.closeTapped)) }

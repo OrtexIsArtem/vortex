@@ -6,8 +6,8 @@ import VortexPlatform
 /// The onboarding window's content: a page of the onboarding, or a single permission's page.
 struct OnboardingView: View {
   let store: StoreOf<OnboardingFeature>
-  /// The features' own steps, made once at launch.
-  let steps: [FeatureID: OnboardingStep]
+  /// A running feature's own step, made the first time its page shows (`FeatureViews`).
+  let step: @MainActor (FeatureID) -> OnboardingStep?
 
   var body: some View {
     Group {
@@ -43,7 +43,7 @@ struct OnboardingView: View {
         HardPermissionContent(store: store, permission: permission, isSingle: false)
       }
     case let .step(feature):
-      if let step = steps[feature] {
+      if let step = step(feature) {
         PageScaffold(store: store, title: Text(step.title)) {
           step.view
         }

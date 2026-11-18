@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FeatureRegistry
 import SwiftUI
 import VortexCore
 import VortexPlatform
@@ -229,8 +228,8 @@ private struct FeaturesSettings: View {
         .reorderable(feature.id, in: store)
       }
 
-      ForEach(store.sidebarFeatures) { feature in
-        if let settings = FeatureRegistry.module(for: feature.id)?.makeSettings() {
+      ForEach(store.runningFeatures) { feature in
+        if let settings = FeatureViews.shared.settings(feature.id) {
           Text(feature.title)
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(VortexColor.secondaryText)

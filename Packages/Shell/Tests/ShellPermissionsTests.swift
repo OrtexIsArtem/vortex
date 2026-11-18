@@ -54,7 +54,7 @@ struct PermissionCatalogTests {
   @Test
   func featuresThatAreOffNeedNothing() {
     var settings = ShellSettings()
-    settings.disabledFeatures = ["tasks", "timer"]
+    settings.addedFeatures = Needing.all.map(\.id).filter { !["tasks", "timer"].contains($0) }
     let state = ShellFeature.State(settings: settings, features: Needing.all)
     #expect(state.permissionCatalog.entries.map(\.permission) == [.notifications, .accessibility, .pasteboard])
     #expect(state.permissionCatalog.entry(for: .notifications)?.needs.map(\.owner) == [.feature("secrets")])
@@ -99,7 +99,7 @@ struct ShellPermissionsTests {
     required: Set<Permission> = []
   ) -> TestStoreOf<ShellFeature> {
     var settings = ShellSettings()
-    settings.disabledFeatures = disabled
+    settings.addedFeatures = features.map(\.id).filter { !disabled.contains($0) }
     var state = ShellFeature.State(settings: settings, features: features, onboarding: .finished)
     state.requiredPermissions = required
     state.onboardingContext.apply(to: &state.onboarding)
@@ -114,6 +114,8 @@ struct ShellPermissionsTests {
       $0.onboardingWindow.hide = { _ in }
       $0.permissionsClient.setFrequentChecks = { _ in }
       $0.windowClient.dismiss = {}
+      $0.windowClient.setHiddenIndicatorOwners = { _ in }
+      $0.hotkeyClient.presses = { _ in .finished }
     }
   }
 

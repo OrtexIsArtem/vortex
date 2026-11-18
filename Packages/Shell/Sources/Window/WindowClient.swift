@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import VortexCore
 
 /// The notch, the window and the menu bar icon, as seen by ShellFeature.
 /// Internal to the shell: features never open or close the window themselves.
@@ -12,6 +13,8 @@ struct WindowClient: Sendable {
   var setAcceptsFiles: @Sendable (_ acceptsFiles: Bool) async -> Void
   /// For keyboard cleaning: Vortex in front, taking every key itself; see `WindowController.holdKeyboard`.
   var holdKeyboard: @Sendable (_ isHeld: Bool) async -> Void
+  /// Features whose notch indicators don't show: those that don't run. Keys that are no feature's id always show.
+  var setHiddenIndicatorOwners: @Sendable (_ owners: Set<FeatureID>) async -> Void
 }
 
 extension WindowClient: DependencyKey {
@@ -21,7 +24,8 @@ extension WindowClient: DependencyKey {
     dismiss: { await WindowController.shared.dismiss() },
     setMenuBarIconVisible: { isVisible in await WindowController.shared.setMenuBarIconVisible(isVisible) },
     setAcceptsFiles: { acceptsFiles in await WindowController.shared.setAcceptsFiles(acceptsFiles) },
-    holdKeyboard: { isHeld in await WindowController.shared.holdKeyboard(isHeld) }
+    holdKeyboard: { isHeld in await WindowController.shared.holdKeyboard(isHeld) },
+    setHiddenIndicatorOwners: { owners in await WindowController.shared.setHiddenIndicatorOwners(owners) }
   )
 
   static let testValue = WindowClient()

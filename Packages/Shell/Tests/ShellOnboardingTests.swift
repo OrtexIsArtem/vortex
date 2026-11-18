@@ -30,7 +30,7 @@ struct ShellOnboardingTests {
     @Shared(.permissionStatuses) var shared
     $shared.withLock { $0 = statuses ?? [:] }
     var settings = ShellSettings()
-    settings.disabledFeatures = disabled
+    settings.addedFeatures = features.map(\.id).filter { !disabled.contains($0) }
     var state = ShellFeature.State(
       settings: settings,
       features: features,
@@ -49,6 +49,8 @@ struct ShellOnboardingTests {
       $0.windowClient.setMenuBarIconVisible = { _ in }
       $0.windowClient.setAcceptsFiles = { _ in }
       $0.windowClient.holdKeyboard = { _ in }
+      $0.windowClient.setHiddenIndicatorOwners = { _ in }
+      $0.hotkeyClient.presses = { _ in .finished }
       $0.keyboardLockClient.layout = { .ansi }
       $0.keyboardLockClient.presses = { .finished }
       $0.settingsClient.save = { _ in }

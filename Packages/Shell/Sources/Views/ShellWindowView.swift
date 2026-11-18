@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FeatureRegistry
 import SwiftUI
 import VortexCore
 
@@ -40,8 +39,9 @@ private struct TabContent: View {
       case .settings:
         SettingsView(store: store)
       case let .feature(id):
-        if let module = FeatureRegistry.module(for: id) {
-          module.makeTab()
+        // Only a running feature's tab is made; the selected tab leaves a feature that stops.
+        if store.state.isAvailable(.feature(id)), let tab = FeatureViews.shared.tab(id) {
+          tab
         } else {
           SettingsView(store: store)
         }
@@ -51,9 +51,9 @@ private struct TabContent: View {
     .environment(\.keyboardCleaning) { store.send(.keyboardCleaning(.startTapped)) }
   }
 
-  /// Widgets of the enabled features, in sidebar order: Home lays them out.
+  /// Widgets of the running features, in sidebar order: Home lays them out.
   private var homeWidgets: [HomeWidget] {
-    store.sidebarFeatures.compactMap { FeatureRegistry.module(for: $0.id)?.makeHomeWidget() }
+    store.runningFeatures.compactMap { FeatureViews.shared.homeWidget($0.id) }
   }
 }
 

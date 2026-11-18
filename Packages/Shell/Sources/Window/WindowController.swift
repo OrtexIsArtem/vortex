@@ -65,7 +65,13 @@ final class WindowController: NSObject {
     let notch: CGSize?
   }
 
-  @SharedReader(.notchIndicators) private var indicators
+  @SharedReader(.notchIndicators) private var allIndicators
+  /// Features that don't run: their indicators, left behind as they stopped, don't show (`setHiddenIndicatorOwners`).
+  private var hiddenIndicatorOwners: Set<FeatureID> = []
+  /// The indicators that show: those of running features, and of keys that are no feature's id.
+  private var indicators: [FeatureID: NotchIndicator] {
+    allIndicators.filter { !hiddenIndicatorOwners.contains($0.key) }
+  }
   private let presentation = WindowPresentationModel()
   private var mainPanel: VortexPanel?
   private var ears: [CGDirectDisplayID: Ears] = [:]
@@ -238,6 +244,15 @@ final class WindowController: NSObject {
       panel.orderOut(nil)
       self.resetNotchHover()
     }
+  }
+
+  // MARK: - Indicators
+
+  /// Hides the indicators of features that don't run, and shows those of features that run again.
+  func setHiddenIndicatorOwners(_ owners: Set<FeatureID>) {
+    guard owners != hiddenIndicatorOwners else { return }
+    hiddenIndicatorOwners = owners
+    indicatorsChanged()
   }
 
   // MARK: - Keyboard cleaning
