@@ -3,7 +3,7 @@
 ## Provides
 - `ClipboardModule` — id `clipboard`, tab, settings section, `setEnabled(_:)` starts and stops recording.
 - The catalog's description: one line, details, author; Recommended; it keeps its history and pinned items in the table `clipboard_item` and the folder Clipboard/, which Erase Data deletes (no own erase hook).
-- Home widget in the `dock` slot.
+- Home widget `clipboard.history` ("History") on the grid: Large 2×2 first, the size Home's first layout gives it, then Medium 2×1.
 - `permissionNeeds`: Paste from Other Apps, "Keeps your clipboard history." It shows only where macOS enforces pasteboard privacy and asks or denies: on macOS 26.4 it reads `notNeeded`, as do apps macOS never asked (`.default`); revisit on macOS 27.
 
 ## Uses
