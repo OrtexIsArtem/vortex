@@ -51,6 +51,23 @@ struct DatabaseEraseTests {
     #expect(try await database.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clipboard_item") } == 0)
   }
 
+  /// A feature keeps data in the database once its migrations ran, even with no file of its own, until it is erased;
+  /// another feature's data doesn't count.
+  @Test
+  func aFeatureKeepsDataOnceItsMigrationsRanUntilErased() async throws {
+    let database = VortexDatabase.inMemory()
+    #expect(try await !database.keepsFeatureData("clipboard"))
+    var clipboard = DatabaseMigrator()
+    clipboard.registerMigration("clipboard.v1") { db in
+      try db.create(table: "clipboard_item") { $0.autoIncrementedPrimaryKey("id") }
+    }
+    try await database.migrate(clipboard)
+    #expect(try await database.keepsFeatureData("clipboard"))
+    #expect(try await !database.keepsFeatureData("shelf"))
+    try await database.eraseFeature("clipboard")
+    #expect(try await !database.keepsFeatureData("clipboard"))
+  }
+
   /// An id with `_` in it matches only itself, in table names and in migration names alike.
   @Test
   func anUnderscoreInTheIdMatchesOnlyItself() async throws {

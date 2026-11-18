@@ -109,7 +109,8 @@ struct FeaturePageView: View {
           HStack(spacing: 6) {
             Image(systemName: "trash")
             Text("Erase Data…", bundle: .module)
-            if let bytes {
+            // Rows in the database have no size of their own to show.
+            if let bytes, bytes > 0 {
               Text(bytes.formatted(.byteCount(style: .file))).foregroundStyle(VortexColor.tertiaryText)
             }
           }

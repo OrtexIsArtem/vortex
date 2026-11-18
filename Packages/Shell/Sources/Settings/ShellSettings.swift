@@ -78,6 +78,17 @@ struct ShellSettings: Codable, Equatable, Sendable {
     seenFeatures = all.map(\.id)
   }
 
+  /// What a launch does with the loaded settings before anything starts: settles the added features and applies how the
+  /// last launch ended. True when the result must be written at once: settled for the first time (else an unclean quit
+  /// before the first save would bring back settings that look like an update's), or a feature stopped.
+  mutating func prepareLaunch(all: [FeatureDescriptor], isFreshInstall: Bool, verdict: LaunchVerdict, version: String) -> Bool {
+    let wasSettled = addedFeatures != nil
+    let stoppedBefore = stoppedFeatures
+    settleAddedFeatures(all: all, isFreshInstall: isFreshInstall)
+    applyLaunch(verdict, version: version)
+    return !wasSettled || stoppedFeatures != stoppedBefore
+  }
+
   /// Applies how the last launch ended, at launch: a crash blamed on a feature stops it until Try Again. A build other
   /// than the one that stopped features forgets them first, as it may have fixed the crash.
   mutating func applyLaunch(_ verdict: LaunchVerdict, version: String) {

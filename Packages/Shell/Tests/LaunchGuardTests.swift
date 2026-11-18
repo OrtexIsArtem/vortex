@@ -59,6 +59,18 @@ struct LaunchVerdictTests {
     #expect(LaunchVerdict.verdict(after: .early(calling: "home"), crashed: true, builtIn: ["home"]) == .safeMode)
   }
 
+  /// A crash on another thread can't be inside the call the main thread was making: it isn't blamed on that feature, and
+  /// the trials and the first 15 s decide instead.
+  @Test
+  func aCrashOffTheMainThreadIsNotBlamedOnTheCallInProgress() {
+    #expect(LaunchVerdict.verdict(after: .early(calling: "tasks"), crashed: true, offMainThread: true, builtIn: []) == .safeMode)
+    #expect(
+      LaunchVerdict.verdict(after: .stable(calling: "tasks", trials: ["clipboard"]), crashed: true, offMainThread: true, builtIn: [])
+        == .stop("clipboard")
+    )
+    #expect(LaunchVerdict.verdict(after: .stable(calling: "tasks"), crashed: true, offMainThread: true, builtIn: []) == .normal)
+  }
+
   /// A crash after the first 15 s, outside any call and trial, has nobody to blame: the next launch is as usual.
   @Test
   func aLateCrashNobodyCanBeBlamedForChangesNothing() {
@@ -94,6 +106,17 @@ struct LaunchLogTests {
     #expect(record.calling == nil && !record.isStable && record.trials.isEmpty)
     // The next launch finds no mark: this one ended without a crash.
     #expect(LaunchLog(folder: folder).begin(builtIn: ["home"]) == .normal)
+  }
+
+  /// The mark says which thread crashed: 1 for the main thread, 2 for any other.
+  @Test
+  func theMarkTellsAMainThreadCrashFromAnother() throws {
+    try write(.early(calling: "tasks"))
+    try Data([2]).write(to: folder.appending(path: "crash.marker"))
+    #expect(LaunchLog(folder: folder).begin(builtIn: []) == .safeMode)
+    try write(.early(calling: "tasks"))
+    try Data([1]).write(to: folder.appending(path: "crash.marker"))
+    #expect(LaunchLog(folder: folder).begin(builtIn: []) == .stop("tasks"))
   }
 
   /// A fresh install has no folder yet: the record makes it.

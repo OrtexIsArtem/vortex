@@ -12,7 +12,7 @@ struct FeaturesClient: Sendable {
   /// Hands files to a feature that takes them, see `FeatureModule.receiveFiles`.
   var receiveFiles: @Sendable (_ id: FeatureID, _ urls: [URL]) async -> Void
   /// What the feature keeps on disk, in bytes: its folder (`FeatureModule.dataFolder`) and its settings file
-  /// `<id>.json`; nil when it keeps neither.
+  /// `<id>.json`; 0 when it keeps only rows in the database, nil when it keeps nothing at all.
   var dataSize: @Sendable (_ id: FeatureID) async -> Int64? = { _ in nil }
   /// Erase Data, at launch before anything starts: the feature's tables and migrations, its settings file and folder,
   /// its tab shortcut, then its own `eraseData()` for what only it knows, given at most 10 s.
@@ -36,6 +36,7 @@ extension FeaturesClient: DependencyKey {
     },
     dataSize: { id in
       @Dependency(\.fileClient) var files
+      @Dependency(\.database) var database
       // Plain data: no feature's code runs to tell its folder.
       let folder = await MainActor.run { FeatureRegistry.module(for: id)?.dataFolder }
       var bytes: Int64 = 0
@@ -51,6 +52,10 @@ extension FeaturesClient: DependencyKey {
         keepsAnything = true
         bytes += settings.size ?? 0
       }
+      // Rows only, such as a clipboard history of text: still something to erase.
+      if !keepsAnything, (try? await database.keepsFeatureData(id)) == true {
+        keepsAnything = true
+      }
       return keepsAnything ? bytes : nil
     },
     eraseData: { id in
@@ -58,9 +63,9 @@ extension FeaturesClient: DependencyKey {
       @Dependency(\.fileClient) var files
       @Dependency(\.hotkeyClient) var hotkeys
       try? await database.eraseFeature(id)
-      await files.remove(DataFolder.url.appending(path: "\(id).json"))
-      if let folder = await MainActor.run(body: { FeatureRegistry.module(for: id)?.dataFolder }) {
-        await files.remove(DataFolder.url.appending(path: folder, directoryHint: .isDirectory))
+      let folder = await MainActor.run { FeatureRegistry.module(for: id)?.dataFolder }
+      for path in EraseTargets.paths(id: id, dataFolder: folder, in: DataFolder.url) {
+        await files.remove(path)
       }
       await hotkeys.reset(.open(id))
       await eraseHook(of: id, within: .seconds(10))

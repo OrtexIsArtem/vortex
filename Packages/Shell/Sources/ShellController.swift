@@ -30,7 +30,12 @@ public final class ShellController: NSObject {
     // Before the shell state settles them as an update: a fresh install gets the recommended features, not yet chosen.
     var settings = settingsClient.load()
     let isFreshInstall = installHistory.isFresh()
-    settings.settleAddedFeatures(all: descriptors, isFreshInstall: isFreshInstall)
+    let needsSave = settings.prepareLaunch(
+      all: descriptors,
+      isFreshInstall: isFreshInstall,
+      verdict: verdict,
+      version: AppVersion.current.full
+    )
     #if DEBUG
       // A new QA run started with `--qa-features` has them added and chosen, as after the Features page.
       if isFreshInstall, let chosen = QALaunch.current.options?.features {
@@ -43,10 +48,9 @@ public final class ShellController: NSObject {
         settings.featuresChosen = true
       }
     #endif
-    let stoppedBefore = settings.stoppedFeatures
-    settings.applyLaunch(verdict, version: AppVersion.current.full)
-    // A feature stopped now stays stopped even if Vortex crashes again before it saves anything else.
-    if settings.stoppedFeatures != stoppedBefore { try? settingsClient.save(settings) }
+    // Written at once, so neither the first settling nor a feature stopped now is lost if Vortex quits uncleanly before
+    // it saves anything else.
+    if needsSave { try? settingsClient.save(settings) }
     let state = ShellFeature.State(
       settings: settings,
       features: descriptors,

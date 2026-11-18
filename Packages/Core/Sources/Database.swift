@@ -73,13 +73,39 @@ extension DatabaseWriter {
 }
 
 extension DatabaseWriter {
+  /// Whether the feature keeps anything in the database: a table of its own or a migration that ran. A removed feature
+  /// that does offers Erase Data, even when it keeps no file.
+  public func keepsFeatureData(_ id: FeatureID) async throws -> Bool {
+    let prefix = Self.likePrefix(id)
+    return try await read { db in
+      let tables = try Int.fetchOne(
+        db,
+        sql: "SELECT COUNT(*) FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\'",
+        arguments: [prefix + "\\_%"]
+      ) ?? 0
+      guard tables == 0 else { return true }
+      guard try db.tableExists("grdb_migrations") else { return false }
+      let migrations = try Int.fetchOne(
+        db,
+        sql: "SELECT COUNT(*) FROM grdb_migrations WHERE identifier LIKE ? ESCAPE '\\'",
+        arguments: [prefix + ".%"]
+      ) ?? 0
+      return migrations > 0
+    }
+  }
+
+  /// The id as the start of a `LIKE` pattern with `\` as its escape: `_` and `%` match only themselves.
+  static func likePrefix(_ id: FeatureID) -> String {
+    id.replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "%", with: "\\%")
+      .replacingOccurrences(of: "_", with: "\\_")
+  }
+
   /// Erase Data: drops the feature's tables (`<id>_…`), full-text ones and views included, and forgets its
   /// migrations (`<id>.v…`), so the feature added again starts empty. Other features' tables stay, even where the name
   /// only looks alike: in the pattern `_` is a plain underscore.
   public func eraseFeature(_ id: FeatureID) async throws {
-    let prefix = id.replacingOccurrences(of: "\\", with: "\\\\")
-      .replacingOccurrences(of: "%", with: "\\%")
-      .replacingOccurrences(of: "_", with: "\\_")
+    let prefix = Self.likePrefix(id)
     try await write { db in
       // Tables of the feature may point at each other: checked only once all of them are gone.
       try db.execute(sql: "PRAGMA defer_foreign_keys = ON")

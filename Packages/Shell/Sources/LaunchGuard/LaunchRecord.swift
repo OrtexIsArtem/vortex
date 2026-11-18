@@ -24,10 +24,16 @@ enum LaunchVerdict: Equatable, Sendable {
   /// Only a crash mark counts: a kill (Xcode's Stop, Force Quit, a second copy taking over) leaves none and changes
   /// nothing. A crash in a call to a feature stops that feature, unless it is built in; a crash during one trial stops
   /// the tried feature; a crash during several trials, inside a built-in feature or in the first 15 s outside any call
-  /// opens safe mode. A later crash nobody can be blamed for changes nothing.
-  static func verdict(after previous: LaunchRecord?, crashed: Bool, builtIn: Set<FeatureID>) -> LaunchVerdict {
+  /// opens safe mode. A later crash nobody can be blamed for changes nothing. Calls run on the main thread, so a crash on
+  /// another thread (`offMainThread`) is never blamed on the call in progress.
+  static func verdict(
+    after previous: LaunchRecord?,
+    crashed: Bool,
+    offMainThread: Bool = false,
+    builtIn: Set<FeatureID>
+  ) -> LaunchVerdict {
     guard crashed, let previous else { return .normal }
-    if let calling = previous.calling {
+    if !offMainThread, let calling = previous.calling {
       return builtIn.contains(calling) ? .safeMode : .stop(calling)
     }
     if previous.trials.count == 1, let tried = previous.trials.keys.first {

@@ -27,12 +27,13 @@
 - An added feature whose own setup step isn't done shows that step on its page; a permission it needs that is off shows "Turn on".
 - Remove saves at once, stops the feature, leaves its tab and shows "<Name> removed · Undo" for 5 s; a permission page only it asked for closes, the blocking page stays.
 - Files given to Vortex while no running feature takes them open the page of the one that would, with "Add <Name> to keep files"; once it runs it gets them (until Vortex quits).
-- A feature not added that keeps data shows "Erase Data…" with the size of its folder and settings file.
+- A feature not added that keeps data (rows in the database, its folder or its settings file) shows "Erase Data…", with the size of its folder and settings file when there is one.
 
 ## Erase Data
 - It asks first, in a layer over the window: what the feature keeps, its own note (`eraseNote`), and that Vortex restarts; the window stays open meanwhile and Esc cancels.
 - Confirmed, the feature goes into `pendingErase`, saved at once, and Vortex restarts.
 - At launch, before any feature runs, the list is emptied and saved; then each feature on it that isn't added again loses its tables `<id>_…`, migrations `<id>.…`, `<id>.json`, folder and tab shortcut, and its own `eraseData()` runs, waited for 10 s at most.
+- Erase deletes `<id>.json` and the folder only when each is one plain name (letters, digits, spaces, `-`, `_`), and never the shell's own settings, onboarding, permissions or launch file.
 - A crash during an erase doesn't repeat: the list was emptied first.
 
 ## Window sizes
@@ -47,8 +48,8 @@
 
 ## Crashes and safe mode
 - Every call into a feature (starting or stopping it, handing it files, making one of its views) is marked in DataFolder/launch.json while it runs.
-- A crash (SIGSEGV, SIGBUS, SIGILL, SIGTRAP, SIGABRT, SIGFPE) writes a byte to crash.marker; Xcode's Stop, Force Quit, `scripts/qa kill` and a second copy taking over leave none and change nothing.
-- After a crash inside a call into a feature the next launch stops it; it stays added, Stopped, until Try Again.
+- A crash (SIGSEGV, SIGBUS, SIGILL, SIGTRAP, SIGABRT, SIGFPE) writes a byte to crash.marker, 1 on the main thread and 2 on any other; Xcode's Stop, Force Quit, `scripts/qa kill` and a second copy taking over leave none and change nothing.
+- After a crash on the main thread inside a call into a feature the next launch stops it; it stays added, Stopped, until Try Again. Calls run on the main thread, so a crash on another one is never blamed on them.
 - A crash during one trial stops the tried feature; during several trials, inside Home, or in the first 15 s outside any call, it opens safe mode next launch.
 - A crash after the first 15 s, outside any call and trial, changes nothing.
 - Safe mode lasts one launch: only Home runs, Home and the catalog show the banner, and features start one by one (from a card or page) or all with "Start All".

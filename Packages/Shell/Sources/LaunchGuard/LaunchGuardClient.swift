@@ -70,11 +70,12 @@ final class LaunchLog: @unchecked Sendable {
 
   func begin(builtIn: Set<FeatureID>) -> LaunchVerdict {
     let previous = (try? Data(contentsOf: recordURL)).flatMap { try? JSONDecoder().decode(LaunchRecord.self, from: $0) }
-    let size = (try? FileManager.default.attributesOfItem(atPath: markerURL.path)[.size] as? Int) ?? 0
+    // `CrashSignals` writes 1 for a crash on the main thread, 2 for one on any other.
+    let mark = (try? Data(contentsOf: markerURL))?.first
     try? FileManager.default.removeItem(at: markerURL)
     try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     update(start: LaunchRecord(startedAt: .now, calling: nil, isStable: false, trials: [:]))
-    return LaunchVerdict.verdict(after: previous, crashed: size > 0, builtIn: builtIn)
+    return LaunchVerdict.verdict(after: previous, crashed: mark != nil, offMainThread: mark == 2, builtIn: builtIn)
   }
 
   func around(_ id: FeatureID, _ body: () -> Void) {

@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import VortexCore
 
 @testable import VortexShell
 
@@ -37,6 +38,23 @@ struct ShellSettingsTests {
     settings.theme = .dark
     let data = try JSONEncoder().encode(settings)
     #expect(try JSONDecoder().decode(ShellSettings.self, from: data) == settings)
+  }
+
+  /// A launch that settles the added features writes them at once: otherwise a fresh install that quit uncleanly
+  /// before its first save (onboarding.json is written at once) would come back as an update, with every feature added
+  /// and running. A launch with nothing new to write writes nothing; one that stops a feature does.
+  @Test
+  func aLaunchThatSettlesOrStopsFeaturesSavesAtOnce() {
+    var settings = ShellSettings()
+    let all: [FeatureDescriptor] = [.home, .timer, .secrets]
+    let firstSettling = settings.prepareLaunch(all: all, isFreshInstall: true, verdict: .normal, version: "1")
+    #expect(firstSettling)
+    #expect(settings.addedFeatures == ["home", "timer"] && !settings.featuresChosen)
+    let nothingNew = settings.prepareLaunch(all: all, isFreshInstall: false, verdict: .normal, version: "1")
+    #expect(!nothingNew)
+    let stop = settings.prepareLaunch(all: all, isFreshInstall: false, verdict: .stop("timer"), version: "1")
+    #expect(stop)
+    #expect(settings.stoppedFeatures == ["timer"])
   }
 
   @Test

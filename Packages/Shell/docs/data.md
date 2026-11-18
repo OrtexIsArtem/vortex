@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | Shell settings and the last tab, the added, chosen, seen, stopped and to-erase features | DataFolder/settings.json (~/Library/Application Support/Vortex; a QA run's own folder in QA mode) | Until changed |
 | The launch record: when it started, the feature the shell is calling, whether it lived 15 s, the features on trial | DataFolder/launch.json, written at once and atomically on every change | Until the next launch reads it |
-| The crash mark: one byte the crash signal handler writes | DataFolder/crash.marker | Until the next launch reads and deletes it |
+| The crash mark: one byte the crash signal handler writes, 1 for the main thread and 2 for another | DataFolder/crash.marker | Until the next launch reads and deletes it |
 | Keyboard shortcuts | UserDefaults of the app, managed by KeyboardShortcuts | Until changed |
 | Interface language | UserDefaults key AppleLanguages of the app — the only place it is kept | Until changed |
 | First-launch login item setup done | UserDefaults key launchAtLoginSetUp, release builds only; set when Basics applies "Open at login" untouched; read to start Basics' switch from the real state | Forever |
@@ -14,7 +14,7 @@
 | Keys pressed during keyboard cleaning: how often each place on the drawn keyboard went down, never what it types | In memory only; the live lock never writes, logs or sends them (a QA run logs the keys its commands simulate) | Until the lock ends |
 
 - Missing, unknown or unreadable keys in settings.json fall back to their defaults; delays are clamped to 0–2 s.
-- A fresh install is one with none of settings.json, onboarding.json and vortex.sqlite; launch.json doesn't count.
+- A fresh install is one with none of settings.json, onboarding.json and vortex.sqlite; launch.json doesn't count. The launch that first settles the added features writes settings.json at once, so a quit before any other save can't make it look like an update.
 - Erase Data deletes a feature's tables `<id>_…`, its rows in `grdb_migrations` (`<id>.…`), `<id>.json`, its folder and its tab shortcut; its own `eraseData()` deletes what only it knows (catalog.md).
 - `version` is written after the launch's check for permissions an update dropped. A grant that reads `notGranted` under the version that saw it was turned off and is dropped; under a later version it stays, as granted before.
 - An onboarding.json without `version` (0.1.1 and earlier) counts Accessibility and Screen Recording as granted then when permissions.json says Vortex asked for them, for that launch's check only: `granted` never keeps the guess, and a guess an earlier build kept is dropped at launch.
