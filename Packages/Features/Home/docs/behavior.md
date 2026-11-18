@@ -23,7 +23,7 @@
 - In the editor widgets don't answer the pointer, and free cells show dashed.
 - Under the pointer, or with the keyboard's focus (Tab), a widget has a 1 pt ring and "−" at its top left; "−" or Delete removes it.
 - A dragged widget lands with its top left corner on the nearest cell, and the widgets in its way move aside.
-- They first take the place it left, each moved by the reverse of the drag, so they keep how they lay; one that doesn't fit there goes to the nearest free place.
+- Each moves by the reverse of the drag, so they keep how they lay; where the two swap whole, that is the place it left. One that doesn't fit there, as on a partial overlap, goes to the free place nearest its own, the first in reading order among places as near: a Medium dragged one cell right onto the Small next to it sends the Small one cell right, not to where the Medium was.
 - Widgets not in its way move only when that is the only way to make room; where the others can't all fit, it goes back and nothing moves.
 - While it is dragged, the widgets in its way already slide where they would go, an outline shows where it lands, and the dashed free cells follow; the drop keeps exactly that.
 - An away widget takes no part in a drag: its place is free, and it keeps it; the notch row stays as it is.
