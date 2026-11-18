@@ -180,6 +180,12 @@ struct ShellFeature {
       settingsFeature.flatMap { id in settingsFeatures.first { $0.id == id } }
     }
 
+    /// The permission a feature's yellow dot names: on its sidebar icon, its card in the catalog and its row in
+    /// Settings › Features. The first it needs that reads `notGranted`; none before the first read.
+    func permissionOff(for feature: FeatureDescriptor) -> Permission? {
+      feature.permissionNeeds.firstOff(in: permissionStatuses)
+    }
+
     /// Features whose notch indicators stay hidden: every feature that doesn't run, as one may leave its indicator
     /// behind when it stops. Keys that are no feature's id, such as `debug`, never hide.
     var hiddenIndicatorOwners: Set<FeatureID> {

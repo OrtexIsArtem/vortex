@@ -45,6 +45,33 @@ struct SettingsFeaturesTests {
     #expect(safeMode.settingsFeatures.map(\.id) == ["home"])
   }
 
+  /// A row has the yellow dot of its feature's sidebar icon, as both ask the same: the first permission the feature
+  /// needs that reads `notGranted`; none before the first read, and none for one that works after a restart.
+  @Test
+  func aRowHasTheYellowDotOfItsSidebarIcon() {
+    let timer = FeatureDescriptor(
+      id: "timer", title: "Timer", symbol: "timer",
+      permissionNeeds: [PermissionNeed(.notifications, reason: "Tells you when a timer ends.")]
+    )
+    let tasks = FeatureDescriptor(
+      id: "tasks", title: "Tasks", symbol: "checklist",
+      permissionNeeds: [
+        PermissionNeed(.screenRecording, reason: "Turns a screenshot into a new task."),
+        PermissionNeed(.notifications, reason: "Tells you about a task."),
+      ]
+    )
+    let state = ShellFeature.State(features: [.home, timer, tasks], onboarding: .finished)
+    func dots() -> [Permission?] { state.settingsFeatures.map { state.permissionOff(for: $0) } }
+    #expect(state.settingsFeatures.map(\.id) == ["home", "timer", "tasks"])
+    #expect(dots() == [nil, nil, nil])
+    state.$permissionStatuses.withLock { $0 = [.notifications: .notGranted, .screenRecording: .grantedAfterRestart] }
+    #expect(dots() == [nil, .notifications, .notifications])
+    state.$permissionStatuses.withLock { $0 = [.notifications: .notGranted, .screenRecording: .notGranted] }
+    #expect(dots() == [nil, .notifications, .screenRecording])
+    state.$permissionStatuses.withLock { $0 = [.notifications: .granted, .screenRecording: .granted] }
+    #expect(dots() == [nil, nil, nil])
+  }
+
   /// An added feature that doesn't run yet, as before the user chooses features, has nothing to set: its catalog page
   /// hides Settings, and neither that button nor a row opens a page for it.
   @Test

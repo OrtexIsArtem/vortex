@@ -63,7 +63,7 @@ struct CatalogView: View {
           CatalogCard(
             feature: feature,
             badges: badges,
-            warning: isAdded ? feature.permissionNeeds.firstOff(in: store.permissionStatuses) : nil,
+            warning: isAdded ? store.state.permissionOff(for: feature) : nil,
             start: startAction(for: feature, isAdded: isAdded)
           ) {
             store.send(.tabSelected(.catalogPage(feature.id)))

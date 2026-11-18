@@ -121,7 +121,7 @@ private struct SidebarView: View {
               title: Text(feature.title),
               isSelected: store.selectedTab == .feature(feature.id),
               // A permission the feature needs is off.
-              warning: feature.permissionNeeds.firstOff(in: store.permissionStatuses)
+              warning: store.state.permissionOff(for: feature)
             ) {
               store.send(.tabSelected(.feature(feature.id)))
             }

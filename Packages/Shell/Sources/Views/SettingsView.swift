@@ -208,7 +208,9 @@ private struct FeatureList: View {
         .padding(.vertical, 14)
     } else {
       ForEach(features) { feature in
-        FeatureRow(feature: feature) { store.send(.settingsRowTapped(feature.id)) }
+        FeatureRow(feature: feature, warning: store.state.permissionOff(for: feature)) {
+          store.send(.settingsRowTapped(feature.id))
+        }
       }
     }
   }
@@ -217,6 +219,8 @@ private struct FeatureList: View {
 /// A feature in Settings › Features: its symbol, its name and a chevron, the whole row a button onto its page.
 private struct FeatureRow: View {
   let feature: FeatureDescriptor
+  /// A permission the feature needs is off: the yellow dot of its sidebar icon, with the same tooltip.
+  let warning: Permission?
   let open: () -> Void
 
   var body: some View {
@@ -224,6 +228,11 @@ private struct FeatureRow: View {
       VStack(spacing: 0) {
         HStack(spacing: 12) {
           FeatureSymbol(symbol: feature.symbol)
+            .overlay(alignment: .topTrailing) {
+              if let warning {
+                WarningMark(warning, style: .dot).offset(x: 3, y: -3)
+              }
+            }
           Text(feature.title)
             .frame(maxWidth: .infinity, alignment: .leading)
           Image(systemName: "chevron.right")

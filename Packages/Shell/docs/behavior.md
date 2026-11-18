@@ -46,6 +46,7 @@
 
 ## Settings
 - Settings › Features lists the running features in sidebar order, each a row with its symbol, name and a chevron; with none, "Features you add with settings show them here".
+- A feature's row there has the yellow dot of its sidebar icon, by the same rule and with the same tooltip; a click on it opens the page, as on the row.
 - A row opens the feature's page: "‹ Features", its name, the shortcut that opens Vortex on its tab, then the feature's own settings with their permission rows; "‹ Features" and Esc go back to the list.
 - Settings remembers the open page while the app runs, as it remembers the segment; once that feature stops running, the list shows.
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.
