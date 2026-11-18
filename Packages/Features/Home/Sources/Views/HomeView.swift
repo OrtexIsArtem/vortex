@@ -2,70 +2,143 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Home: a widget in the row next to the notch, and the others as cards on the 4×2 grid under it.
+/// Home: a widget in the row next to the notch, and the others as cards on the 4×2 grid under it. In the editor Home
+/// stays where it is, and the window grows to the right for the panel of widgets.
 struct HomeView: View {
   let store: StoreOf<HomeFeature>
   @Environment(\.homeWidgets) private var widgets
   @Environment(\.keyboardCleaning) private var keyboardCleaning
+  @Environment(\.isWindowOpen) private var isWindowOpen
+  @Environment(\.windowRequest) private var windowRequest
+  @Environment(\.showCatalog) private var showCatalog
+
+  /// The grid fills the regular window's tab; the panel takes what the large window adds.
+  static let gridWidth = HomeGrid.frame(column: 0, row: 0, size: .full).maxX + HomeGrid.sideInset
+  static let panelWidth = WindowSize.large.size.width - WindowSize.regular.size.width
+  /// What the editor asks of the window: the large one, with the focus.
+  static let editorWindow = WindowRequest(size: .large, isFocused: true)
 
   var body: some View {
     let infos = widgets.map(WidgetInfo.init)
     let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-    let visible = store.visible
-    VStack(spacing: 0) {
-      Group {
-        if let id = store.notchRowWidget, let widget = byID[id] {
-          widget.view
-        } else {
-          Text("Home", bundle: .module)
-            .font(.system(size: 13, weight: .semibold))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 10)
-        }
+    HStack(spacing: 0) {
+      VStack(spacing: 0) {
+        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] })
+        GridArea(store: store, byID: byID)
       }
-      .frame(maxWidth: .infinity)
-      .frame(height: VortexMetrics.headerHeight)
-
-      if visible.isEmpty, store.notchRowWidget == nil {
-        EmptyHome()
-      } else {
-        ZStack(alignment: .topLeading) {
-          ForEach(visible, id: \.widget) { placement in
-            if let widget = byID[placement.widget] {
-              WidgetCard(widget: widget, placement: placement)
-            }
+      .frame(width: Self.gridWidth)
+      .contextMenu {
+        if !store.isEditing {
+          Button {
+            store.send(.editTapped)
+          } label: {
+            Text("Edit Home", bundle: .module)
           }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      }
+      .overlay(alignment: .bottomTrailing) {
+        if !store.isEditing {
+          CornerButtons(keyboardCleaning: keyboardCleaning) { store.send(.editTapped) }
+            .padding(12)
+        }
+      }
+      if store.isEditing {
+        HomeEditorPanel(store: store, showCatalog: showCatalog)
+          .frame(width: Self.panelWidth)
       }
     }
-    .overlay(alignment: .bottomTrailing) {
-      if let keyboardCleaning {
-        KeyboardCleaningButton(action: keyboardCleaning).padding(12)
-      }
-    }
+    // While the window grows, the panel waits past its right edge.
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     // The running features' widgets, whenever they change: Home lays them out and keeps where they are.
     .onChange(of: infos, initial: true) { _, infos in
       store.send(.widgetsChanged(infos))
     }
+    .onChange(of: store.isEditing) { _, isEditing in
+      windowRequest?(isEditing ? Self.editorWindow : .regular)
+    }
+    .onChange(of: isWindowOpen) { _, isOpen in
+      if !isOpen { store.send(.windowClosed) }
+    }
+    // Left for another tab, as the menu bar menu's Settings does: the editor ends and gives the window back.
+    .onDisappear {
+      guard store.isEditing else { return }
+      store.send(.doneTapped)
+      windowRequest?(.regular)
+    }
   }
 }
 
-/// A widget on the grid: its card at its cells, the widget laid out inside at its size.
-private struct WidgetCard: View {
-  let widget: HomeWidget
-  let placement: Placement
+/// The row next to the notch: its widget, or Home's title.
+private struct NotchRow: View {
+  let store: StoreOf<HomeFeature>
+  let widget: HomeWidget?
 
   var body: some View {
-    let frame = HomeGrid.frame(column: placement.column, row: placement.row, size: placement.size)
-    widget.view
-      .environment(\.homeWidgetSize, placement.size)
-      .padding(.vertical, 14)
-      .padding(.horizontal, 16)
-      .frame(width: frame.width, height: frame.height, alignment: .topLeading)
-      .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(VortexColor.dock))
-      .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-      .offset(x: frame.minX, y: frame.minY)
+    Group {
+      if let widget {
+        widget.view
+          // The ring and "−" stay inside the row, clear of the window's top edge.
+          .modifier(EditorChrome(isEditing: store.isEditing, cornerRadius: 14, inset: 8, widget: widget) {
+            store.send(.removeTapped(widget.id))
+          })
+      } else {
+        Text("Home", bundle: .module)
+          .font(.system(size: 13, weight: .semibold))
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.leading, 10)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: VortexMetrics.headerHeight)
+  }
+}
+
+/// The 4×2 grid: the cards of the widgets on Home and, in the editor, the free cells, dashed.
+private struct GridArea: View {
+  let store: StoreOf<HomeFeature>
+  let byID: [String: HomeWidget]
+
+  var body: some View {
+    let visible = store.visible
+    if visible.isEmpty, store.notchRowWidget == nil, !store.isEditing {
+      EmptyHome { store.send(.editTapped) }
+    } else {
+      ZStack(alignment: .topLeading) {
+        if store.isEditing {
+          ForEach(Self.freeCells(visible), id: \.self) { cell in
+            let frame = HomeGrid.frame(column: cell.column, row: cell.row, size: .small)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+              .strokeBorder(VortexColor.dropOutline, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+              .frame(width: frame.width, height: frame.height)
+              .offset(x: frame.minX, y: frame.minY)
+              .accessibilityHidden(true)
+          }
+        }
+        ForEach(visible, id: \.widget) { placement in
+          if let widget = byID[placement.widget] {
+            HomeWidgetCard(widget: widget, placement: placement, isEditing: store.isEditing) {
+              store.send(.removeTapped(placement.widget))
+            }
+          }
+        }
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+  }
+
+  struct Cell: Hashable {
+    var column: Int
+    var row: Int
+  }
+
+  /// The cells no widget covers.
+  static func freeCells(_ visible: [Placement]) -> [Cell] {
+    let layout = HomeLayout(notchRow: nil, placed: visible)
+    return (0..<HomeGrid.rows).flatMap { row in
+      (0..<HomeGrid.columns).compactMap { column in
+        layout.fits(.small, column: column, row: row, ignoring: []) ? Cell(column: column, row: row) : nil
+      }
+    }
   }
 }
 
@@ -83,42 +156,96 @@ extension WidgetInfo {
   }
 }
 
-/// A quiet keyboard in Home's bottom right corner, which lights up under the pointer.
+/// The capsule in Home's bottom right corner: keyboard cleaning, when the shell offers it, and the pencil that turns
+/// Home into the editor.
+private struct CornerButtons: View {
+  let keyboardCleaning: (@MainActor () -> Void)?
+  let edit: () -> Void
+
+  var body: some View {
+    HStack(spacing: 2) {
+      if let keyboardCleaning {
+        KeyboardCleaningButton(action: keyboardCleaning)
+      }
+      CornerButton(symbol: "pencil", label: Text("Edit Home", bundle: .module), action: edit)
+    }
+    .padding(.horizontal, 2)
+    .frame(height: 40)
+    .background(Capsule().fill(VortexColor.raised))
+    // A 1 pt ring just outside the capsule.
+    .background(Capsule().fill(VortexColor.primaryText.opacity(0.07)).padding(-1))
+  }
+}
+
+/// A round button in the corner capsule, which lights up under the pointer.
+private struct CornerButton<Badge: View>: View {
+  let symbol: String
+  let label: Text
+  /// The tooltip, when it says more than the label.
+  var help: Text?
+  let action: () -> Void
+  @ViewBuilder var badge: Badge
+  @State private var isHovered = false
+
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: symbol)
+        .font(.system(size: 14))
+        .foregroundStyle(isHovered ? VortexColor.primaryText : VortexColor.secondaryText)
+        .frame(width: 36, height: 36)
+        .background(Circle().fill(isHovered ? VortexColor.track : .clear))
+        .overlay(alignment: .topTrailing) { badge }
+        .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .onHover { isHovered = $0 }
+    .help(help ?? label)
+    .accessibilityLabel(label)
+  }
+}
+
+extension CornerButton where Badge == EmptyView {
+  init(symbol: String, label: Text, action: @escaping () -> Void) {
+    self.init(symbol: symbol, label: label, help: nil, action: action) { EmptyView() }
+  }
+}
+
+/// Keyboard cleaning's button: what a click does is the shell's. Accessibility off: a yellow warning on it.
 private struct KeyboardCleaningButton: View {
   let action: @MainActor () -> Void
-  @State private var isHovered = false
-  /// Accessibility off: a yellow warning on the button; what a click does is the shell's.
   @SharedReader(.permissionStatuses) private var permissionStatuses
 
   var body: some View {
     let showsWarning = PermissionMark(permissionStatuses[.accessibility]) == .warning
-    Button(action: action) {
-      Image(systemName: "keyboard")
-        .font(.system(size: 13))
-        .foregroundStyle(isHovered ? VortexColor.primaryText : VortexColor.tertiaryText)
-        .frame(width: 30, height: 30)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isHovered ? VortexColor.track : .clear))
-        .overlay(alignment: .topTrailing) {
-          if showsWarning {
-            WarningMark(.accessibility, size: 9).offset(x: 2, y: -1)
-          }
-        }
-        .contentShape(Rectangle())
+    CornerButton(
+      symbol: "keyboard",
+      label: Text("Lock the keyboard for cleaning", bundle: .module),
+      help: showsWarning ? Text(Permission.accessibility.offLabel) : nil,
+      action: action
+    ) {
+      if showsWarning {
+        WarningMark(.accessibility, size: 9).offset(x: -4, y: 4)
+      }
     }
-    .buttonStyle(.plain)
-    .onHover { isHovered = $0 }
-    .help(showsWarning ? Text(Permission.accessibility.offLabel) : Text("Lock the keyboard for cleaning", bundle: .module))
-    .accessibilityLabel(Text("Lock the keyboard for cleaning", bundle: .module))
     .accessibilityValue(showsWarning ? Text(Permission.accessibility.offLabel) : Text(verbatim: ""))
   }
 }
 
+/// Nothing on Home: widgets go there only from the editor, so it says so and opens it.
 private struct EmptyHome: View {
+  let edit: () -> Void
+
   var body: some View {
-    Text("Widgets of enabled features appear here", bundle: .module)
-      .font(.system(size: 12.5))
-      .foregroundStyle(VortexColor.tertiaryText)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .padding(.bottom, VortexMetrics.headerHeight)
+    VStack(spacing: 12) {
+      Text("No widgets on Home", bundle: .module)
+        .font(.system(size: 12.5))
+        .foregroundStyle(VortexColor.tertiaryText)
+      Button(action: edit) {
+        Text("Edit Home", bundle: .module)
+      }
+      .buttonStyle(.quietCapsule)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(.bottom, VortexMetrics.headerHeight)
   }
 }

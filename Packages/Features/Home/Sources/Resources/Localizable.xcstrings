@@ -1,6 +1,102 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld on Home" : {
+      "comment" : "The editor's panel, after the number of widgets: how many of them are on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld на головній"
+          }
+        }
+      }
+    },
+    "%lld widgets" : {
+      "comment" : "The editor's panel: how many widgets a feature has",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld widget"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld widgets"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld віджет"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld віджети"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld віджетів"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld віджета"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Clear search" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистити пошук"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "The editor's panel: ends editing Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Edit Home" : {
+      "comment" : "The pencil in Home's corner, Home's right-click menu and the empty Home's button: Home turns into the editor",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Змінити головну"
+          }
+        }
+      }
+    },
     "Home" : {
       "comment" : "Feature name in the sidebar and settings",
       "localizations" : {
@@ -22,6 +118,17 @@
         }
       }
     },
+    "In the notch row" : {
+      "comment" : "The editor's panel: the feature's widget is in the row next to the notch",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У рядку біля вирізу"
+          }
+        }
+      }
+    },
     "Lock the keyboard for cleaning" : {
       "comment" : "Tooltip of the keyboard button in the corner of Home's dock",
       "localizations" : {
@@ -33,12 +140,89 @@
         }
       }
     },
-    "Widgets of enabled features appear here" : {
+    "More" : {
+      "comment" : "The editor's panel: the features with widgets, none of them on Home",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тут зʼявляться віджети увімкнених функцій"
+            "value" : "Інші"
+          }
+        }
+      }
+    },
+    "More widgets in Features" : {
+      "comment" : "The editor's panel: opens the catalog of features",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Більше віджетів у Функціях"
+          }
+        }
+      }
+    },
+    "No widgets on Home" : {
+      "comment" : "Home with no widget on it",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На головній немає віджетів"
+          }
+        }
+      }
+    },
+    "Nothing found" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нічого не знайдено"
+          }
+        }
+      }
+    },
+    "On Home" : {
+      "comment" : "The editor's panel: the features with a widget on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На головній"
+          }
+        }
+      }
+    },
+    "on Home" : {
+      "comment" : "The editor's panel, after \"1 widget\": that one widget is on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "на головній"
+          }
+        }
+      }
+    },
+    "Remove from Home" : {
+      "comment" : "The editor: a widget's −",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прибрати з головної"
+          }
+        }
+      }
+    },
+    "Search widgets" : {
+      "comment" : "The editor's panel: placeholder of the search",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пошук віджетів"
           }
         }
       }

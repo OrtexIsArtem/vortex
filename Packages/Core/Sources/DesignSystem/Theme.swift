@@ -17,8 +17,10 @@ public enum VortexColor {
   public static let thumbnail = dynamic(dark: 0x18181B, light: 0xE6E6EA)
   /// Dashed outline of drop zones.
   public static let dropOutline = dynamic(dark: 0x3A3A3F, light: 0xC4C4CA)
-  /// The dock at the bottom of Home.
+  /// The cards of Home's widgets.
   public static let dock = dynamic(dark: 0x0E0E10, light: 0xF1F1F4)
+  /// A side panel next to a window's content, as Home's editor has: a shade off the window.
+  public static let panel = dynamic(dark: 0x09090A, light: 0xF6F6F8)
   /// Fill of the one primary action on a screen.
   public static let accent = dynamic(dark: 0xF5F5F7, light: 0x1D1D1F)
   /// Text and icons on top of `accent`.
