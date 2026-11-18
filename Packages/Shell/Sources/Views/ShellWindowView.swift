@@ -9,9 +9,15 @@ struct ShellWindowView: View {
 
   var body: some View {
     let isCovered = store.keyboardCleaning.isLocked
+    let isSidebarWaiting = store.focusedFeature != nil
     ZStack {
       HStack(spacing: 0) {
         SidebarView(store: store)
+          // While a tab has the focus, as Home's editor does, the sidebar dims and waits.
+          .opacity(isSidebarWaiting ? 0.35 : 1)
+          .allowsHitTesting(!isSidebarWaiting)
+          .disabled(isSidebarWaiting)
+          .animation(.easeOut(duration: 0.2), value: isSidebarWaiting)
         TabContent(store: store)
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
           .environment(\.notchCutout, notchCutout?.offsetBy(dx: -VortexMetrics.sidebarWidth, dy: 0))
@@ -35,7 +41,8 @@ struct ShellWindowView: View {
       }
     }
     .animation(.easeOut(duration: 0.2), value: store.removedForUndo)
-    // As large as the window chrome lays it out: the regular size, or the large one for the catalog.
+    // As large as the window chrome lays it out: the regular size, or the large one for the catalog and for a tab that
+    // asks for it.
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .font(.system(size: 13))
     .foregroundStyle(VortexColor.primaryText)
@@ -62,6 +69,12 @@ private struct TabContent: View {
         // Only a running feature's tab is made; the selected tab leaves a feature that stops.
         if store.state.isAvailable(.feature(id)), let tab = FeatureViews.shared.tab(id) {
           tab
+            .environment(\.windowRequest) { request in store.send(.windowRequested(id, request)) }
+            // The catalog takes the window: the tab gives its focus back first, or the catalog would wait for it.
+            .environment(\.showCatalog) {
+              store.send(.windowRequested(id, .regular))
+              store.send(.tabSelected(.catalog))
+            }
             .overlay(alignment: .top) {
               // Safe mode explains itself over Home, which shows no widgets meanwhile.
               if store.isSafeMode, store.features.contains(where: { $0.id == id && $0.isBuiltIn }) {

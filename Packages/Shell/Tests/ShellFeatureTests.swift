@@ -378,6 +378,116 @@ struct ShellFeatureTests {
     }
   }
 
+  // MARK: - A tab's window request
+
+  /// What Home's editor asks for: the large window and the focus.
+  let editorRequest = WindowRequest(size: .large, isFocused: true)
+
+  /// A feature's tab can ask for the large window and the focus: the window grows, and the open counts as deliberate, as
+  /// the catalog's does, so the window stays when the pointer leaves it.
+  @Test
+  func aFeatureTabCanAskForTheLargeFocusedWindow() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.windowRequested("timer", editorRequest)) {
+      $0.requests["timer"] = self.editorRequest
+      $0.openReason = .click
+    }
+    #expect(store.state.focusedFeature == "timer")
+    #expect(store.state.windowSize == .large)
+    await store.send(.window(.pointerInsideWindowChanged(isInside: false)))
+    await clock.advance(by: .seconds(5))
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large"])
+    #expect(dismissals.value == 0)
+  }
+
+  /// While a tab has the focus, the other tabs and their shortcuts wait.
+  @Test
+  func whileATabHasTheFocusOtherTabsWait() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.windowRequested("timer", editorRequest)) {
+      $0.requests["timer"] = self.editorRequest
+      $0.openReason = .click
+    }
+    await store.send(.tabSelected(.feature("shelf")))
+    await store.send(.tabSelected(.catalog))
+    await store.send(.tabSelected(.settings))
+    await store.send(.featureHotkeyPressed("shelf"))
+    #expect(store.state.selectedTab == .feature("timer"))
+    #expect(dismissals.value == 0)
+  }
+
+  /// The large window alone takes no focus: the other tabs answer, each at its own size.
+  @Test
+  func aLargeRequestWithoutTheFocusLeavesOtherTabsFree() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.windowRequested("timer", WindowRequest(size: .large))) {
+      $0.requests["timer"] = WindowRequest(size: .large)
+      $0.openReason = .click
+    }
+    #expect(store.state.focusedFeature == nil)
+    await store.send(.tabSelected(.feature("shelf"))) {
+      $0.selectedTab = .feature("shelf")
+      $0.settings.lastTab = "feature:shelf"
+    }
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large", "size:regular"])
+    await clock.advance(by: .milliseconds(400))
+    await store.finish()
+  }
+
+  /// A tab that asks for the regular window again gives the focus back: the other tabs answer again.
+  @Test
+  func givingTheFocusBackLetsOtherTabsShowAgain() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.windowRequested("timer", editorRequest)) {
+      $0.requests["timer"] = self.editorRequest
+      $0.openReason = .click
+    }
+    await store.send(.windowRequested("timer", .regular)) {
+      $0.requests = [:]
+    }
+    #expect(store.state.focusedFeature == nil)
+    await store.send(.tabSelected(.feature("shelf"))) {
+      $0.selectedTab = .feature("shelf")
+      $0.settings.lastTab = "feature:shelf"
+    }
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large", "size:regular"])
+    // The new last tab is saved after a pause.
+    await clock.advance(by: .milliseconds(400))
+    await store.finish()
+  }
+
+  /// Closing the window forgets every request: the next open is regular, and nothing has the focus.
+  @Test
+  func closingTheWindowForgetsEveryRequest() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.windowRequested("timer", editorRequest)) {
+      $0.requests["timer"] = self.editorRequest
+      $0.openReason = .click
+    }
+    await store.send(.window(.escapePressed)) {
+      $0.openReason = nil
+      $0.requests = [:]
+    }
+    #expect(store.state.focusedFeature == nil)
+    await openByHover(store)
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large", "size:regular", "present:hover"])
+  }
+
+  /// A request reaches the window only while it is open: a tab left mounted behind the closed window can't make the
+  /// next open large.
+  @Test
+  func aRequestWhileTheWindowIsClosedIsIgnored() async {
+    let store = makeStore()
+    await store.send(.windowRequested("timer", editorRequest))
+    await openByHover(store)
+    #expect(windowLog.value == ["size:regular", "present:hover"])
+  }
+
   // MARK: - Closing
 
   @Test

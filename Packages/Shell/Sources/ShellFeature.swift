@@ -25,6 +25,8 @@ struct ShellFeature {
     var settingsSection: SettingsSection = .general
     /// Why the window is open; nil while it is closed.
     var openReason: OpenReason?
+    /// What feature tabs asked of the open window (`windowRequest`), until they ask again or it closes.
+    var requests: [FeatureID: WindowRequest] = [:]
     /// The feature whose ear the pointer is over in the closed notch; nil on the cutout and while the pointer is away.
     /// Hovering opens the window on that feature's tab.
     var hoveredEar: FeatureID?
@@ -294,9 +296,18 @@ struct ShellFeature {
       return .added(needsSetup: feature.hasOnboardingStep && !onboarding.stepsDone.contains(id))
     }
 
-    /// The catalog needs the large window; every other tab fits the regular one.
+    /// The catalog needs the large window; a feature's tab has the window it asked for, and every other tab the
+    /// regular one.
     var windowSize: WindowSize {
-      selectedTab.isCatalog ? .large : .regular
+      if selectedTab.isCatalog { return .large }
+      guard case let .feature(id) = selectedTab else { return .regular }
+      return requests[id]?.size ?? .regular
+    }
+
+    /// The feature whose tab has the focus: the sidebar dims, and the other tabs and their shortcuts wait.
+    var focusedFeature: FeatureID? {
+      guard case let .feature(id) = selectedTab, requests[id]?.isFocused == true else { return nil }
+      return id
     }
 
     /// The size of the open window; nil while it is closed. An open sets the size itself, as it shows the window.
@@ -398,6 +409,8 @@ struct ShellFeature {
     case hoverDelayElapsed
     case pointerLeaveDelayElapsed
     case tabSelected(Tab)
+    /// A feature's tab asks for a window size and the focus (`windowRequest` in its environment).
+    case windowRequested(FeatureID, WindowRequest)
     case featureDropped(FeatureID, onto: FeatureID)
     case settingsShown
     case launchAtLoginChanged(Bool)
@@ -600,7 +613,7 @@ struct ShellFeature {
 
         case let .featureHotkeyPressed(id):
           let tab = Tab.feature(id)
-          guard state.isAvailable(tab) else { return .none }
+          guard state.isAvailable(tab), state.focusedFeature ?? id == id else { return .none }
           if state.isOpen, state.selectedTab == tab { return close(&state) }
           let effect = state.isOpen ? .none : open(.hotkey, &state)
           state.selectedTab = tab
@@ -620,7 +633,7 @@ struct ShellFeature {
           return close(&state)
 
         case let .tabSelected(tab):
-          guard state.isAvailable(tab) else { return .none }
+          guard state.isAvailable(tab), state.focusedFeature.map({ tab == .feature($0) }) ?? true else { return .none }
           state.selectedTab = tab
           guard tab.isCatalog else {
             state.settings.lastTab = tab.storageValue
@@ -629,6 +642,16 @@ struct ShellFeature {
           // Going to the catalog is a deliberate open, as a click on the notch is: the window no longer closes when the
           // pointer leaves it, and certainly not as it grows away from a still pointer.
           guard state.isOpen else { return .none }
+          state.openReason = .click
+          return .cancel(id: CancelID.pointerLeaveClose)
+
+        case let .windowRequested(id, request):
+          // Only while the window is open: a tab left mounted behind the closed window can't make the next open large.
+          guard state.isOpen else { return .none }
+          state.requests[id] = request == .regular ? nil : request
+          // Growing or taking the focus is deliberate, as going to the catalog is: the window no longer closes when the
+          // pointer leaves it.
+          guard request != .regular else { return .none }
           state.openReason = .click
           return .cancel(id: CancelID.pointerLeaveClose)
 
@@ -1081,6 +1104,8 @@ struct ShellFeature {
     guard !state.keyboardCleaning.isLocked, state.eraseConfirmation == nil else { return .none }
     state.openReason = nil
     state.isPointerInsideWindow = false
+    // Every tab's request ends with the window: the next open is regular, and nothing has the focus.
+    state.requests = [:]
     // The catalog is left as the window closes, so it never shows at the next open.
     if state.selectedTab.isCatalog {
       state.selectedTab = state.restoredTab
