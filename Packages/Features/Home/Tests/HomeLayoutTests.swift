@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import VortexCore
 
@@ -53,5 +54,14 @@ struct HomeLayoutTests {
     #expect(full.firstFit([.medium, .small], ignoring: []) == nil)
     let twoRows = HomeLayout.initial([info("timer.timer", .notchRow), info("clock.row", .notchRow)])
     #expect(twoRows.notchRow == "timer.timer" && twoRows.placed.isEmpty)
+  }
+
+  /// A place written without `isAway`, by hand or by a build before it, reads as a widget that shows.
+  @Test
+  func aPlaceSavedWithoutAwayShows() throws {
+    let json = Data(#"{"widget":"clipboard.history","size":"large","column":0,"row":0}"#.utf8)
+    let placement = try JSONDecoder().decode(Placement.self, from: json)
+    #expect(placement == Placement(widget: "clipboard.history", size: .large, column: 0, row: 0))
+    #expect(!placement.isAway)
   }
 }

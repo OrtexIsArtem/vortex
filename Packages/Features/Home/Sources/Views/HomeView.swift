@@ -4,16 +4,17 @@ import VortexCore
 
 /// Home: a widget in the row next to the notch, and the others as cards on the 4×2 grid under it.
 struct HomeView: View {
+  let store: StoreOf<HomeFeature>
   @Environment(\.homeWidgets) private var widgets
   @Environment(\.keyboardCleaning) private var keyboardCleaning
 
   var body: some View {
     let infos = widgets.map(WidgetInfo.init)
-    let layout = HomeLayout.initial(infos)
     let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    let visible = store.visible
     VStack(spacing: 0) {
       Group {
-        if let id = layout.notchRow, let widget = byID[id] {
+        if let id = store.notchRowWidget, let widget = byID[id] {
           widget.view
         } else {
           Text("Home", bundle: .module)
@@ -25,11 +26,11 @@ struct HomeView: View {
       .frame(maxWidth: .infinity)
       .frame(height: VortexMetrics.headerHeight)
 
-      if layout.placed.isEmpty, layout.notchRow == nil {
+      if visible.isEmpty, store.notchRowWidget == nil {
         EmptyHome()
       } else {
         ZStack(alignment: .topLeading) {
-          ForEach(layout.placed, id: \.widget) { placement in
+          ForEach(visible, id: \.widget) { placement in
             if let widget = byID[placement.widget] {
               WidgetCard(widget: widget, placement: placement)
             }
@@ -42,6 +43,10 @@ struct HomeView: View {
       if let keyboardCleaning {
         KeyboardCleaningButton(action: keyboardCleaning).padding(12)
       }
+    }
+    // The running features' widgets, whenever they change: Home lays them out and keeps where they are.
+    .onChange(of: infos, initial: true) { _, infos in
+      store.send(.widgetsChanged(infos))
     }
   }
 }

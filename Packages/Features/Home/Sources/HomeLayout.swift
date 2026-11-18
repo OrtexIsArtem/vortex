@@ -17,6 +17,25 @@ struct Placement: Codable, Equatable, Sendable {
   var size: HomeWidgetSize
   var column: Int
   var row: Int
+  /// Its feature went: the widget doesn't show and its place is free, but it stays in the layout. Kept in home.json, so
+  /// a widget coming back after a relaunch still yields to those that showed meanwhile.
+  var isAway = false
+
+  init(widget: String, size: HomeWidgetSize, column: Int, row: Int) {
+    self.widget = widget
+    self.size = size
+    self.column = column
+    self.row = row
+  }
+
+  init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    widget = try container.decode(String.self, forKey: .widget)
+    size = try container.decode(HomeWidgetSize.self, forKey: .size)
+    column = try container.decode(Int.self, forKey: .column)
+    row = try container.decode(Int.self, forKey: .row)
+    isAway = (try? container.decodeIfPresent(Bool.self, forKey: .isAway)) ?? false
+  }
 }
 
 /// Where the widgets are on Home: one in the row next to the notch, the rest on the 4×2 grid. Widgets never overlap and
@@ -48,6 +67,26 @@ struct HomeLayout: Codable, Equatable, Sendable {
       }
     }
     return nil
+  }
+
+  /// The layout once the widgets that exist change: a widget whose feature went stays in the layout, away, and its place
+  /// is free; one that comes back shows again only where no widget that shows now is, and otherwise leaves the layout.
+  func reconciled(available: Set<String>) -> HomeLayout {
+    var showing = HomeLayout(notchRow: notchRow, placed: placed.filter { available.contains($0.widget) && !$0.isAway })
+    var result: [Placement] = []
+    for var placement in placed {
+      if !available.contains(placement.widget) {
+        placement.isAway = true
+        result.append(placement)
+      } else if !placement.isAway {
+        result.append(placement)
+      } else if showing.fits(placement.size, column: placement.column, row: placement.row, ignoring: []) {
+        placement.isAway = false
+        showing.placed.append(placement)
+        result.append(placement)
+      }
+    }
+    return HomeLayout(notchRow: notchRow, placed: result)
   }
 
   /// The first layout, for a new user and after the update to the grid: the first notch row widget goes there; the
