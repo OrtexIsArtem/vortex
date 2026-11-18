@@ -447,7 +447,7 @@
       }
     },
     "Features you add with settings show them here" : {
-      "comment" : "Settings › Features while no running feature has settings",
+      "comment" : "Settings › Features while no running feature has anything to set",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
@@ -864,6 +864,17 @@
         }
       }
     },
+    "Opens Vortex right on the %@ tab." : {
+      "comment" : "Settings › Features, a feature's page: the caption of the shortcut that opens Vortex on its tab; the argument is the feature's name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкриває Vortex одразу на вкладці «%@»."
+          }
+        }
+      }
+    },
     "Optional" : {
       "localizations" : {
         "uk" : {
@@ -1090,17 +1101,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Параметри…"
-          }
-        }
-      }
-    },
-    "Shortcuts that open Vortex right on a tab:" : {
-      "comment" : "Above one shortcut field per feature",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Клавіатурні скорочення, що відкривають Vortex одразу на вкладці:"
           }
         }
       }

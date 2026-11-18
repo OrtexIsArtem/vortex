@@ -27,7 +27,7 @@ final class FeatureViews {
     cached(id, in: &homeWidgets) { $0.makeHomeWidgets() } ?? []
   }
 
-  /// The feature's own section in Settings › Features, if it has settings.
+  /// The feature's own settings, if it has any: on its page in Settings › Features, after its tab's shortcut.
   func settings(_ id: FeatureID) -> AnyView? {
     cached(id, in: &settings) { $0.makeSettings() } ?? nil
   }

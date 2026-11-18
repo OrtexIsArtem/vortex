@@ -24,7 +24,7 @@
 - With focus, ⌘X ⌘C ⌘V ⌘A ⌘Z ⌘⇧Z work in its text fields and ⌘Q quits.
 
 ## Closing
-- Esc closes a window that has keyboard focus.
+- Esc closes a window that has keyboard focus; on a feature's page, in the catalog or in Settings › Features, it goes back to the list first.
 - A click in another app closes the window when "Close on click outside" is on.
 - A window opened by hover or by dragging files closes after the leave delay (0.5 s by default) once the pointer leaves it, if "Close when the pointer leaves" is on; coming back cancels.
 - Connecting or disconnecting a display closes the window.
@@ -45,6 +45,9 @@
 - After an update (a version or build other than the last launch's), the first read opens, as a feature's request does, the single page of each permission with a yellow dot that macOS ties to the signature (Accessibility, Screen Recording) and reported granted under the previous version, and that now reads `notGranted`, as a new signature leaves it while System Settings still shows Vortex on; 0.1.1 and earlier kept no grants, so there it counts if Vortex had asked macOS for it. Notifications go by the bundle id and never open. Several open one after another in onboarding order, the next when one is granted or closed; checked once per version, never instead of an unfinished onboarding or the blocking page.
 
 ## Settings
+- Settings › Features lists the running features in sidebar order, each a row with its symbol, name and a chevron; with none, "Features you add with settings show them here".
+- A row opens the feature's page: "‹ Features", its name, the shortcut that opens Vortex on its tab, then the feature's own settings with their permission rows; "‹ Features" and Esc go back to the list.
+- Settings remembers the open page while the app runs, as it remembers the segment; once that feature stops running, the list shows.
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.
 - The menu bar icon cannot be hidden while a display without a notch is connected or while neither hover nor click opens Vortex.
 - On displays without a notch the indicators appear next to the menu bar icon as text.

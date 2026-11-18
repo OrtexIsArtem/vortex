@@ -13,22 +13,7 @@ struct FeaturePageView: View {
   var body: some View {
     let state = store.state.pageState(feature.id) ?? .available
     VStack(alignment: .leading, spacing: 0) {
-      Button {
-        store.send(.tabSelected(.catalog))
-      } label: {
-        HStack(spacing: 2) {
-          Image(systemName: "chevron.left").font(.system(size: 11, weight: .semibold))
-          Text("Features", bundle: .module)
-        }
-        .font(.system(size: 12.5))
-        .foregroundStyle(VortexColor.secondaryText)
-        .padding(.horizontal, 6)
-        .frame(height: 28)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .frame(height: VortexMetrics.headerHeight)
-      .padding(.leading, 4)
+      BackButton(title: Text("Features", bundle: .module)) { store.send(.tabSelected(.catalog)) }
 
       HStack(alignment: .top, spacing: 28) {
         FeaturePreviewView(feature: feature)
@@ -214,14 +199,17 @@ struct FeaturePageView: View {
     }
   }
 
+  /// The feature's own page in Settings › Features; hidden while it has none, as before the feature runs.
+  @ViewBuilder
   private var settings: some View {
-    Button {
-      store.send(.tabSelected(.settings))
-      store.send(.binding(.set(\.settingsSection, .features)))
-    } label: {
-      Text("Settings", bundle: .module)
+    if store.state.hasSettingsPage(feature.id) {
+      Button {
+        store.send(.featureSettingsTapped(feature.id))
+      } label: {
+        Text("Settings", bundle: .module)
+      }
+      .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
     }
-    .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
   }
 
   private func primary(_ title: Text, action: @escaping () -> Void) -> some View {

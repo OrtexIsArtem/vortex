@@ -3,35 +3,45 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The settings tab: General, Activation and Features.
+/// The settings tab: General, Activation and Features. Features lists the running features; each opens its own page.
 struct SettingsView: View {
   @Bindable var store: StoreOf<ShellFeature>
   @Environment(\.isWindowOpen) private var isWindowOpen
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text("Settings", bundle: .module)
-        .font(.system(size: 13, weight: .semibold))
-        .frame(height: VortexMetrics.headerHeight)
-        .padding(.leading, 10)
-
-      SegmentedPicker(selection: $store.settingsSection, options: ShellFeature.SettingsSection.allCases) { section in
-        section.title
-      }
-      .frame(width: 320)
-      .padding(.leading, 10)
-
-      ScrollView {
+    Group {
+      if store.settingsSection == .features, let feature = store.settingsPage {
+        FeatureSettingsPage(store: store, feature: feature)
+          .id(feature.id)
+      } else {
         VStack(alignment: .leading, spacing: 0) {
-          switch store.settingsSection {
-          case .general: GeneralSettings(store: store)
-          case .activation: ActivationSettings(store: store)
-          case .features: FeaturesSettings(store: store)
+          Text("Settings", bundle: .module)
+            .font(.system(size: 13, weight: .semibold))
+            .frame(height: VortexMetrics.headerHeight)
+            .padding(.leading, 10)
+
+          SegmentedPicker(
+            selection: $store.settingsSection,
+            options: ShellFeature.SettingsSection.allCases
+          ) { section in
+            section.title
+          }
+          .frame(width: 320)
+          .padding(.leading, 10)
+
+          ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+              switch store.settingsSection {
+              case .general: GeneralSettings(store: store)
+              case .activation: ActivationSettings(store: store)
+              case .features: FeatureList(store: store)
+              }
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 18)
+            .padding(.vertical, 6)
           }
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 18)
-        .padding(.vertical, 6)
       }
     }
     .toggleStyle(.vortex)
@@ -156,18 +166,6 @@ private struct ActivationSettings: View {
     ) {
       HotkeyRecorder(.openVortex, label: Text("Keyboard shortcut", bundle: .module))
     }
-    if !store.sidebarFeatures.isEmpty {
-      Text("Shortcuts that open Vortex right on a tab:", bundle: .module)
-        .font(.system(size: 11.5))
-        .foregroundStyle(VortexColor.tertiaryText)
-        .padding(.top, 14)
-        .padding(.bottom, 2)
-      ForEach(store.sidebarFeatures) { feature in
-        SettingsRow(title: Text(feature.title), symbol: feature.symbol) {
-          HotkeyRecorder(.open(feature.id), label: Text(feature.title))
-        }
-      }
-    }
 
     SettingsRow(title: Text("Close on click outside", bundle: .module), isOn: $store.settings.closeOnClickOutside)
 
@@ -196,29 +194,103 @@ private struct ActivationSettings: View {
   }
 }
 
-/// The running features' own settings, each under its name. Features are added and removed in the catalog.
-private struct FeaturesSettings: View {
+/// The running features with something to set, in sidebar order, each a row onto its own page. Features are added and
+/// removed in the catalog.
+private struct FeatureList: View {
   let store: StoreOf<ShellFeature>
 
   var body: some View {
-    let sections = store.runningFeatures.compactMap { feature in
-      FeatureViews.shared.settings(feature.id).map { (feature: feature, view: $0) }
-    }
-    if sections.isEmpty {
+    let features = store.settingsFeatures
+    if features.isEmpty {
       Text("Features you add with settings show them here", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.vertical, 14)
     } else {
-      ForEach(sections, id: \.feature.id) { section in
-        Text(section.feature.title)
-          .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(VortexColor.secondaryText)
-          .padding(.top, 18)
-          .padding(.bottom, 4)
-        section.view
+      ForEach(features) { feature in
+        FeatureRow(feature: feature) { store.send(.settingsRowTapped(feature.id)) }
       }
     }
+  }
+}
+
+/// A feature in Settings › Features: its symbol, its name and a chevron, the whole row a button onto its page.
+private struct FeatureRow: View {
+  let feature: FeatureDescriptor
+  let open: () -> Void
+
+  var body: some View {
+    Button(action: open) {
+      VStack(spacing: 0) {
+        HStack(spacing: 12) {
+          FeatureSymbol(symbol: feature.symbol)
+          Text(feature.title)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          Image(systemName: "chevron.right")
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(VortexColor.tertiaryText)
+            .accessibilityHidden(true)
+        }
+        .frame(minHeight: 48)
+        Hairline()
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+}
+
+/// A feature's page in Settings › Features: back to the list, the feature's name, the shortcut that opens Vortex on its
+/// tab, then the feature's own settings with their permission rows, as the feature makes them.
+private struct FeatureSettingsPage: View {
+  let store: StoreOf<ShellFeature>
+  let feature: FeatureDescriptor
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      BackButton(title: Text("Features", bundle: .module)) { store.send(.settingsBackTapped) }
+
+      HStack(spacing: 10) {
+        FeatureSymbol(symbol: feature.symbol)
+        Text(feature.title)
+          .font(.system(size: 13, weight: .semibold))
+          .accessibilityAddTraits(.isHeader)
+      }
+      // As tall as the segments of the list, so the first row starts where the list's first row does.
+      .frame(height: 32)
+      .padding(.leading, 10)
+
+      ScrollView {
+        VStack(alignment: .leading, spacing: 0) {
+          SettingsRow(
+            title: Text("Keyboard shortcut", bundle: .module),
+            caption: Text("Opens Vortex right on the \(Text(feature.title)) tab.", bundle: .module)
+          ) {
+            HotkeyRecorder(.open(feature.id), label: Text("Keyboard shortcut", bundle: .module))
+          }
+          if let settings = FeatureViews.shared.settings(feature.id) {
+            settings
+          }
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 18)
+        .padding(.vertical, 6)
+      }
+    }
+  }
+}
+
+/// A feature's symbol on a small raised tile, as in the rows of Home's editor.
+private struct FeatureSymbol: View {
+  let symbol: String
+
+  var body: some View {
+    Image(systemName: symbol)
+      .font(.system(size: 13))
+      .foregroundStyle(VortexColor.primaryText)
+      .frame(width: 28, height: 28)
+      .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(VortexColor.raised))
+      .accessibilityHidden(true)
   }
 }
 

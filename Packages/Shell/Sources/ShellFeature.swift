@@ -23,6 +23,9 @@ struct ShellFeature {
     var features: [FeatureDescriptor]
     var selectedTab: Tab = .settings
     var settingsSection: SettingsSection = .general
+    /// The feature whose page Settings › Features shows; nil shows the list. Kept while the app runs, as the segment
+    /// is, until that feature stops running.
+    var settingsFeature: FeatureID?
     /// Why the window is open; nil while it is closed.
     var openReason: OpenReason?
     /// What feature tabs asked of the open window (`windowRequest`), until they ask again or it closes.
@@ -159,6 +162,22 @@ struct ShellFeature {
     /// The sidebar shows the features that run.
     var sidebarFeatures: [FeatureDescriptor] {
       runningFeatures
+    }
+
+    /// Settings › Features: the running features with something to set, in sidebar order. That is every one: each has
+    /// its tab, so its tab's shortcut, which its page shows before the feature's own settings (`makeSettings()`).
+    var settingsFeatures: [FeatureDescriptor] {
+      sidebarFeatures
+    }
+
+    /// Whether the feature has a page in Settings › Features; the Settings button on its catalog page shows only then.
+    func hasSettingsPage(_ id: FeatureID) -> Bool {
+      settingsFeatures.contains { $0.id == id }
+    }
+
+    /// The feature page Settings › Features shows, in that segment; nil for the list.
+    var settingsPage: FeatureDescriptor? {
+      settingsFeature.flatMap { id in settingsFeatures.first { $0.id == id } }
     }
 
     /// Features whose notch indicators stay hidden: every feature that doesn't run, as one may leave its indicator
@@ -463,6 +482,12 @@ struct ShellFeature {
     case undoExpired
     /// A feature's page: Open, which goes to its tab.
     case openFeatureTapped(FeatureID)
+    /// A feature's page: Settings, which goes to the feature's own page in Settings › Features.
+    case featureSettingsTapped(FeatureID)
+    /// Settings › Features: a feature's row, which opens its page.
+    case settingsRowTapped(FeatureID)
+    /// A feature's page in Settings › Features: "‹ Features", back to the list.
+    case settingsBackTapped
     /// A removed feature's page: Erase Data, which asks first.
     case eraseTapped(FeatureID)
     case eraseCancelled
@@ -776,6 +801,24 @@ struct ShellFeature {
           state.settings.lastTab = tab.storageValue
           return .none
 
+        case let .featureSettingsTapped(id):
+          // Straight to the feature's own page, in the regular window; Settings is the tab the window opens on next.
+          guard state.hasSettingsPage(id), state.focusedFeature == nil else { return .none }
+          state.selectedTab = .settings
+          state.settings.lastTab = Tab.settings.storageValue
+          state.settingsSection = .features
+          state.settingsFeature = id
+          return .none
+
+        case let .settingsRowTapped(id):
+          guard state.hasSettingsPage(id) else { return .none }
+          state.settingsFeature = id
+          return .none
+
+        case .settingsBackTapped:
+          state.settingsFeature = nil
+          return .none
+
         case let .eraseTapped(id):
           // Only a feature that isn't added has data to erase from its page.
           guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, !state.isAdded(feature)
@@ -966,7 +1009,8 @@ struct ShellFeature {
   }
 
   /// However the features that run changed (added, removed, chosen, stopped after a crash): each one that stopped runs
-  /// nothing anymore, each new one starts, and the sidebar leaves a tab that went.
+  /// nothing anymore, each new one starts, and the sidebar leaves a tab that went, as Settings › Features leaves its
+  /// page.
   private func syncRunning(
     from old: [FeatureDescriptor],
     to new: [FeatureDescriptor],
@@ -979,6 +1023,9 @@ struct ShellFeature {
     guard !stopped.isEmpty || !started.isEmpty else { return .none }
     if !state.isAvailable(state.selectedTab) {
       state.selectedTab = state.restoredTab
+    }
+    if let id = state.settingsFeature, !state.hasSettingsPage(id) {
+      state.settingsFeature = nil
     }
     let hidden = state.hiddenIndicatorOwners
     // Files that waited for a feature that takes them go to it once it runs.
@@ -1094,6 +1141,11 @@ struct ShellFeature {
       // From a feature's page Esc goes back to the catalog's list.
       if case .catalogPage = state.selectedTab {
         state.selectedTab = .catalog
+        return .none
+      }
+      // So does it from a feature's page in Settings › Features, to the list there.
+      if state.selectedTab == .settings, state.settingsSection == .features, state.settingsPage != nil {
+        state.settingsFeature = nil
         return .none
       }
       return close(&state)
