@@ -29,8 +29,16 @@ public enum ShelfModule: FeatureModule {
     AnyView(ShelfSettingsView(store: store))
   }
 
-  public static func makeHomeWidget() -> HomeWidget? {
-    HomeWidget(id: id, slot: .dock, view: ShelfHomeWidget(store: store))
+  public static func makeHomeWidgets() -> [HomeWidget] {
+    [
+      HomeWidget(
+        id: "shelf.files",
+        feature: id,
+        title: LocalizedStringResource("Files", bundle: .atURL(Bundle.module.bundleURL)),
+        place: .grid([.medium, .wide]),
+        view: ShelfHomeWidget(store: store)
+      ),
+    ]
   }
 
   public static func setEnabled(_ isEnabled: Bool) {

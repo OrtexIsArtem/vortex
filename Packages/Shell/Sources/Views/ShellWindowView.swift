@@ -80,9 +80,16 @@ private struct TabContent: View {
     .environment(\.keyboardCleaning) { store.send(.keyboardCleaning(.startTapped)) }
   }
 
-  /// Widgets of the running features, in sidebar order: Home lays them out.
+  /// Widgets of the running features, in sidebar order, with their feature's name and symbol: Home lays them out.
   private var homeWidgets: [HomeWidget] {
-    store.runningFeatures.compactMap { FeatureViews.shared.homeWidget($0.id) }
+    store.runningFeatures.flatMap { feature in
+      FeatureViews.shared.homeWidgets(feature.id).map { widget in
+        var widget = widget
+        widget.featureTitle = feature.title
+        widget.featureSymbol = feature.symbol
+        return widget
+      }
+    }
   }
 }
 

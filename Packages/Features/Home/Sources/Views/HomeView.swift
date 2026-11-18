@@ -2,17 +2,19 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Home: a widget in the row next to the notch, the middle, and a dock at the bottom.
+/// Home: a widget in the row next to the notch, and the others as cards on the 4×2 grid under it.
 struct HomeView: View {
   @Environment(\.homeWidgets) private var widgets
   @Environment(\.keyboardCleaning) private var keyboardCleaning
 
   var body: some View {
-    let layout = HomeLayout(widgets)
+    let infos = widgets.map(WidgetInfo.init)
+    let layout = HomeLayout.initial(infos)
+    let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     VStack(spacing: 0) {
       Group {
-        if let header = layout.header {
-          header.view
+        if let id = layout.notchRow, let widget = byID[id] {
+          widget.view
         } else {
           Text("Home", bundle: .module)
             .font(.system(size: 13, weight: .semibold))
@@ -23,71 +25,60 @@ struct HomeView: View {
       .frame(maxWidth: .infinity)
       .frame(height: VortexMetrics.headerHeight)
 
-      if layout.isEmpty {
+      if layout.placed.isEmpty, layout.notchRow == nil {
         EmptyHome()
       } else {
-        if !layout.main.isEmpty {
-          VStack(alignment: .leading, spacing: 18) {
-            ForEach(layout.main) { $0.view }
+        ZStack(alignment: .topLeading) {
+          ForEach(layout.placed, id: \.widget) { placement in
+            if let widget = byID[placement.widget] {
+              WidgetCard(widget: widget, placement: placement)
+            }
           }
-          .padding(.top, 8)
-          .padding(.leading, 10)
-          .padding(.trailing, 18)
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        if !layout.dock.isEmpty {
-          Dock(widgets: layout.dock, height: layout.dockHeight, keyboardCleaning: keyboardCleaning)
-            .padding(.top, layout.main.isEmpty ? 4 : 0)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       }
     }
     .overlay(alignment: .bottomTrailing) {
-      // Without a dock the button keeps to its side, at the bottom, where nothing else is.
-      if layout.dock.isEmpty, let keyboardCleaning {
+      if let keyboardCleaning {
         KeyboardCleaningButton(action: keyboardCleaning).padding(12)
       }
     }
   }
 }
 
-/// The panel at the bottom: widgets side by side, hairlines between them, and in the top right corner, at the end of
-/// the widgets' title row, the button that locks the keyboard for cleaning.
-private struct Dock: View {
-  let widgets: [HomeWidget]
-  /// The height of the rounded panel itself, its margins not counted; nil fills the room that is left.
-  let height: CGFloat?
-  let keyboardCleaning: (@MainActor () -> Void)?
+/// A widget on the grid: its card at its cells, the widget laid out inside at its size.
+private struct WidgetCard: View {
+  let widget: HomeWidget
+  let placement: Placement
 
   var body: some View {
-    HStack(alignment: .top, spacing: 16) {
-      ForEach(Array(widgets.enumerated()), id: \.element.id) { index, widget in
-        if index > 0 {
-          Rectangle()
-            .fill(VortexColor.line)
-            .frame(width: 1)
-        }
-        widget.view
-      }
-    }
-    .padding(.vertical, 14)
-    .padding(.horizontal, 16)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .frame(height: height)
-    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(VortexColor.dock))
-    .overlay(alignment: .topTrailing) {
-      if let keyboardCleaning {
-        KeyboardCleaningButton(action: keyboardCleaning)
-          .padding(.top, 8)
-          .padding(.trailing, 10)
-      }
-    }
-    .padding(.leading, 4)
-    .padding(.trailing, 12)
-    .padding(.bottom, 12)
+    let frame = HomeGrid.frame(column: placement.column, row: placement.row, size: placement.size)
+    widget.view
+      .environment(\.homeWidgetSize, placement.size)
+      .padding(.vertical, 14)
+      .padding(.horizontal, 16)
+      .frame(width: frame.width, height: frame.height, alignment: .topLeading)
+      .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(VortexColor.dock))
+      .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .offset(x: frame.minX, y: frame.minY)
   }
 }
 
-/// A quiet keyboard on the dock, which lights up under the pointer.
+extension WidgetInfo {
+  /// The widget without its view, its names in the app's language.
+  init(_ widget: HomeWidget) {
+    self.init(
+      id: widget.id,
+      feature: widget.feature,
+      place: widget.place,
+      name: String(localized: widget.title),
+      featureName: String(localized: widget.featureTitle),
+      featureSymbol: widget.featureSymbol
+    )
+  }
+}
+
+/// A quiet keyboard in Home's bottom right corner, which lights up under the pointer.
 private struct KeyboardCleaningButton: View {
   let action: @MainActor () -> Void
   @State private var isHovered = false

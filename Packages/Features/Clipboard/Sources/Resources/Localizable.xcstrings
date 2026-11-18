@@ -257,7 +257,7 @@
       }
     },
     "History" : {
-      "comment" : "Settings row: how many items the clipboard history holds and their size",
+      "comment" : "Home: the name of the clipboard history widget",
       "localizations" : {
         "uk" : {
           "stringUnit" : {

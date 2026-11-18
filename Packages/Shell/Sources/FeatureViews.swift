@@ -13,7 +13,7 @@ final class FeatureViews {
   @Dependency(\.launchGuard) private var launchGuard
 
   private var tabs: [FeatureID: AnyView] = [:]
-  private var homeWidgets: [FeatureID: HomeWidget?] = [:]
+  private var homeWidgets: [FeatureID: [HomeWidget]] = [:]
   private var settings: [FeatureID: AnyView?] = [:]
   private var onboardingSteps: [FeatureID: OnboardingStep?] = [:]
 
@@ -22,9 +22,9 @@ final class FeatureViews {
     cached(id, in: &tabs) { $0.makeTab() }
   }
 
-  /// The feature's widget on Home, if it has one.
-  func homeWidget(_ id: FeatureID) -> HomeWidget? {
-    cached(id, in: &homeWidgets) { $0.makeHomeWidget() } ?? nil
+  /// The feature's widgets on Home, none if it has none.
+  func homeWidgets(_ id: FeatureID) -> [HomeWidget] {
+    cached(id, in: &homeWidgets) { $0.makeHomeWidgets() } ?? []
   }
 
   /// The feature's own section in Settings › Features, if it has settings.

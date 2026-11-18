@@ -6,9 +6,8 @@ import VortexPlatform
 /// The shelf on Home: its files as small tiles to drag out, and a place to drop more.
 struct ShelfHomeWidget: View {
   let store: StoreOf<ShelfFeature>
+  @Environment(\.homeWidgetSize) private var size
   @State private var isTargeted = false
-
-  static let width: CGFloat = 352
   /// How far the selection ring of a tile reaches beyond it.
   private static let ringRoom: CGFloat = 3
 
@@ -28,7 +27,8 @@ struct ShelfHomeWidget: View {
       ScrollView {
         TimelineView(.everyMinute) { timeline in
           LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 4),
+            // Three tiles across a medium widget, six across a wide one.
+            columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: size == .wide ? 6 : 3),
             spacing: 10
           ) {
             ForEach(store.items) { item in
@@ -55,8 +55,7 @@ struct ShelfHomeWidget: View {
       .scrollIndicators(.never)
       .padding([.top, .horizontal], -Self.ringRoom)
     }
-    .frame(width: Self.width)
-    .frame(maxHeight: .infinity, alignment: .top)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .dropTarget(isTargeted: $isTargeted) { items in
       store.send(.dropped(items), animation: .snappy(duration: 0.25))
     }

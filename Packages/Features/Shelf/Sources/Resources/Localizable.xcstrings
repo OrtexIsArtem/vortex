@@ -116,6 +116,17 @@
         }
       }
     },
+    "Files" : {
+      "comment" : "Home: the name of the shelf files widget",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файли"
+          }
+        }
+      }
+    },
     "Files put aside to drag into other apps" : {
       "localizations" : {
         "uk" : {
