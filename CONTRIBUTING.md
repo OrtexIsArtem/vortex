@@ -62,7 +62,7 @@ Read the module's README first. When a change contradicts a line in these docs, 
 
 ## Architecture rules
 1. A feature never imports another feature. Features talk only through contracts in VortexCore, or through the shell.
-2. A feature brings everything of its own: its sidebar tab, settings, Home widgets, database tables (prefixed with its id), migrations and docs.
+2. A feature brings everything of its own: its sidebar tab, settings, Home widgets, database tables (prefixed with its id), migrations and docs. Its settings (`makeSettings()`) show on its own page in Settings › Features, after the shortcut that opens its tab.
 3. To add a feature, copy `Features/_Template` to `Features/<Name>` and rename the module and its types. Then add `"<Name>"` to `features` in `Packages/Package.swift`, and its entry to `Features/Registry`. Removing a feature means deleting its folder and those lines; everything else must still build.
 4. If nobody provides a contract, the caller hides the control.
 5. System APIs (pasteboard, screenshots, files, keychain, hotkeys, permissions) are reached only through clients in VortexPlatform, so every feature can be tested with substituted clients.
