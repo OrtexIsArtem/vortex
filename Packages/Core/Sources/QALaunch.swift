@@ -23,18 +23,30 @@
       /// `--qa-visible`: the ears, the notch window and its flashes show on this Mac's displays as plain Vortex shows
       /// them, to record a demo. The run still takes no keyboard, pointer or front. Not with `--qa-screens`.
       public var visible = false
+      /// `--qa-features all|<id,…>`: a new run starts with these features added and chosen, as after the onboarding's
+      /// Features page; nil: as a fresh install, with the recommended ones waiting for the choice.
+      public var features: Features?
 
       public init(
         reduceMotion: Bool = false,
         releaseBehavior: Bool = false,
         screens: [Screen]? = nil,
-        visible: Bool = false
+        visible: Bool = false,
+        features: Features? = nil
       ) {
         self.reduceMotion = reduceMotion
         self.releaseBehavior = releaseBehavior
         self.screens = screens
         self.visible = visible
+        self.features = features
       }
+    }
+
+    /// The features a new run starts with.
+    public enum Features: Equatable, Sendable {
+      case all
+      /// These ids; built-in features are added anyway.
+      case ids([String])
     }
 
     /// A display: with a notch, like a MacBook's, or without one.
@@ -91,9 +103,18 @@
         case "--qa-visible":
           options.visible = true
           index += 1
+        case "--qa-features":
+          let ids = value?.split(separator: ",", omittingEmptySubsequences: false).map(String.init) ?? []
+          guard let value, !value.hasPrefix("--"), !ids.isEmpty, ids.allSatisfy({ !$0.isEmpty }) else {
+            self = .invalid("--qa-features takes all or feature ids joined by commas, not \"\(value ?? "")\"")
+            return
+          }
+          options.features = value == "all" ? .all : .ids(ids)
+          index += 2
         default:
           self = .invalid(
-            "unknown QA option \(word): there are --qa <name>, --qa-reduce-motion, --qa-release, --qa-screens and --qa-visible"
+            "unknown QA option \(word): there are --qa <name>, --qa-reduce-motion, --qa-release, --qa-screens, "
+              + "--qa-visible and --qa-features"
           )
           return
         }

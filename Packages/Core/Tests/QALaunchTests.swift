@@ -120,4 +120,17 @@ struct QALaunchTests {
     #expect(QALaunch.current == .none)
     #expect(DataFolder.url.lastPathComponent == "Vortex")
   }
+
+  /// `--qa-features` starts a new run with features added and chosen: all of them, or those named.
+  @Test
+  func aRunCanStartWithChosenFeatures() {
+    #expect(launch("--qa", "a", "--qa-features", "all").options?.features == .all)
+    #expect(launch("--qa", "a", "--qa-features", "timer,secrets").options?.features == .ids(["timer", "secrets"]))
+    #expect(launch("--qa", "a").options?.features == nil)
+    #expect(launch("--qa", "a", "--qa-features").name == nil)
+    #expect(launch("--qa", "a", "--qa-features", "").name == nil)
+    #expect(launch("--qa", "a", "--qa-features", "timer,,secrets").name == nil)
+    #expect(launch("--qa", "a", "--qa-features", "--qa-visible").name == nil)
+  }
+
 }

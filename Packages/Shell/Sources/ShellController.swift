@@ -29,7 +29,20 @@ public final class ShellController: NSObject {
     let verdict = launchGuard.begin(Set(descriptors.filter(\.isBuiltIn).map(\.id)))
     // Before the shell state settles them as an update: a fresh install gets the recommended features, not yet chosen.
     var settings = settingsClient.load()
-    settings.settleAddedFeatures(all: descriptors, isFreshInstall: installHistory.isFresh())
+    let isFreshInstall = installHistory.isFresh()
+    settings.settleAddedFeatures(all: descriptors, isFreshInstall: isFreshInstall)
+    #if DEBUG
+      // A new QA run started with `--qa-features` has them added and chosen, as after the Features page.
+      if isFreshInstall, let chosen = QALaunch.current.options?.features {
+        settings.addedFeatures = descriptors.filter { feature in
+          switch chosen {
+          case .all: true
+          case let .ids(ids): feature.isBuiltIn || ids.contains(feature.id)
+          }
+        }.map(\.id)
+        settings.featuresChosen = true
+      }
+    #endif
     let stoppedBefore = settings.stoppedFeatures
     settings.applyLaunch(verdict, version: AppVersion.current.full)
     // A feature stopped now stays stopped even if Vortex crashes again before it saves anything else.

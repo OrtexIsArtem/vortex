@@ -20,7 +20,11 @@ extension LaunchGuardClient: DependencyKey {
     let log = LaunchLog(folder: DataFolder.url)
     return LaunchGuardClient(
       begin: { builtIn in
-        let verdict = log.begin(builtIn: builtIn)
+        var verdict = log.begin(builtIn: builtIn)
+        #if DEBUG
+          // QA's `launch set=…` decides this launch instead.
+          if let forced = LaunchQA.takeNextVerdict() { verdict = forced }
+        #endif
         // From here on a crash leaves its mark for the next launch.
         CrashSignals.install(markerPath: log.markerURL.path)
         return verdict

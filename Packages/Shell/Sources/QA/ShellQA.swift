@@ -25,6 +25,12 @@
         QA.screens = screens
         window.qaScreensChanged()
       }
+      QA.register(command: "catalog") { arguments in try catalog(arguments, store: store) }
+      QA.register(command: "feature") { arguments in try feature(arguments, store: store) }
+      QA.register(command: "launch") { arguments in
+        guard let word = arguments["set"] else { throw QAError("launch takes set=normal|safe|stop:<feature id>") }
+        try LaunchQA.setNextVerdict(word)
+      }
       QA.register(command: "indicator") { _ in
         @Shared(.notchIndicators) var indicators
         $indicators.withLock { indicators in
@@ -32,6 +38,50 @@
             ? NotchIndicator(leading: [.progress(0.7)], trailing: [.text("8:42")])
             : nil
         }
+      }
+    }
+
+    // MARK: - The catalog
+
+    /// `catalog open`: the sidebar's catalog icon; `catalog page id=<feature id>`: a card, onto the feature's page. In
+    /// the open window only, as a click would be.
+    static func catalog(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
+      guard store.isOpen else { throw QAError("the window is closed") }
+      if arguments["open"] != nil {
+        store.send(.tabSelected(.catalog))
+      } else if arguments["page"] != nil, let id = arguments["id"] {
+        guard store.state.isAvailable(.catalogPage(id)) else {
+          throw QAError("no page for \(id); the catalog has \(store.catalogFeatures.map(\.id).joined(separator: ", "))")
+        }
+        store.send(.tabSelected(.catalogPage(id)))
+      } else {
+        throw QAError("catalog takes open, or page id=<feature id>")
+      }
+    }
+
+    /// `feature add|remove|erase id=<feature id>`: the buttons of the feature's page, which must show it. Erase confirms
+    /// at once and goes the real way: the feature is left to erase and the run relaunches.
+    static func feature(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
+      guard let id = arguments["id"] else { throw QAError("feature takes add, remove or erase, with id=<feature id>") }
+      guard store.isOpen, store.selectedTab == .catalogPage(id), let page = store.state.pageState(id) else {
+        throw QAError("\(id)'s page doesn't show: `catalog page id=\(id)` first")
+      }
+      if arguments["add"] != nil {
+        switch page {
+        case .available, .removed: store.send(.featureAdded(id))
+        default: throw QAError("\(id)'s page has no Add")
+        }
+      } else if arguments["remove"] != nil {
+        switch page {
+        case .added, .stopped: store.send(.featureRemoved(id))
+        default: throw QAError("\(id)'s page has no Remove")
+        }
+      } else if arguments["erase"] != nil {
+        guard case .removed = page else { throw QAError("\(id)'s page has no Erase Data") }
+        store.send(.eraseTapped(id))
+        store.send(.eraseConfirmed)
+      } else {
+        throw QAError("feature takes add, remove or erase, with id=<feature id>")
       }
     }
 

@@ -43,6 +43,8 @@ struct CatalogCard: View {
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Room for the Start button, which sits over the card's right edge.
+        .padding(.trailing, start == nil ? 0 : 72)
       }
       .padding(14)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

@@ -46,4 +46,15 @@ struct ShellQATests {
     #expect(throws: (any Error).self) { try Entry(["kind": "pointer", "inside": "yes"]) }
     #expect(throws: (any Error).self) { try Entry(["kind": "drop"]) }
   }
+
+  /// `launch set=…`: the verdict the next launch takes instead of its own.
+  @Test
+  func theNextLaunchsVerdictIsReadFromItsWord() throws {
+    #expect(try LaunchVerdict(qaWord: "normal") == .normal)
+    #expect(try LaunchVerdict(qaWord: "safe") == .safeMode)
+    #expect(try LaunchVerdict(qaWord: "stop:tasks") == .stop("tasks"))
+    #expect(throws: (any Error).self) { try LaunchVerdict(qaWord: "stop:") }
+    #expect(throws: (any Error).self) { try LaunchVerdict(qaWord: "crash") }
+  }
+
 }
