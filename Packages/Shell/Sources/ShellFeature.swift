@@ -69,6 +69,10 @@ struct ShellFeature {
       appVersion: AppVersion = .current,
       askedBefore: Set<Permission> = []
     ) {
+      // Settings written before the catalog, or by a test, count as an update: every feature that wasn't off is added.
+      // A launch settles them first, telling a fresh install apart (ShellController).
+      var settings = settings
+      settings.settleAddedFeatures(all: features, isFreshInstall: false)
       self.settings = settings
       self.features = features
       self.language = language
@@ -105,9 +109,27 @@ struct ShellFeature {
         .map(\.element)
     }
 
-    /// Enabled features in sidebar order.
+    /// Added features in sidebar order.
     var sidebarFeatures: [FeatureDescriptor] {
-      orderedFeatures.filter { !settings.disabledFeatures.contains($0.id) }
+      orderedFeatures.filter(isAdded)
+    }
+
+    /// Whether the user added the feature; a built-in one always is.
+    func isAdded(_ feature: FeatureDescriptor) -> Bool {
+      feature.isBuiltIn || (settings.addedFeatures ?? features.map(\.id)).contains(feature.id)
+    }
+
+    /// Adds or removes a feature, keeping `addedFeatures` in the registry's order; ids of features this build doesn't
+    /// ship stay, so such a feature is still added if a later build brings it back.
+    mutating func setAdded(_ id: FeatureID, _ isAdded: Bool) {
+      var ids = settings.addedFeatures ?? features.map(\.id)
+      if isAdded {
+        if !ids.contains(id) { ids.append(id) }
+      } else {
+        ids.removeAll { $0 == id }
+      }
+      let order = features.map(\.id)
+      settings.addedFeatures = order.filter(ids.contains) + ids.filter { !order.contains($0) }
     }
 
     /// The icon is the only way in while some display has no notch, or while the notch can't open Vortex.
@@ -323,7 +345,7 @@ struct ShellFeature {
           return .send(.onboarding(.appTerminated(bundleID)))
 
         case .task:
-          let featureSwitches = state.orderedFeatures.map { ($0.id, !state.settings.disabledFeatures.contains($0.id)) }
+          let featureSwitches = state.orderedFeatures.map { ($0.id, state.isAdded($0)) }
           return .merge(
             .run { [isVisible = state.isMenuBarIconVisible, acceptsFiles = state.fileFeature != nil] send in
               await window.setMenuBarIconVisible(isVisible)
@@ -418,11 +440,7 @@ struct ShellFeature {
           return .none
 
         case let .featureEnabledChanged(id, isEnabled):
-          if isEnabled {
-            state.settings.disabledFeatures.removeAll { $0 == id }
-          } else if !state.settings.disabledFeatures.contains(id) {
-            state.settings.disabledFeatures.append(id)
-          }
+          state.setAdded(id, isEnabled)
           if !state.isAvailable(state.selectedTab) {
             state.selectedTab = state.restoredTab
           }

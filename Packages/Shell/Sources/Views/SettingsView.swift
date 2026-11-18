@@ -216,12 +216,13 @@ private struct FeaturesSettings: View {
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.vertical, 10)
 
-      ForEach(store.orderedFeatures) { feature in
+      // A built-in feature is always on, so it has no switch here.
+      ForEach(store.orderedFeatures.filter { !$0.isBuiltIn }) { feature in
         SettingsRow(
           title: Text(feature.title),
           symbol: feature.symbol,
           isOn: Binding(
-            get: { !store.settings.disabledFeatures.contains(feature.id) },
+            get: { store.state.isAdded(feature) },
             set: { store.send(.featureEnabledChanged(feature.id, isEnabled: $0)) }
           )
         )

@@ -18,7 +18,19 @@ struct ShellSettings: Codable, Equatable, Sendable {
   var theme: AppTheme = .system
   /// Feature ids in the user's order. Features missing here follow in registry order.
   var featureOrder: [FeatureID] = []
+  /// Read once, from a settings file written before the catalog, to fill `addedFeatures`; empty after that.
   var disabledFeatures: [FeatureID] = []
+  /// The features the user added, built-in ones included. Nil until settled at launch, see `settleAddedFeatures`.
+  var addedFeatures: [FeatureID]?
+  /// The features the catalog has shown; one missing here is new.
+  var seenFeatures: [FeatureID] = []
+  /// Features stopped after Vortex crashed while starting them; they stay added and wait for Try Again.
+  var stoppedFeatures: [FeatureID] = []
+  /// Features whose data the next launch erases before anything starts.
+  var pendingErase: [FeatureID] = []
+  /// False on a fresh install until the user leaves the onboarding's Features page or closes the onboarding:
+  /// until then only built-in features run.
+  var featuresChosen = true
   /// The tab to open next time, see `ShellFeature.Tab.storageValue`.
   var lastTab: String?
 
@@ -40,7 +52,27 @@ struct ShellSettings: Codable, Equatable, Sendable {
     theme = value(.theme, defaults.theme)
     featureOrder = value(.featureOrder, defaults.featureOrder)
     disabledFeatures = value(.disabledFeatures, defaults.disabledFeatures)
+    addedFeatures = value(.addedFeatures, defaults.addedFeatures)
+    seenFeatures = value(.seenFeatures, defaults.seenFeatures)
+    stoppedFeatures = value(.stoppedFeatures, defaults.stoppedFeatures)
+    pendingErase = value(.pendingErase, defaults.pendingErase)
+    featuresChosen = value(.featuresChosen, defaults.featuresChosen)
     lastTab = value(.lastTab, defaults.lastTab)
+  }
+
+  /// Fills `addedFeatures` once. A fresh install gets the recommended and built-in features, not yet chosen; settings
+  /// from a release before the catalog keep every feature that wasn't turned off. Either way the catalog counts all of
+  /// today's features as seen, so none of them is marked new.
+  mutating func settleAddedFeatures(all: [FeatureDescriptor], isFreshInstall: Bool) {
+    guard addedFeatures == nil else { return }
+    if isFreshInstall {
+      addedFeatures = all.filter { $0.isRecommended || $0.isBuiltIn }.map(\.id)
+      featuresChosen = false
+    } else {
+      addedFeatures = all.filter { $0.isBuiltIn || !disabledFeatures.contains($0.id) }.map(\.id)
+      disabledFeatures = []
+    }
+    seenFeatures = all.map(\.id)
   }
 
   static func clampedDelay(_ delay: Double) -> Double {

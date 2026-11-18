@@ -22,14 +22,19 @@ public final class ShellController: NSObject {
     @Dependency(\.systemClient) var system
     @Dependency(\.onboardingProgress) var onboardingProgress
     @Dependency(\.permissionsClient) var permissions
+    @Dependency(\.installHistory) var installHistory
     var steps: [FeatureID: OnboardingStep] = [:]
     for module in FeatureRegistry.all {
       if let step = module.makeOnboardingStep() { steps[module.id] = step }
     }
     onboardingSteps = steps
+    let descriptors = FeatureRegistry.all.map { $0.descriptor }
+    // Before the shell state settles them as an update: a fresh install gets the recommended features, not yet chosen.
+    var settings = settingsClient.load()
+    settings.settleAddedFeatures(all: descriptors, isFreshInstall: installHistory.isFresh())
     let state = ShellFeature.State(
-      settings: settingsClient.load(),
-      features: FeatureRegistry.all.map { $0.descriptor },
+      settings: settings,
+      features: descriptors,
       language: system.language(),
       onboarding: onboardingProgress.load(),
       stepFeatures: Set(steps.keys),

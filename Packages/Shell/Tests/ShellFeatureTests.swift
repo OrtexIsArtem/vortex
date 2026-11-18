@@ -8,9 +8,13 @@ import VortexPlatform
 @testable import VortexShell
 
 extension FeatureDescriptor {
-  static let timer = FeatureDescriptor(id: "timer", title: "Timer", symbol: "timer")
-  static let shelf = FeatureDescriptor(id: "shelf", title: "Shelf", symbol: "tray", acceptsFileDrops: true)
-  static let tasks = FeatureDescriptor(id: "tasks", title: "Tasks", symbol: "checkmark.square")
+  static let home = FeatureDescriptor(id: "home", title: "Home", symbol: "square.grid.2x2", isBuiltIn: true)
+  static let timer = FeatureDescriptor(id: "timer", title: "Timer", symbol: "timer", isRecommended: true)
+  static let shelf = FeatureDescriptor(
+    id: "shelf", title: "Shelf", symbol: "tray", acceptsFileDrops: true, isRecommended: true
+  )
+  static let tasks = FeatureDescriptor(id: "tasks", title: "Tasks", symbol: "checkmark.square", isRecommended: true)
+  static let secrets = FeatureDescriptor(id: "secrets", title: "Keys", symbol: "key.horizontal")
 }
 
 @MainActor
@@ -268,7 +272,7 @@ struct ShellFeatureTests {
       $0.settings.lastTab = "feature:shelf"
     }
     await store.send(.featureHotkeyPressed("shelf")) { $0.openReason = nil }
-    await store.send(.featureEnabledChanged("timer", isEnabled: false)) { $0.settings.disabledFeatures = ["timer"] }
+    await store.send(.featureEnabledChanged("timer", isEnabled: false)) { $0.settings.addedFeatures = ["shelf", "tasks"] }
     await store.send(.featureHotkeyPressed("timer"))
     await clock.advance(by: .milliseconds(400))
     await store.finish()
@@ -474,8 +478,8 @@ struct ShellFeatureTests {
   @Test
   func theIconTakesFilesOnlyWhileAFeatureDoes() async {
     let store = makeStore()
-    await store.send(.featureEnabledChanged("shelf", isEnabled: false)) { $0.settings.disabledFeatures = ["shelf"] }
-    await store.send(.featureEnabledChanged("shelf", isEnabled: true)) { $0.settings.disabledFeatures = [] }
+    await store.send(.featureEnabledChanged("shelf", isEnabled: false)) { $0.settings.addedFeatures = ["timer", "tasks"] }
+    await store.send(.featureEnabledChanged("shelf", isEnabled: true)) { $0.settings.addedFeatures = ["timer", "shelf", "tasks"] }
     await clock.advance(by: .milliseconds(400))
     await store.finish()
     #expect(acceptsFiles.value == [false, true])
@@ -509,12 +513,12 @@ struct ShellFeatureTests {
   func turningAFeatureOffRemovesItAndStopsIt() async {
     let store = makeStore()
     await store.send(.featureEnabledChanged("timer", isEnabled: false)) {
-      $0.settings.disabledFeatures = ["timer"]
+      $0.settings.addedFeatures = ["shelf", "tasks"]
       $0.selectedTab = .feature("shelf")
     }
     #expect(store.state.sidebarFeatures.map(\.id) == ["shelf", "tasks"])
     await store.send(.featureEnabledChanged("timer", isEnabled: true)) {
-      $0.settings.disabledFeatures = []
+      $0.settings.addedFeatures = ["timer", "shelf", "tasks"]
     }
     await clock.advance(by: .milliseconds(400))
     await store.finish()

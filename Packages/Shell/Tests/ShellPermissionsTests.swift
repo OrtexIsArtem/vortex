@@ -265,7 +265,7 @@ struct ShellPermissionsTests {
     let store = makeStore(disabled: ["tasks"], required: [.screenRecording])
     await firstRead(store, Self.allOff)
     await store.send(.featureEnabledChanged("tasks", isEnabled: true)) {
-      $0.settings.disabledFeatures = []
+      $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets"]
       $0.$appBlocked.withLock { $0 = true }
       $0.onboarding.catalog = $0.permissionCatalog
     }
@@ -273,7 +273,7 @@ struct ShellPermissionsTests {
       $0.onboarding.presentation = .single(.init(permission: .screenRecording, kind: .blocked), .window)
     }
     await store.send(.featureEnabledChanged("tasks", isEnabled: false)) {
-      $0.settings.disabledFeatures = ["tasks"]
+      $0.settings.addedFeatures = ["home", "timer", "clipboard", "secrets"]
       $0.$appBlocked.withLock { $0 = false }
       $0.onboarding.catalog = $0.permissionCatalog
     }
@@ -286,7 +286,7 @@ struct ShellPermissionsTests {
     let store = makeStore(disabled: ["home"], required: [.accessibility])
     await firstRead(store, Self.allOff)
     await store.send(.featureEnabledChanged("home", isEnabled: true)) {
-      $0.settings.disabledFeatures = []
+      $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets"]
       $0.$appBlocked.withLock { $0 = true }
       $0.onboarding.catalog = $0.permissionCatalog
     }
