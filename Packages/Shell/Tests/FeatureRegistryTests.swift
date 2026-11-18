@@ -18,6 +18,15 @@ struct FeatureRegistryTests {
     }
   }
 
+  /// Every shipped feature's Home widgets follow Home's rules (design 6.2): at most two, ids that start with the
+  /// feature's id, one to three sizes each. A contributor's feature is checked here even without a test of its own.
+  @Test
+  func everyShippedFeaturesWidgetsFollowHomesRules() {
+    for module in FeatureRegistry.all {
+      #expect(HomeWidget.problems(module.makeHomeWidgets(), feature: module.id) == [], "\(module.id)")
+    }
+  }
+
   @Test
   func onlyHomeIsBuiltInAndKeysIsTheOneNotRecommended() {
     #expect(FeatureRegistry.all.filter { $0.isBuiltIn }.map { $0.id } == ["home"])
