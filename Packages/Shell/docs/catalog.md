@@ -22,7 +22,7 @@
 
 ## A feature's page
 - The looping preview without sound, paused while the window is closed (its still with Reduce Motion, its symbol without either); the details, the permissions it needs, what it keeps and who made it.
-- Not added: Add. Added: Open, Settings (Settings › Features) and Remove. Paused: "Temporarily Unavailable" with the maintainer's reason. Stopped: Try Again and Remove. Waiting in safe mode: Start.
+- Not added: Add. Added: Open, "Add to Home" while none of the feature's widgets is on Home ("✓ On Home" once one is, neither without widgets), Settings (Settings › Features) and Remove. Paused: "Temporarily Unavailable" with the maintainer's reason. Stopped: Try Again and Remove. Waiting in safe mode: Start.
 - Add saves at once, starts the feature on a trial and makes its tab the one the window opens on next; the window stays on the page.
 - An added feature whose own setup step isn't done shows that step on its page; a permission it needs that is off shows "Turn on".
 - Remove saves at once, stops the feature, leaves its tab and shows "<Name> removed · Undo" for 5 s; a permission page only it asked for closes, the blocking page stays.
@@ -37,7 +37,8 @@
 - A crash during an erase doesn't repeat: the list was emptied first.
 
 ## Window sizes
-- The regular window is 680×440; the catalog and its pages use the large one, 880×440.
+- The regular window is 680×440; the catalog, its pages and a feature's tab that asks for it (`windowRequest`, as Home's editor) use the large one, 880×440.
+- A tab that asks for the focus dims the sidebar to 35 % and makes the other tabs and their shortcuts wait; asking for the regular window gives it back, and closing the window forgets every request.
 - The large window keeps the regular one's left edge, so the sidebar stays put, and grows right; it moves left only as far as the screen's visible area needs.
 - The content takes a new size at once; the outline follows with the opening's spring, or at once with Reduce Motion.
 - Every open starts at the regular size on an ordinary tab: the catalog is never restored.

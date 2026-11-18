@@ -1,10 +1,41 @@
 # Behavior
 
-- The row next to the notch shows the first `header` widget in sidebar order; without one, the title "Home".
-- `main` widgets stack in the middle, top to bottom in sidebar order.
-- `dock` widgets stand side by side in a rounded panel at the bottom, in sidebar order, with hairlines between them.
-- The dock is 160 pt high while the middle has widgets; otherwise it fills the height under the header.
-- A turned-off feature's widget is gone; with no widgets at all, a quiet hint shows.
-- The layout is fixed: widgets are not moved or resized by the user.
-- A quiet keyboard button in the dock's top right corner, at the end of the widgets' title row, locks the keyboard for cleaning (the shell runs it); without a dock it sits at Home's bottom right. No button while the shell doesn't offer it.
-- While Accessibility reads `notGranted`, the keyboard button shows a yellow warning with the tooltip "Accessibility is off"; none before the first read. What a click does is the shell's.
+## The grid
+- Home is a row next to the notch and a grid of 4×2 cells of 143×182 pt, 12 pt apart, 8 pt from the sides, 12 pt from the bottom.
+- A widget takes Small 1×1, Medium 2×1, Wide 4×1, Large 2×2 or Full 4×2 cells, or the notch row; its view gets its size from `homeWidgetSize`.
+- Widgets never overlap and stay inside the grid; the notch row holds one widget, or the title "Home".
+- With no widget on Home it says "No widgets on Home", with an Edit Home button.
+
+## The first layout
+- Home lays itself out once the running features offer a widget: the first notch row widget in sidebar order goes to the row; each other widget, in sidebar order, at its first size that fits, in the first free place, left to right, then top to bottom; one that fits nowhere stays off.
+- Before the user chooses features no widget runs, so nothing is laid out or written.
+- A feature added later doesn't put its widget on Home by itself; its page offers "Add to Home".
+
+## Features that go and come back
+- A feature that stops or is removed takes its widget off Home; the widget stays in the layout, away, and its place is free.
+- A widget that comes back shows in its place again if no widget that shows took it; otherwise it leaves the layout.
+- Home follows the widgets the shell tells it whether its tab shows or not.
+
+## The editor
+- The pencil in the bottom right corner, Home's right-click menu and the empty Home's button open the editor.
+- The editor asks for the large window with the focus: the window grows right to 880 pt, and the sidebar dims and waits.
+- In the editor widgets don't answer the pointer, and free cells show dashed.
+- Under the pointer, or with the keyboard's focus (Tab), a widget has a 1 pt ring and "−" at its top left; "−" or Delete removes it.
+- A dragged widget lands with its top left corner on the nearest cell, only where it fits whole; otherwise it goes back.
+- The panel on the right: Done, a search of feature and widget names in any case, "On Home" and "More" in sidebar order, and "More widgets in Features", which ends the editor and opens the catalog.
+- A feature's row says "N widgets · M on Home", "1 widget · on Home", "N widgets" or "In the notch row", and opens the feature's widgets.
+- A widget in the panel: its preview, its name, "On Home", "No room" or Add, and its sizes as chips: "2×1".
+- On Home a size applies in place, keeping the top left corner, and only if it fits there; a size that doesn't is dimmed.
+- Off Home a size is chosen for Add, and under the pointer the widget's copy shows at its real size, faint and dashed, where Add would put it, named "Files · 2×1".
+- Without room the panel says "No room" and "Remove a widget or choose a smaller size."
+- A notch row widget's copy shows in the row while it is free, and Add puts it there.
+- Edits are saved at once. Done, closing the window (Esc, a click outside, a shortcut, the menu bar icon) or leaving the tab ends the editor; the next open is regular.
+
+## Add to Home
+- "Add to Home" on a feature's page puts its first widget on Home: in the notch row while it is free, or at its first size that fits in the first free place; without room nothing happens.
+- Home tells the shell which features have a widget on it: their pages say "On Home".
+
+## The corner buttons
+- A capsule in Home's bottom right corner holds the keyboard button, while the shell offers it, and the pencil; it hides in the editor.
+- The keyboard button locks the keyboard for cleaning: what a click does is the shell's.
+- While Accessibility reads `notGranted`, the keyboard button shows a yellow warning with the tooltip "Accessibility is off"; none before the first read.

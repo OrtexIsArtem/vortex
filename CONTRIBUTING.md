@@ -62,7 +62,7 @@ Read the module's README first. When a change contradicts a line in these docs, 
 
 ## Architecture rules
 1. A feature never imports another feature. Features talk only through contracts in VortexCore, or through the shell.
-2. A feature brings everything of its own: its sidebar tab, settings, Home widget, database tables (prefixed with its id), migrations and docs.
+2. A feature brings everything of its own: its sidebar tab, settings, Home widgets, database tables (prefixed with its id), migrations and docs.
 3. To add a feature, copy `Features/_Template` to `Features/<Name>` and rename the module and its types. Then add `"<Name>"` to `features` in `Packages/Package.swift`, and its entry to `Features/Registry`. Removing a feature means deleting its folder and those lines; everything else must still build.
 4. If nobody provides a contract, the caller hides the control.
 5. System APIs (pasteboard, screenshots, files, keychain, hotkeys, permissions) are reached only through clients in VortexPlatform, so every feature can be tested with substituted clients.
@@ -81,6 +81,12 @@ Users add features from the catalog; a feature that isn't added runs no code. De
 - `isRecommended` puts it on a fresh install and marks it "Recommended": only the maintainer sets it. `isBeta` marks it "Beta".
 - Media: a 5–10 s HEVC video of the feature at work and a still, in `Sources/Resources/Catalog`, set in `preview`; the interface in them is in English. `make check` keeps each feature's media under 1.5 MB.
 - Pausing a feature for a release: set `suspension` with the reason the catalog shows; it stays in the build and in users' lists but doesn't run. A feature that doesn't compile is left out of the build instead: remove its name from `features` in `Packages/Package.swift` and its line from `Features/Registry`, and keep its folder.
+
+## Home widgets
+A feature offers up to two widgets in `makeHomeWidgets()`; the user puts them on Home, a 4×2 grid, from Home's editor or the feature's page.
+- Each widget has an id `<feature id>.<name>`, a title, and either the notch row or one to three sizes in the order it prefers: Small 1×1, Medium 2×1, Wide 4×1, Large 2×2, Full 4×2. Cells are 143×182 pt, so every size is exact points.
+- Its view is made once and reads its size from `@Environment(\.homeWidgetSize)`; Home insets it 14 by 16 pt on its card.
+- Nothing warns when a widget spills over its size: preview each size with `#Preview { HomeWidgetPreview(widget, size: .medium) }`, and test that `HomeWidget.problems(makeHomeWidgets(), feature: id)` is empty, as `_Template` does.
 
 ## Code
 - Swift 6 language mode, strict concurrency. Declare public reducers `Sendable` explicitly.

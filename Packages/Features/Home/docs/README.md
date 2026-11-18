@@ -1,11 +1,11 @@
 # Home
 
-The first tab: the timer next to the notch, the shelf and the clipboard in a dock at the bottom. It keeps no state;
-features hand it widgets.
+The first tab: a widget in the row next to the notch and the others on a 4×2 grid, which the user lays out in an editor
+on Home itself. Built in: it always runs.
 
 | File | What it covers |
 | --- | --- |
-| behavior.md | where widgets go and how the dock sizes; the keyboard button |
-| settings.md | none |
-| data.md | none |
-| contracts.md | `homeWidgets` and `keyboardCleaning` from the shell, `HomeWidget` and `HomeSlot` from Core |
+| behavior.md | the grid, the first layout, features that go and come back, the editor, Add to Home, the corner buttons |
+| settings.md | none: where widgets are is data |
+| data.md | home.json |
+| contracts.md | the shell's widgets, window request and catalog; Core's `HomeWidget`, sizes and preview; what Home tells back |
