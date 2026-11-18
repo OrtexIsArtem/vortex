@@ -106,6 +106,22 @@ private struct SidebarView: View {
               store.send(.tabSelected(.feature(feature.id)))
             }
             .reorderable(feature.id, in: store)
+            .contextMenu {
+              // A built-in feature has no page in the catalog and can't be removed: it has no menu.
+              if !feature.isBuiltIn {
+                let title = String(localized: feature.title)
+                Button {
+                  store.send(.tabSelected(.catalogPage(feature.id)))
+                } label: {
+                  Text("About \(title)", bundle: .module)
+                }
+                Button {
+                  store.send(.featureRemoved(feature.id))
+                } label: {
+                  Text("Remove \(title)", bundle: .module)
+                }
+              }
+            }
           }
         }
       }

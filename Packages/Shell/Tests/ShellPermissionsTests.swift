@@ -117,6 +117,7 @@ struct ShellPermissionsTests {
       $0.windowClient.setHiddenIndicatorOwners = { _ in }
       $0.windowClient.setSize = { _ in }
       $0.hotkeyClient.presses = { _ in .finished }
+      $0.launchGuard.beginTrial = { _ in }
     }
   }
 
@@ -267,19 +268,22 @@ struct ShellPermissionsTests {
   func turningOnAFeatureThatNeedsAMissingRequiredPermissionBlocksAtOnce() async {
     let store = makeStore(disabled: ["tasks"], required: [.screenRecording])
     await firstRead(store, Self.allOff)
-    await store.send(.featureEnabledChanged("tasks", isEnabled: true)) {
+    await store.send(.featureAdded("tasks")) {
       $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets"]
+      $0.settings.lastTab = "feature:tasks"
       $0.$appBlocked.withLock { $0 = true }
       $0.onboarding.catalog = $0.permissionCatalog
     }
     await store.receive(\.onboarding.blocked) {
       $0.onboarding.presentation = .single(.init(permission: .screenRecording, kind: .blocked), .window)
     }
-    await store.send(.featureEnabledChanged("tasks", isEnabled: false)) {
+    await store.send(.featureRemoved("tasks")) {
       $0.settings.addedFeatures = ["home", "timer", "clipboard", "secrets"]
+      $0.removedForUndo = "tasks"
       $0.$appBlocked.withLock { $0 = false }
       $0.onboarding.catalog = $0.permissionCatalog
     }
+    await store.receive(\.undoExpired) { $0.removedForUndo = nil }
     await store.finish()
   }
 
@@ -288,8 +292,9 @@ struct ShellPermissionsTests {
   func keyboardCleaningBlocksOnlyWhileHomeIsOn() async {
     let store = makeStore(disabled: ["home"], required: [.accessibility])
     await firstRead(store, Self.allOff)
-    await store.send(.featureEnabledChanged("home", isEnabled: true)) {
+    await store.send(.featureAdded("home")) {
       $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets"]
+      $0.settings.lastTab = "feature:home"
       $0.$appBlocked.withLock { $0 = true }
       $0.onboarding.catalog = $0.permissionCatalog
     }

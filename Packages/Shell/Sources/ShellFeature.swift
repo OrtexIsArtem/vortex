@@ -399,7 +399,6 @@ struct ShellFeature {
     case pointerLeaveDelayElapsed
     case tabSelected(Tab)
     case featureDropped(FeatureID, onto: FeatureID)
-    case featureEnabledChanged(FeatureID, isEnabled: Bool)
     case settingsShown
     case launchAtLoginChanged(Bool)
     case launchAtLoginStatusLoaded(LaunchAtLoginStatus)
@@ -640,10 +639,6 @@ struct ShellFeature {
           state.settings.featureOrder = ids
           return .none
 
-        case let .featureEnabledChanged(id, isEnabled):
-          // What starts and stops follows from the features that run, `.onChange(of: \.runningFeatures)`.
-          state.setAdded(id, isEnabled)
-          return .none
 
         case .settingsShown:
           // The user may have changed the login item in System Settings meanwhile.
@@ -692,8 +687,9 @@ struct ShellFeature {
             }
             .cancellable(id: CancelID.undoRemove, cancelInFlight: true),
           ]
-          // A permission page only this feature asked for goes with it.
-          if let single = state.onboarding.single, state.permissionCatalog.entry(for: single.permission) == nil {
+          // A permission page only this feature asked for goes with it; the blocking page stays until the user closes it.
+          if let single = state.onboarding.single, single.kind == .request,
+             state.permissionCatalog.entry(for: single.permission) == nil {
             effects.append(.send(.onboarding(.closeTapped)))
           }
           return .merge(effects)
@@ -1128,10 +1124,12 @@ struct ShellFeature {
     state.setAdded(id, true)
     state.settings.stoppedFeatures.removeAll { $0 == id }
     if state.isSafeMode { state.safeModeStarted.insert(id) }
-    if state.removedForUndo == id { state.removedForUndo = nil }
     state.settings.lastTab = Tab.feature(id).storageValue
     beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
-    return saveSettingsNow(state)
+    // Added back, a feature needs no Undo any more.
+    guard state.removedForUndo == id else { return saveSettingsNow(state) }
+    state.removedForUndo = nil
+    return .merge(.cancel(id: CancelID.undoRemove), saveSettingsNow(state))
   }
 
   /// A window opened on the way past closes once the pointer leaves it.

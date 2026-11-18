@@ -310,9 +310,13 @@ struct ShellFeatureTests {
       $0.settings.lastTab = "feature:shelf"
     }
     await store.send(.featureHotkeyPressed("shelf")) { $0.openReason = nil }
-    await store.send(.featureEnabledChanged("timer", isEnabled: false)) { $0.settings.addedFeatures = ["shelf", "tasks"] }
+    await store.send(.featureRemoved("timer")) {
+      $0.settings.addedFeatures = ["shelf", "tasks"]
+      $0.removedForUndo = "timer"
+    }
     await store.send(.featureHotkeyPressed("timer"))
-    await clock.advance(by: .milliseconds(400))
+    await clock.advance(by: .seconds(5))
+    await store.receive(\.undoExpired) { $0.removedForUndo = nil }
     await store.finish()
     #expect(presented.value == [.hotkey])
   }
@@ -334,6 +338,19 @@ struct ShellFeatureTests {
     #expect(windowLog.value == ["size:regular", "present:hover", "size:large"])
     #expect(store.state.settings.lastTab == "feature:tasks")
     #expect(dismissals.value == 0)
+  }
+
+  /// "About" in a sidebar icon's menu opens the feature's page in the catalog, in the large window.
+  @Test
+  func aboutFromTheSidebarOpensTheFeaturePageLarge() async {
+    let store = makeStore()
+    await openByHover(store)
+    await store.send(.tabSelected(.catalogPage("timer"))) {
+      $0.selectedTab = .catalogPage("timer")
+      $0.openReason = .click
+    }
+    #expect(store.state.windowSize == .large)
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large"])
   }
 
   /// Every open starts at the regular size on an ordinary tab, even after settings that remember the catalog.
@@ -560,8 +577,15 @@ struct ShellFeatureTests {
   @Test
   func theIconTakesFilesOnlyWhileAFeatureDoes() async {
     let store = makeStore()
-    await store.send(.featureEnabledChanged("shelf", isEnabled: false)) { $0.settings.addedFeatures = ["timer", "tasks"] }
-    await store.send(.featureEnabledChanged("shelf", isEnabled: true)) { $0.settings.addedFeatures = ["timer", "shelf", "tasks"] }
+    await store.send(.featureRemoved("shelf")) {
+      $0.settings.addedFeatures = ["timer", "tasks"]
+      $0.removedForUndo = "shelf"
+    }
+    await store.send(.featureAdded("shelf")) {
+      $0.settings.addedFeatures = ["timer", "shelf", "tasks"]
+      $0.settings.lastTab = "feature:shelf"
+      $0.removedForUndo = nil
+    }
     await clock.advance(by: .milliseconds(400))
     await store.finish()
     #expect(acceptsFiles.value == [false, true])
@@ -592,15 +616,18 @@ struct ShellFeatureTests {
   }
 
   @Test
-  func turningAFeatureOffRemovesItAndStopsIt() async {
+  func removingAFeatureStopsItAndLeavesItsTab() async {
     let store = makeStore()
-    await store.send(.featureEnabledChanged("timer", isEnabled: false)) {
+    await store.send(.featureRemoved("timer")) {
       $0.settings.addedFeatures = ["shelf", "tasks"]
       $0.selectedTab = .feature("shelf")
+      $0.removedForUndo = "timer"
     }
     #expect(store.state.sidebarFeatures.map(\.id) == ["shelf", "tasks"])
-    await store.send(.featureEnabledChanged("timer", isEnabled: true)) {
+    await store.send(.featureAdded("timer")) {
       $0.settings.addedFeatures = ["timer", "shelf", "tasks"]
+      $0.settings.lastTab = "feature:timer"
+      $0.removedForUndo = nil
     }
     await clock.advance(by: .milliseconds(400))
     await store.finish()
@@ -764,8 +791,12 @@ struct ShellFeatureTests {
     await launch(store)
     await store.finish()
     #expect(hiddenIndicatorOwners.value == [["shelf"]])
-    await store.send(.featureEnabledChanged("timer", isEnabled: false)) { $0.settings.addedFeatures = ["home", "tasks"] }
-    await clock.advance(by: .milliseconds(400))
+    await store.send(.featureRemoved("timer")) {
+      $0.settings.addedFeatures = ["home", "tasks"]
+      $0.removedForUndo = "timer"
+    }
+    await clock.advance(by: .seconds(5))
+    await store.receive(\.undoExpired) { $0.removedForUndo = nil }
     await store.finish()
     #expect(hiddenIndicatorOwners.value == [["shelf"], ["shelf", "timer"]])
   }
@@ -783,8 +814,12 @@ struct ShellFeatureTests {
     }
     let task = await launch(store)
     #expect(listening.value == ["openVortex", "open-home", "open-timer", "open-tasks"])
-    await store.send(.featureEnabledChanged("tasks", isEnabled: false)) { $0.settings.addedFeatures = ["home", "timer"] }
-    await clock.advance(by: .milliseconds(400))
+    await store.send(.featureRemoved("tasks")) {
+      $0.settings.addedFeatures = ["home", "timer"]
+      $0.removedForUndo = "tasks"
+    }
+    await clock.advance(by: .seconds(5))
+    await store.receive(\.undoExpired) { $0.removedForUndo = nil }
     #expect(listening.value == ["openVortex", "open-home", "open-timer"])
     await task.cancel()
     await store.finish()

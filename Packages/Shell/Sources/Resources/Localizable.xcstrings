@@ -34,6 +34,17 @@
         }
       }
     },
+    "About %@" : {
+      "comment" : "A sidebar icon's menu: opens the feature's page; the argument is its name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Про «%@»"
+          }
+        }
+      }
+    },
     "Activation" : {
       "comment" : "Settings section: how the window opens and closes",
       "localizations" : {
@@ -424,22 +435,13 @@
         }
       }
     },
-    "Features appear here as they are added to Vortex." : {
+    "Features you add with settings show them here" : {
+      "comment" : "Settings › Features while no running feature has settings",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Функції зʼявляться тут, щойно їх додадуть до Vortex."
-          }
-        }
-      }
-    },
-    "Features you turn off disappear from the sidebar. Drag a row onto another to reorder." : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вимкнені функції зникають із бічної панелі. Щоб змінити порядок, перетягніть рядок на інший."
+            "value" : "Тут зʼявляться налаштування доданих функцій"
           }
         }
       }
@@ -671,16 +673,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Далі Vortex попросить: %@"
-          }
-        }
-      }
-    },
-    "No features yet" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поки що жодної функції"
           }
         }
       }
@@ -963,6 +955,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прибрати"
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "comment" : "A sidebar icon's menu: removes the feature; the argument is its name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прибрати «%@»"
           }
         }
       }

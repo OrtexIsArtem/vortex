@@ -54,6 +54,7 @@ struct ShellOnboardingTests {
       $0.windowClient.setHiddenIndicatorOwners = { _ in }
       $0.windowClient.setSize = { _ in }
       $0.hotkeyClient.presses = { _ in .finished }
+      $0.launchGuard.beginTrial = { _ in }
       $0.keyboardLockClient.layout = { .ansi }
       $0.keyboardLockClient.presses = { .finished }
       $0.settingsClient.save = { _ in }
@@ -144,7 +145,7 @@ struct ShellOnboardingTests {
     #expect(!store.state.isBlocked)
     await store.send(.openHotkeyPressed)
     #expect(await notchWindow.next() == "present:hotkey")
-    await store.send(.featureEnabledChanged("tasks", isEnabled: true))
+    await store.send(.featureAdded("tasks"))
     #expect(store.state.appBlocked)
     #expect(store.state.openReason == nil)
     #expect(await notchWindow.next() == "dismiss")
@@ -247,9 +248,9 @@ struct ShellOnboardingTests {
   @Test
   func theOnboardingFollowsFeaturesTurnedOnAndOff() async {
     let store = makeStore(progress: .at(.welcome))
-    await store.send(.featureEnabledChanged("tasks", isEnabled: false))
+    await store.send(.featureRemoved("tasks"))
     #expect(!store.state.onboarding.pages.contains(.permission(.screenRecording)))
-    await store.send(.featureEnabledChanged("tasks", isEnabled: true))
+    await store.send(.featureAdded("tasks"))
     #expect(store.state.onboarding.pages.contains(.permission(.screenRecording)))
   }
 
@@ -381,6 +382,29 @@ struct ShellOnboardingTests {
       statuses[permission] = .notGranted
     }
     return statuses
+  }
+
+  /// Removing a feature closes the permission page it asked for, once nothing added needs that permission; a page
+  /// another feature still needs stays.
+  @Test
+  func removingAFeatureClosesThePageOnlyItAskedFor() async {
+    let store = makeStore()
+    await store.send(.permissionPageRequested(.screenRecording))
+    await store.receive(\.onboarding.pageRequested)
+    #expect(store.state.onboarding.single?.permission == .screenRecording)
+    await store.send(.featureRemoved("tasks"))
+    await store.receive(\.onboarding.closeTapped)
+    #expect(store.state.onboarding.single == nil)
+
+    await store.send(.permissionPageRequested(.notifications))
+    await store.receive(\.onboarding.pageRequested)
+    #expect(store.state.onboarding.single?.permission == .notifications)
+    // Keys needs notifications too.
+    await store.send(.featureRemoved("timer"))
+    // Whatever the removal sends is handled by the time its Undo ends.
+    await clock.advance(by: .seconds(5))
+    await store.receive(\.undoExpired)
+    #expect(store.state.onboarding.single?.permission == .notifications)
   }
 
   // MARK: - Choosing features

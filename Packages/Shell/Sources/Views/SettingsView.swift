@@ -196,47 +196,27 @@ private struct ActivationSettings: View {
   }
 }
 
+/// The running features' own settings, each under its name. Features are added and removed in the catalog.
 private struct FeaturesSettings: View {
   let store: StoreOf<ShellFeature>
 
   var body: some View {
-    if store.features.isEmpty {
-      VStack(alignment: .leading, spacing: 4) {
-        Text("No features yet", bundle: .module)
-          .font(.system(size: 13, weight: .medium))
-        Text("Features appear here as they are added to Vortex.", bundle: .module)
-          .font(.system(size: 11.5))
-          .foregroundStyle(VortexColor.tertiaryText)
-      }
-      .padding(.vertical, 14)
-    } else {
-      Text("Features you turn off disappear from the sidebar. Drag a row onto another to reorder.", bundle: .module)
+    let sections = store.runningFeatures.compactMap { feature in
+      FeatureViews.shared.settings(feature.id).map { (feature: feature, view: $0) }
+    }
+    if sections.isEmpty {
+      Text("Features you add with settings show them here", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
-        .padding(.vertical, 10)
-
-      // A built-in feature is always on, so it has no switch here.
-      ForEach(store.orderedFeatures.filter { !$0.isBuiltIn }) { feature in
-        SettingsRow(
-          title: Text(feature.title),
-          symbol: feature.symbol,
-          isOn: Binding(
-            get: { store.state.isAdded(feature) },
-            set: { store.send(.featureEnabledChanged(feature.id, isEnabled: $0)) }
-          )
-        )
-        .reorderable(feature.id, in: store)
-      }
-
-      ForEach(store.runningFeatures) { feature in
-        if let settings = FeatureViews.shared.settings(feature.id) {
-          Text(feature.title)
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(VortexColor.secondaryText)
-            .padding(.top, 18)
-            .padding(.bottom, 4)
-          settings
-        }
+        .padding(.vertical, 14)
+    } else {
+      ForEach(sections, id: \.feature.id) { section in
+        Text(section.feature.title)
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(VortexColor.secondaryText)
+          .padding(.top, 18)
+          .padding(.bottom, 4)
+        section.view
       }
     }
   }

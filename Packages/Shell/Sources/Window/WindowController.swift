@@ -93,6 +93,9 @@ final class WindowController: NSObject {
   private static let alarmFlashesWithWindowOpen = 3
   private var indicatorsObservation: ObserveToken?
   private var outsideActivityObservation: ObserveToken?
+  /// Menus being tracked now, such as a sidebar icon's: the window stays open while one is, as for a drag.
+  private var trackedMenus = 0
+  private var menuTrackingObservers: [NSObjectProtocol] = []
   private var menuBarItem: NSStatusItem?
   private var menuBarMenu: NSMenu?
   /// Off until the shell applies the user's setting, so a hidden icon never flashes at launch.
@@ -155,7 +158,17 @@ final class WindowController: NSObject {
     rebuildEars()
     indicatorsObservation = observe { [weak self] in self?.indicatorsChanged() }
     outsideActivityObservation = observe { [weak self] in
-      self?.outsideActivityChanged(OutsideActivity.shared.isActive)
+      guard let self else { return }
+      self.outsideActivityChanged(OutsideActivity.shared.isActive || self.trackedMenus > 0)
+    }
+    menuTrackingObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
+      NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        MainActor.assumeIsolated {
+          guard let self else { return }
+          self.trackedMenus = max(0, self.trackedMenus + (name == NSMenu.didBeginTrackingNotification ? 1 : -1))
+          self.outsideActivityChanged(OutsideActivity.shared.isActive || self.trackedMenus > 0)
+        }
+      }
     }
     // A QA run's displays change only by command.
     guard !isQA else { return }
