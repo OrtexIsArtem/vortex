@@ -179,6 +179,16 @@
         }
       }
     },
+    "One timer at a time, counting down in the notch" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Один таймер за раз, відлік у вирізі"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "uk" : {
@@ -269,6 +279,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прокрутіть, потягніть або клацніть поділку"
+          }
+        }
+      }
+    },
+    "Set the minutes on the drum. The countdown sits in the notch, and when time is up you get a sound, a notification and a flash until you see it." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задайте хвилини на барабані. Відлік видно у вирізі, а коли час вийде, лунає звук, приходить сповіщення і виріз блимає, доки ви це не побачите."
           }
         }
       }
@@ -374,6 +394,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таймер на %lld хв закінчився"
+          }
+        }
+      }
+    },
+    "The running timer and its settings." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запущений таймер і його налаштування."
           }
         }
       }

@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "A starting point for a new feature" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основа для нової функції"
+          }
+        }
+      }
+    },
+    "Copy this folder to start a feature of your own." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіюйте цю папку, щоб почати власну функцію."
+          }
+        }
+      }
+    },
     "Increment" : {
       "localizations" : {
         "uk" : {

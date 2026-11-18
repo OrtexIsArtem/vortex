@@ -142,6 +142,16 @@
         }
       }
     },
+    "Frame a bug on screen, keep its text and where it came from" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обведіть баг на екрані, збережіть його текст і джерело"
+          }
+        }
+      }
+    },
     "Frame again" : {
       "localizations" : {
         "uk" : {
@@ -344,6 +354,16 @@
         }
       }
     },
+    "Press a shortcut, frame a bug on screen and press Return. Vortex keeps the screenshot, the text it reads in it and the app it came from." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисніть клавіатурне скорочення, обведіть баг на екрані й натисніть Return. Vortex зберігає знімок екрана, текст, який у ньому розпізнав, і застосунок, з якого він."
+          }
+        }
+      }
+    },
     "Priority" : {
       "localizations" : {
         "uk" : {
@@ -422,6 +442,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Завдання"
+          }
+        }
+      }
+    },
+    "Tasks with their screenshots and text." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завдання з їхніми знімками екрана й текстом."
           }
         }
       }

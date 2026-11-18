@@ -9,6 +9,12 @@ public enum TasksModule: FeatureModule {
   public static let id: FeatureID = TasksFeature.id
   public static let title = LocalizedStringResource("Tasks", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "checklist"
+  public static let summary = LocalizedStringResource("Frame a bug on screen, keep its text and where it came from", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Press a shortcut, frame a bug on screen and press Return. Vortex keeps the screenshot, the text it reads in it and the app it came from.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let author = "@OrtexIsArtem"
+  public static let isRecommended = true
+  public static let keeps: LocalizedStringResource? = LocalizedStringResource("Tasks with their screenshots and text.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let dataFolder: String? = "Tasks"
   public static let permissionNeeds = [
     PermissionNeed(
       .screenRecording,

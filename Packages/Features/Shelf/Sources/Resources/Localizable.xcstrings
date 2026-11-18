@@ -54,6 +54,16 @@
         }
       }
     },
+    "Copies of the files on the shelf." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копії файлів на полиці."
+          }
+        }
+      }
+    },
     "Drop files here" : {
       "localizations" : {
         "uk" : {
@@ -102,6 +112,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Типи файлів через кому; порожнє поле — усі файли"
+          }
+        }
+      }
+    },
+    "Files put aside to drag into other apps" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкладені файли, щоб перетягнути їх в інші застосунки"
           }
         }
       }
@@ -262,6 +282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Покаже блимання через 3 с: закрийте вікно, щоб бачити виріз"
+          }
+        }
+      }
+    },
+    "Put files aside while you switch apps, then drag them where they go. Files dragged onto the notch land here too." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкладайте файли, поки перемикаєтеся між застосунками, а потім перетягуйте їх, куди треба. Файли, перетягнуті на виріз, теж потрапляють сюди."
           }
         }
       }

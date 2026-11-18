@@ -74,7 +74,7 @@ let package = Package(
     ),
     .testTarget(
       name: "VortexShellTests",
-      dependencies: ["VortexShell", composableArchitecture],
+      dependencies: ["VortexShell", "FeatureRegistry", composableArchitecture],
       path: "Shell/Tests"
     ),
     .target(

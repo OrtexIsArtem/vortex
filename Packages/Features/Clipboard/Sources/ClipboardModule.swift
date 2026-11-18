@@ -9,6 +9,12 @@ public enum ClipboardModule: FeatureModule {
   public static let id: FeatureID = "clipboard"
   public static let title = LocalizedStringResource("Clipboard", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "doc.on.clipboard"
+  public static let summary = LocalizedStringResource("Everything you copied, searchable", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Keeps what you copy for a week, a month or as long as you choose. Search finds text, links and even the words in a screenshot. Pin what you reuse.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let author = "@OrtexIsArtem"
+  public static let isRecommended = true
+  public static let keeps: LocalizedStringResource? = LocalizedStringResource("Clipboard history and pinned items.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let dataFolder: String? = "Clipboard"
   public static let permissionNeeds = [
     PermissionNeed(
       .pasteboard,

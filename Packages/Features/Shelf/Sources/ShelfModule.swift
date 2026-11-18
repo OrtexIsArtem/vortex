@@ -8,6 +8,12 @@ public enum ShelfModule: FeatureModule {
   public static let id: FeatureID = ShelfFeature.id
   public static let title = LocalizedStringResource("Shelf", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "tray"
+  public static let summary = LocalizedStringResource("Files put aside to drag into other apps", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Put files aside while you switch apps, then drag them where they go. Files dragged onto the notch land here too.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let author = "@OrtexIsArtem"
+  public static let isRecommended = true
+  public static let keeps: LocalizedStringResource? = LocalizedStringResource("Copies of the files on the shelf.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let dataFolder: String? = "Shelf"
   public static let acceptsFileDrops = true
 
   /// One store for the life of the app: files arrive and expire while the window is closed.

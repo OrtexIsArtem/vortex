@@ -152,6 +152,16 @@
         }
       }
     },
+    "Clipboard history and pinned items." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Історія буфера обміну й закріплені елементи."
+          }
+        }
+      }
+    },
     "Copied" : {
       "comment" : "Shown for a moment after a card is clicked",
       "localizations" : {
@@ -199,6 +209,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Видалити"
+          }
+        }
+      }
+    },
+    "Everything you copied, searchable" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усе скопійоване, з пошуком"
           }
         }
       }
@@ -296,6 +316,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зберігати історію"
+          }
+        }
+      }
+    },
+    "Keeps what you copy for a week, a month or as long as you choose. Search finds text, links and even the words in a screenshot. Pin what you reuse." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зберігає скопійоване тиждень, місяць або скільки захочете. Пошук знаходить текст, посилання і навіть слова на знімку екрана. Закріплюйте те, що використовуєте знову."
           }
         }
       }

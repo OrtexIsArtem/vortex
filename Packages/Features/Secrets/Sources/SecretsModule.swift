@@ -9,6 +9,11 @@ public enum SecretsModule: FeatureModule {
   public static let id: FeatureID = SecretsFeature.id
   public static let title = LocalizedStringResource("Keys", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "key.horizontal"
+  public static let summary = LocalizedStringResource("Secrets Claude uses by name, never by value", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Keep API tokens and database URLs in the keychain. Claude Code runs commands with them through a local MCP server and never sees a value: Vortex puts it in and takes it out of the output.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let author = "@OrtexIsArtem"
+  public static let keeps: LocalizedStringResource? = LocalizedStringResource("Key names and settings; the values are in your keychain.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let hasOnboardingStep = true
   public static let permissionNeeds = [
     PermissionNeed(
       .notifications,

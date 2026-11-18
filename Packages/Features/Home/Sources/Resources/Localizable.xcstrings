@@ -12,6 +12,16 @@
         }
       }
     },
+    "Home lays out the widgets of the features you added and the button that locks the keyboard for cleaning." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Головна показує віджети доданих функцій і кнопку, що блокує клавіатуру для очищення."
+          }
+        }
+      }
+    },
     "Lock the keyboard for cleaning" : {
       "comment" : "Tooltip of the keyboard button in the corner of Home's dock",
       "localizations" : {
@@ -29,6 +39,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тут зʼявляться віджети увімкнених функцій"
+          }
+        }
+      }
+    },
+    "Your widgets in one place" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваші віджети в одному місці"
           }
         }
       }

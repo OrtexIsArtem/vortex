@@ -8,6 +8,9 @@ public enum TemplateModule: FeatureModule {
   public static let id: FeatureID = "template"
   public static let title = LocalizedStringResource("Template", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "square.dashed"
+  public static let summary = LocalizedStringResource("A starting point for a new feature", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Copy this folder to start a feature of your own.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let author = "@OrtexIsArtem"
 
   /// One store for the life of the app, so the tab keeps its state between openings.
   private static let store = Store(initialState: TemplateFeature.State()) {

@@ -54,6 +54,9 @@ struct FeatureModulePermissionsTests {
     static let id: FeatureID = "plain"
     static let title: LocalizedStringResource = "Plain"
     static let symbol = "circle"
+    static let summary: LocalizedStringResource = "Plain"
+    static let details: LocalizedStringResource = "Plain"
+    static let author = "@someone"
     static func makeTab() -> AnyView { AnyView(EmptyView()) }
   }
 
@@ -61,6 +64,9 @@ struct FeatureModulePermissionsTests {
     static let id: FeatureID = "needy"
     static let title: LocalizedStringResource = "Needy"
     static let symbol = "circle"
+    static let summary: LocalizedStringResource = "Needy"
+    static let details: LocalizedStringResource = "Needy"
+    static let author = "@someone"
     static let permissionNeeds = [PermissionNeed(.screenRecording, reason: "Turns a screenshot into a new task.")]
     static func makeTab() -> AnyView { AnyView(EmptyView()) }
     static func makeOnboardingStep() -> OnboardingStep? {

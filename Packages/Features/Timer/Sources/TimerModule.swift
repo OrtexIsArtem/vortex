@@ -9,6 +9,12 @@ public enum TimerModule: FeatureModule {
   public static let id: FeatureID = TimerFeature.id
   public static let title = LocalizedStringResource("Timer", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "timer"
+  public static let summary = LocalizedStringResource("One timer at a time, counting down in the notch", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Set the minutes on the drum. The countdown sits in the notch, and when time is up you get a sound, a notification and a flash until you see it.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let author = "@OrtexIsArtem"
+  public static let isRecommended = true
+  public static let keeps: LocalizedStringResource? = LocalizedStringResource("The running timer and its settings.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let dataFolder: String? = "Timer"
   public static let permissionNeeds = [
     PermissionNeed(
       .notifications,
