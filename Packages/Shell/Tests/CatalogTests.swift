@@ -105,16 +105,26 @@ struct CatalogTests {
     store.dependencies.featuresClient.homeWidgets = { ids in
       ids.flatMap { id in [timerWidget, shelfWidget].filter { $0.feature == id } }
     }
-    await shell.launch(store)
-    await store.receive(\.homeWidgetsLoaded) { $0.homeWidgets = [timerWidget, shelfWidget] }
+    await shell.launch(store, homeWidgets: [timerWidget, shelfWidget])
+    @SharedReader(.runningHomeWidgets) var running
+    #expect(running == [timerWidget, shelfWidget])
     await store.send(.featureDropped("shelf", onto: "timer")) {
       $0.settings.featureOrder = ["shelf", "timer", "tasks"]
     }
     await store.receive(\.homeWidgetsLoaded) { $0.homeWidgets = [shelfWidget, timerWidget] }
-    await shell.clock.advance(by: .milliseconds(400))
-    await store.finish()
-    @SharedReader(.runningHomeWidgets) var running
     #expect(running == [shelfWidget, timerWidget])
+    await shell.clock.advance(by: .milliseconds(400))
+  }
+
+  /// The launch tells Home the running widgets even when none run, as in safe mode: Home then knows its widgets are
+  /// away, rather than waiting to be told.
+  @Test
+  func theLaunchTellsHomeEvenThatNoWidgetRuns() async {
+    let store = shell.makeStore(isSafeMode: true)
+    @SharedReader(.runningHomeWidgets) var running
+    #expect(running == nil)
+    await shell.launch(store)
+    #expect(running == [])
   }
 
   /// A feature stopped after a crash lights the catalog's dot until it runs again.

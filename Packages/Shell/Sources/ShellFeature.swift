@@ -27,9 +27,9 @@ struct ShellFeature {
     var openReason: OpenReason?
     /// What feature tabs asked of the open window (`windowRequest`), until they ask again or it closes.
     var requests: [FeatureID: WindowRequest] = [:]
-    /// The running features' widgets, as last told to Home (`@Shared(.runningHomeWidgets)`) whenever the running
-    /// features or their order change.
-    var homeWidgets: [HomeWidgetInfo] = []
+    /// The running features' widgets, as last told to Home (`@Shared(.runningHomeWidgets)`): at launch once every
+    /// feature has started, then whenever the running features or their order change. Nil until the launch tells them.
+    var homeWidgets: [HomeWidgetInfo]?
     /// "Add to Home" on features' pages, until Home takes each request.
     @Shared(.homeAddRequests) var homeAddRequests
     /// What Home tells back: the features with a widget on it.
@@ -314,7 +314,7 @@ struct ShellFeature {
     /// What a feature's page says about Home: nothing unless the feature runs with widgets; "On Home" while one of them
     /// is on it; "Add to Home" otherwise.
     func homeOnPage(_ id: FeatureID) -> HomeOnPage? {
-      guard case .added = pageState(id), homeWidgets.contains(where: { $0.feature == id }) else { return nil }
+      guard case .added = pageState(id), (homeWidgets ?? []).contains(where: { $0.feature == id }) else { return nil }
       return featuresOnHome.contains(id) ? .onHome : .canAdd
     }
 
@@ -610,8 +610,8 @@ struct ShellFeature {
                 await send(.onboarding(.systemSettingsNamesLoaded(systemSettingsNames.names())))
                 await send(.started)
               },
-              // Once every feature has started: Home hears of the widgets that run.
-              tellHome(running, current: state.homeWidgets)
+              // Once every feature has started, Home hears of the widgets that run, even of none, as in safe mode.
+              tellHome(running, current: nil)
             ),
             .run { send in
               for await statuses in permissions.updates() {
@@ -683,10 +683,10 @@ struct ShellFeature {
 
         case let .homeWidgetsLoaded(widgets):
           state.homeWidgets = widgets
-          return .run { _ in
-            @Shared(.runningHomeWidgets) var running
-            $running.withLock { $0 = widgets }
-          }
+          // Written here, in the order the reads arrive, not by an effect of its own that could land after a newer one.
+          @Shared(.runningHomeWidgets) var running
+          $running.withLock { $0 = widgets }
+          return .none
 
         case let .windowRequested(id, request):
           // Only while the window is open: a tab left mounted behind the closed window can't make the next open large.
@@ -891,7 +891,7 @@ struct ShellFeature {
     .onChange(of: \.runningFeatures) { old, new in
       Reduce { state, _ in
         // Home hears of the widgets even when only the order changed: its panel lists them in sidebar order.
-        .merge(syncRunning(from: old, to: new, &state), tellHome(new.map(\.id), current: state.homeWidgets))
+        .merge(syncRunning(from: old, to: new, &state), tellHome(new.map(\.id), current: state.homeWidgets ?? []))
       }
     }
     .onChange(of: \.onboardingContext) { _, context in
@@ -1006,8 +1006,9 @@ struct ShellFeature {
     )
   }
 
-  /// Reads the running features' widgets for Home, which follows them whether its tab shows or not; the newest read wins.
-  private func tellHome(_ running: [FeatureID], current: [HomeWidgetInfo]) -> Effect<Action> {
+  /// Reads the running features' widgets for Home, which follows them whether its tab shows or not, and tells them unless
+  /// they are `current`; nil tells them in any case. The newest read wins.
+  private func tellHome(_ running: [FeatureID], current: [HomeWidgetInfo]?) -> Effect<Action> {
     .run { send in
       let widgets = await features.homeWidgets(running)
       if widgets != current { await send(.homeWidgetsLoaded(widgets)) }

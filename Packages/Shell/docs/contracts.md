@@ -5,7 +5,7 @@
 - `ShellController.moveToApplicationsIfAccepted()`, which App calls before creating the shell: in a release build it may offer the move to /Applications (App/docs/README.md); true when Vortex moved and quits, so App starts nothing.
 - To feature tabs: `notchCutout` and `isWindowOpen` in the SwiftUI environment.
 - Puts the Home widgets of running features, in sidebar order, into the environment of the tab content (`homeWidgets`).
-- Tells Home the same widgets as `HomeWidgetInfo` through `@Shared(.runningHomeWidgets)`: at launch once every feature has started, and whenever the running features or their order change; only the shell writes it.
+- Tells Home the same widgets as `HomeWidgetInfo` through `@Shared(.runningHomeWidgets)`: at launch once every feature has started, even none (safe mode), then whenever the running features or their order change; written in the reducer, in order; only the shell writes it.
 - Puts `windowRequest` and `showCatalog` into a feature tab's environment: a request for a window size and the focus, which closing the window forgets; `showCatalog` gives the focus back, then shows the catalog.
 - "Add to Home" on a feature's page adds its id to `@Shared(.homeAddRequests)`, once; the page reads `@SharedReader(.featuresOnHome)` for "On Home".
 - Puts `keyboardCleaning` there too: the action behind Home's keyboard button.

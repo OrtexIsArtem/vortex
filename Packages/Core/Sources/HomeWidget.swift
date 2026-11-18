@@ -151,11 +151,12 @@ public struct HomeWidgetInfo: Equatable, Sendable {
   }
 }
 
-extension SharedReaderKey where Self == InMemoryKey<[HomeWidgetInfo]>.Default {
-  /// The running features' widgets, in sidebar order. Only the shell writes it, whenever the running features or their
-  /// order change; Home follows it whether its tab shows or not.
+extension SharedReaderKey where Self == InMemoryKey<[HomeWidgetInfo]?>.Default {
+  /// The running features' widgets, in sidebar order; nil until the shell first tells them, once every feature has
+  /// started at launch. Only the shell writes it, then whenever the running features or their order change; Home follows
+  /// it whether its tab shows or not.
   public static var runningHomeWidgets: Self {
-    Self[.inMemory("runningHomeWidgets"), default: []]
+    Self[.inMemory("runningHomeWidgets"), default: nil]
   }
 }
 

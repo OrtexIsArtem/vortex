@@ -68,7 +68,7 @@ struct HomeLayoutTests {
     #expect(shelf.cell(movedBy: CGSize(width: 70, height: 90)) == GridCell(column: 2, row: 0))
   }
 
-  /// A place written without `isAway`, by hand or by a build before it, reads as a widget that shows.
+  /// A place written without `away`, by hand or by a build before it, reads as a widget that shows.
   @Test
   func aPlaceSavedWithoutAwayShows() throws {
     let json = Data(#"{"widget":"clipboard.history","size":"large","column":0,"row":0}"#.utf8)

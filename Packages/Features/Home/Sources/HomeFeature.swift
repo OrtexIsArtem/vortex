@@ -292,9 +292,10 @@ struct HomeFeature: Sendable {
         case requests([FeatureID])
       }
       let (changes, continuation) = AsyncStream.makeStream(of: Change.self)
-      // Each publisher gives its value now, then every change.
+      // Each publisher gives its value now, then every change. Until the shell first tells the running widgets there is
+      // nothing to follow: Home doesn't take "not told yet" for "none run", which would send every widget away.
       let subscriptions = [
-        $running.publisher.removeDuplicates().sink { continuation.yield(.widgets($0)) },
+        $running.publisher.compactMap { $0 }.removeDuplicates().sink { continuation.yield(.widgets($0)) },
         $requests.publisher.removeDuplicates().sink { continuation.yield(.requests($0)) },
       ]
       defer { subscriptions.forEach { $0.cancel() } }

@@ -68,7 +68,7 @@ struct HomeFeatureTests {
     let store = makeStore(saved: saved)
     await store.send(.widgetsChanged([timer, shelf])) {
       $0.widgets = [self.timer, self.shelf]
-      $0.$saved.withLock { $0?.placed[0].isAway = true }
+      $0.$saved.withLock { $0?.placed[0].away = 1 }
       $0.$featuresOnHome.withLock { $0 = ["timer", "shelf"] }
     }
     #expect(store.state.visible.map(\.widget) == ["shelf.files"])
@@ -79,9 +79,9 @@ struct HomeFeatureTests {
   /// home.json, so a relaunch in between changes nothing.
   @Test
   func aReturningWidgetWhosePlaceWasTakenLeavesTheLayout() async {
-    var away = Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)
-    away.isAway = true
-    let saved = HomeLayout(notchRow: nil, placed: [away, Placement(widget: "shelf.files", size: .wide, column: 0, row: 0)])
+    var returning = Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)
+    returning.away = 1
+    let saved = HomeLayout(notchRow: nil, placed: [returning, Placement(widget: "shelf.files", size: .wide, column: 0, row: 0)])
     let store = makeStore(saved: saved)
     await store.send(.widgetsChanged([clipboard, shelf])) {
       $0.widgets = [self.clipboard, self.shelf]
@@ -91,15 +91,34 @@ struct HomeFeatureTests {
     #expect(store.state.visible.map(\.widget) == ["shelf.files"])
   }
 
+  /// When nothing ran (safe mode), a widget that went long ago and the widget that took its place come back together:
+  /// the one that showed last keeps the place, and the other leaves the layout.
+  @Test
+  func theWidgetThatShowedLastKeepsItsPlace() async {
+    var returning = Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)
+    returning.away = 1
+    let shelfPlace = Placement(widget: "shelf.files", size: .medium, column: 0, row: 0)
+    let store = makeStore(saved: HomeLayout(notchRow: nil, placed: [returning, shelfPlace]))
+    // Nothing runs: Shelf goes too, after Clipboard.
+    await store.send(.widgetsChanged([])) {
+      $0.$saved.withLock { $0?.placed[1].away = 2 }
+    }
+    await store.send(.widgetsChanged([clipboard, shelf])) {
+      $0.widgets = [self.clipboard, self.shelf]
+      $0.$saved.withLock { $0?.placed = [shelfPlace] }
+      $0.$featuresOnHome.withLock { $0 = ["shelf"] }
+    }
+  }
+
   /// Back to a place that is still free, a widget shows there again.
   @Test
   func aReturningWidgetGetsItsFreePlaceBack() async {
-    var away = Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)
-    away.isAway = true
-    let store = makeStore(saved: HomeLayout(notchRow: nil, placed: [away]))
+    var returning = Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)
+    returning.away = 1
+    let store = makeStore(saved: HomeLayout(notchRow: nil, placed: [returning]))
     await store.send(.widgetsChanged([clipboard])) {
       $0.widgets = [self.clipboard]
-      $0.$saved.withLock { $0?.placed[0].isAway = false }
+      $0.$saved.withLock { $0?.placed[0].away = nil }
       $0.$featuresOnHome.withLock { $0 = ["clipboard"] }
     }
     #expect(store.state.visible.map(\.widget) == ["clipboard.history"])
@@ -245,8 +264,8 @@ struct HomeFeatureTests {
     await store.send(.widgetsChanged([timer, tasks])) {
       $0.widgets = [self.timer, self.tasks]
       $0.$saved.withLock { layout in
-        layout?.placed[0].isAway = true
-        layout?.placed[1].isAway = true
+        layout?.placed[0].away = 1
+        layout?.placed[1].away = 1
       }
       $0.$featuresOnHome.withLock { $0 = ["timer"] }
     }
@@ -452,9 +471,31 @@ struct HomeFeatureTests {
     // Clipboard goes: its widget is away.
     await store.send(.widgetsChanged([timer, shelf])) {
       $0.widgets = [self.timer, self.shelf]
-      $0.$saved.withLock { $0?.placed[0].isAway = true }
+      $0.$saved.withLock { $0?.placed[0].away = 1 }
       $0.$featuresOnHome.withLock { $0 = ["timer"] }
     }
+  }
+
+  /// At launch Home starts before the shell tells it which widgets run: it waits for that, so a widget that took the
+  /// place of an away one keeps it across the relaunch.
+  @Test
+  func aRelaunchKeepsTheWidgetThatTookAPlace() async {
+    var returning = Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)
+    returning.away = 1
+    let shelfPlace = Placement(widget: "shelf.files", size: .medium, column: 0, row: 0)
+    let store = makeStore(saved: HomeLayout(notchRow: nil, placed: [returning, shelfPlace]))
+    let start = await store.send(.started)
+    await store.receive(\.addRequestsChanged)
+    // Once every feature has started, the shell tells the widgets that run.
+    @Shared(.runningHomeWidgets) var running
+    $running.withLock { $0 = [clipboard, shelf] }
+    await store.receive(\.widgetsChanged) {
+      $0.widgets = [self.clipboard, self.shelf]
+      $0.$saved.withLock { $0?.placed = [shelfPlace] }
+      $0.$featuresOnHome.withLock { $0 = ["shelf"] }
+    }
+    await store.send(.stopped)
+    await start.finish()
   }
 
   /// From its start Home follows the running widgets the shell tells and the requests of features' pages, whether its

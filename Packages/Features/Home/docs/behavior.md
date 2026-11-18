@@ -8,13 +8,14 @@
 
 ## The first layout
 - Home lays itself out once the running features offer a widget: the first notch row widget in sidebar order goes to the row; each other widget, in sidebar order, at its first size that fits, in the first free place, left to right, then top to bottom; one that fits nowhere stays off.
-- Before the user chooses features no widget runs, so nothing is laid out or written.
+- Before the user chooses features no widget runs, so no layout is saved.
 - A feature added later doesn't put its widget on Home by itself; its page offers "Add to Home".
 
 ## Features that go and come back
 - A feature that stops or is removed takes its widget off Home; the widget stays in the layout, away, and its place is free.
 - A widget that comes back shows in its place again if no widget that shows took it; otherwise it leaves the layout.
-- Home follows the widgets the shell tells it whether its tab shows or not.
+- Widgets that come back together, as after safe mode, go in the reverse order they went: the one that showed last keeps a contested place.
+- Home follows the widgets the shell tells it whether its tab shows or not; at launch it changes nothing until the shell first tells them.
 
 ## The editor
 - The pencil in the bottom right corner, Home's right-click menu and the empty Home's button open the editor.

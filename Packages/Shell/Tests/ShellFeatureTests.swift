@@ -70,11 +70,13 @@ struct ShellFeatureTests {
     }
   }
 
-  /// Sends the launch's `.task` with every system listener ending at once, and waits until the shell has started.
-  /// `change`: what the launch itself changes in the state.
+  /// Sends the launch's `.task` with every system listener ending at once, and waits until the shell has started and
+  /// told Home the running widgets (`homeWidgets`, what the features client reads). `change`: what the launch itself
+  /// changes in the state.
   @discardableResult
   func launch(
     _ store: TestStoreOf<ShellFeature>,
+    homeWidgets: [HomeWidgetInfo] = [],
     _ change: ((inout ShellFeature.State) -> Void)? = nil
   ) async -> TestStoreTask {
     let names = SystemSettingsNames(privacyAndSecurity: "Privacy & Security", accessibility: "Accessibility")
@@ -90,6 +92,7 @@ struct ShellFeatureTests {
     await store.receive(\.launchAtLoginStatusLoaded)
     await store.receive(\.onboarding.systemSettingsNamesLoaded) { $0.onboarding.settingsNames = names }
     await store.receive(\.started) { $0.isStarted = true }
+    await store.receive(\.homeWidgetsLoaded) { $0.homeWidgets = homeWidgets }
     return task
   }
 
@@ -870,6 +873,7 @@ struct ShellFeatureTests {
     await store.receive(\.launchAtLoginStatusLoaded) { $0.launchAtLogin = .enabled }
     await store.receive(\.onboarding.systemSettingsNamesLoaded) { $0.onboarding.settingsNames = names }
     await store.receive(\.started) { $0.isStarted = true }
+    await store.receive(\.homeWidgetsLoaded) { $0.homeWidgets = [] }
     await store.finish()
     #expect(menuBarIcon.value == [true])
     // A feature that isn't added isn't even stopped: none of its code runs.

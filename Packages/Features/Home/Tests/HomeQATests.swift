@@ -51,11 +51,11 @@ struct HomeQATests {
   func theStateSectionTellsTheLayoutAndTheEditor() {
     var state = HomeFeature.State()
     state.$saved.withLock { layout in
-      var away = Placement(widget: "tasks.list", size: .medium, column: 2, row: 1)
-      away.isAway = true
+      var returning = Placement(widget: "tasks.list", size: .medium, column: 2, row: 1)
+      returning.away = 1
       layout = HomeLayout(
         notchRow: "timer.timer",
-        placed: [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0), away]
+        placed: [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0), returning]
       )
     }
     state.widgets = [
