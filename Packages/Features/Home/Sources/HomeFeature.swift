@@ -15,25 +15,34 @@ struct HomeFeature: Sendable {
   @ObservableState
   struct State: Equatable {
     @Shared(.homeLayout) var saved
-    /// The widgets the running features offer now, in sidebar order.
-    var widgets: [WidgetInfo] = []
+    /// The widgets the running features offer now, in sidebar order, as the shell tells them.
+    var widgets: [HomeWidgetInfo] = []
+    /// Features' pages asking for their first widget on Home.
+    @Shared(.homeAddRequests) var addRequests
+    /// What the shell hears back: the features with a widget on Home.
+    @Shared(.featuresOnHome) var featuresOnHome
 
     var available: Set<String> { Set(widgets.map(\.id)) }
 
     /// The widgets on the grid now: those whose feature runs. An away widget's feature doesn't run: once its feature
     /// is back, the widget either shows again or has left the layout.
     var visible: [Placement] {
-      (saved?.placed ?? []).filter { available.contains($0.widget) }
+      saved?.visible(available) ?? []
     }
 
     /// The widget in the row next to the notch, while its feature runs.
     var notchRowWidget: String? {
-      saved?.notchRow.flatMap { available.contains($0) ? $0 : nil }
+      saved?.notchRowWidget(available)
     }
 
     /// The widgets that show on Home now: on the grid or in the row next to the notch.
     var shownWidgets: Set<String> {
       Set(visible.map(\.widget) + [notchRowWidget].compactMap { $0 })
+    }
+
+    /// The features with a widget that shows on Home now.
+    var featuresShown: Set<FeatureID> {
+      Set(widgets.filter { shownWidgets.contains($0.id) }.map(\.feature))
     }
 
     /// Home is the editor: the window is wider, with the panel of widgets on the right.
@@ -113,8 +122,13 @@ struct HomeFeature: Sendable {
   }
 
   enum Action: Equatable {
-    /// The running features' widgets, sent by Home's view whenever they change.
-    case widgetsChanged([WidgetInfo])
+    /// Home starts (`HomeModule.setEnabled`): it follows the shell's running widgets and the pages' requests.
+    case started
+    case stopped
+    /// The running features' widgets, whenever the shell tells them anew.
+    case widgetsChanged([HomeWidgetInfo])
+    /// The features' pages asking for their first widget on Home, whenever the requests change.
+    case addRequestsChanged([FeatureID])
     /// The pencil, or "Edit Home" in Home's menu.
     case editTapped
     case doneTapped
@@ -135,9 +149,32 @@ struct HomeFeature: Sendable {
     case dropped(String, column: Int, row: Int)
   }
 
+  enum CancelID {
+    case following
+  }
+
   var body: some ReducerOf<Self> {
     Reduce { state, action in
       switch action {
+      case .started:
+        return follow()
+
+      case .stopped:
+        return .cancel(id: CancelID.following)
+
+      case let .addRequestsChanged(features):
+        guard !features.isEmpty else { return .none }
+        // Each feature's first widget, in the order asked; one write for all.
+        let before = state.saved ?? HomeLayout()
+        let after = features.reduce(before) { layout, feature in
+          guard let widget = state.widgets.first(where: { $0.feature == feature }) else { return layout }
+          return layout.adding(widget, available: state.available)
+        }
+        if after != before { state.$saved.withLock { $0 = after } }
+        // Each request goes once taken, with or without room.
+        state.$addRequests.withLock { $0.removeAll { features.contains($0) } }
+        return .none
+
       case let .widgetsChanged(widgets):
         state.widgets = widgets
         if let saved = state.saved {
@@ -235,5 +272,39 @@ struct HomeFeature: Sendable {
         return .none
       }
     }
+    // The shell's "On Home" follows what shows, however it changed.
+    .onChange(of: \.featuresShown) { _, features in
+      Reduce { state, _ in
+        state.$featuresOnHome.withLock { $0 = features }
+        return .none
+      }
+    }
+  }
+
+  /// Follows the shell's running widgets and the pages' requests, in the order they change: the shell tells the widgets
+  /// before a page can ask for one of them.
+  private func follow() -> Effect<Action> {
+    .run { send in
+      @SharedReader(.runningHomeWidgets) var running
+      @SharedReader(.homeAddRequests) var requests
+      enum Change {
+        case widgets([HomeWidgetInfo])
+        case requests([FeatureID])
+      }
+      let (changes, continuation) = AsyncStream.makeStream(of: Change.self)
+      // Each publisher gives its value now, then every change.
+      let subscriptions = [
+        $running.publisher.removeDuplicates().sink { continuation.yield(.widgets($0)) },
+        $requests.publisher.removeDuplicates().sink { continuation.yield(.requests($0)) },
+      ]
+      defer { subscriptions.forEach { $0.cancel() } }
+      for await change in changes {
+        switch change {
+        case let .widgets(widgets): await send(.widgetsChanged(widgets))
+        case let .requests(features): await send(.addRequestsChanged(features))
+        }
+      }
+    }
+    .cancellable(id: CancelID.following, cancelInFlight: true)
   }
 }

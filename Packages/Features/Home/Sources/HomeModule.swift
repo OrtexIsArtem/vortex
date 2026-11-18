@@ -23,10 +23,13 @@ public enum HomeModule: FeatureModule {
     AnyView(HomeView(store: store))
   }
 
+  /// Home always runs: from launch it follows the running widgets the shell tells and the features' pages' requests, so
+  /// its layout keeps up while its tab doesn't show.
   public static func setEnabled(_ isEnabled: Bool) {
     #if DEBUG
       // A QA run takes commands only on its own channel (VortexPlatform's `QA`): HomeQA.swift.
       registerQACommands()
     #endif
+    store.send(isEnabled ? .started : .stopped)
   }
 }

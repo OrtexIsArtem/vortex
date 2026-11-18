@@ -27,6 +27,13 @@ struct ShellFeature {
     var openReason: OpenReason?
     /// What feature tabs asked of the open window (`windowRequest`), until they ask again or it closes.
     var requests: [FeatureID: WindowRequest] = [:]
+    /// The running features' widgets, as last told to Home (`@Shared(.runningHomeWidgets)`) whenever the running
+    /// features or their order change.
+    var homeWidgets: [HomeWidgetInfo] = []
+    /// "Add to Home" on features' pages, until Home takes each request.
+    @Shared(.homeAddRequests) var homeAddRequests
+    /// What Home tells back: the features with a widget on it.
+    @SharedReader(.featuresOnHome) var featuresOnHome
     /// The feature whose ear the pointer is over in the closed notch; nil on the cutout and while the pointer is away.
     /// Hovering opens the window on that feature's tab.
     var hoveredEar: FeatureID?
@@ -304,6 +311,13 @@ struct ShellFeature {
       return requests[id]?.size ?? .regular
     }
 
+    /// What a feature's page says about Home: nothing unless the feature runs with widgets; "On Home" while one of them
+    /// is on it; "Add to Home" otherwise.
+    func homeOnPage(_ id: FeatureID) -> HomeOnPage? {
+      guard case .added = pageState(id), homeWidgets.contains(where: { $0.feature == id }) else { return nil }
+      return featuresOnHome.contains(id) ? .onHome : .canAdd
+    }
+
     /// The feature whose tab has the focus: the sidebar dims, and the other tabs and their shortcuts wait.
     var focusedFeature: FeatureID? {
       guard case let .feature(id) = selectedTab, requests[id]?.isFocused == true else { return nil }
@@ -314,6 +328,12 @@ struct ShellFeature {
     var openWindowSize: WindowSize? {
       isOpen ? windowSize : nil
     }
+  }
+
+  /// A feature's page and Home: whether "Add to Home" shows, or "On Home".
+  enum HomeOnPage: Equatable, Sendable {
+    case canAdd
+    case onHome
   }
 
   /// What a feature's page in the catalog shows, and which buttons.
@@ -411,6 +431,10 @@ struct ShellFeature {
     case tabSelected(Tab)
     /// A feature's tab asks for a window size and the focus (`windowRequest` in its environment).
     case windowRequested(FeatureID, WindowRequest)
+    /// "Add to Home" on a feature's page.
+    case addToHomeTapped(FeatureID)
+    /// The running features' widgets, read anew for Home.
+    case homeWidgetsLoaded([HomeWidgetInfo])
     case featureDropped(FeatureID, onto: FeatureID)
     case settingsShown
     case launchAtLoginChanged(Bool)
@@ -480,6 +504,8 @@ struct ShellFeature {
     /// The listener for the shortcut that opens a feature's tab.
     case tabHotkey(FeatureID)
     case undoRemove
+    /// Reading the running features' widgets for Home.
+    case homeWidgets
   }
 
   /// The newest release on GitHub. "Check for Updates" opens it in the browser: Vortex itself never goes online.
@@ -569,20 +595,24 @@ struct ShellFeature {
               }
             },
             .merge(running.map(listenForTabHotkey)),
-            .run { [theme = state.settings.theme] send in
-              await system.applyTheme(theme)
-              for id in erasing {
-                await features.eraseData(id)
-              }
-              for id in running {
-                await features.setEnabled(id, true)
-              }
-              // No silent registration at launch: the onboarding's Basics applies "Open at login".
-              await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
-              // Before any onboarding page shows its drawing of System Settings.
-              await send(.onboarding(.systemSettingsNamesLoaded(systemSettingsNames.names())))
-              await send(.started)
-            },
+            .concatenate(
+              .run { [theme = state.settings.theme] send in
+                await system.applyTheme(theme)
+                for id in erasing {
+                  await features.eraseData(id)
+                }
+                for id in running {
+                  await features.setEnabled(id, true)
+                }
+                // No silent registration at launch: the onboarding's Basics applies "Open at login".
+                await send(.launchAtLoginStatusLoaded(launchAtLogin.status()))
+                // Before any onboarding page shows its drawing of System Settings.
+                await send(.onboarding(.systemSettingsNamesLoaded(systemSettingsNames.names())))
+                await send(.started)
+              },
+              // Once every feature has started: Home hears of the widgets that run.
+              tellHome(running, current: state.homeWidgets)
+            ),
             .run { send in
               for await statuses in permissions.updates() {
                 await send(.permissionStatusesChanged(statuses))
@@ -644,6 +674,19 @@ struct ShellFeature {
           guard state.isOpen else { return .none }
           state.openReason = .click
           return .cancel(id: CancelID.pointerLeaveClose)
+
+        case let .addToHomeTapped(id):
+          // Once: Home takes the request away when it has placed the widget or found no room.
+          guard !state.homeAddRequests.contains(id) else { return .none }
+          state.$homeAddRequests.withLock { $0.append(id) }
+          return .none
+
+        case let .homeWidgetsLoaded(widgets):
+          state.homeWidgets = widgets
+          return .run { _ in
+            @Shared(.runningHomeWidgets) var running
+            $running.withLock { $0 = widgets }
+          }
 
         case let .windowRequested(id, request):
           // Only while the window is open: a tab left mounted behind the closed window can't make the next open large.
@@ -847,7 +890,8 @@ struct ShellFeature {
     }
     .onChange(of: \.runningFeatures) { old, new in
       Reduce { state, _ in
-        syncRunning(from: old, to: new, &state)
+        // Home hears of the widgets even when only the order changed: its panel lists them in sidebar order.
+        .merge(syncRunning(from: old, to: new, &state), tellHome(new.map(\.id), current: state.homeWidgets))
       }
     }
     .onChange(of: \.onboardingContext) { _, context in
@@ -960,6 +1004,15 @@ struct ShellFeature {
         }
       }
     )
+  }
+
+  /// Reads the running features' widgets for Home, which follows them whether its tab shows or not; the newest read wins.
+  private func tellHome(_ running: [FeatureID], current: [HomeWidgetInfo]) -> Effect<Action> {
+    .run { send in
+      let widgets = await features.homeWidgets(running)
+      if widgets != current { await send(.homeWidgetsLoaded(widgets)) }
+    }
+    .cancellable(id: CancelID.homeWidgets, cancelInFlight: true)
   }
 
   /// Listens for the shortcut that opens the feature's tab while the feature runs; cancelling it frees the keys.

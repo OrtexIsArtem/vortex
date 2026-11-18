@@ -204,7 +204,7 @@ private struct FeatureWidgets: View {
 /// copy shows on Home where it would go.
 private struct PanelWidget: View {
   let store: StoreOf<HomeFeature>
-  let info: WidgetInfo
+  let info: HomeWidgetInfo
   let widget: HomeWidget?
   @State private var isHovered = false
 

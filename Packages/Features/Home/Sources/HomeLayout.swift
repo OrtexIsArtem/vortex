@@ -1,16 +1,6 @@
 import CoreGraphics
 import VortexCore
 
-/// A widget as Home sees it, without its view: what the layout and the editor need. Names are in the app's language.
-struct WidgetInfo: Equatable, Sendable {
-  var id: String
-  var feature: FeatureID
-  var place: HomeWidgetPlace
-  var name: String
-  var featureName: String
-  var featureSymbol: String
-}
-
 /// A widget on the grid: its size and its top left cell.
 struct Placement: Codable, Equatable, Sendable {
   var widget: String
@@ -86,6 +76,33 @@ struct HomeLayout: Codable, Equatable, Sendable {
     return nil
   }
 
+  /// The widgets on the grid whose feature runs.
+  func visible(_ available: Set<String>) -> [Placement] {
+    placed.filter { available.contains($0.widget) }
+  }
+
+  /// The widget in the row next to the notch, while its feature runs.
+  func notchRowWidget(_ available: Set<String>) -> String? {
+    notchRow.flatMap { available.contains($0) ? $0 : nil }
+  }
+
+  /// The layout with `widget` put on it as a feature's "Add to Home" puts it: in the notch row while it is free, or at
+  /// its first size that fits in the first free place. Unchanged without room, or when the widget shows already.
+  func adding(_ widget: HomeWidgetInfo, available: Set<String>) -> HomeLayout {
+    let visible = visible(available)
+    guard !visible.contains(where: { $0.widget == widget.id }), notchRowWidget(available) != widget.id else { return self }
+    var layout = self
+    switch widget.place {
+    case .notchRow:
+      guard notchRowWidget(available) == nil else { return self }
+      layout.notchRow = widget.id
+    case let .grid(sizes):
+      guard let fit = HomeLayout(notchRow: nil, placed: visible).firstFit(sizes, ignoring: []) else { return self }
+      layout.placed.append(Placement(widget: widget.id, size: fit.size, column: fit.column, row: fit.row))
+    }
+    return layout
+  }
+
   /// The layout once the widgets that exist change: a widget whose feature went stays in the layout, away, and its place
   /// is free; one that comes back shows again only where no widget that shows now is, and otherwise leaves the layout.
   func reconciled(available: Set<String>) -> HomeLayout {
@@ -109,7 +126,7 @@ struct HomeLayout: Codable, Equatable, Sendable {
   /// The first layout, for a new user and after the update to the grid: the first notch row widget goes there; the
   /// others, in sidebar order, each at its first size that fits, in the first free place. One that fits nowhere stays
   /// off.
-  static func initial(_ widgets: [WidgetInfo]) -> HomeLayout {
+  static func initial(_ widgets: [HomeWidgetInfo]) -> HomeLayout {
     var layout = HomeLayout()
     for widget in widgets {
       switch widget.place {

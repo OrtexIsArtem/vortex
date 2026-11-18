@@ -17,6 +17,8 @@ struct FeaturesClient: Sendable {
   /// Erase Data, at launch before anything starts: the feature's tables and migrations, its settings file and folder,
   /// its tab shortcut, then its own `eraseData()` for what only it knows, given at most 10 s.
   var eraseData: @Sendable (_ id: FeatureID) async -> Void
+  /// The widgets of these running features, in their order, without their views: what Home lays out.
+  var homeWidgets: @Sendable (_ ids: [FeatureID]) async -> [HomeWidgetInfo] = { _ in [] }
 }
 
 extension FeaturesClient: DependencyKey {
@@ -69,6 +71,24 @@ extension FeaturesClient: DependencyKey {
       }
       await hotkeys.reset(.open(id))
       await eraseHook(of: id, within: .seconds(10))
+    },
+    homeWidgets: { ids in
+      await MainActor.run {
+        ids.flatMap { id -> [HomeWidgetInfo] in
+          guard let module = FeatureRegistry.module(for: id) else { return [] }
+          // Made once, as the views of a running feature are (FeatureViews).
+          return FeatureViews.shared.homeWidgets(id).map { widget in
+            HomeWidgetInfo(
+              id: widget.id,
+              feature: widget.feature,
+              place: widget.place,
+              name: String(localized: widget.title),
+              featureName: String(localized: module.title),
+              featureSymbol: module.symbol
+            )
+          }
+        }
+      }
     }
   )
 
@@ -95,7 +115,12 @@ extension FeaturesClient: DependencyKey {
     }
   }
 
-  static let testValue = FeaturesClient()
+  /// Unimplemented, but for Home's widgets: a test without features that offer any reads none.
+  static let testValue: FeaturesClient = {
+    var client = FeaturesClient()
+    client.homeWidgets = { _ in [] }
+    return client
+  }()
 }
 
 extension DependencyValues {

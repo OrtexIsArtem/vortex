@@ -59,10 +59,12 @@
       }
     }
 
-    /// `feature add|remove|erase id=<feature id>`: the buttons of the feature's page, which must show it. Erase confirms
-    /// at once and goes the real way: the feature is left to erase and the run relaunches.
+    /// `feature add|remove|erase|home id=<feature id>`: the buttons of the feature's page, which must show it; `home` is
+    /// "Add to Home". Erase confirms at once and goes the real way: the feature is left to erase and the run relaunches.
     static func feature(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
-      guard let id = arguments["id"] else { throw QAError("feature takes add, remove or erase, with id=<feature id>") }
+      guard let id = arguments["id"] else {
+        throw QAError("feature takes add, remove, erase or home, with id=<feature id>")
+      }
       guard store.isOpen, store.selectedTab == .catalogPage(id), let page = store.state.pageState(id) else {
         throw QAError("\(id)'s page doesn't show: `catalog page id=\(id)` first")
       }
@@ -80,8 +82,11 @@
         guard case .removed = page else { throw QAError("\(id)'s page has no Erase Data") }
         store.send(.eraseTapped(id))
         store.send(.eraseConfirmed)
+      } else if arguments["home"] != nil {
+        guard store.state.homeOnPage(id) == .canAdd else { throw QAError("\(id)'s page has no Add to Home") }
+        store.send(.addToHomeTapped(id))
       } else {
-        throw QAError("feature takes add, remove or erase, with id=<feature id>")
+        throw QAError("feature takes add, remove, erase or home, with id=<feature id>")
       }
     }
 

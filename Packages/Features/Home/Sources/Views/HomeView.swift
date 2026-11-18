@@ -19,7 +19,6 @@ struct HomeView: View {
   static let editorWindow = WindowRequest(size: .large, isFocused: true)
 
   var body: some View {
-    let infos = widgets.map(WidgetInfo.init)
     let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     HStack(spacing: 0) {
       VStack(spacing: 0) {
@@ -49,10 +48,6 @@ struct HomeView: View {
     }
     // While the window grows, the panel waits past its right edge.
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    // The running features' widgets, whenever they change: Home lays them out and keeps where they are.
-    .onChange(of: infos, initial: true) { _, infos in
-      store.send(.widgetsChanged(infos))
-    }
     .onChange(of: store.isEditing) { _, isEditing in
       windowRequest?(isEditing ? Self.editorWindow : .regular)
     }
@@ -195,20 +190,6 @@ private struct GridArea: View {
         layout.fits(.small, column: column, row: row, ignoring: []) ? GridCell(column: column, row: row) : nil
       }
     }
-  }
-}
-
-extension WidgetInfo {
-  /// The widget without its view, its names in the app's language.
-  init(_ widget: HomeWidget) {
-    self.init(
-      id: widget.id,
-      feature: widget.feature,
-      place: widget.place,
-      name: String(localized: widget.title),
-      featureName: String(localized: widget.featureTitle),
-      featureSymbol: widget.featureSymbol
-    )
   }
 }
 

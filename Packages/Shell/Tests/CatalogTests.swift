@@ -59,6 +59,64 @@ struct CatalogTests {
     await shell.clock.advance(by: .milliseconds(400))
   }
 
+  // MARK: - Home
+
+  /// "Add to Home" on a feature's page asks Home once, however often it is pressed.
+  @Test
+  func addToHomeAsksHomeOnce() async {
+    let store = shell.makeStore()
+    await store.send(.addToHomeTapped("shelf")) {
+      $0.$homeAddRequests.withLock { $0 = ["shelf"] }
+    }
+    await store.send(.addToHomeTapped("shelf"))
+  }
+
+  /// An added feature's page offers "Add to Home" while none of its widgets is on Home, and says "On Home" once one is;
+  /// a feature without widgets, or not added, has neither.
+  @Test
+  func thePageOffersAddToHomeUntilAWidgetIsOn() {
+    var settings = ShellSettings()
+    settings.addedFeatures = ["timer", "shelf", "tasks"]
+    var state = ShellFeature.State(settings: settings, features: [.timer, .shelf, .tasks, .music], onboarding: .finished)
+    state.homeWidgets = [
+      HomeWidgetInfo(id: "shelf.files", feature: "shelf", place: .grid([.medium]), name: "Files", featureName: "Shelf", featureSymbol: "tray"),
+      HomeWidgetInfo(id: "music.player", feature: "music", place: .grid([.wide]), name: "Player", featureName: "Music", featureSymbol: "music.note"),
+    ]
+    #expect(state.homeOnPage("shelf") == .canAdd)
+    #expect(state.homeOnPage("tasks") == nil)
+    #expect(state.homeOnPage("music") == nil)
+    @Shared(.featuresOnHome) var onHome
+    $onHome.withLock { $0 = ["shelf"] }
+    #expect(state.homeOnPage("shelf") == .onHome)
+  }
+
+  /// Home hears of the running features' widgets from the shell, in sidebar order: at launch and whenever the running
+  /// features or their order change, whether Home's tab shows or not.
+  @Test
+  func homeHearsOfTheRunningWidgetsInSidebarOrder() async {
+    let timerWidget = HomeWidgetInfo(
+      id: "timer.timer", feature: "timer", place: .notchRow, name: "Timer", featureName: "Timer", featureSymbol: "timer"
+    )
+    let shelfWidget = HomeWidgetInfo(
+      id: "shelf.files", feature: "shelf", place: .grid([.medium, .wide]), name: "Files", featureName: "Shelf",
+      featureSymbol: "tray"
+    )
+    let store = shell.makeStore()
+    store.dependencies.featuresClient.homeWidgets = { ids in
+      ids.flatMap { id in [timerWidget, shelfWidget].filter { $0.feature == id } }
+    }
+    await shell.launch(store)
+    await store.receive(\.homeWidgetsLoaded) { $0.homeWidgets = [timerWidget, shelfWidget] }
+    await store.send(.featureDropped("shelf", onto: "timer")) {
+      $0.settings.featureOrder = ["shelf", "timer", "tasks"]
+    }
+    await store.receive(\.homeWidgetsLoaded) { $0.homeWidgets = [shelfWidget, timerWidget] }
+    await shell.clock.advance(by: .milliseconds(400))
+    await store.finish()
+    @SharedReader(.runningHomeWidgets) var running
+    #expect(running == [shelfWidget, timerWidget])
+  }
+
   /// A feature stopped after a crash lights the catalog's dot until it runs again.
   @Test
   func aStoppedFeatureLightsTheDot() {

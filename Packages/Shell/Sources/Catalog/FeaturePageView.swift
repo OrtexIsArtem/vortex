@@ -167,6 +167,28 @@ struct FeaturePageView: View {
         primary(Text("Add", bundle: .module)) { store.send(.featureAdded(feature.id)) }
       case .added:
         primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
+        switch store.state.homeOnPage(feature.id) {
+        case .canAdd:
+          // A feature added later doesn't go on Home by itself.
+          Button {
+            store.send(.addToHomeTapped(feature.id))
+          } label: {
+            Text("Add to Home", bundle: .module)
+          }
+          .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
+        case .onHome:
+          Label {
+            Text("On Home", bundle: .module)
+          } icon: {
+            Image(systemName: "checkmark")
+          }
+          .font(.system(size: 13))
+          .foregroundStyle(VortexColor.secondaryText)
+          .padding(.horizontal, 12)
+          .frame(height: 36)
+        case nil:
+          EmptyView()
+        }
         Button {
           store.send(.tabSelected(.settings))
           store.send(.binding(.set(\.settingsSection, .features)))

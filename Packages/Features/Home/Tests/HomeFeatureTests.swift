@@ -7,23 +7,28 @@ import VortexCore
 /// Home's layout as it lives on: saved in home.json, through features that go and come back.
 @MainActor
 struct HomeFeatureTests {
-  func info(_ id: String, _ place: HomeWidgetPlace, name: String, featureName: String) -> WidgetInfo {
+  func info(_ id: String, _ place: HomeWidgetPlace, name: String, featureName: String) -> HomeWidgetInfo {
     let feature = FeatureID(String(id.split(separator: ".")[0]))
-    return WidgetInfo(id: id, feature: feature, place: place, name: name, featureName: featureName, featureSymbol: "square")
+    return HomeWidgetInfo(id: id, feature: feature, place: place, name: name, featureName: featureName, featureSymbol: "square")
   }
 
-  var timer: WidgetInfo { info("timer.timer", .notchRow, name: "Timer", featureName: "Timer") }
-  var clipboard: WidgetInfo { info("clipboard.history", .grid([.large, .medium]), name: "History", featureName: "Clipboard") }
-  var shelf: WidgetInfo { info("shelf.files", .grid([.medium, .wide]), name: "Files", featureName: "Shelf") }
-  var tasks: WidgetInfo { info("tasks.list", .grid([.medium]), name: "List", featureName: "Tasks") }
-  var pinned: WidgetInfo { info("clipboard.pinned", .grid([.small, .medium]), name: "Pinned", featureName: "Clipboard") }
+  var timer: HomeWidgetInfo { info("timer.timer", .notchRow, name: "Timer", featureName: "Timer") }
+  var clipboard: HomeWidgetInfo { info("clipboard.history", .grid([.large, .medium]), name: "History", featureName: "Clipboard") }
+  var shelf: HomeWidgetInfo { info("shelf.files", .grid([.medium, .wide]), name: "Files", featureName: "Shelf") }
+  var tasks: HomeWidgetInfo { info("tasks.list", .grid([.medium]), name: "List", featureName: "Tasks") }
+  var pinned: HomeWidgetInfo { info("clipboard.pinned", .grid([.small, .medium]), name: "Pinned", featureName: "Clipboard") }
 
   /// Home as an update from stage 1 lays it out, in the editor: Timer in the notch row, Clipboard's history large at
   /// (0,0), Shelf medium at (2,0); Clipboard's pinned widget is off Home.
   func editingStore(saved: HomeLayout? = nil) async -> TestStoreOf<HomeFeature> {
     let widgets = [timer, clipboard, pinned, shelf]
-    let store = makeStore(saved: saved ?? HomeLayout.initial([timer, clipboard, shelf]))
-    await store.send(.widgetsChanged(widgets)) { $0.widgets = widgets }
+    let layout = saved ?? HomeLayout.initial([timer, clipboard, shelf])
+    let store = makeStore(saved: layout)
+    let shown = [layout.notchRow].compactMap { $0 } + layout.placed.map(\.widget)
+    await store.send(.widgetsChanged(widgets)) {
+      $0.widgets = widgets
+      $0.$featuresOnHome.withLock { $0 = Set(widgets.filter { shown.contains($0.id) }.map(\.feature)) }
+    }
     await store.send(.editTapped) { $0.isEditing = true }
     return store
   }
@@ -33,9 +38,11 @@ struct HomeFeatureTests {
     HomeLayout(notchRow: "timer.timer", placed: [Placement(widget: "shelf.files", size: .full, column: 0, row: 0)])
   }
 
-  func makeStore(saved: HomeLayout? = nil) -> TestStoreOf<HomeFeature> {
+  func makeStore(saved: HomeLayout? = nil, addRequests: [FeatureID] = []) -> TestStoreOf<HomeFeature> {
     @Shared(.homeLayout) var layout
     $layout.withLock { $0 = saved }
+    @Shared(.homeAddRequests) var requests
+    $requests.withLock { $0 = addRequests }
     return TestStore(initialState: HomeFeature.State()) { HomeFeature() }
   }
 
@@ -48,6 +55,7 @@ struct HomeFeatureTests {
     await store.send(.widgetsChanged([timer, clipboard, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.shelf]
       $0.$saved.withLock { $0 = HomeLayout.initial([self.timer, self.clipboard, self.shelf]) }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
     #expect(store.state.notchRowWidget == "timer.timer")
     #expect(store.state.visible.map(\.widget) == ["clipboard.history", "shelf.files"])
@@ -61,6 +69,7 @@ struct HomeFeatureTests {
     await store.send(.widgetsChanged([timer, shelf])) {
       $0.widgets = [self.timer, self.shelf]
       $0.$saved.withLock { $0?.placed[0].isAway = true }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "shelf"] }
     }
     #expect(store.state.visible.map(\.widget) == ["shelf.files"])
     #expect(store.state.saved?.placed.map(\.widget) == ["clipboard.history", "shelf.files"])
@@ -77,6 +86,7 @@ struct HomeFeatureTests {
     await store.send(.widgetsChanged([clipboard, shelf])) {
       $0.widgets = [self.clipboard, self.shelf]
       $0.$saved.withLock { $0?.placed = [Placement(widget: "shelf.files", size: .wide, column: 0, row: 0)] }
+      $0.$featuresOnHome.withLock { $0 = ["shelf"] }
     }
     #expect(store.state.visible.map(\.widget) == ["shelf.files"])
   }
@@ -90,6 +100,7 @@ struct HomeFeatureTests {
     await store.send(.widgetsChanged([clipboard])) {
       $0.widgets = [self.clipboard]
       $0.$saved.withLock { $0?.placed[0].isAway = false }
+      $0.$featuresOnHome.withLock { $0 = ["clipboard"] }
     }
     #expect(store.state.visible.map(\.widget) == ["clipboard.history"])
   }
@@ -100,11 +111,13 @@ struct HomeFeatureTests {
     let store = makeStore(saved: HomeLayout.initial([timer, clipboard]))
     await store.send(.widgetsChanged([clipboard])) {
       $0.widgets = [self.clipboard]
+      $0.$featuresOnHome.withLock { $0 = ["clipboard"] }
     }
     #expect(store.state.notchRowWidget == nil)
     #expect(store.state.saved?.notchRow == "timer.timer")
     await store.send(.widgetsChanged([timer, clipboard])) {
       $0.widgets = [self.timer, self.clipboard]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
     }
     #expect(store.state.notchRowWidget == "timer.timer")
   }
@@ -115,6 +128,7 @@ struct HomeFeatureTests {
     let store = makeStore(saved: HomeLayout.initial([timer, clipboard]))
     await store.send(.widgetsChanged([timer, clipboard, tasks])) {
       $0.widgets = [self.timer, self.clipboard, self.tasks]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
     }
     #expect(store.state.visible.map(\.widget) == ["clipboard.history"])
   }
@@ -148,12 +162,14 @@ struct HomeFeatureTests {
     let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
     await store.send(.widgetsChanged([timer, clipboard, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
     // Outside the editor nothing is removed.
     await store.send(.removeTapped("shelf.files"))
     await store.send(.editTapped) { $0.isEditing = true }
     await store.send(.removeTapped("shelf.files")) {
       $0.$saved.withLock { $0?.placed.removeAll { $0.widget == "shelf.files" } }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
     }
     #expect(store.state.saved?.placed == [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)])
     #expect(store.state.saved?.fits(.medium, column: 2, row: 0, ignoring: []) == true)
@@ -165,10 +181,12 @@ struct HomeFeatureTests {
     let store = makeStore(saved: HomeLayout.initial([timer, clipboard]))
     await store.send(.widgetsChanged([timer, clipboard])) {
       $0.widgets = [self.timer, self.clipboard]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
     }
     await store.send(.editTapped) { $0.isEditing = true }
     await store.send(.removeTapped("timer.timer")) {
       $0.$saved.withLock { $0?.notchRow = nil }
+      $0.$featuresOnHome.withLock { $0 = ["clipboard"] }
     }
     #expect(store.state.notchRowWidget == nil)
   }
@@ -230,6 +248,7 @@ struct HomeFeatureTests {
         layout?.placed[0].isAway = true
         layout?.placed[1].isAway = true
       }
+      $0.$featuresOnHome.withLock { $0 = ["timer"] }
     }
     await store.send(.editTapped) { $0.isEditing = true }
     await store.send(.hovered("tasks.list")) {
@@ -245,6 +264,7 @@ struct HomeFeatureTests {
     let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
     await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
     await store.send(.addTapped("clipboard.pinned"))
     await store.send(.sizeTapped("clipboard.history", .medium))
@@ -322,11 +342,15 @@ struct HomeFeatureTests {
     }
     await store.send(.hovered("clock.row")) { $0.preview = .noRoom("clock.row") }
     await store.send(.hovered(nil)) { $0.preview = nil }
-    await store.send(.removeTapped("timer.timer")) { $0.$saved.withLock { $0?.notchRow = nil } }
+    await store.send(.removeTapped("timer.timer")) {
+      $0.$saved.withLock { $0?.notchRow = nil }
+      $0.$featuresOnHome.withLock { $0 = ["clipboard", "shelf"] }
+    }
     await store.send(.hovered("timer.timer")) { $0.preview = .notchRow("timer.timer") }
     await store.send(.addTapped("timer.timer")) {
       $0.$saved.withLock { $0?.notchRow = "timer.timer" }
       $0.preview = nil
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
     }
   }
 
@@ -359,5 +383,96 @@ struct HomeFeatureTests {
     await store.send(.dropped("shelf.files", column: 3, row: 1))
     // A widget that isn't on Home doesn't move in.
     await store.send(.dropped("clipboard.pinned", column: 2, row: 0))
+  }
+
+  // MARK: - Add to Home, and what the shell hears back
+
+  /// A feature's page asks for its first widget on Home: the notch row while it is free, or its first size that fits
+  /// in the first free place. A request goes once taken.
+  @Test
+  func anAddRequestPutsTheFeaturesFirstWidget() async {
+    let store = makeStore(saved: HomeLayout.initial([clipboard]), addRequests: ["shelf", "timer"])
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["clipboard"] }
+    }
+    await store.send(.addRequestsChanged(["shelf", "timer"])) {
+      $0.$saved.withLock { layout in
+        layout?.placed.append(Placement(widget: "shelf.files", size: .medium, column: 2, row: 0))
+        layout?.notchRow = "timer.timer"
+      }
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$featuresOnHome.withLock { $0 = ["clipboard", "shelf", "timer"] }
+    }
+  }
+
+  /// A request takes the first of the widget's sizes that fits: Clipboard's history goes 2×1 when no 2×2 place is free.
+  @Test
+  func anAddRequestTakesTheFirstSizeThatFits() async {
+    let wide = HomeLayout(notchRow: nil, placed: [Placement(widget: "shelf.files", size: .wide, column: 0, row: 0)])
+    let store = makeStore(saved: wide, addRequests: ["clipboard"])
+    await store.send(.widgetsChanged([clipboard, shelf])) {
+      $0.widgets = [self.clipboard, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["shelf"] }
+    }
+    await store.send(.addRequestsChanged(["clipboard"])) {
+      $0.$saved.withLock { $0?.placed.append(Placement(widget: "clipboard.history", size: .medium, column: 0, row: 1)) }
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$featuresOnHome.withLock { $0 = ["shelf", "clipboard"] }
+    }
+  }
+
+  /// Without room a request goes all the same, and Home stays as it is.
+  @Test
+  func anAddRequestWithoutRoomOnlyGoes() async {
+    let store = makeStore(saved: fullGrid, addRequests: ["clipboard"])
+    await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "shelf"] }
+    }
+    await store.send(.addRequestsChanged(["clipboard"])) {
+      $0.$addRequests.withLock { $0 = [] }
+    }
+    #expect(store.state.saved == fullGrid)
+  }
+
+  /// The shell hears which features have a widget on Home, as it changes: their pages say "On Home".
+  @Test
+  func featuresOnHomeFollowWhatShows() async {
+    let store = makeStore(saved: HomeLayout.initial([timer, clipboard, shelf]))
+    await store.send(.widgetsChanged([timer, clipboard, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "shelf"] }
+    }
+    await store.send(.editTapped) { $0.isEditing = true }
+    await store.send(.removeTapped("shelf.files")) {
+      $0.$saved.withLock { $0?.placed.removeAll { $0.widget == "shelf.files" } }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+    }
+    // Clipboard goes: its widget is away.
+    await store.send(.widgetsChanged([timer, shelf])) {
+      $0.widgets = [self.timer, self.shelf]
+      $0.$saved.withLock { $0?.placed[0].isAway = true }
+      $0.$featuresOnHome.withLock { $0 = ["timer"] }
+    }
+  }
+
+  /// From its start Home follows the running widgets the shell tells and the requests of features' pages, whether its
+  /// tab shows or not.
+  @Test
+  func homeFollowsTheShellFromItsStart() async {
+    @Shared(.runningHomeWidgets) var running
+    $running.withLock { $0 = [timer, clipboard] }
+    let store = makeStore(saved: HomeLayout.initial([timer, clipboard]))
+    let start = await store.send(.started)
+    await store.receive(\.widgetsChanged) {
+      $0.widgets = [self.timer, self.clipboard]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+    }
+    await store.receive(\.addRequestsChanged)
+    $running.withLock { $0 = [timer, clipboard, shelf] }
+    await store.receive(\.widgetsChanged) { $0.widgets = [self.timer, self.clipboard, self.shelf] }
+    await store.send(.stopped)
+    await start.finish()
   }
 }

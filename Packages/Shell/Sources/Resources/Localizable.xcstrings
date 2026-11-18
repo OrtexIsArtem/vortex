@@ -78,6 +78,17 @@
         }
       }
     },
+    "Add to Home" : {
+      "comment" : "A feature's page: puts the feature's first widget on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати на головну"
+          }
+        }
+      }
+    },
     "Added" : {
       "comment" : "Catalog section: features the user added",
       "localizations" : {
@@ -745,6 +756,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На Mac без вирізу Vortex живе на смузі меню."
+          }
+        }
+      }
+    },
+    "On Home" : {
+      "comment" : "A feature's page: one of the feature's widgets is on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На головній"
           }
         }
       }

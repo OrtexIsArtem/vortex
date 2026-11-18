@@ -6,9 +6,9 @@ import VortexCore
 
 /// Where widgets go on the 4×2 grid.
 struct HomeLayoutTests {
-  func info(_ id: String, _ place: HomeWidgetPlace) -> WidgetInfo {
+  func info(_ id: String, _ place: HomeWidgetPlace) -> HomeWidgetInfo {
     let feature = String(id.split(separator: ".")[0])
-    return WidgetInfo(id: id, feature: feature, place: place, name: id, featureName: feature, featureSymbol: "square")
+    return HomeWidgetInfo(id: id, feature: feature, place: place, name: id, featureName: feature, featureSymbol: "square")
   }
 
   /// Widgets in sidebar order, each at its first size that fits, in the first free place: today's Home.

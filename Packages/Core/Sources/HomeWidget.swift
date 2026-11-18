@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import SwiftUI
 
 /// The sizes a widget takes on Home's grid of 4×2 cells. The window by the notch is 680×440 on every Mac, so the sizes
@@ -121,4 +122,54 @@ extension EnvironmentValues {
   /// Turns on keyboard cleaning, which the shell runs: every key held back, the window kept open on its lock screen
   /// until the user turns the keyboard back on. Nil where nobody offers it, and Home shows no button for it.
   @Entry public var keyboardCleaning: (@MainActor () -> Void)? = nil
+}
+
+/// A widget as the shell tells it to Home, without its view: what Home's layout and editor need, names in the app's
+/// language.
+public struct HomeWidgetInfo: Equatable, Sendable {
+  public var id: String
+  public var feature: FeatureID
+  public var place: HomeWidgetPlace
+  public var name: String
+  public var featureName: String
+  public var featureSymbol: String
+
+  public init(
+    id: String,
+    feature: FeatureID,
+    place: HomeWidgetPlace,
+    name: String,
+    featureName: String,
+    featureSymbol: String
+  ) {
+    self.id = id
+    self.feature = feature
+    self.place = place
+    self.name = name
+    self.featureName = featureName
+    self.featureSymbol = featureSymbol
+  }
+}
+
+extension SharedReaderKey where Self == InMemoryKey<[HomeWidgetInfo]>.Default {
+  /// The running features' widgets, in sidebar order. Only the shell writes it, whenever the running features or their
+  /// order change; Home follows it whether its tab shows or not.
+  public static var runningHomeWidgets: Self {
+    Self[.inMemory("runningHomeWidgets"), default: []]
+  }
+}
+
+extension SharedReaderKey where Self == InMemoryKey<[FeatureID]>.Default {
+  /// Features whose page asked for their first widget on Home ("Add to Home"). The shell adds a request; Home takes it
+  /// away once it has put the widget on Home or found no room.
+  public static var homeAddRequests: Self {
+    Self[.inMemory("homeAddRequests"), default: []]
+  }
+}
+
+extension SharedReaderKey where Self == InMemoryKey<Set<FeatureID>>.Default {
+  /// The features with a widget on Home now. Only Home writes it; a feature's page says "On Home" by it.
+  public static var featuresOnHome: Self {
+    Self[.inMemory("featuresOnHome"), default: []]
+  }
 }
