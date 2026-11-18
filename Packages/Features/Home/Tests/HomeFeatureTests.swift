@@ -572,7 +572,7 @@ struct HomeFeatureTests {
     let store = await widgetGoesWhileEditing(then: .doneTapped)
     await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
-      $0.$saved.withLock { $0?.placed.remove(at: 1) }
+      $0.$saved.withLock { _ = $0?.placed.remove(at: 1) }
     }
   }
 
