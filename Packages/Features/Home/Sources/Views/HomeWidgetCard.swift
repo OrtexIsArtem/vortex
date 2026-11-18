@@ -27,20 +27,13 @@ struct HomeWidgetCard: View {
   }
 }
 
-/// A widget as Home shows it: laid out at its size on its card.
+/// A widget as Home shows it: laid out at its size on its card, as `HomeWidgetPreview` shows it too.
 struct WidgetFace: View {
   let widget: HomeWidget
   let size: HomeWidgetSize
 
   var body: some View {
-    let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
-    widget.view
-      .environment(\.homeWidgetSize, size)
-      .padding(.vertical, 14)
-      .padding(.horizontal, 16)
-      .frame(width: size.points.width, height: size.points.height, alignment: .topLeading)
-      .background(shape.fill(VortexColor.dock))
-      .clipShape(shape)
+    widget.view.homeWidgetCard(size: size)
   }
 }
 

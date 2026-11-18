@@ -18,6 +18,15 @@ struct TemplateFeatureTests {
     }
   }
 
+  /// The template's widget follows Home's rules: at most two widgets, each with one to three sizes, ids that start with
+  /// the feature's id. A feature of yours keeps this test for its own widgets.
+  @Test
+  func templateWidgetsFollowTheRules() {
+    let widgets = TemplateModule.makeHomeWidgets()
+    #expect(!widgets.isEmpty)
+    #expect(HomeWidget.problems(widgets, feature: TemplateModule.id).isEmpty)
+  }
+
   /// Once the feature keeps tables, prove they and their migrations carry its id, as Erase Data finds them by it:
   /// put the feature's own migrator here in place of this example.
   @Test

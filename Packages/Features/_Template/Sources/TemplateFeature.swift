@@ -20,6 +20,20 @@ public enum TemplateModule: FeatureModule {
   public static func makeTab() -> AnyView {
     AnyView(TemplateView(store: store))
   }
+
+  /// One widget, Small or Medium, which the user puts on Home from the editor or the feature's page. Its id starts with
+  /// the feature's; `TemplateFeatureTests` checks the rules, and the `#Preview`s below show each size on Home's grid.
+  public static func makeHomeWidgets() -> [HomeWidget] {
+    [
+      HomeWidget(
+        id: "template.count",
+        feature: id,
+        title: LocalizedStringResource("Count", bundle: .atURL(Bundle.module.bundleURL)),
+        place: .grid([.small, .medium]),
+        view: AnyView(TemplateHomeWidget(store: store))
+      ),
+    ]
+  }
 }
 
 @Reducer
@@ -46,6 +60,41 @@ public struct TemplateFeature: Sendable {
       }
     }
   }
+}
+
+/// The template's widget on Home: the count, and at Medium the button that raises it. Its size comes from the
+/// environment (`homeWidgetSize`).
+struct TemplateHomeWidget: View {
+  let store: StoreOf<TemplateFeature>
+  @Environment(\.homeWidgetSize) private var size
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("Template", bundle: .module)
+        .font(.system(size: 12))
+        .foregroundStyle(VortexColor.secondaryText)
+      Text(store.count, format: .number)
+        .font(.system(size: 15, weight: .medium).monospacedDigit())
+      if size == .medium {
+        Spacer(minLength: 0)
+        Button {
+          store.send(.incrementButtonTapped)
+        } label: {
+          Text("Increment", bundle: .module)
+        }
+        .buttonStyle(.quietCapsule)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+  }
+}
+
+#Preview("Widget, Small") {
+  HomeWidgetPreview(TemplateModule.makeHomeWidgets()[0], size: .small)
+}
+
+#Preview("Widget, Medium") {
+  HomeWidgetPreview(TemplateModule.makeHomeWidgets()[0], size: .medium)
 }
 
 public struct TemplateView: View {

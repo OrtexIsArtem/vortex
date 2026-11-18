@@ -21,6 +21,17 @@
         }
       }
     },
+    "Count" : {
+      "comment" : "The template's widget on Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лічильник"
+          }
+        }
+      }
+    },
     "Increment" : {
       "localizations" : {
         "uk" : {
