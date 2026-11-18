@@ -135,7 +135,8 @@ private struct FeatureRow: View {
             .foregroundStyle(VortexColor.tertiaryText)
         }
         .lineLimit(1)
-        Spacer(minLength: 0)
+        // The names take what the row leaves, without a spacer's extra gap: "1 віджет · на головній" fits.
+        .frame(maxWidth: .infinity, alignment: .leading)
         Image(systemName: "chevron.right")
           .font(.system(size: 9, weight: .semibold))
           .foregroundStyle(VortexColor.tertiaryText)

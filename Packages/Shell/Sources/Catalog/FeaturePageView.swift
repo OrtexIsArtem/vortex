@@ -166,37 +166,23 @@ struct FeaturePageView: View {
       case .available, .removed:
         primary(Text("Add", bundle: .module)) { store.send(.featureAdded(feature.id)) }
       case .added:
-        primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
-        switch store.state.homeOnPage(feature.id) {
-        case .canAdd:
-          // A feature added later doesn't go on Home by itself.
-          Button {
-            store.send(.addToHomeTapped(feature.id))
-          } label: {
-            Text("Add to Home", bundle: .module)
+        // One row where the buttons fit; where they don't (Ukrainian), Home's on a row of its own.
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 8) {
+            primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
+            home
+            settings
+            remove
           }
-          .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
-        case .onHome:
-          Label {
-            Text("On Home", bundle: .module)
-          } icon: {
-            Image(systemName: "checkmark")
+          VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+              primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
+              settings
+              remove
+            }
+            home
           }
-          .font(.system(size: 13))
-          .foregroundStyle(VortexColor.secondaryText)
-          .padding(.horizontal, 12)
-          .frame(height: 36)
-        case nil:
-          EmptyView()
         }
-        Button {
-          store.send(.tabSelected(.settings))
-          store.send(.binding(.set(\.settingsSection, .features)))
-        } label: {
-          Text("Settings", bundle: .module)
-        }
-        .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
-        remove
       case .paused:
         Text("Temporarily Unavailable", bundle: .module)
           .font(.system(size: 13, weight: .semibold))
@@ -211,6 +197,43 @@ struct FeaturePageView: View {
         primary(Text("Start", bundle: .module)) { store.send(.startFeatureTapped(feature.id)) }
       }
     }
+  }
+
+  /// "Add to Home" while none of the feature's widgets is on Home, "On Home" once one is; nothing without widgets.
+  @ViewBuilder
+  private var home: some View {
+    switch store.state.homeOnPage(feature.id) {
+    case .canAdd:
+      // A feature added later doesn't go on Home by itself.
+      Button {
+        store.send(.addToHomeTapped(feature.id))
+      } label: {
+        Text("Add to Home", bundle: .module)
+      }
+      .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
+    case .onHome:
+      Label {
+        Text("On Home", bundle: .module)
+      } icon: {
+        Image(systemName: "checkmark")
+      }
+      .font(.system(size: 13))
+      .foregroundStyle(VortexColor.secondaryText)
+      .padding(.horizontal, 12)
+      .frame(height: 36)
+    case nil:
+      EmptyView()
+    }
+  }
+
+  private var settings: some View {
+    Button {
+      store.send(.tabSelected(.settings))
+      store.send(.binding(.set(\.settingsSection, .features)))
+    } label: {
+      Text("Settings", bundle: .module)
+    }
+    .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
   }
 
   private func primary(_ title: Text, action: @escaping () -> Void) -> some View {
