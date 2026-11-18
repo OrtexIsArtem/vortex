@@ -25,6 +25,8 @@ public struct HotkeyClient: Sendable {
   public var presses: @Sendable (_ hotkey: Hotkey) -> AsyncStream<Void> = { _ in .finished }
   /// The keys the user recorded for the shortcut, as the menus show them ("⌥⌘V"); nil while none is set.
   public var shortcut: @Sendable (_ hotkey: Hotkey) async -> String? = { _ in nil }
+  /// Forgets the keys the user recorded for the shortcut, as Erase Data does.
+  public var reset: @Sendable (_ hotkey: Hotkey) async -> Void
 }
 
 extension HotkeyClient: DependencyKey {
@@ -43,6 +45,9 @@ extension HotkeyClient: DependencyKey {
     },
     shortcut: { hotkey in
       await MainActor.run { KeyboardShortcuts.getShortcut(for: hotkey.shortcutName)?.description }
+    },
+    reset: { hotkey in
+      await MainActor.run { KeyboardShortcuts.reset(hotkey.shortcutName) }
     }
   )
 

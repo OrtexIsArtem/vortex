@@ -73,6 +73,8 @@ struct ShellFeature {
     var dataSizes: [FeatureID: Int64] = [:]
     /// The tab an entry point waiting for the first status read opens on; nil for the usual one.
     var pendingTab: Tab?
+    /// The feature whose Erase Data asks for confirmation, in the window, which stays open meanwhile.
+    var eraseConfirmation: FeatureID?
 
     /// `askedBefore`: what Vortex had asked macOS for, which a release that kept no grants yet counts as granted.
     init(
@@ -417,6 +419,11 @@ struct ShellFeature {
     case undoExpired
     /// A feature's page: Open, which goes to its tab.
     case openFeatureTapped(FeatureID)
+    /// A removed feature's page: Erase Data, which asks first.
+    case eraseTapped(FeatureID)
+    case eraseCancelled
+    /// The feature is left to erase at the next launch, before anything starts, and Vortex restarts.
+    case eraseConfirmed
     /// A feature's page showed: it reads what the feature keeps on disk.
     case featurePageShown(FeatureID)
     case dataSizeLoaded(FeatureID, Int64?)
@@ -504,6 +511,15 @@ struct ShellFeature {
           return .send(.onboarding(.appTerminated(bundleID)))
 
         case .task:
+          // Erases left for this launch run first, before any feature does. They leave the list, saved at once, before
+          // they run, so a crash inside one can't repeat at every launch. A feature added again meanwhile keeps its data.
+          let erasing = state.settings.pendingErase.filter { id in
+            !state.features.contains { $0.id == id && state.isAdded($0) }
+          }
+          if !state.settings.pendingErase.isEmpty {
+            state.settings.pendingErase = []
+            _ = saveSettingsNow(state)
+          }
           // Only the running features start; nothing of the others runs, not even a stop.
           let running = state.runningFeatures.map(\.id)
           return .merge(
@@ -527,6 +543,9 @@ struct ShellFeature {
             .merge(running.map(listenForTabHotkey)),
             .run { [theme = state.settings.theme] send in
               await system.applyTheme(theme)
+              for id in erasing {
+                await features.eraseData(id)
+              }
               for id in running {
                 await features.setEnabled(id, true)
               }
@@ -678,6 +697,25 @@ struct ShellFeature {
           state.selectedTab = tab
           state.settings.lastTab = tab.storageValue
           return .none
+
+        case let .eraseTapped(id):
+          // Only a feature that isn't added has data to erase from its page.
+          guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, !state.isAdded(feature)
+          else { return .none }
+          state.eraseConfirmation = id
+          return .none
+
+        case .eraseCancelled:
+          state.eraseConfirmation = nil
+          return .none
+
+        case .eraseConfirmed:
+          guard let id = state.eraseConfirmation else { return .none }
+          state.eraseConfirmation = nil
+          if !state.settings.pendingErase.contains(id) { state.settings.pendingErase.append(id) }
+          // On disk before the restart, which erases it before anything starts (`.task`).
+          _ = saveSettingsNow(state)
+          return .run { _ in await system.relaunch() }
 
         case let .featurePageShown(id):
           return .run { send in await send(.dataSizeLoaded(id, features.dataSize(id))) }
@@ -944,6 +982,11 @@ struct ShellFeature {
 
     case .escapePressed:
       guard state.isOpen else { return .none }
+      // Esc answers the erase question with Cancel.
+      if state.eraseConfirmation != nil {
+        state.eraseConfirmation = nil
+        return .none
+      }
       // From a feature's page Esc goes back to the catalog's list.
       if case .catalogPage = state.selectedTab {
         state.selectedTab = .catalog
@@ -1006,8 +1049,9 @@ struct ShellFeature {
   }
 
   private func close(_ state: inout State) -> Effect<Action> {
-    // Keyboard cleaning keeps the window open until the user turns the keyboard back on.
-    guard !state.keyboardCleaning.isLocked else { return .none }
+    // Keyboard cleaning keeps the window open until the user turns the keyboard back on, and the erase question until
+    // the user answers it.
+    guard !state.keyboardCleaning.isLocked, state.eraseConfirmation == nil else { return .none }
     state.openReason = nil
     state.isPointerInsideWindow = false
     // The catalog is left as the window closes, so it never shows at the next open.

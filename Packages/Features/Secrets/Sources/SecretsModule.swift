@@ -13,6 +13,7 @@ public enum SecretsModule: FeatureModule {
   public static let details = LocalizedStringResource("Keep API tokens and database URLs in the keychain. Claude Code runs commands with them through a local MCP server and never sees a value: Vortex puts it in and takes it out of the output.", bundle: .atURL(Bundle.module.bundleURL))
   public static let author = "@OrtexIsArtem"
   public static let keeps: LocalizedStringResource? = LocalizedStringResource("Key names and settings; the values are in your keychain.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let eraseNote: LocalizedStringResource? = LocalizedStringResource("Your keys are deleted from the keychain and Claude Code loses access to Vortex.", bundle: .atURL(Bundle.module.bundleURL))
   public static let hasOnboardingStep = true
   public static let permissionNeeds = [
     PermissionNeed(
@@ -39,6 +40,12 @@ public enum SecretsModule: FeatureModule {
   /// The onboarding's Claude Code step: done once Connect worked or Claude Code connected.
   public static func makeOnboardingStep() -> OnboardingStep? {
     OnboardingStep(id: id, title: LocalizedStringResource(stringLiteral: "Claude Code"), view: ClaudeCodeStepView(store: store))
+  }
+
+  /// Erase Data: every key's value and the MCP token leave the keychain, and Claude Code forgets the server. The shell
+  /// erases the table, the settings file and the folder itself.
+  public static func eraseData() async {
+    await SecretsFeature.eraseOutsideTheDataFolder()
   }
 
   public static func setEnabled(_ isEnabled: Bool) {

@@ -101,6 +101,27 @@ struct FeaturePageView: View {
 
       buttons(state)
         .padding(.top, 2)
+
+      if case let .removed(bytes) = state {
+        Button {
+          store.send(.eraseTapped(feature.id))
+        } label: {
+          HStack(spacing: 6) {
+            Image(systemName: "trash")
+            Text("Erase Data…", bundle: .module)
+            if let bytes {
+              Text(bytes.formatted(.byteCount(style: .file))).foregroundStyle(VortexColor.tertiaryText)
+            }
+          }
+          .font(.system(size: 12))
+          .foregroundStyle(VortexColor.secondaryText)
+          .padding(.horizontal, 8)
+          .frame(height: 28)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, -8)
+      }
     }
   }
 

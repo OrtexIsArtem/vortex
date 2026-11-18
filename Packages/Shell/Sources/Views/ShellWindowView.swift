@@ -20,6 +20,9 @@ struct ShellWindowView: View {
       .opacity(isCovered ? 0 : 1)
       .allowsHitTesting(!isCovered)
       .accessibilityHidden(isCovered)
+      if let id = store.eraseConfirmation, let feature = store.features.first(where: { $0.id == id }) {
+        EraseConfirmation(store: store, feature: feature)
+      }
       if isCovered {
         KeyboardCleaningView(store: store.scope(state: \.keyboardCleaning, action: \.keyboardCleaning))
       }

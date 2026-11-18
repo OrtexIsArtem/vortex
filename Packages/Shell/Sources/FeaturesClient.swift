@@ -14,6 +14,9 @@ struct FeaturesClient: Sendable {
   /// What the feature keeps on disk, in bytes: its folder (`FeatureModule.dataFolder`) and its settings file
   /// `<id>.json`; nil when it keeps neither.
   var dataSize: @Sendable (_ id: FeatureID) async -> Int64? = { _ in nil }
+  /// Erase Data, at launch before anything starts: the feature's tables and migrations, its settings file and folder,
+  /// its tab shortcut, then its own `eraseData()` for what only it knows, given at most 10 s.
+  var eraseData: @Sendable (_ id: FeatureID) async -> Void
 }
 
 extension FeaturesClient: DependencyKey {
@@ -49,8 +52,43 @@ extension FeaturesClient: DependencyKey {
         bytes += settings.size ?? 0
       }
       return keepsAnything ? bytes : nil
+    },
+    eraseData: { id in
+      @Dependency(\.database) var database
+      @Dependency(\.fileClient) var files
+      @Dependency(\.hotkeyClient) var hotkeys
+      try? await database.eraseFeature(id)
+      await files.remove(DataFolder.url.appending(path: "\(id).json"))
+      if let folder = await MainActor.run(body: { FeatureRegistry.module(for: id)?.dataFolder }) {
+        await files.remove(DataFolder.url.appending(path: folder, directoryHint: .isDirectory))
+      }
+      await hotkeys.reset(.open(id))
+      await eraseHook(of: id, within: .seconds(10))
     }
   )
+
+  /// Runs the feature's own erase hook, but waits for it no longer than `limit`: a hook that hangs mustn't hold the
+  /// launch. The hook goes on meanwhile, and the launch record names no feature for it.
+  private static func eraseHook(of id: FeatureID, within limit: Duration) async {
+    let isDone = LockIsolated(false)
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      let finish: @Sendable () -> Void = {
+        let isFirst = isDone.withValue { done in
+          defer { done = true }
+          return !done
+        }
+        if isFirst { continuation.resume() }
+      }
+      Task { @MainActor in
+        await FeatureRegistry.module(for: id)?.eraseData()
+        finish()
+      }
+      Task {
+        try? await Task.sleep(for: limit)
+        finish()
+      }
+    }
+  }
 
   static let testValue = FeaturesClient()
 }

@@ -222,4 +222,56 @@ struct CatalogTests {
     #expect(shell.featureSwitches.value == ["shelf:true"])
     #expect(shell.receivedFiles.value == ["shelf:a.ipa"])
   }
+
+  // MARK: - Erase Data
+
+  /// Erase asks first, in the window, which stays open meanwhile and takes Esc as Cancel; confirmed, the feature is
+  /// left to erase, saved at once, and Vortex restarts.
+  @Test
+  func confirmingEraseRemembersItAndRelaunches() async {
+    let relaunches = LockIsolated(0)
+    let store = shell.makeStore(features: [.timer, .shelf]) {
+      $0.addedFeatures = ["timer"]
+      $0.seenFeatures = ["timer", "shelf"]
+    }
+    store.dependencies.systemClient.relaunch = { relaunches.withValue { $0 += 1 } }
+    await shell.openByHover(store)
+    await store.send(.tabSelected(.catalogPage("shelf"))) {
+      $0.selectedTab = .catalogPage("shelf")
+      $0.openReason = .click
+    }
+    await store.send(.eraseTapped("timer"))
+    await store.send(.eraseTapped("shelf")) { $0.eraseConfirmation = "shelf" }
+    await store.send(.window(.clickedOutside))
+    await store.send(.window(.escapePressed)) { $0.eraseConfirmation = nil }
+    await store.send(.eraseTapped("shelf")) { $0.eraseConfirmation = "shelf" }
+    await store.send(.eraseConfirmed) {
+      $0.eraseConfirmation = nil
+      $0.settings.pendingErase = ["shelf"]
+    }
+    #expect(shell.saved.value.last?.pendingErase == ["shelf"])
+    await shell.clock.advance(by: .milliseconds(400))
+    await store.finish()
+    #expect(relaunches.value == 1)
+    #expect(shell.dismissals.value == 0)
+  }
+
+  /// At launch each pending erase leaves the list, saved at once, before it runs, so a crash in it can't repeat; then
+  /// it runs, and only then do features start. A feature added again meanwhile isn't erased.
+  @Test
+  func pendingErasesAreClearedBeforeTheyRunAndRunBeforeAnyFeature() async {
+    let log = LockIsolated<[String]>([])
+    let store = shell.makeStore(features: [.timer, .shelf]) {
+      $0.addedFeatures = ["timer"]
+      $0.seenFeatures = ["timer", "shelf"]
+      $0.pendingErase = ["shelf", "timer"]
+    }
+    store.dependencies.settingsClient.save = { settings in log.withValue { $0.append("save:\(settings.pendingErase)") } }
+    store.dependencies.featuresClient.eraseData = { id in log.withValue { $0.append("erase:\(id)") } }
+    store.dependencies.featuresClient.setEnabled = { id, isEnabled in log.withValue { $0.append("\(id):\(isEnabled)") } }
+    await shell.launch(store) { $0.settings.pendingErase = [] }
+    await shell.clock.advance(by: .milliseconds(400))
+    await store.finish()
+    #expect(Array(log.value.prefix(3)) == ["save:[]", "erase:shelf", "timer:true"])
+  }
 }

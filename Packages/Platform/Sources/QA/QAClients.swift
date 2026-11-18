@@ -197,6 +197,8 @@
       client.presses = { hotkey in QASystem.shared.presses(hotkey.name) }
       // No shortcut is ever recorded in a run: the shared defaults may hold the user's.
       client.shortcut = { _ in nil }
+      // Nor forgotten: the defaults are shared with every run and the `.check` build.
+      client.reset = { hotkey in QALog.record("hotkeys", "reset", ["name": hotkey.name]) }
       return client
     }()
   }

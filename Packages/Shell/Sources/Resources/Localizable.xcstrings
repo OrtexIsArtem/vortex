@@ -160,6 +160,17 @@
         }
       }
     },
+    "Cancel" : {
+      "comment" : "Erase confirmation",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скасувати"
+          }
+        }
+      }
+    },
     "Check for Updates" : {
       "comment" : "Settings › General: button that opens the latest release on GitHub in the browser",
       "localizations" : {
@@ -321,6 +332,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перетягніть Vortex у папку «Програми» у Finder."
+          }
+        }
+      }
+    },
+    "Erase %@ data?" : {
+      "comment" : "Erase confirmation title; the argument is the feature's name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стерти дані «%@»?"
+          }
+        }
+      }
+    },
+    "Erase and Restart" : {
+      "comment" : "Erase confirmation: confirms",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стерти й перезапустити"
+          }
+        }
+      }
+    },
+    "Erase Data…" : {
+      "comment" : "Feature page of a removed feature: erases what it keeps",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стерти дані…"
           }
         }
       }
@@ -1116,6 +1160,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тема"
+          }
+        }
+      }
+    },
+    "This can't be undone. Vortex restarts and erases it before any feature starts." : {
+      "comment" : "Erase confirmation",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це не можна відмінити. Vortex перезапуститься й зітре дані, перш ніж запустити будь-яку функцію."
           }
         }
       }

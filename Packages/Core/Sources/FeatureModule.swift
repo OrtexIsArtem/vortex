@@ -57,6 +57,9 @@ public protocol FeatureModule {
   static var suspension: LocalizedStringResource? { get }
   /// What the feature keeps, in one line, for "Erase Data"; nil when it keeps nothing.
   static var keeps: LocalizedStringResource? { get }
+  /// What erasing does beyond the feature's own data, said before the user confirms, such as keys leaving the keychain;
+  /// nil when there is nothing more.
+  static var eraseNote: LocalizedStringResource? { get }
   /// The feature's folder in `DataFolder`, which "Erase Data" deletes; nil when it has none.
   static var dataFolder: String? { get }
   /// Whether `makeOnboardingStep()` returns a step, known without calling it.
@@ -82,6 +85,7 @@ extension FeatureModule {
   public static var isBuiltIn: Bool { false }
   public static var suspension: LocalizedStringResource? { nil }
   public static var keeps: LocalizedStringResource? { nil }
+  public static var eraseNote: LocalizedStringResource? { nil }
   public static var dataFolder: String? { nil }
   public static var hasOnboardingStep: Bool { false }
   public static var preview: FeaturePreview? { nil }
@@ -103,6 +107,7 @@ extension FeatureModule {
       isBuiltIn: isBuiltIn,
       suspension: suspension,
       keeps: keeps,
+      eraseNote: eraseNote,
       dataFolder: dataFolder,
       hasOnboardingStep: hasOnboardingStep,
       preview: preview
@@ -127,6 +132,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
   public var isBuiltIn: Bool
   public var suspension: LocalizedStringResource?
   public var keeps: LocalizedStringResource?
+  public var eraseNote: LocalizedStringResource?
   public var dataFolder: String?
   public var hasOnboardingStep: Bool
   public var preview: FeaturePreview?
@@ -145,6 +151,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     isBuiltIn: Bool = false,
     suspension: LocalizedStringResource? = nil,
     keeps: LocalizedStringResource? = nil,
+    eraseNote: LocalizedStringResource? = nil,
     dataFolder: String? = nil,
     hasOnboardingStep: Bool = false,
     preview: FeaturePreview? = nil
@@ -162,6 +169,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     self.isBuiltIn = isBuiltIn
     self.suspension = suspension
     self.keeps = keeps
+    self.eraseNote = eraseNote
     self.dataFolder = dataFolder
     self.hasOnboardingStep = hasOnboardingStep
     self.preview = preview

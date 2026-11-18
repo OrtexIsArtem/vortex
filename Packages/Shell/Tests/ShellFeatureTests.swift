@@ -71,8 +71,12 @@ struct ShellFeatureTests {
   }
 
   /// Sends the launch's `.task` with every system listener ending at once, and waits until the shell has started.
+  /// `change`: what the launch itself changes in the state.
   @discardableResult
-  func launch(_ store: TestStoreOf<ShellFeature>) async -> TestStoreTask {
+  func launch(
+    _ store: TestStoreOf<ShellFeature>,
+    _ change: ((inout ShellFeature.State) -> Void)? = nil
+  ) async -> TestStoreTask {
     let names = SystemSettingsNames(privacyAndSecurity: "Privacy & Security", accessibility: "Accessibility")
     store.dependencies.windowClient.events = { .finished }
     store.dependencies.systemClient.applyTheme = { _ in }
@@ -82,7 +86,7 @@ struct ShellFeatureTests {
     store.dependencies.activeAppClient.activations = { .finished }
     store.dependencies.activeAppClient.terminations = { .finished }
     store.dependencies.systemSettingsNamesClient.names = { names }
-    let task = await store.send(.task)
+    let task = await store.send(.task, assert: change)
     await store.receive(\.launchAtLoginStatusLoaded)
     await store.receive(\.onboarding.systemSettingsNamesLoaded) { $0.onboarding.settingsNames = names }
     await store.receive(\.started) { $0.isStarted = true }

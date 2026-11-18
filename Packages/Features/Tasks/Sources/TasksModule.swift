@@ -38,6 +38,13 @@ public enum TasksModule: FeatureModule {
     AnyView(TasksSettingsView(store: store))
   }
 
+  /// Erase Data: forgets the "New task" shortcut, kept in the shared defaults rather than the data folder. The shell
+  /// erases the tables, the settings file and the screenshots' folder itself.
+  public static func eraseData() async {
+    @Dependency(\.hotkeyClient) var hotkeys
+    await hotkeys.reset(.captureTask)
+  }
+
   public static func setEnabled(_ isEnabled: Bool) {
     if overlay == nil {
       overlay = CaptureOverlay(store: store)

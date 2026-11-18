@@ -72,6 +72,47 @@ extension DatabaseWriter {
   }
 }
 
+extension DatabaseWriter {
+  /// Erase Data: drops the feature's tables (`<id>_…`), full-text ones and views included, and forgets its
+  /// migrations (`<id>.v…`), so the feature added again starts empty. Other features' tables stay, even where the name
+  /// only looks alike: in the pattern `_` is a plain underscore.
+  public func eraseFeature(_ id: FeatureID) async throws {
+    let prefix = id.replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "%", with: "\\%")
+      .replacingOccurrences(of: "_", with: "\\_")
+    try await write { db in
+      // Tables of the feature may point at each other: checked only once all of them are gone.
+      try db.execute(sql: "PRAGMA defer_foreign_keys = ON")
+      let objects = try Row.fetchAll(
+        db,
+        sql: """
+          SELECT type, name, sql FROM sqlite_master
+          WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\'
+          """,
+        arguments: [prefix + "\\_%"]
+      )
+      // Views first, then full-text tables, which take their own shadow tables with them, then the rest.
+      let order: (Row) -> Int = { row in
+        let type: String = row["type"]
+        let sql: String? = row["sql"]
+        if type == "view" { return 0 }
+        return sql?.uppercased().hasPrefix("CREATE VIRTUAL TABLE") == true ? 1 : 2
+      }
+      for object in objects.sorted(by: { order($0) < order($1) }) {
+        let type: String = object["type"]
+        let name: String = object["name"]
+        try db.execute(sql: "DROP \(type == "view" ? "VIEW" : "TABLE") IF EXISTS \(name.quotedDatabaseIdentifier)")
+      }
+      if try db.tableExists("grdb_migrations") {
+        try db.execute(
+          sql: "DELETE FROM grdb_migrations WHERE identifier LIKE ? ESCAPE '\\'",
+          arguments: [prefix + ".%"]
+        )
+      }
+    }
+  }
+}
+
 extension DependencyValues {
   /// The app's database. Use the async `read` and `write`, so queries never run on the main thread.
   /// Tests get an empty in-memory database.
