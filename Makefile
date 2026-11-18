@@ -33,8 +33,9 @@ install: ## Build a release, put it in /Applications and open it: for daily use,
 test: ## Run package tests
 	swift test --package-path Packages
 
-check: ## No network APIs or commands outside Secrets
+check: ## No network APIs or commands outside Secrets; each feature's catalog media under 1.5 MB
 	./scripts/check-no-network.sh
+	./scripts/check-catalog-media.sh
 
 hooks: ## Run the check and the package tests before every push
 	rm -f "$$(git rev-parse --git-path hooks)/pre-push"

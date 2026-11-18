@@ -70,9 +70,17 @@ Read the module's README first. When a change contradicts a line in these docs, 
 7. A feature starts and stops its background work in `FeatureModule.setEnabled`.
 8. A feature asks for a macOS permission through `PermissionPage`, never by itself, and declares what it needs in `permissionNeeds`.
 9. Data lives in `~/Library/Application Support/Vortex`:
-   - a feature's tables go in the shared database, named `<id>_…`, with migrations `<id>.v1`, `<id>.v2`…;
-   - its settings go in `<id>.json`.
+   - a feature's tables go in the shared database, named `<id>_…`, with migrations `<id>.v1`, `<id>.v2`…; a test in the feature proves it (`migrator.names()`, see `_Template`), as Erase Data finds them by the id;
+   - its settings go in `<id>.json`, its files in its folder (`dataFolder`);
+   - whatever it keeps elsewhere (keychain items, its own shortcuts) its `eraseData()` deletes.
 10. Network code lives only in Features/Secrets, and processes start only in Platform's `CommandClient` and `SystemClient`. `make check` fails the build otherwise.
+
+## The catalog
+Users add features from the catalog; a feature that isn't added runs no code. Describe yours in its module:
+- `summary` (one line for its card), `details` (two to four lines for its page), `author` (a name or a GitHub handle), `keeps` (what it stores, in one line), `dataFolder`, `eraseNote` if erasing does more than delete its data, `hasOnboardingStep` if it has a setup page.
+- `isRecommended` puts it on a fresh install and marks it "Recommended": only the maintainer sets it. `isBeta` marks it "Beta".
+- Media: a 5–10 s HEVC video of the feature at work and a still, in `Sources/Resources/Catalog`, set in `preview`; the interface in them is in English. `make check` keeps each feature's media under 1.5 MB.
+- Pausing a feature for a release: set `suspension` with the reason the catalog shows; it stays in the build and in users' lists but doesn't run. A feature that doesn't compile is left out of the build instead: remove its name from `features` in `Packages/Package.swift` and its line from `Features/Registry`, and keep its folder.
 
 ## Code
 - Swift 6 language mode, strict concurrency. Declare public reducers `Sendable` explicitly.

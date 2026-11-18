@@ -2,6 +2,7 @@
 
 ## Provides
 - `HomeModule`: id `home`, the Home tab; no settings, no background work.
+- Built in (`isBuiltIn`): always added and running, never in the catalog, never stopped after a crash; it keeps nothing.
 
 ## Uses
 - VortexCore:

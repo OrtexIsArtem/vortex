@@ -713,6 +713,31 @@ struct ShellFeatureTests {
     #expect(applied.value == [.english])
   }
 
+  /// The shell works with any set of features, none at all included: it launches, shows them, and goes to the catalog
+  /// and back.
+  @Test(arguments: [[], [.home], [.home, .timer], [.home, .shelf], [.home, .tasks]] as [[FeatureDescriptor]])
+  func theShellWorksWithAnySetOfFeatures(_ features: [FeatureDescriptor]) async {
+    let store = makeStore(features: features) {
+      $0.addedFeatures = features.map(\.id)
+      $0.seenFeatures = features.map(\.id)
+    }
+    await launch(store)
+    await store.finish()
+    #expect(featureSwitches.value == features.map { "\($0.id):true" })
+    #expect(store.state.sidebarFeatures == features)
+    let tab = store.state.selectedTab
+    await openByHover(store)
+    await store.send(.tabSelected(.catalog)) {
+      $0.selectedTab = .catalog
+      $0.openReason = .click
+    }
+    await store.send(.window(.escapePressed)) {
+      $0.openReason = nil
+      $0.selectedTab = tab
+    }
+    #expect(windowLog.value == ["size:regular", "present:hover", "size:large"])
+  }
+
   /// The launch no longer registers the login item by itself: Basics does, when the user leaves it. System Settings'
   /// own names are read before the onboarding can show its drawing of it.
   @Test

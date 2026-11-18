@@ -113,6 +113,27 @@ extension DatabaseWriter {
   }
 }
 
+extension DatabaseMigrator {
+  /// What the migrator makes on an empty database: its tables, views included, and its migrations, by name. A feature's
+  /// test checks that every one of them starts with its id (`<id>_`, `<id>.`), so Erase Data finds them all.
+  public func names() async throws -> (tables: [String], migrations: [String]) {
+    let database = VortexDatabase.inMemory()
+    try await database.migrate(self)
+    return try await database.read { db in
+      let tables = try String.fetchAll(
+        db,
+        sql: """
+          SELECT name FROM sqlite_master
+          WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name != 'grdb_migrations'
+          ORDER BY name
+          """
+      )
+      let migrations = try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY identifier")
+      return (tables, migrations)
+    }
+  }
+}
+
 extension DependencyValues {
   /// The app's database. Use the async `read` and `write`, so queries never run on the main thread.
   /// Tests get an empty in-memory database.

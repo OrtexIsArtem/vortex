@@ -2,6 +2,7 @@
 
 ## Provides
 - `ShelfModule` — id `shelf`, tab, `acceptsFileDrops`, `receiveFiles(_:)`, `setEnabled(_:)` starts and stops expiry.
+- The catalog's description: one line, details, author; Recommended; it keeps copies of its files in the folder Shelf/ and the table `shelf_item`, which Erase Data deletes (no own erase hook).
 - `@Shared(.notchIndicators)["shelf"]`: tray and the number of files that came by themselves and still have their dot (no ears while there are none, whatever else is on the shelf), flashing in a color when such files arrive.
 - Home widget in the `dock` slot.
 

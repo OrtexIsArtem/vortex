@@ -2,6 +2,7 @@
 
 ## Provides
 - `TasksModule`: id `tasks`, tab, settings; `setEnabled` listens to the shortcut and loads the tasks.
+- The catalog's description: one line, details, author; Recommended; `eraseData()` forgets the "New task" shortcut; Erase Data deletes its table, screenshots' folder Tasks/ and settings itself.
 - Its own shortcut `Hotkey.captureTask`.
 - No Home widget and no notch indicator. While a capture or a task's whole screen covers the display it draws its own notch pill over the real notch.
 - `permissionNeeds`: Screen Recording, "Turns a screenshot into a new task."

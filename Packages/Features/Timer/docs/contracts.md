@@ -2,6 +2,7 @@
 
 ## Provides
 - `TimerModule`: id `timer`, tab, settings; `setEnabled` resumes a saved run or ends the run.
+- The catalog's description: one line, details, author; Recommended; it keeps the running timer and its settings (`timer.json`, the folder Timer/), which Erase Data deletes (no own erase hook).
 - Home widget in the `header` slot: the drum and its minutes left of `notchCutout`, «+5», «+10» and Start (or pause and stop) right of it.
 - Indicator `timer` in `@Shared(.notchIndicators)`, priority 10:
   - a ring (or a pause sign) and the time left;
