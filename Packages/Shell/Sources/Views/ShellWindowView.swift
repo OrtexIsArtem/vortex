@@ -42,6 +42,15 @@ private struct TabContent: View {
         // Only a running feature's tab is made; the selected tab leaves a feature that stops.
         if store.state.isAvailable(.feature(id)), let tab = FeatureViews.shared.tab(id) {
           tab
+            .overlay(alignment: .top) {
+              // Safe mode explains itself over Home, which shows no widgets meanwhile.
+              if store.isSafeMode, store.features.contains(where: { $0.id == id && $0.isBuiltIn }) {
+                SafeModeBanner(store: store)
+                  .padding(.top, VortexMetrics.headerHeight)
+                  .padding(.leading, 10)
+                  .padding(.trailing, 18)
+              }
+            }
         } else {
           SettingsView(store: store)
         }

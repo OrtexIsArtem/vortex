@@ -58,6 +58,11 @@ struct ShellFeature {
     var stepFeatures: Set<FeatureID>
     /// An entry point used before the first status read; it is decided once the statuses are in.
     var pendingEntry: OpenReason?
+    /// Vortex crashed early last launch and nobody can be blamed: only built-in features run, and those the user
+    /// starts. Lasts this launch, or until "Start All".
+    var isSafeMode: Bool
+    /// Features the user started during safe mode.
+    var safeModeStarted: Set<FeatureID> = []
 
     /// `askedBefore`: what Vortex had asked macOS for, which a release that kept no grants yet counts as granted.
     init(
@@ -67,7 +72,8 @@ struct ShellFeature {
       onboarding: OnboardingProgress = OnboardingProgress(),
       stepFeatures: Set<FeatureID> = [],
       appVersion: AppVersion = .current,
-      askedBefore: Set<Permission> = []
+      askedBefore: Set<Permission> = [],
+      isSafeMode: Bool = false
     ) {
       // Settings written before the catalog, or by a test, count as an update: every feature that wasn't off is added.
       // A launch settles them first, telling a fresh install apart (ShellController).
@@ -80,6 +86,7 @@ struct ShellFeature {
       self.appVersion = appVersion
       self.onboarding = OnboardingFeature.State(progress: onboarding)
       self.stepFeatures = stepFeatures
+      self.isSafeMode = isSafeMode
       self.selectedTab = restoredTab
       self.onboarding.appliesLoginItem = OnboardingConfig.appliesLoginItem
       self.onboarding.appVersion = appVersion.full
@@ -115,12 +122,16 @@ struct ShellFeature {
     }
 
     /// The added features whose code runs, in sidebar order: a built-in one always; any other once the user has chosen
-    /// features, unless it is paused in this release or was stopped after a crash. Nothing of any other feature runs:
-    /// no start, no views, no onboarding step, no notch indicator, no shortcut.
+    /// features, unless it is paused in this release or was stopped after a crash, and in safe mode only once the user
+    /// starts it. Nothing of any other feature runs: no start, no views, no onboarding step, no notch indicator, no
+    /// shortcut.
     var runningFeatures: [FeatureDescriptor] {
       addedFeatures.filter { feature in
-        feature.isBuiltIn
-          || (settings.featuresChosen && feature.suspension == nil && !settings.stoppedFeatures.contains(feature.id))
+        if feature.isBuiltIn { return true }
+        guard settings.featuresChosen, feature.suspension == nil, !settings.stoppedFeatures.contains(feature.id) else {
+          return false
+        }
+        return !isSafeMode || safeModeStarted.contains(feature.id)
       }
     }
 
@@ -287,6 +298,12 @@ struct ShellFeature {
     /// Settings › General's "Check for Updates".
     case checkForUpdatesTapped
     case keyboardCleaning(KeyboardCleaningFeature.Action)
+    /// Safe mode's "Start All": every added feature that waits starts, each on a trial, and safe mode ends.
+    case startAllTapped
+    /// Starts one feature in safe mode, on a trial.
+    case startFeatureTapped(FeatureID)
+    /// Starts a feature stopped after a crash again, on a trial.
+    case tryAgainTapped(FeatureID)
     /// macOS's statuses, at the first read and on every change.
     case permissionStatusesChanged([Permission: PermissionStatus])
     /// A feature asked for the page of one permission.
@@ -304,6 +321,7 @@ struct ShellFeature {
   @Dependency(\.featuresClient) var features
   @Dependency(\.fileClient) var files
   @Dependency(\.hotkeyClient) var hotkeys
+  @Dependency(\.launchGuard) var launchGuard
   @Dependency(\.launchAtLoginClient) var launchAtLogin
   @Dependency(\.permissionPage) var permissionPage
   @Dependency(\.permissionsClient) var permissions
@@ -483,6 +501,29 @@ struct ShellFeature {
           state.isStarted = true
           return .none
 
+        case .startAllTapped:
+          guard state.isSafeMode else { return .none }
+          let before = state.runningFeatures.map(\.id)
+          state.isSafeMode = false
+          state.safeModeStarted = []
+          beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
+          return .none
+
+        case let .startFeatureTapped(id):
+          guard state.isSafeMode, !state.safeModeStarted.contains(id) else { return .none }
+          let before = state.runningFeatures.map(\.id)
+          state.safeModeStarted.insert(id)
+          beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
+          return .none
+
+        case let .tryAgainTapped(id):
+          guard state.settings.stoppedFeatures.contains(id) else { return .none }
+          let before = state.runningFeatures.map(\.id)
+          state.settings.stoppedFeatures.removeAll { $0 == id }
+          if state.isSafeMode { state.safeModeStarted.insert(id) }
+          beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
+          return saveSettingsNow(state)
+
         case .openLoginItemsTapped:
           return .run { _ in await launchAtLogin.openSystemSettings() }
 
@@ -584,6 +625,21 @@ struct ShellFeature {
         .run { _ in await window.setAcceptsFiles(feature != nil) }
       }
     }
+  }
+
+  /// Marks the features about to start as on trial, before they start: done here, not in an effect, so the mark is on
+  /// disk before any of their code runs (`.onChange(of: \.runningFeatures)` starts them after this action).
+  private func beginTrials(of ids: [FeatureID]) {
+    for id in ids {
+      launchGuard.beginTrial(id)
+    }
+  }
+
+  /// Writes the settings now rather than after the usual 400 ms: a change that starts a feature must be on disk before
+  /// the feature's code runs, in case it brings Vortex down. Done here, not in an effect, for that order.
+  private func saveSettingsNow(_ state: State) -> Effect<Action> {
+    try? settingsClient.save(state.settings)
+    return .none
   }
 
   /// However the features that run changed (added, removed, chosen, stopped after a crash): each one that stopped runs

@@ -26,6 +26,8 @@ struct ShellSettings: Codable, Equatable, Sendable {
   var seenFeatures: [FeatureID] = []
   /// Features stopped after Vortex crashed while starting them; they stay added and wait for Try Again.
   var stoppedFeatures: [FeatureID] = []
+  /// The build that stopped them, `AppVersion.full`: another build forgets them, as it may have fixed the crash.
+  var stoppedInVersion: String?
   /// Features whose data the next launch erases before anything starts.
   var pendingErase: [FeatureID] = []
   /// False on a fresh install until the user leaves the onboarding's Features page or closes the onboarding:
@@ -55,6 +57,7 @@ struct ShellSettings: Codable, Equatable, Sendable {
     addedFeatures = value(.addedFeatures, defaults.addedFeatures)
     seenFeatures = value(.seenFeatures, defaults.seenFeatures)
     stoppedFeatures = value(.stoppedFeatures, defaults.stoppedFeatures)
+    stoppedInVersion = value(.stoppedInVersion, defaults.stoppedInVersion)
     pendingErase = value(.pendingErase, defaults.pendingErase)
     featuresChosen = value(.featuresChosen, defaults.featuresChosen)
     lastTab = value(.lastTab, defaults.lastTab)
@@ -73,6 +76,18 @@ struct ShellSettings: Codable, Equatable, Sendable {
       disabledFeatures = []
     }
     seenFeatures = all.map(\.id)
+  }
+
+  /// Applies how the last launch ended, at launch: a crash blamed on a feature stops it until Try Again. A build other
+  /// than the one that stopped features forgets them first, as it may have fixed the crash.
+  mutating func applyLaunch(_ verdict: LaunchVerdict, version: String) {
+    if stoppedInVersion != version {
+      stoppedFeatures = []
+      stoppedInVersion = nil
+    }
+    guard case let .stop(id) = verdict, !stoppedFeatures.contains(id) else { return }
+    stoppedFeatures.append(id)
+    stoppedInVersion = version
   }
 
   static func clampedDelay(_ delay: Double) -> Double {

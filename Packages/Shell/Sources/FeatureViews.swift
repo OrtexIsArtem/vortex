@@ -1,12 +1,16 @@
+import ComposableArchitecture
 import FeatureRegistry
 import SwiftUI
 import VortexCore
 
 /// The features' views, each made once, the first time the shell shows it. The shell asks only for the views of
-/// features that run, so a feature the user hasn't added never has a view made and none of its code runs.
+/// features that run, so a feature the user hasn't added never has a view made and none of its code runs. Making one
+/// is marked in the launch record: a crash inside it stops that feature next launch.
 @MainActor
 final class FeatureViews {
   static let shared = FeatureViews()
+
+  @Dependency(\.launchGuard) private var launchGuard
 
   private var tabs: [FeatureID: AnyView] = [:]
   private var homeWidgets: [FeatureID: HomeWidget?] = [:]
@@ -40,8 +44,10 @@ final class FeatureViews {
   ) -> Value? {
     if let value = cache[id] { return value }
     guard let module = FeatureRegistry.module(for: id) else { return nil }
-    let value = make(module)
-    cache[id] = value
-    return value
+    var made: Value?
+    launchGuard.around(id) { made = make(module) }
+    guard let made else { return nil }
+    cache[id] = made
+    return made
   }
 }

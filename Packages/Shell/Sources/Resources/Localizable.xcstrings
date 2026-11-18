@@ -804,6 +804,17 @@
         }
       }
     },
+    "Start All" : {
+      "comment" : "Safe mode: starts every added feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустити всі"
+          }
+        }
+      }
+    },
     "Start using Vortex" : {
       "localizations" : {
         "uk" : {
@@ -934,6 +945,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Можливо, Vortex доведеться один раз перезапустити."
+          }
+        }
+      }
+    },
+    "Vortex quit right after it started, so features are paused for this launch." : {
+      "comment" : "Safe mode banner over Home",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex завершився одразу після запуску, тож цього разу функції призупинено."
           }
         }
       }

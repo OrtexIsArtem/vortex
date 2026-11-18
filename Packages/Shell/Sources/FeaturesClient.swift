@@ -13,12 +13,19 @@ struct FeaturesClient: Sendable {
 }
 
 extension FeaturesClient: DependencyKey {
+  /// Each call into a feature is marked in the launch record, so a crash inside it stops that feature next launch.
   static let liveValue = FeaturesClient(
     setEnabled: { id, isEnabled in
-      await MainActor.run { FeatureRegistry.module(for: id)?.setEnabled(isEnabled) }
+      @Dependency(\.launchGuard) var launchGuard
+      await MainActor.run {
+        launchGuard.around(id) { FeatureRegistry.module(for: id)?.setEnabled(isEnabled) }
+      }
     },
     receiveFiles: { id, urls in
-      await MainActor.run { FeatureRegistry.module(for: id)?.receiveFiles(urls) }
+      @Dependency(\.launchGuard) var launchGuard
+      await MainActor.run {
+        launchGuard.around(id) { FeatureRegistry.module(for: id)?.receiveFiles(urls) }
+      }
     }
   )
 

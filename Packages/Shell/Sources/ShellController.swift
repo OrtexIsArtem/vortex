@@ -21,18 +21,27 @@ public final class ShellController: NSObject {
     @Dependency(\.onboardingProgress) var onboardingProgress
     @Dependency(\.permissionsClient) var permissions
     @Dependency(\.installHistory) var installHistory
+    @Dependency(\.launchGuard) var launchGuard
     // Plain data: no feature's code runs to describe it.
     let descriptors = FeatureRegistry.all.map { $0.descriptor }
+    // How the last launch ended, read before any feature's code runs: a crash stops the feature it is blamed on, or
+    // opens safe mode. From here on a crash leaves its mark.
+    let verdict = launchGuard.begin(Set(descriptors.filter(\.isBuiltIn).map(\.id)))
     // Before the shell state settles them as an update: a fresh install gets the recommended features, not yet chosen.
     var settings = settingsClient.load()
     settings.settleAddedFeatures(all: descriptors, isFreshInstall: installHistory.isFresh())
+    let stoppedBefore = settings.stoppedFeatures
+    settings.applyLaunch(verdict, version: AppVersion.current.full)
+    // A feature stopped now stays stopped even if Vortex crashes again before it saves anything else.
+    if settings.stoppedFeatures != stoppedBefore { try? settingsClient.save(settings) }
     let state = ShellFeature.State(
       settings: settings,
       features: descriptors,
       language: system.language(),
       onboarding: onboardingProgress.load(),
       stepFeatures: Set(descriptors.filter(\.hasOnboardingStep).map(\.id)),
-      askedBefore: permissions.requested()
+      askedBefore: permissions.requested(),
+      isSafeMode: verdict == .safeMode
     )
     store = Store(initialState: state) {
       ShellFeature()
@@ -48,6 +57,12 @@ public final class ShellController: NSObject {
     WindowController.shared.install(content: ShellWindowView(store: store), menu: makeMenu())
     installOnboarding()
     store.send(.task)
+    // A crash after the first 15 s, outside any call into a feature, no longer opens safe mode.
+    @Dependency(\.launchGuard) var launchGuard
+    Task {
+      try? await Task.sleep(for: .seconds(15))
+      launchGuard.markStable()
+    }
     #if DEBUG
       // A QA run takes commands only on its own channel, never the debug notifications every debug build answers.
       if QA.isActive {

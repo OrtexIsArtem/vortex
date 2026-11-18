@@ -29,15 +29,18 @@ struct ShellFeatureTests {
   let acceptsFiles = LockIsolated<[Bool]>([])
   let permissionReads = LockIsolated(0)
   let hiddenIndicatorOwners = LockIsolated<[Set<FeatureID>]>([])
+  let trials = LockIsolated<[FeatureID]>([])
 
   func makeStore(
     features: [FeatureDescriptor] = [.timer, .shelf, .tasks],
+    isSafeMode: Bool = false,
     _ configure: (inout ShellSettings) -> Void = { _ in }
   ) -> TestStoreOf<ShellFeature> {
     var settings = ShellSettings()
     configure(&settings)
     // The onboarding is done here; OnboardingFeatureTests and ShellOnboardingTests cover it.
-    return TestStore(initialState: ShellFeature.State(settings: settings, features: features, onboarding: .finished)) {
+    let state = ShellFeature.State(settings: settings, features: features, onboarding: .finished, isSafeMode: isSafeMode)
+    return TestStore(initialState: state) {
       ShellFeature()
     } withDependencies: {
       $0.continuousClock = clock
@@ -57,6 +60,7 @@ struct ShellFeatureTests {
         hiddenIndicatorOwners.withValue { $0.append(owners) }
       }
       $0.hotkeyClient.presses = { _ in .finished }
+      $0.launchGuard.beginTrial = { [trials] id in trials.withValue { $0.append(id) } }
     }
   }
 
@@ -730,6 +734,70 @@ struct ShellFeatureTests {
     #expect(listening.value == ["openVortex", "open-home", "open-timer"])
     await task.cancel()
     await store.finish()
+  }
+
+  // MARK: - Safe mode and crashes
+
+  /// Safe mode starts nothing but Home; a feature the user starts there runs on a trial.
+  @Test
+  func safeModeRunsOnlyHomeUntilAsked() async {
+    let store = makeStore(features: [.home, .timer, .shelf], isSafeMode: true)
+    await launch(store)
+    await store.finish()
+    #expect(featureSwitches.value == ["home:true"])
+    await store.send(.startFeatureTapped("timer")) { $0.safeModeStarted = ["timer"] }
+    await store.finish()
+    #expect(featureSwitches.value == ["home:true", "timer:true"])
+    #expect(trials.value == ["timer"])
+    #expect(store.state.sidebarFeatures.map(\.id) == ["home", "timer"])
+  }
+
+  /// "Start All" ends safe mode: every added feature starts, each on a trial, so a crash right after still opens safe
+  /// mode or stops the one that was started.
+  @Test
+  func startAllStartsEveryAddedFeature() async {
+    let store = makeStore(features: [.home, .timer, .shelf, .tasks], isSafeMode: true) {
+      $0.addedFeatures = ["home", "timer", "shelf"]
+    }
+    await launch(store)
+    await store.send(.startFeatureTapped("shelf")) { $0.safeModeStarted = ["shelf"] }
+    await store.send(.startAllTapped) {
+      $0.isSafeMode = false
+      $0.safeModeStarted = []
+    }
+    await store.finish()
+    #expect(featureSwitches.value == ["home:true", "shelf:true", "timer:true"])
+    #expect(trials.value == ["shelf", "timer"])
+  }
+
+  /// A feature stopped after a crash stays added; "Try Again" starts it on a trial, saved before it runs.
+  @Test
+  func aStoppedFeatureComesBackOnTryAgain() async {
+    let store = makeStore { $0.stoppedFeatures = ["tasks"] }
+    await launch(store)
+    #expect(featureSwitches.value == ["timer:true", "shelf:true"])
+    await store.send(.tryAgainTapped("tasks")) { $0.settings.stoppedFeatures = [] }
+    #expect(saved.value.map(\.stoppedFeatures) == [[]])
+    #expect(trials.value == ["tasks"])
+    await clock.advance(by: .milliseconds(400))
+    await store.finish()
+    #expect(featureSwitches.value == ["timer:true", "shelf:true", "tasks:true"])
+  }
+
+  /// A new version may have fixed the crash: it forgets the stopped features. The same version keeps them, and a crash
+  /// it blames stops one more.
+  @Test
+  func aNewVersionForgetsStoppedFeatures() {
+    var settings = ShellSettings()
+    settings.stoppedFeatures = ["tasks"]
+    settings.stoppedInVersion = "0.1.4 (17)"
+    var sameVersion = settings
+    sameVersion.applyLaunch(.stop("clipboard"), version: "0.1.4 (17)")
+    #expect(sameVersion.stoppedFeatures == ["tasks", "clipboard"])
+    settings.applyLaunch(.normal, version: "0.1.5 (18)")
+    #expect(settings.stoppedFeatures == [] && settings.stoppedInVersion == nil)
+    settings.applyLaunch(.stop("clipboard"), version: "0.1.5 (18)")
+    #expect(settings.stoppedFeatures == ["clipboard"] && settings.stoppedInVersion == "0.1.5 (18)")
   }
 
   /// Files go to the first running feature that takes them: none while Shelf isn't added, or before the user chooses.
