@@ -43,6 +43,8 @@ public struct FileClient: Sendable {
   /// whatever sits inside packages (apps, partial Safari downloads) are left out. A file being written may be
   /// reported several times. Ending the stream stops watching.
   public var changes: @Sendable (_ folder: URL) -> AsyncStream<URL> = { _ in .finished }
+  /// The size of every file in the folder and its subfolders, in bytes; 0 for a folder that isn't there.
+  public var folderSize: @Sendable (_ folder: URL) async -> Int64 = { _ in 0 }
 }
 
 extension FileClient: DependencyKey {
@@ -109,8 +111,24 @@ extension FileClient: DependencyKey {
           continuation.finish()
         }
       }
+    },
+    folderSize: { folder in
+      // Off the main thread: a folder of screenshots can hold thousands of files.
+      await Task.detached(priority: .utility) { FileClient.size(of: folder) }.value
     }
   )
+
+  /// The size of every regular file in the folder and its subfolders, in bytes.
+  private static func size(of folder: URL) -> Int64 {
+    let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
+    guard let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys) else { return 0 }
+    var total: Int64 = 0
+    for case let url as URL in files {
+      let values = try? url.resourceValues(forKeys: Set(keys))
+      if values?.isRegularFile == true { total += Int64(values?.fileSize ?? 0) }
+    }
+    return total
+  }
 
   public static let testValue = FileClient()
 }

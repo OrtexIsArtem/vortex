@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ removed" : {
+      "comment" : "Undo toast; the argument is the feature's name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» прибрано"
+          }
+        }
+      }
+    },
     "%@ s" : {
       "comment" : "Delay in seconds, e.g. 0.3 s",
       "localizations" : {
@@ -19,6 +30,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Виклик"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "comment" : "Feature page: adds the feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати"
+          }
+        }
+      }
+    },
+    "Add %@ to keep files" : {
+      "comment" : "Feature page notice; the argument is the feature's name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щоб зберегти файли, додайте «%@»"
           }
         }
       }
@@ -101,6 +134,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Бета"
+          }
+        }
+      }
+    },
+    "By %@" : {
+      "comment" : "Feature page: who made the feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автор: %@"
           }
         }
       }
@@ -334,6 +378,17 @@
         }
       }
     },
+    "Files are waiting" : {
+      "comment" : "Feature page notice: files given to Vortex wait for this feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файли чекають"
+          }
+        }
+      }
+    },
     "General" : {
       "comment" : "Settings section",
       "localizations" : {
@@ -511,6 +566,17 @@
         }
       }
     },
+    "Needs" : {
+      "comment" : "Feature page: the permissions the feature needs",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потрібно"
+          }
+        }
+      }
+    },
     "New" : {
       "comment" : "Catalog badge: a feature the catalog hasn't shown before",
       "localizations" : {
@@ -563,6 +629,17 @@
         }
       }
     },
+    "Not started in safe mode" : {
+      "comment" : "Feature page notice",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не запущено в безпечному режимі"
+          }
+        }
+      }
+    },
     "Notifications › Vortex" : {
       "localizations" : {
         "uk" : {
@@ -609,6 +686,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Лише якщо Vortex відкрився, коли вказівник проходив повз виріз."
+          }
+        }
+      }
+    },
+    "Open" : {
+      "comment" : "Feature page: goes to the feature's tab",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрити"
           }
         }
       }
@@ -706,6 +794,17 @@
         }
       }
     },
+    "Paused by the maintainer" : {
+      "comment" : "Feature page notice",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Призупинено розробником"
+          }
+        }
+      }
+    },
     "Privacy & Security › Accessibility" : {
       "localizations" : {
         "uk" : {
@@ -765,6 +864,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рекомендовано"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "comment" : "Feature page: removes the feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прибрати"
           }
         }
       }
@@ -956,6 +1066,17 @@
         }
       }
     },
+    "Stopped after a crash" : {
+      "comment" : "Feature page notice",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зупинено після збою"
+          }
+        }
+      }
+    },
     "System" : {
       "comment" : "Follow the system language or theme",
       "localizations" : {
@@ -963,6 +1084,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Як у системі"
+          }
+        }
+      }
+    },
+    "Temporarily Unavailable" : {
+      "comment" : "Feature page: a paused feature can't be added",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тимчасово недоступно"
           }
         }
       }
@@ -998,6 +1130,17 @@
         }
       }
     },
+    "Try Again" : {
+      "comment" : "Feature page: starts a feature stopped after a crash",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спробувати ще раз"
+          }
+        }
+      }
+    },
     "Turn it off in System Settings." : {
       "localizations" : {
         "uk" : {
@@ -1024,6 +1167,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Увімкнути клавіатуру"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "comment" : "Undo toast",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відмінити"
           }
         }
       }
@@ -1077,6 +1231,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vortex завершився одразу після запуску, тож цього разу функції призупинено."
+          }
+        }
+      }
+    },
+    "Vortex quit right after it started, so features wait until you start them." : {
+      "comment" : "Feature page notice in safe mode",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex завершився одразу після запуску, тож функції чекають, доки ви їх запустите."
+          }
+        }
+      }
+    },
+    "Vortex quit while it was starting this feature, so it stays off until you try again." : {
+      "comment" : "Feature page notice",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vortex завершився, коли запускав цю функцію, тож вона вимкнена, доки ви не спробуєте ще раз."
           }
         }
       }

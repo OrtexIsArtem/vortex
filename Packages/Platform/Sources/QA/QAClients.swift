@@ -168,6 +168,7 @@
         return picked
       }
       client.changes = { folder in allowed(folder, "watch") ? live.changes(folder) : .finished }
+      client.folderSize = { folder in allowed(folder, "size") ? await live.folderSize(folder) : 0 }
       return client
     }()
   }

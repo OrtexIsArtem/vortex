@@ -24,6 +24,14 @@ struct ShellWindowView: View {
         KeyboardCleaningView(store: store.scope(state: \.keyboardCleaning, action: \.keyboardCleaning))
       }
     }
+    .overlay(alignment: .bottom) {
+      if !isCovered, let id = store.removedForUndo, let feature = store.features.first(where: { $0.id == id }) {
+        UndoToast(store: store, feature: feature)
+          .padding(.bottom, 16)
+          .transition(.opacity)
+      }
+    }
+    .animation(.easeOut(duration: 0.2), value: store.removedForUndo)
     // As large as the window chrome lays it out: the regular size, or the large one for the catalog.
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .font(.system(size: 13))
@@ -39,8 +47,14 @@ private struct TabContent: View {
       switch store.selectedTab {
       case .settings:
         SettingsView(store: store)
-      case .catalog, .catalogPage:
+      case .catalog:
         CatalogView(store: store)
+      case let .catalogPage(id):
+        if let feature = store.features.first(where: { $0.id == id && !$0.isBuiltIn }) {
+          FeaturePageView(store: store, feature: feature)
+        } else {
+          CatalogView(store: store)
+        }
       case let .feature(id):
         // Only a running feature's tab is made; the selected tab leaves a feature that stops.
         if store.state.isAvailable(.feature(id)), let tab = FeatureViews.shared.tab(id) {

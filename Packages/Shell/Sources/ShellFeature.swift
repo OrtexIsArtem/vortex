@@ -65,6 +65,14 @@ struct ShellFeature {
     var safeModeStarted: Set<FeatureID> = []
     /// Features that were new when the user came into the catalog: they keep the badge until the user leaves it.
     var visitNew: Set<FeatureID> = []
+    /// The feature just removed, while its Undo shows (5 s).
+    var removedForUndo: FeatureID?
+    /// Files given to Vortex while no running feature took them; the feature that takes files gets them once added.
+    var pendingFiles: [URL] = []
+    /// What a feature not added keeps on disk, in bytes, for its page; read as the page shows. Missing: nothing kept.
+    var dataSizes: [FeatureID: Int64] = [:]
+    /// The tab an entry point waiting for the first status read opens on; nil for the usual one.
+    var pendingTab: Tab?
 
     /// `askedBefore`: what Vortex had asked macOS for, which a release that kept no grants yet counts as granted.
     init(
@@ -267,10 +275,43 @@ struct ShellFeature {
         }
     }
 
+    /// What a feature's page shows; nil for a built-in feature, which has none.
+    func pageState(_ id: FeatureID) -> FeaturePageState? {
+      guard let feature = features.first(where: { $0.id == id }), !feature.isBuiltIn else { return nil }
+      if let reason = feature.suspension { return .paused(reason) }
+      guard isAdded(feature) else {
+        if let bytes = dataSizes[id] { return .removed(dataBytes: bytes) }
+        return removedForUndo == id ? .removed(dataBytes: nil) : .available
+      }
+      if settings.stoppedFeatures.contains(id) { return .stopped }
+      if isSafeMode, !runningFeatures.contains(where: { $0.id == id }) { return .waitingInSafeMode }
+      return .added(needsSetup: feature.hasOnboardingStep && !onboarding.stepsDone.contains(id))
+    }
+
     /// The catalog needs the large window; every other tab fits the regular one.
     var windowSize: WindowSize {
       selectedTab.isCatalog ? .large : .regular
     }
+
+    /// The size of the open window; nil while it is closed. An open sets the size itself, as it shows the window.
+    var openWindowSize: WindowSize? {
+      isOpen ? windowSize : nil
+    }
+  }
+
+  /// What a feature's page in the catalog shows, and which buttons.
+  enum FeaturePageState: Equatable, Sendable {
+    case available
+    /// `needsSetup`: the feature's own onboarding step isn't done; the page shows it.
+    case added(needsSetup: Bool)
+    /// Not added, with what it still keeps on disk, if known.
+    case removed(dataBytes: Int64?)
+    /// Paused by the maintainer in this release, with the reason.
+    case paused(LocalizedStringResource)
+    /// Stopped after Vortex crashed in it.
+    case stopped
+    /// Added, waiting in safe mode for the user to start it.
+    case waitingInSafeMode
   }
 
   struct OnboardingContext: Equatable, Sendable {
@@ -368,6 +409,17 @@ struct ShellFeature {
     case startFeatureTapped(FeatureID)
     /// Starts a feature stopped after a crash again, on a trial.
     case tryAgainTapped(FeatureID)
+    /// A feature's page: Add. The feature starts on a trial, and its tab is the one the window opens on next.
+    case featureAdded(FeatureID)
+    /// A feature's page: Remove. The feature stops, and Undo shows for 5 s.
+    case featureRemoved(FeatureID)
+    case undoRemoveTapped
+    case undoExpired
+    /// A feature's page: Open, which goes to its tab.
+    case openFeatureTapped(FeatureID)
+    /// A feature's page showed: it reads what the feature keeps on disk.
+    case featurePageShown(FeatureID)
+    case dataSizeLoaded(FeatureID, Int64?)
     /// macOS's statuses, at the first read and on every change.
     case permissionStatusesChanged([Permission: PermissionStatus])
     /// A feature asked for the page of one permission.
@@ -400,6 +452,7 @@ struct ShellFeature {
     case saveSettings
     /// The listener for the shortcut that opens a feature's tab.
     case tabHotkey(FeatureID)
+    case undoRemove
   }
 
   /// The newest release on GitHub. "Check for Updates" opens it in the browser: Vortex itself never goes online.
@@ -521,7 +574,7 @@ struct ShellFeature {
           return effect
 
         case let .filesReceived(urls):
-          return deliver(urls, state)
+          return deliver(urls, &state)
 
         case .hoverDelayElapsed:
           guard !state.isOpen else { return .none }
@@ -587,6 +640,52 @@ struct ShellFeature {
           beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
           return .none
 
+        case let .featureAdded(id):
+          return add(id, &state)
+
+        case let .featureRemoved(id):
+          guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, state.isAdded(feature)
+          else { return .none }
+          state.setAdded(id, false)
+          state.safeModeStarted.remove(id)
+          state.removedForUndo = id
+          var effects: [Effect<Action>] = [
+            saveSettingsNow(state),
+            .run { send in
+              try await clock.sleep(for: .seconds(5))
+              await send(.undoExpired)
+            }
+            .cancellable(id: CancelID.undoRemove, cancelInFlight: true),
+          ]
+          // A permission page only this feature asked for goes with it.
+          if let single = state.onboarding.single, state.permissionCatalog.entry(for: single.permission) == nil {
+            effects.append(.send(.onboarding(.closeTapped)))
+          }
+          return .merge(effects)
+
+        case .undoRemoveTapped:
+          guard let id = state.removedForUndo else { return .none }
+          state.removedForUndo = nil
+          return .merge(.cancel(id: CancelID.undoRemove), add(id, &state))
+
+        case .undoExpired:
+          state.removedForUndo = nil
+          return .none
+
+        case let .openFeatureTapped(id):
+          let tab = Tab.feature(id)
+          guard state.isAvailable(tab) else { return .none }
+          state.selectedTab = tab
+          state.settings.lastTab = tab.storageValue
+          return .none
+
+        case let .featurePageShown(id):
+          return .run { send in await send(.dataSizeLoaded(id, features.dataSize(id))) }
+
+        case let .dataSizeLoaded(id, bytes):
+          state.dataSizes[id] = bytes
+          return .none
+
         case let .tryAgainTapped(id):
           guard state.settings.stoppedFeatures.contains(id) else { return .none }
           let before = state.runningFeatures.map(\.id)
@@ -630,8 +729,10 @@ struct ShellFeature {
             if state.onboarding.showsAtLaunch { effects.append(close(&state)) }
             effects.append(.send(.onboarding(.launched)))
             if let reason = state.pendingEntry {
+              let tab = state.pendingTab
               state.pendingEntry = nil
-              effects.append(open(reason, &state))
+              state.pendingTab = nil
+              effects.append(open(reason, &state, tab: tab))
             }
           }
           return .merge(effects)
@@ -698,11 +799,11 @@ struct ShellFeature {
         return .none
       }
     }
-    .onChange(of: \.windowSize) { _, size in
-      Reduce { state, _ in
-        // A closed window takes its size as it opens, always the regular one.
-        guard state.isOpen else { return .none }
-        return .run { _ in await window.setSize(size) }
+    .onChange(of: \.openWindowSize) { old, new in
+      Reduce { _, _ in
+        // Only while it stays open: a window that opens takes the size of its tab as it shows.
+        guard old != nil, let new else { return .none }
+        return .run { _ in await window.setSize(new) }
       }
     }
     .onChange(of: \.isMenuBarIconVisible) { _, isVisible in
@@ -748,11 +849,17 @@ struct ShellFeature {
       state.selectedTab = state.restoredTab
     }
     let hidden = state.hiddenIndicatorOwners
+    // Files that waited for a feature that takes them go to it once it runs.
+    var waitingFiles: (id: FeatureID, urls: [URL])?
+    if let taker = state.fileFeature, started.contains(taker.id), !state.pendingFiles.isEmpty {
+      waitingFiles = (taker.id, state.pendingFiles)
+      state.pendingFiles = []
+    }
     let cancellations: [Effect<Action>] = stopped.map { .cancel(id: CancelID.tabHotkey($0)) }
     return .merge(
       .merge(cancellations),
       .merge(started.map(listenForTabHotkey)),
-      .run { _ in
+      .run { [waitingFiles] _ in
         for id in stopped {
           await features.setEnabled(id, false)
         }
@@ -760,6 +867,9 @@ struct ShellFeature {
           await features.setEnabled(id, true)
         }
         await window.setHiddenIndicatorOwners(hidden)
+        if let waitingFiles {
+          await features.receiveFiles(waitingFiles.id, waitingFiles.urls)
+        }
       }
     )
   }
@@ -818,7 +928,7 @@ struct ShellFeature {
       return state.isOpen ? close(&state) : open(.menuBarIcon, &state)
 
     case let .filesDroppedOnMenuBarIcon(urls):
-      return deliver(urls, state)
+      return deliver(urls, &state)
 
     case let .pointerInsideWindowChanged(isInside):
       state.isPointerInsideWindow = isInside
@@ -834,6 +944,11 @@ struct ShellFeature {
 
     case .escapePressed:
       guard state.isOpen else { return .none }
+      // From a feature's page Esc goes back to the catalog's list.
+      if case .catalogPage = state.selectedTab {
+        state.selectedTab = .catalog
+        return .none
+      }
       return close(&state)
 
     case let .screensChanged(everyScreenHasNotch, anyScreenHasNotch):
@@ -849,10 +964,12 @@ struct ShellFeature {
     }
   }
 
-  private func open(_ reason: OpenReason, _ state: inout State) -> Effect<Action> {
+  /// Opens the window on `tab`, or on the tab to restore.
+  private func open(_ reason: OpenReason, _ state: inout State, tab: Tab? = nil) -> Effect<Action> {
     // Entry points wait for the first status read before deciding.
     if !state.requiredPermissions.isEmpty, state.permissionStatuses.isEmpty {
       state.pendingEntry = reason
+      state.pendingTab = tab
       return .cancel(id: CancelID.hoverOpen)
     }
     // Blocked: every entry point opens the blocking page instead; a hover shows it without activating.
@@ -864,13 +981,13 @@ struct ShellFeature {
       )
     }
     state.openReason = reason
-    state.selectedTab = state.restoredTab
+    state.selectedTab = tab ?? state.restoredTab
     if reason == .fileDrag { selectDropTab(&state) }
     return .merge(
       .cancel(id: CancelID.hoverOpen),
-      // Every open starts at the regular size, set before the window shows.
-      .run { _ in
-        await window.setSize(.regular)
+      // The window opens at the size of its tab, set before it shows: the regular one, unless it opens in the catalog.
+      .run { [size = state.windowSize] _ in
+        await window.setSize(size)
         await window.present(reason)
       },
       // Notifications send no signal when they change, and the window opening activates no app: read again.
@@ -910,10 +1027,36 @@ struct ShellFeature {
     state.selectedTab = .feature(feature.id)
   }
 
-  /// Files given to Vortex outside the window go to the feature that takes them; the window stays as it is.
-  private func deliver(_ urls: [URL], _ state: State) -> Effect<Action> {
-    guard let feature = state.fileFeature, !urls.isEmpty else { return .none }
-    return .run { _ in await features.receiveFiles(feature.id, urls) }
+  /// Files given to Vortex outside the window go to the feature that takes them; the window stays as it is. While no
+  /// running feature takes files, the window opens on the page of one that would, and the files wait for it.
+  private func deliver(_ urls: [URL], _ state: inout State) -> Effect<Action> {
+    guard !urls.isEmpty else { return .none }
+    if let feature = state.fileFeature {
+      return .run { _ in await features.receiveFiles(feature.id, urls) }
+    }
+    guard let taker = state.catalogFeatures.first(where: { $0.acceptsFileDrops && $0.suspension == nil }) else {
+      return .none
+    }
+    state.pendingFiles = urls
+    let page = Tab.catalogPage(taker.id)
+    guard !state.isOpen else {
+      state.selectedTab = page
+      return .none
+    }
+    return open(.hotkey, &state, tab: page)
+  }
+
+  /// Adds the feature, which starts on a trial, saved before it runs; its tab is the one the window opens on next.
+  private func add(_ id: FeatureID, _ state: inout State) -> Effect<Action> {
+    guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn else { return .none }
+    let before = state.runningFeatures.map(\.id)
+    state.setAdded(id, true)
+    state.settings.stoppedFeatures.removeAll { $0 == id }
+    if state.isSafeMode { state.safeModeStarted.insert(id) }
+    if state.removedForUndo == id { state.removedForUndo = nil }
+    state.settings.lastTab = Tab.feature(id).storageValue
+    beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
+    return saveSettingsNow(state)
   }
 
   /// A window opened on the way past closes once the pointer leaves it.
