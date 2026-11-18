@@ -36,8 +36,8 @@
       #expect(timer.settings == [.notifications: .warning])
     }
 
-    /// A press needs its control on screen: the window open on the tab or on Settings › Features, and not covered by
-    /// keyboard cleaning's lock screen.
+    /// A press needs its control on screen: the window open on the tab or on a feature's page in Settings › Features,
+    /// and not covered by keyboard cleaning's lock screen.
     @Test
     func aControlShowsOnlyInTheOpenWindowAndNeverUnderTheLockScreen() {
       var state = ShellFeature.State(features: [Self.home, Self.tasks, Self.timer])
@@ -54,7 +54,13 @@
       state.settingsSection = .general
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
       state.settingsSection = .features
+      // The list shows no feature's rows; a feature's page does.
+      #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
+      state.settingsFeature = "timer"
       #expect(PermissionsQA.isShowing(.featureSettings, in: state))
+      state.settingsSection = .activation
+      #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
+      state.settingsSection = .features
       state.keyboardCleaning.isLocked = true
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
     }

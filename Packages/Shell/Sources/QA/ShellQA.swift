@@ -59,11 +59,12 @@
       }
     }
 
-    /// `feature add|remove|erase|home id=<feature id>`: the buttons of the feature's page, which must show it; `home` is
-    /// "Add to Home". Erase confirms at once and goes the real way: the feature is left to erase and the run relaunches.
+    /// `feature add|remove|erase|home|settings id=<feature id>`: the buttons of the feature's page, which must show it;
+    /// `home` is "Add to Home", `settings` goes to the feature's page in Settings › Features. Erase confirms at once
+    /// and goes the real way: the feature is left to erase and the run relaunches.
     static func feature(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
       guard let id = arguments["id"] else {
-        throw QAError("feature takes add, remove, erase or home, with id=<feature id>")
+        throw QAError("feature takes add, remove, erase, home or settings, with id=<feature id>")
       }
       guard store.isOpen, store.selectedTab == .catalogPage(id), let page = store.state.pageState(id) else {
         throw QAError("\(id)'s page doesn't show: `catalog page id=\(id)` first")
@@ -85,8 +86,11 @@
       } else if arguments["home"] != nil {
         guard store.state.homeOnPage(id) == .canAdd else { throw QAError("\(id)'s page has no Add to Home") }
         store.send(.addToHomeTapped(id))
+      } else if arguments["settings"] != nil {
+        guard case .added = page, store.state.hasSettingsPage(id) else { throw QAError("\(id)'s page has no Settings") }
+        store.send(.featureSettingsTapped(id))
       } else {
-        throw QAError("feature takes add, remove, erase or home, with id=<feature id>")
+        throw QAError("feature takes add, remove, erase, home or settings, with id=<feature id>")
       }
     }
 
@@ -230,8 +234,10 @@
 
     // MARK: - The window's controls
 
-    /// `tab id=<feature id>|settings|catalog|catalog:<feature id> [section=general|activation|features]`: a click on
-    /// the sidebar, in the open window; `catalog:<id>` is the feature's page in the catalog.
+    /// `tab id=<feature id>|settings|catalog|catalog:<feature id> [section=general|activation|features]
+    /// [feature=<feature id>]`: a click on the sidebar, in the open window; `catalog:<id>` is the feature's page in the
+    /// catalog; `section=` then clicks a segment of Settings, and `feature=` (with `section=features`) the feature's
+    /// row there, after "‹ Features" if another feature's page shows, onto its page.
     static func selectTab(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
       guard store.isOpen else { throw QAError("the window is closed") }
       guard let id = arguments["id"] else { throw QAError("tab needs id=<feature id>, settings, catalog or catalog:<id>") }
@@ -242,12 +248,29 @@
         let tabs = store.sidebarFeatures.map(\.id) + ["settings", "catalog"]
         throw QAError("no tab \(id); tabs: \(tabs.joined(separator: ", "))")
       }
-      store.send(.tabSelected(tab))
+      var section: ShellFeature.SettingsSection?
       if let name = arguments["section"] {
-        guard tab == .settings, let section = ShellFeature.SettingsSection.allCases.first(where: { "\($0)" == name }) else {
+        guard tab == .settings, let named = ShellFeature.SettingsSection.allCases.first(where: { "\($0)" == name }) else {
           throw QAError("section= goes with id=settings and is general, activation or features")
         }
+        section = named
+      }
+      let feature = arguments["feature"]
+      if let feature {
+        guard section == .features else { throw QAError("feature= goes with id=settings section=features") }
+        guard store.state.hasSettingsPage(feature) else {
+          let listed = store.settingsFeatures.map(\.id)
+          let list = listed.isEmpty ? "nothing" : listed.joined(separator: ", ")
+          throw QAError("no page for \(feature) in Settings › Features; it lists \(list)")
+        }
+      }
+      store.send(.tabSelected(tab))
+      if let section {
         store.send(.binding(.set(\.settingsSection, section)))
+      }
+      if let feature {
+        if store.settingsPage != nil { store.send(.settingsBackTapped) }
+        store.send(.settingsRowTapped(feature))
       }
     }
 
@@ -285,6 +308,8 @@
       var openReason: String?
       var selectedTab: String
       var settingsSection: String
+      /// The feature whose page Settings › Features shows in that segment; null for the list.
+      var settingsFeature: FeatureID?
       /// Enabled features, in sidebar order.
       var sidebar: [FeatureID]
       var fileFeature: FeatureID?
@@ -314,6 +339,7 @@
         openReason = state.openReason.map { "\($0)" }
         selectedTab = state.selectedTab.storageValue
         settingsSection = "\(state.settingsSection)"
+        settingsFeature = state.settingsPage?.id
         sidebar = state.sidebarFeatures.map(\.id)
         fileFeature = state.fileFeature?.id
         keyboardLocked = state.keyboardCleaning.isLocked
@@ -334,7 +360,8 @@
       }
 
       private enum CodingKeys: String, CodingKey {
-        case isOpen, openReason, selectedTab, settingsSection, sidebar, fileFeature, keyboardLocked, keyboardLayout
+        case isOpen, openReason, selectedTab, settingsSection, settingsFeature, sidebar, fileFeature, keyboardLocked
+        case keyboardLayout
         case keyboardWashes, screens, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
         case launchAtLogin, language, needsRestartForLanguage, settings
       }
@@ -346,6 +373,7 @@
         try container.encode(openReason, forKey: .openReason)
         try container.encode(selectedTab, forKey: .selectedTab)
         try container.encode(settingsSection, forKey: .settingsSection)
+        try container.encode(settingsFeature, forKey: .settingsFeature)
         try container.encode(sidebar, forKey: .sidebar)
         try container.encode(fileFeature, forKey: .fileFeature)
         try container.encode(keyboardLocked, forKey: .keyboardLocked)

@@ -29,7 +29,9 @@
       guard state.isOpen, !state.keyboardCleaning.isLocked else { return false }
       switch place {
       case let .tab(id): return state.selectedTab == .feature(id)
-      case .featureSettings: return state.selectedTab == .settings && state.settingsSection == .features
+      case .featureSettings:
+        // Only a feature's own page in Settings › Features has its settings and their permission rows, not the list.
+        return state.selectedTab == .settings && state.settingsSection == .features && state.settingsPage != nil
       }
     }
 
