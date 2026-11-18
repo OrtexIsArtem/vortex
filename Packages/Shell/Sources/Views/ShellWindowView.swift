@@ -69,25 +69,39 @@ private struct TabContent: View {
   }
 }
 
-/// Feature icons in the user's order, settings at the bottom. Icons are reordered by dragging one onto another.
+/// Feature icons in the user's order, then the catalog and settings, kept at the bottom. Icons are reordered by
+/// dragging one onto another, and scroll when there are more than fit.
 private struct SidebarView: View {
   let store: StoreOf<ShellFeature>
 
   var body: some View {
     VStack(spacing: 2) {
-      ForEach(store.sidebarFeatures) { feature in
-        SidebarButton(
-          symbol: feature.symbol,
-          title: Text(feature.title),
-          isSelected: store.selectedTab == .feature(feature.id),
-          // A permission the feature needs is off.
-          warning: feature.permissionNeeds.firstOff(in: store.permissionStatuses)
-        ) {
-          store.send(.tabSelected(.feature(feature.id)))
+      ScrollView(.vertical, showsIndicators: false) {
+        VStack(spacing: 2) {
+          ForEach(store.sidebarFeatures) { feature in
+            SidebarButton(
+              symbol: feature.symbol,
+              title: Text(feature.title),
+              isSelected: store.selectedTab == .feature(feature.id),
+              // A permission the feature needs is off.
+              warning: feature.permissionNeeds.firstOff(in: store.permissionStatuses)
+            ) {
+              store.send(.tabSelected(.feature(feature.id)))
+            }
+            .reorderable(feature.id, in: store)
+          }
         }
-        .reorderable(feature.id, in: store)
       }
-      Spacer(minLength: 0)
+      .scrollBounceBehavior(.basedOnSize)
+      SidebarButton(
+        symbol: "puzzlepiece.extension",
+        title: Text("Features", bundle: .module),
+        isSelected: store.selectedTab.isCatalog,
+        // A feature is new, stopped after a crash, or waits in safe mode.
+        hasDot: store.catalogDot
+      ) {
+        store.send(.tabSelected(.catalog))
+      }
       SidebarButton(
         symbol: "gearshape",
         title: Text("Settings", bundle: .module),
@@ -111,6 +125,8 @@ private struct SidebarButton: View {
   /// A yellow dot on the icon: decoration with its own tooltip ("Notifications are off"); a click on it opens the tab
   /// like the icon.
   var warning: Permission?
+  /// A plain dot on the icon: something there waits for the user.
+  var hasDot = false
   let action: () -> Void
   @State private var isHovered = false
 
@@ -127,6 +143,12 @@ private struct SidebarButton: View {
         .overlay(alignment: .topTrailing) {
           if let warning {
             WarningMark(warning, style: .dot).padding(9)
+          } else if hasDot {
+            Circle()
+              .fill(VortexColor.accent)
+              .frame(width: 6, height: 6)
+              .padding(11)
+              .accessibilityHidden(true)
           }
         }
         .contentShape(Rectangle())

@@ -63,6 +63,8 @@ struct ShellFeature {
     var isSafeMode: Bool
     /// Features the user started during safe mode.
     var safeModeStarted: Set<FeatureID> = []
+    /// Features that were new when the user came into the catalog: they keep the badge until the user leaves it.
+    var visitNew: Set<FeatureID> = []
 
     /// `askedBefore`: what Vortex had asked macOS for, which a release that kept no grants yet counts as granted.
     init(
@@ -230,6 +232,39 @@ struct ShellFeature {
       case let .feature(id): sidebarFeatures.contains { $0.id == id }
       case let .catalogPage(id): features.contains { $0.id == id && !$0.isBuiltIn }
       }
+    }
+
+    /// The features the catalog shows: every feature but the built-in ones, in the user's order.
+    var catalogFeatures: [FeatureDescriptor] {
+      orderedFeatures.filter { !$0.isBuiltIn }
+    }
+
+    /// The catalog's "Added" section.
+    var catalogAdded: [FeatureDescriptor] {
+      catalogFeatures.filter(isAdded)
+    }
+
+    /// The catalog's "Can add" section: the recommended features first.
+    var catalogAvailable: [FeatureDescriptor] {
+      let available = features.filter { !$0.isBuiltIn && !isAdded($0) }
+      return available.filter(\.isRecommended) + available.filter { !$0.isRecommended }
+    }
+
+    /// Features the catalog hasn't shown yet; one paused in this release is never new.
+    var unseenFeatures: Set<FeatureID> {
+      Set(catalogFeatures.filter { !settings.seenFeatures.contains($0.id) && $0.suspension == nil }.map(\.id))
+    }
+
+    /// Whether the catalog's sidebar icon has a dot: a feature is new, stopped after a crash, or waits in safe mode.
+    var catalogDot: Bool {
+      let running = Set(runningFeatures.map(\.id))
+      return !unseenFeatures.isEmpty
+        || catalogAdded.contains { feature in
+          let isStopped = settings.stoppedFeatures.contains(feature.id)
+          let waitsInSafeMode = isSafeMode && settings.featuresChosen && feature.suspension == nil && !isStopped
+            && !running.contains(feature.id)
+          return isStopped || waitsInSafeMode
+        }
     }
 
     /// The catalog needs the large window; every other tab fits the regular one.
@@ -649,6 +684,18 @@ struct ShellFeature {
     .onChange(of: \.language) { _, language in
       Reduce { _, _ in
         .run { _ in system.setLanguage(language) }
+      }
+    }
+    .onChange(of: \.selectedTab.isCatalog) { _, isInCatalog in
+      Reduce { state, _ in
+        if isInCatalog {
+          // The features that are new keep their badge for this visit; from now on every feature counts as seen.
+          state.visitNew = state.unseenFeatures
+          state.settings.seenFeatures = state.features.map(\.id)
+        } else {
+          state.visitNew = []
+        }
+        return .none
       }
     }
     .onChange(of: \.windowSize) { _, size in

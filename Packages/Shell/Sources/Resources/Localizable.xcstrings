@@ -23,6 +23,17 @@
         }
       }
     },
+    "Added" : {
+      "comment" : "Catalog section: features the user added",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додано"
+          }
+        }
+      }
+    },
     "All keys are locked" : {
       "localizations" : {
         "uk" : {
@@ -79,6 +90,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Основне"
+          }
+        }
+      }
+    },
+    "Beta" : {
+      "comment" : "Catalog badge",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бета"
+          }
+        }
+      }
+    },
+    "Can add" : {
+      "comment" : "Catalog section: features the user can add",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Можна додати"
           }
         }
       }
@@ -244,6 +277,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перетягніть Vortex у папку «Програми» у Finder."
+          }
+        }
+      }
+    },
+    "Everything is added" : {
+      "comment" : "Catalog: nothing left to add",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усе додано"
+          }
+        }
+      }
+    },
+    "Everything is built into Vortex and works offline. Add what you need, remove what you don't." : {
+      "comment" : "Catalog: the line under its title",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усе вбудовано у Vortex і працює без мережі. Додайте потрібне, приберіть зайве."
           }
         }
       }
@@ -456,6 +511,17 @@
         }
       }
     },
+    "New" : {
+      "comment" : "Catalog badge: a feature the catalog hasn't shown before",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нове"
+          }
+        }
+      }
+    },
     "Next" : {
       "localizations" : {
         "uk" : {
@@ -629,6 +695,17 @@
         }
       }
     },
+    "Paused" : {
+      "comment" : "Catalog badge: the feature doesn't run in this release",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Призупинено"
+          }
+        }
+      }
+    },
     "Privacy & Security › Accessibility" : {
       "localizations" : {
         "uk" : {
@@ -677,6 +754,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Завершити Vortex"
+          }
+        }
+      }
+    },
+    "Recommended" : {
+      "comment" : "Catalog badge",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рекомендовано"
           }
         }
       }
@@ -804,6 +892,17 @@
         }
       }
     },
+    "Start" : {
+      "comment" : "Catalog card in safe mode: starts the feature",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустити"
+          }
+        }
+      }
+    },
     "Start All" : {
       "comment" : "Safe mode: starts every added feature",
       "localizations" : {
@@ -811,6 +910,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запустити всі"
+          }
+        }
+      }
+    },
+    "Start one by one in Features" : {
+      "comment" : "Safe mode banner over Home: opens the catalog",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускати по одній у Функціях"
           }
         }
       }
@@ -831,6 +941,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Лишається ввімкненим, поки є дисплей без вирізу або виріз не може відкрити Vortex."
+          }
+        }
+      }
+    },
+    "Stopped" : {
+      "comment" : "Catalog badge: stopped after Vortex crashed",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зупинено"
           }
         }
       }
