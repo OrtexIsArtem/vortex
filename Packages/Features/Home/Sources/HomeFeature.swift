@@ -70,6 +70,14 @@ struct HomeFeature: Sendable {
       }
     }
 
+    /// Home once the widget on the grid is dragged so its top left corner lands on `column`, `row`, the widgets in its
+    /// way moved aside (`HomeLayout.moving`). Nil outside the editor, or where it can't land: it goes back. The drop and
+    /// the grid while dragging both read this, so the drop keeps what showed.
+    func layout(moving id: String, column: Int, row: Int) -> HomeLayout? {
+      guard isEditing else { return nil }
+      return saved?.moving(id, column: column, row: row, available: available)
+    }
+
     /// The features with widgets, in sidebar order: those with a widget on Home, then the others. A search keeps the
     /// features whose name, or one of whose widgets' names, holds it, in any case.
     var panelSections: (onHome: [FeatureID], more: [FeatureID]) {
@@ -145,7 +153,7 @@ struct HomeFeature: Sendable {
     /// A size in a widget's switcher in the panel.
     case sizeTapped(String, HomeWidgetSize)
     case addTapped(String)
-    /// A widget on Home dragged so its top left corner is over a cell.
+    /// A widget on Home dragged so its top left corner is over a cell: the widgets in its way move aside.
     case dropped(String, column: Int, row: Int)
   }
 
@@ -260,15 +268,9 @@ struct HomeFeature: Sendable {
         return .none
 
       case let .dropped(id, column, row):
-        guard state.isEditing, state.shownWidgets.contains(id),
-              let index = state.saved?.placed.firstIndex(where: { $0.widget == id }),
-              let placement = state.saved?.placed[index],
-              HomeLayout(notchRow: nil, placed: state.visible).fits(placement.size, column: column, row: row, ignoring: [id])
-        else { return .none }
-        state.$saved.withLock { layout in
-          layout?.placed[index].column = column
-          layout?.placed[index].row = row
-        }
+        // The widgets in its way move aside; where they can't, it goes back and nothing moves.
+        guard let moved = state.layout(moving: id, column: column, row: row) else { return .none }
+        state.$saved.withLock { $0 = moved }
         return .none
       }
     }

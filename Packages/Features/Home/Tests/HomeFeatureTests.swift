@@ -390,15 +390,29 @@ struct HomeFeatureTests {
     await store.send(.sizeTapped("clipboard.history", .small))
   }
 
-  /// A dragged widget lands with its top left corner on a cell, and only where it fits whole.
+  /// A dragged widget lands with its top left corner on a cell, and the widgets in its way move aside: first to the
+  /// place it left. Where they can't all fit, it goes back and nothing moves.
   @Test
-  func droppingSnapsToTheCellOnlyWhereItFits() async {
-    let store = await editingStore()
-    await store.send(.dropped("shelf.files", column: 2, row: 1)) {
-      $0.$saved.withLock { $0?.placed[1].row = 1 }
+  func droppingPushesTheWidgetsInTheWay() async {
+    // The owner's Home: Shelf at (0,0), Clipboard at (2,0).
+    let store = await editingStore(saved: HomeLayout(notchRow: "timer.timer", placed: [
+      Placement(widget: "shelf.files", size: .medium, column: 0, row: 0),
+      Placement(widget: "clipboard.history", size: .large, column: 2, row: 0),
+    ]))
+    // Shelf wouldn't fit anywhere around Clipboard at (1,0).
+    await store.send(.dropped("clipboard.history", column: 1, row: 0))
+    // Onto Shelf: they swap.
+    await store.send(.dropped("clipboard.history", column: 0, row: 0)) {
+      $0.$saved.withLock { layout in
+        layout?.placed[0].column = 2
+        layout?.placed[1].column = 0
+      }
     }
-    // Onto Clipboard's cells, and past the grid's edge: it stays.
-    await store.send(.dropped("shelf.files", column: 1, row: 0))
+    // Nothing in the way.
+    await store.send(.dropped("shelf.files", column: 2, row: 1)) {
+      $0.$saved.withLock { $0?.placed[0].row = 1 }
+    }
+    // Past the grid's edge it stays.
     await store.send(.dropped("shelf.files", column: 3, row: 1))
     // A widget that isn't on Home doesn't move in.
     await store.send(.dropped("clipboard.pinned", column: 2, row: 0))

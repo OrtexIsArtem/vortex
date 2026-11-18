@@ -101,7 +101,7 @@ private struct NotchRow: View {
 }
 
 /// The 4×2 grid: the cards of the widgets on Home and, in the editor, the free cells dashed, the copy of a widget from
-/// the panel, and where a dragged widget would land.
+/// the panel, and where a dragged widget would land, the widgets in its way already moved aside.
 private struct GridArea: View {
   let store: StoreOf<HomeFeature>
   let byID: [String: HomeWidget]
@@ -118,10 +118,11 @@ private struct GridArea: View {
     if visible.isEmpty, store.notchRowWidget == nil, !store.isEditing {
       EmptyHome { store.send(.editTapped) }
     } else {
+      let arranged = arrangement(visible)
       ZStack(alignment: .topLeading) {
         if store.isEditing {
           // The copy's cells aren't free: their outlines would show through it.
-          ForEach(Self.freeCells(visible + [store.preview].compactMap(\.?.placement)), id: \.self) { cell in
+          ForEach(Self.freeCells((arranged ?? visible) + [store.preview].compactMap(\.?.placement)), id: \.self) { cell in
             let frame = HomeGrid.frame(column: cell.column, row: cell.row, size: .small)
             RoundedRectangle(cornerRadius: 18, style: .continuous)
               .strokeBorder(VortexColor.dropOutline, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -134,7 +135,7 @@ private struct GridArea: View {
             WidgetCopy(widget: widget, size: placement.size)
               .offset(x: frame.minX, y: frame.minY)
           }
-          if let landing = landing(visible) {
+          if let landing = arranged?.first(where: { $0.widget == drag?.widget }) {
             let frame = HomeGrid.frame(column: landing.column, row: landing.row, size: landing.size)
             RoundedRectangle(cornerRadius: 18, style: .continuous)
               .strokeBorder(VortexColor.secondaryText, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -146,22 +147,25 @@ private struct GridArea: View {
         ForEach(visible, id: \.widget) { placement in
           if let widget = byID[placement.widget] {
             let isDragged = drag?.widget == placement.widget
+            // The others show where the drop would put them, and slide there.
+            let shown = isDragged ? placement : arranged?.first(where: { $0.widget == placement.widget }) ?? placement
             HomeWidgetCard(
               widget: widget,
-              placement: placement,
+              placement: shown,
               isEditing: store.isEditing,
               dragOffset: isDragged ? drag?.offset ?? .zero : .zero,
               onDrag: { drag = Drag(widget: placement.widget, offset: $0) },
               onDrop: { offset in
-                let cell = placement.cell(movedBy: offset)
+                // Where the grid showed it landing, the widgets in its way moved aside; or back, and nothing moves.
+                let cell = placement.cell(movedBy: drag?.offset ?? offset)
                 withAnimation(.snappy(duration: 0.25)) {
-                  // Lands only where it fits whole; otherwise it goes back.
                   store.send(.dropped(placement.widget, column: cell.column, row: cell.row))
                   drag = nil
                 }
               },
               remove: { store.send(.removeTapped(placement.widget)) }
             )
+            .animation(.snappy(duration: 0.25), value: shown)
             .zIndex(isDragged ? 1 : 0)
           }
         }
@@ -172,14 +176,12 @@ private struct GridArea: View {
     }
   }
 
-  /// Where the dragged widget would land: the cell its top left corner is nearest, when it fits whole there.
-  private func landing(_ visible: [Placement]) -> Placement? {
+  /// While a widget is dragged, the widgets on the grid as dropping it now would leave them: it where its top left corner
+  /// is nearest, the widgets in its way moved aside. Nil where it would go back.
+  private func arrangement(_ visible: [Placement]) -> [Placement]? {
     guard let drag, let placement = visible.first(where: { $0.widget == drag.widget }) else { return nil }
     let cell = placement.cell(movedBy: drag.offset)
-    let fits = HomeLayout(notchRow: nil, placed: visible)
-      .fits(placement.size, column: cell.column, row: cell.row, ignoring: [placement.widget])
-    guard fits, cell.column != placement.column || cell.row != placement.row else { return nil }
-    return Placement(widget: placement.widget, size: placement.size, column: cell.column, row: cell.row)
+    return store.state.layout(moving: drag.widget, column: cell.column, row: cell.row)?.visible(store.available)
   }
 
   /// The cells no widget covers.
