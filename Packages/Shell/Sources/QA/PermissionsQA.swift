@@ -59,8 +59,8 @@
       }
     }
 
-    /// Where a permission shows in a feature: the control (Home's keyboard button, Tasks' «+»), the sidebar
-    /// dot, and the settings rows.
+    /// Where a permission shows in a feature: the control (Tasks' «+»; a utility's dock button is in the `utilities`
+    /// section), the sidebar dot, and the settings rows.
     struct Marks: Encodable, Equatable {
       /// `warning` or nil: only the controls in `controls` have one.
       var control: PermissionMark?
@@ -71,7 +71,7 @@
     }
 
     /// The controls that show a yellow warning, by feature, with the permission each can't work without.
-    nonisolated static let controls: [FeatureID: Permission] = ["home": .accessibility, "tasks": .screenRecording]
+    nonisolated static let controls: [FeatureID: Permission] = ["tasks": .screenRecording]
 
     nonisolated static func marks(of feature: FeatureDescriptor, _ statuses: [Permission: PermissionStatus]) -> Marks {
       let control = controls[feature.id].flatMap { PermissionMark(statuses[$0]) == .warning ? PermissionMark.warning : nil }

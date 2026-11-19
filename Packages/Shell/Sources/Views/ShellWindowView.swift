@@ -90,7 +90,6 @@ private struct TabContent: View {
       }
     }
     .environment(\.homeWidgets, homeWidgets)
-    .environment(\.keyboardCleaning) { store.send(.keyboardCleaning(.startTapped)) }
     .environment(\.utilitiesDock, utilitiesDock)
   }
 

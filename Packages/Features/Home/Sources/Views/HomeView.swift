@@ -8,7 +8,6 @@ import VortexCore
 struct HomeView: View {
   let store: StoreOf<HomeFeature>
   @Environment(\.homeWidgets) private var widgets
-  @Environment(\.keyboardCleaning) private var keyboardCleaning
   @Environment(\.utilitiesDock) private var dock
   @Environment(\.isWindowOpen) private var isWindowOpen
   @Environment(\.windowRequest) private var windowRequest
@@ -38,12 +37,6 @@ struct HomeView: View {
           } label: {
             Text("Edit Home", bundle: .module)
           }
-        }
-      }
-      .overlay(alignment: .bottomTrailing) {
-        if !store.isEditing {
-          CornerButtons(keyboardCleaning: keyboardCleaning) { store.send(.editTapped) }
-            .padding(12)
         }
       }
       .overlay {
@@ -226,93 +219,6 @@ private struct GridArea: View {
         layout.fits(.small, column: column, row: row, ignoring: []) ? GridCell(column: column, row: row) : nil
       }
     }
-  }
-}
-
-/// The capsule in Home's bottom right corner: keyboard cleaning, when the shell offers it, and the pencil that turns
-/// Home into the editor.
-private struct CornerButtons: View {
-  let keyboardCleaning: (@MainActor () -> Void)?
-  let edit: () -> Void
-  /// The buttons' targets past their 36 pt circles, toward 44 pt: up to the capsule's top and left edges, as a widget
-  /// may lie behind it, half the 2 pt between them, and 4 pt past the capsule's bottom, into the margin under the
-  /// grid. The pencil's reaches 5 pt past the capsule's right edge, which lies 4 pt inside the grid's: over the last
-  /// 4 pt of a card in the bottom right cell, inside its 16 pt padding, outside the room its widget gets, then 1 pt
-  /// into the margin.
-  static let keyboardOutset = EdgeInsets(top: 2, leading: 2, bottom: 6, trailing: 1)
-  static let pencilOutset = EdgeInsets(top: 2, leading: 1, bottom: 6, trailing: 7)
-
-  var body: some View {
-    HStack(spacing: 2) {
-      if let keyboardCleaning {
-        KeyboardCleaningButton(outset: Self.keyboardOutset, action: keyboardCleaning)
-      }
-      CornerButton(symbol: "pencil", label: Text("Edit Home", bundle: .module), outset: Self.pencilOutset, action: edit)
-    }
-    .padding(.horizontal, 2)
-    .frame(height: 40)
-    .background(Capsule().fill(VortexColor.raised))
-    // A 1 pt ring just outside the capsule.
-    .background(Capsule().fill(VortexColor.primaryText.opacity(0.07)).padding(-1))
-  }
-}
-
-/// A round button in the corner capsule, which lights up while the pointer is over its target.
-private struct CornerButton<Badge: View>: View {
-  let symbol: String
-  let label: Text
-  /// The tooltip, when it says more than the label.
-  var help: Text?
-  /// Its target past the circle.
-  let outset: EdgeInsets
-  let action: () -> Void
-  @ViewBuilder var badge: Badge
-  @State private var isHovered = false
-
-  var body: some View {
-    Button(action: action) {
-      Image(systemName: symbol)
-        .font(.system(size: 14))
-        .foregroundStyle(isHovered ? VortexColor.primaryText : VortexColor.secondaryText)
-        .frame(width: 36, height: 36)
-        .background(Circle().fill(isHovered ? VortexColor.track : .clear))
-        .overlay(alignment: .topTrailing) { badge }
-        .hitTarget(outset)
-    }
-    .buttonStyle(.plain)
-    .onHover { isHovered = $0 }
-    .help(help ?? label)
-    .accessibilityLabel(label)
-    .padding(outset.inward)
-  }
-}
-
-extension CornerButton where Badge == EmptyView {
-  init(symbol: String, label: Text, outset: EdgeInsets, action: @escaping () -> Void) {
-    self.init(symbol: symbol, label: label, help: nil, outset: outset, action: action) { EmptyView() }
-  }
-}
-
-/// Keyboard cleaning's button: what a click does is the shell's. Accessibility off: a yellow warning on it.
-private struct KeyboardCleaningButton: View {
-  let outset: EdgeInsets
-  let action: @MainActor () -> Void
-  @SharedReader(.permissionStatuses) private var permissionStatuses
-
-  var body: some View {
-    let showsWarning = PermissionMark(permissionStatuses[.accessibility]) == .warning
-    CornerButton(
-      symbol: "keyboard",
-      label: Text("Lock the keyboard for cleaning", bundle: .module),
-      help: showsWarning ? Text(Permission.accessibility.offLabel) : nil,
-      outset: outset,
-      action: action
-    ) {
-      if showsWarning {
-        WarningMark(.accessibility, size: 9).offset(x: -4, y: 4)
-      }
-    }
-    .accessibilityValue(showsWarning ? Text(Permission.accessibility.offLabel) : Text(verbatim: ""))
   }
 }
 

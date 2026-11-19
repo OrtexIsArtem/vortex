@@ -119,9 +119,6 @@ extension EnvironmentValues {
   @Entry public var homeWidgets: [HomeWidget] = []
   /// The size Home lays this widget out at; nil in the row next to the notch.
   @Entry public var homeWidgetSize: HomeWidgetSize? = nil
-  /// Turns on keyboard cleaning, which the shell runs: every key held back, the window kept open on its lock screen
-  /// until the user turns the keyboard back on. Nil where nobody offers it, and Home shows no button for it.
-  @Entry public var keyboardCleaning: (@MainActor () -> Void)? = nil
 }
 
 /// A widget as the shell tells it to Home, without its view: what Home's layout and editor need, names in the app's

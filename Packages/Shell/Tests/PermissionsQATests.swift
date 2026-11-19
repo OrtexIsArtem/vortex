@@ -22,8 +22,9 @@
       let statuses: [Permission: PermissionStatus] = [
         .notifications: .notGranted, .accessibility: .notGranted, .screenRecording: .notGranted, .pasteboard: .notNeeded,
       ]
+      // Home has no control of its own that needs a permission: keyboard cleaning's button is in the dock.
       let home = PermissionsQA.marks(of: Self.home, statuses)
-      #expect(home.control == .warning)
+      #expect(home.control == nil)
       #expect(home.sidebar == nil)
       #expect(home.settings.isEmpty)
       let tasks = PermissionsQA.marks(of: Self.tasks, statuses)

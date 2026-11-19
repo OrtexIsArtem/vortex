@@ -102,7 +102,6 @@ struct HomeTargetsTests {
         .environment(\.isWindowOpen, true)
         .environment(\.windowRequest) { _ in }
         .environment(\.showCatalog) { sent.names.append("catalog") }
-        .environment(\.keyboardCleaning) { sent.names.append("keyboard") }
         .environment(\.utilitiesDock, dock)
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     )
@@ -317,30 +316,31 @@ struct HomeTargetsTests {
     #expect(click(panel, at: CGPoint(x: HomeView.gridWidth - 22, y: 26)) == "dock close")
   }
 
-  // MARK: - The corner buttons
+  // MARK: - No capsule
 
-  /// The pencil is a 44 pt target and the keyboard button 44 pt tall, each up to the capsule's top and left edges,
-  /// where a widget may lie behind it, and past its bottom into the margin under the grid; the pencil past its right
-  /// edge too.
+  /// Home's bottom right corner holds no button of its own: the grid is free to its edge, and a click there sends
+  /// nothing where no widget lies.
   @Test
-  func theCornerButtonsAre44PtTallTargetsInsideTheCapsule() async throws {
-    var state = HomeFeature.State()
-    state.$saved.withLock { $0 = layout }
-    state.widgets = infos
-    let panel = try await show(state, width: HomeView.gridWidth)
+  func theGridsBottomRightCornerHoldsNoButton() async throws {
+    let panel = try await show(home, width: HomeView.gridWidth, dock: dock(isOpen: false))
     defer { panel.orderOut(nil) }
     let height = WindowSize.regular.size.height
     let targets = await targets(in: panel, CGRect(x: HomeView.gridWidth - 120, y: height - 70, width: 120, height: 70))
-    let pencil = try #require(targets["editTapped"])
-    let keyboard = try #require(targets["keyboard"])
-    // The capsule: two 36 pt buttons 2 pt apart, in 2 pt of capsule, 40 pt tall, 12 pt from Home's corner.
-    let capsule = CGRect(x: HomeView.gridWidth - 12 - 78, y: height - 12 - 40, width: 78, height: 40)
-    #expect(pencil.frame.width >= 44 && pencil.frame.height >= 44, "pencil: \(pencil.frame)")
-    #expect(keyboard.frame.height >= 44, "keyboard: \(keyboard.frame)")
-    for (name, target) in [("pencil", pencil), ("keyboard", keyboard)] {
-      #expect(target.isSolid, "\(name): \(target.frame)")
-      #expect(target.frame.minY >= capsule.minY && target.frame.minX >= capsule.minX, "\(name): \(target.frame)")
-    }
-    #expect(pencil.frame.minX >= keyboard.frame.maxX, "pencil: \(pencil.frame), keyboard: \(keyboard.frame)")
+    #expect(targets.isEmpty, "\(targets.keys.sorted())")
+  }
+
+  /// With no widget on Home, its own Edit Home button stays in the middle of the grid, a quiet capsule.
+  @Test
+  func anEmptyHomeKeepsItsEditHomeButton() async throws {
+    var state = HomeFeature.State()
+    state.$saved.withLock { $0 = HomeLayout(notchRow: nil, placed: []) }
+    state.widgets = infos
+    let panel = try await show(state, width: HomeView.gridWidth, dock: dock(isOpen: false))
+    defer { panel.orderOut(nil) }
+    let grid = CGRect(x: 0, y: VortexMetrics.headerHeight, width: HomeView.gridWidth, height: 300)
+    let targets = await targets(in: panel, grid)
+    #expect(targets.keys.sorted() == ["editTapped"])
+    let edit = try #require(targets["editTapped"])
+    #expect(edit.frame.height >= 30 && edit.frame.midY > VortexMetrics.headerHeight + 100, "Edit Home: \(edit.frame)")
   }
 }
