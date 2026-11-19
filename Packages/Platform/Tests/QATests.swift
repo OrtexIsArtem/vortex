@@ -454,10 +454,14 @@ struct QAClientsTests {
     let start = ContinuousClock.now
     #expect(try await recognition.recognize(picture) == "QA text")
     #expect(try await recognition.readQRCode(picture) == nil)
-    #expect(ContinuousClock.now - start >= .milliseconds(550))
+    #expect(try await recognition.recognizeAsWritten(picture) == "QA text")
+    #expect(ContinuousClock.now - start >= .milliseconds(850))
     let cancelled = Task { try await recognition.recognize(picture) }
     cancelled.cancel()
     await #expect(throws: CancellationError.self) { try await cancelled.value }
+    let cancelledAsWritten = Task { try await recognition.recognizeAsWritten(picture) }
+    cancelledAsWritten.cancel()
+    await #expect(throws: CancellationError.self) { try await cancelledAsWritten.value }
   }
 
   @Test
@@ -502,8 +506,12 @@ struct QAClientsTests {
     let picture = QRCodeReadingTests.image(text: "Release notes")
     QASimulation.update { $0.recognizedText = "mcp server" }
     #expect(try await recognition.recognize(picture) == "mcp server")
+    #expect(try await recognition.recognizeAsWritten(picture) == "mcp server")
+    // Only the size is logged, never the text.
+    #expect(QALog.events.value.last { $0.event == "recognizeAsWritten" }?.detail == ["size": "450×210"])
     QASimulation.update { $0.recognizedText = "live" }
     #expect(try await recognition.recognize(picture).lowercased().contains("release notes"))
+    #expect(try await recognition.recognizeAsWritten(picture).lowercased().contains("release notes"))
   }
 
   /// No QR code by default; the simulated payload on any picture; with `live` what Apple Vision finds in the picture.

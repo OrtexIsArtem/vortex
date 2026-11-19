@@ -71,7 +71,8 @@ struct ScreenTextFeatureTests {
         readSizes.withValue { $0.append(image.size) }
         return qrCode.value
       }
-      $0.textRecognitionClient.recognize = { [recognized] _ in recognized.value }
+      // Read as written: language correction would put a space after the colon in `Main.swift:42`.
+      $0.textRecognitionClient.recognizeAsWritten = { [recognized] _ in recognized.value }
       $0.pasteboardClient.copy = { [copies] content, isConcealed, source in
         copies.withValue { $0.append(Copied(content: content, isConcealed: isConcealed, sourceApp: source)) }
       }

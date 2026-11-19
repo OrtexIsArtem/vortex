@@ -8,6 +8,9 @@ import Vision
 public struct TextRecognitionClient: Sendable {
   /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background.
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
+  /// The same, read as written: without Vision's language correction, which puts a space after the colon in
+  /// `Main.swift:42`, so code, paths and times come as they show. Runs in the background.
+  public var recognizeAsWritten: @Sendable (_ image: ScreenImage) async throws -> String
   /// What a QR code in the image holds, as text: a link, or anything else it spells; nil when there is none, or none
   /// that holds text. Of several, the largest. Apple Vision's barcode detection, QR codes only. Runs in the background.
   public var readQRCode: @Sendable (_ image: ScreenImage) async throws -> String?
@@ -22,6 +25,9 @@ extension TextRecognitionClient: DependencyKey {
   public static let liveValue = TextRecognitionClient(
     recognize: { image in
       try await inBackground { try text(in: image.cgImage, correctsLanguage: true) }
+    },
+    recognizeAsWritten: { image in
+      try await inBackground { try text(in: image.cgImage, correctsLanguage: false) }
     },
     readQRCode: { image in
       try await inBackground { try qrPayload(in: image.cgImage) }

@@ -15,6 +15,6 @@
   - `ActiveAppClient.frontmost`: the app the text comes from;
   - `ScreenCaptureClient`: the display under the pointer, refused while another frozen screen shows;
   - `ScreenOverlay`: the frozen screen above everything, one at a time (`FrozenScreen`);
-  - `TextRecognitionClient`: `readQRCode`, then `recognize`;
+  - `TextRecognitionClient`: `readQRCode`, then `recognizeAsWritten`;
   - `PasteboardClient.copy`: a copy of the user's own, which Clipboard keeps, concealed for a secret;
   - `PermissionsClient.refresh`, `SystemClient.relaunch`, `HotkeyRecorder`.

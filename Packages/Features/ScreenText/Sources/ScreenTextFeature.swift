@@ -230,7 +230,8 @@ public struct ScreenTextFeature: Sendable {
           }
           let text: String
           do {
-            text = try await recognition.recognize(part)
+            // As written: code, paths and times come as they show, never "Main.swift: 42".
+            text = try await recognition.recognizeAsWritten(part)
           } catch is CancellationError {
             return
           } catch {

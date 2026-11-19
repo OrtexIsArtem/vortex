@@ -35,10 +35,10 @@
       }
       let text = try part("text")
       #expect(try await recognition.readQRCode(text) == nil)
-      let lines = ScreenTextFeature.lines(of: try await recognition.recognize(text))
+      let lines = ScreenTextFeature.lines(of: try await recognition.recognizeAsWritten(text))
       #expect(lines.count == 3, "\(lines)")
       #expect(lines.first == ScreenTextModule.Fixture.lines.first)
-      #expect(try await recognition.recognize(part("empty")).isEmpty)
+      #expect(try await recognition.recognizeAsWritten(part("empty")).isEmpty)
     }
 
     /// The state names the phase and the message by kind, with its words left and right of the cutout.

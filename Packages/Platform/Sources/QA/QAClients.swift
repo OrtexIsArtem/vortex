@@ -428,6 +428,12 @@
         let text = simulation.recognizedText
         return text == "live" ? try await live.recognize(image) : text
       }
+      client.recognizeAsWritten = { image in
+        QALog.record("textRecognition", "recognizeAsWritten", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
+        try await wait()
+        let text = simulation.recognizedText
+        return text == "live" ? try await live.recognizeAsWritten(image) : text
+      }
       client.readQRCode = { image in
         QALog.record("textRecognition", "readQRCode", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
         try await wait()
