@@ -83,7 +83,7 @@ struct FeaturePageView: View {
         step.view
       }
 
-      needs(isAdded: state.isAdded)
+      needs
 
       VStack(alignment: .leading, spacing: 6) {
         if let keeps = feature.keeps {
@@ -112,34 +112,37 @@ struct FeaturePageView: View {
     }
   }
 
-  /// The permissions the feature needs, each with its reason; once added, one that is off can be turned on here.
+  /// The permissions the feature needs, each with its reason; once added, one that isn't working yet shows as on the
+  /// feature's settings page (`PermissionRows`): off, with the yellow mark and "Turn on"; granted for the next launch,
+  /// with "Works after restart" and "Restart Vortex".
   @ViewBuilder
-  private func needs(isAdded: Bool) -> some View {
+  private var needs: some View {
     if !feature.permissionNeeds.isEmpty {
       VStack(alignment: .leading, spacing: 8) {
         Text("Needs", bundle: .module)
           .font(.system(size: 11.5))
           .foregroundStyle(VortexColor.tertiaryText)
         ForEach(feature.permissionNeeds, id: \.permission) { need in
+          let mark = store.state.permissionMark(need.permission, onPageOf: feature.id)
           HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-              Text(need.permission.title).font(.system(size: 12.5))
-              Text(need.reason)
+              need.title(mark).font(.system(size: 12.5))
+              need.caption(mark)
                 .font(.system(size: 11.5))
                 .foregroundStyle(VortexColor.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if isAdded, PermissionMark(store.permissionStatuses[need.permission]) == .warning {
-              Button {
-                store.send(.permissionPageRequested(need.permission))
-              } label: {
-                Text("Turn on", bundle: .module)
+            if let mark {
+              PermissionButton(need.permission, mark: mark) { permission in
+                store.send(.permissionPageRequested(permission))
+              } restart: {
+                store.send(.restartButtonTapped)
               }
-              .buttonStyle(.quietCapsule)
               .fixedSize()
             }
           }
+          .permissionHelp(need, mark)
         }
       }
     }
@@ -325,15 +328,6 @@ private struct EraseDataButton: View {
 private struct DimmedWhilePressed: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label.opacity(configuration.isPressed ? 0.7 : 1)
-  }
-}
-
-extension ShellFeature.FeaturePageState {
-  fileprivate var isAdded: Bool {
-    switch self {
-    case .added, .stopped, .waitingInSafeMode: true
-    case .available, .removed, .paused: false
-    }
   }
 }
 

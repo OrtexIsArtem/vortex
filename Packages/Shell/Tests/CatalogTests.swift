@@ -297,6 +297,37 @@ struct CatalogTests {
     #expect(state.pageState("secrets") == .added(needsSetup: false))
   }
 
+  /// A feature's page shows its permissions as its settings page does once it is added: one that is off has the yellow
+  /// mark and Turn on, one granted for the next launch "Works after restart" and Restart Vortex, one that works neither.
+  /// Before it is added, none has a mark.
+  @Test
+  func thePageMarksItsPermissionsAsItsSettingsDoOnceAdded() {
+    let tasks = FeatureDescriptor(
+      id: "tasks",
+      title: "Tasks",
+      symbol: "checkmark.square",
+      permissionNeeds: [
+        PermissionNeed(.screenRecording, reason: "Reads the screen."),
+        PermissionNeed(.notifications, reason: "Says when it's done."),
+        PermissionNeed(.accessibility, reason: "Types for you."),
+      ]
+    )
+    var settings = ShellSettings()
+    settings.addedFeatures = ["timer"]
+    var state = ShellFeature.State(settings: settings, features: [.timer, tasks], onboarding: .finished)
+    state.$permissionStatuses.withLock {
+      $0 = [.screenRecording: .notGranted, .notifications: .grantedAfterRestart, .accessibility: .granted]
+    }
+    #expect(state.permissionMark(.screenRecording, onPageOf: "tasks") == nil)
+    state.setAdded("tasks", true)
+    #expect(state.permissionMark(.screenRecording, onPageOf: "tasks") == .warning)
+    #expect(state.permissionMark(.notifications, onPageOf: "tasks") == .afterRestart)
+    #expect(state.permissionMark(.accessibility, onPageOf: "tasks") == nil)
+    // Stopped after a crash, it is still added.
+    state.settings.stoppedFeatures = ["tasks"]
+    #expect(state.permissionMark(.screenRecording, onPageOf: "tasks") == .warning)
+  }
+
   /// Files given to Vortex while no running feature takes them open the page of the one that would, and wait for it.
   @Test
   func filesNobodyTakesOpenTheShelfPage() async {

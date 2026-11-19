@@ -338,6 +338,14 @@ struct ShellFeature {
       return requests[id]?.size ?? .regular
     }
 
+    /// How a feature's page marks a permission it needs, as the feature's settings page does: once the feature is added,
+    /// the yellow mark while the permission is off, "Works after restart" once macOS granted it to the next launch.
+    /// Before the feature is added, nothing: it asks for no permission yet.
+    func permissionMark(_ permission: Permission, onPageOf id: FeatureID) -> PermissionMark? {
+      guard pageState(id)?.isAdded == true else { return nil }
+      return PermissionMark(permissionStatuses[permission])
+    }
+
     /// What a feature's page says about Home: nothing unless the feature runs with widgets; "On Home" while one of them
     /// is on it; "Add to Home" otherwise, with "No room on Home" under the buttons once Home found no room for it.
     func homeOnPage(_ id: FeatureID) -> HomeOnPage? {
@@ -379,6 +387,14 @@ struct ShellFeature {
     case stopped
     /// Added, waiting in safe mode for the user to start it.
     case waitingInSafeMode
+
+    /// The user added it, whether it runs or not.
+    var isAdded: Bool {
+      switch self {
+      case .added, .stopped, .waitingInSafeMode: true
+      case .available, .removed, .paused: false
+      }
+    }
   }
 
   struct OnboardingContext: Equatable, Sendable {
