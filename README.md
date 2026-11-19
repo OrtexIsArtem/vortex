@@ -2,7 +2,7 @@
 
 A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac without one. Hover over the notch and it opens with the tools you reach for a dozen times a day.
 
-![A build lands in a watched folder and the notch flashes; hovering over the notch opens Vortex with the timer, the clipboard and the shelf](.github/media/hero.gif)
+![A build lands in a watched folder and the notch flashes; hovering over the notch opens Home with the timer in the row next to the notch, the build on the shelf and the clipboard's history](.github/media/hero.gif)
 
 **Website:** [vortex-notch.web.app](https://vortex-notch.web.app), where you can try every feature in your browser. **Download:** [the latest release](https://github.com/OrtexIsArtem/vortex/releases/latest).
 
@@ -16,7 +16,7 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 <table>
   <tr>
     <td width="50%"><b>Timer</b><br><img src=".github/media/timer.gif" alt="Start on Home, then the countdown runs in the closed notch"></td>
-    <td width="50%"><b>Clipboard</b><br><img src=".github/media/clipboard.gif" alt="Each copy appears as a card in the Clipboard tab"></td>
+    <td width="50%"><b>Clipboard</b><br><img src=".github/media/clipboard.gif" alt="Each copy appears as a card in the Clipboard tab, newest first, and a search for build narrows them to two"></td>
   </tr>
   <tr>
     <td><b>Shelf</b><br><img src=".github/media/shelf.gif" alt="Two builds land in a watched folder, the notch flashes for each, and the Shelf tab holds both"></td>
@@ -38,6 +38,8 @@ Home is a 4×2 grid of widgets that you lay out yourself, with room for one more
 - Pick a feature in the panel on the right to add its widgets or change their size.
 - Remove a widget with its **−**.
 - Press **Done** to keep the changes, or **Cancel** to leave Home as it was.
+
+![The pencil opens Home's editor; a drag swaps the clipboard and the shelf, a smaller size in the panel makes the shelf half as tall, and Done keeps the layout](.github/media/home.gif)
 
 To build a feature or a widget of your own, see [CONTRIBUTING.md](CONTRIBUTING.md) and its [step-by-step guide to widgets](CONTRIBUTING.md#make-a-widget-for-home).
 
