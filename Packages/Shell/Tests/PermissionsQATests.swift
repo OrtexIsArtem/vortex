@@ -1,4 +1,5 @@
 #if DEBUG
+  import ComposableArchitecture
   import Testing
   import VortexCore
   import VortexPlatform
@@ -38,9 +39,11 @@
     }
 
     /// A press needs its control on screen: the window open on the tab or on a feature's page in Settings › Features,
-    /// and not covered by keyboard cleaning's lock screen.
+    /// and not under a utility's cover, as keyboard cleaning's lock screen.
     @Test
-    func aControlShowsOnlyInTheOpenWindowAndNeverUnderTheLockScreen() {
+    func aControlShowsOnlyInTheOpenWindowAndNeverUnderACover() {
+      @Shared(.windowCover) var cover
+      defer { $cover.withLock { $0 = nil } }
       var state = ShellFeature.State(features: [Self.home, Self.tasks, Self.timer])
       state.selectedTab = .feature("tasks")
       #expect(!PermissionsQA.isShowing(.tab("tasks"), in: state))
@@ -48,9 +51,9 @@
       #expect(PermissionsQA.isShowing(.tab("tasks"), in: state))
       #expect(!PermissionsQA.isShowing(.tab("timer"), in: state))
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
-      state.keyboardCleaning.isLocked = true
+      $cover.withLock { $0 = WindowCover(feature: "keyboard", holdsKeyboard: true) }
       #expect(!PermissionsQA.isShowing(.tab("tasks"), in: state))
-      state.keyboardCleaning.isLocked = false
+      $cover.withLock { $0 = nil }
       state.selectedTab = .settings
       state.settingsSection = .general
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
@@ -62,7 +65,7 @@
       state.settingsSection = .activation
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
       state.settingsSection = .features
-      state.keyboardCleaning.isLocked = true
+      $cover.withLock { $0 = WindowCover(feature: "keyboard", holdsKeyboard: true) }
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
     }
 

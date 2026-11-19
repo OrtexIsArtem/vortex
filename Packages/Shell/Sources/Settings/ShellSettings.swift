@@ -35,6 +35,13 @@ struct ShellSettings: Codable, Equatable, Sendable {
   var featuresChosen = true
   /// The tab to open next time, see `ShellFeature.Tab.storageValue`.
   var lastTab: String?
+  /// The one-time changes to the saved features made already, by name (`Self.featureMigrations`).
+  var migrations: [String] = []
+
+  /// One-time changes to the saved features, each made at the first launch of a build that ships its feature: a part of
+  /// Vortex that becomes a feature of its own stays added for whoever had it, as keyboard cleaning, which Home brought,
+  /// became a utility.
+  static let featureMigrations: [(name: String, keepsAdded: FeatureID)] = [("keyboard.added", "keyboard")]
 
   init() {}
 
@@ -61,6 +68,7 @@ struct ShellSettings: Codable, Equatable, Sendable {
     pendingErase = value(.pendingErase, defaults.pendingErase)
     featuresChosen = value(.featuresChosen, defaults.featuresChosen)
     lastTab = value(.lastTab, defaults.lastTab)
+    migrations = value(.migrations, defaults.migrations)
   }
 
   /// Fills `addedFeatures` once. A fresh install gets the recommended and built-in features, not yet chosen; settings
@@ -85,8 +93,27 @@ struct ShellSettings: Codable, Equatable, Sendable {
     let wasSettled = addedFeatures != nil
     let stoppedBefore = stoppedFeatures
     settleAddedFeatures(all: all, isFreshInstall: isFreshInstall)
+    let migrated = migrateFeatures(all: all, wasSettled: wasSettled)
     applyLaunch(verdict, version: version)
-    return !wasSettled || stoppedFeatures != stoppedBefore
+    return !wasSettled || migrated || stoppedFeatures != stoppedBefore
+  }
+
+  /// Makes the one-time changes this build ships the features of and hasn't made yet (`featureMigrations`): settings
+  /// settled before this launch keep the feature added and seen, so it is no news in the catalog; settings settled now
+  /// already have what they should. True when one was made.
+  mutating func migrateFeatures(all: [FeatureDescriptor], wasSettled: Bool) -> Bool {
+    let ids = all.map(\.id)
+    var changed = false
+    for migration in Self.featureMigrations where !migrations.contains(migration.name) && ids.contains(migration.keepsAdded) {
+      migrations.append(migration.name)
+      changed = true
+      guard wasSettled, var added = addedFeatures else { continue }
+      if !added.contains(migration.keepsAdded) { added.append(migration.keepsAdded) }
+      // In the registry's order, as adding keeps it; ids of features this build lacks stay at the end.
+      addedFeatures = ids.filter(added.contains) + added.filter { !ids.contains($0) }
+      if !seenFeatures.contains(migration.keepsAdded) { seenFeatures.append(migration.keepsAdded) }
+    }
+    return changed
   }
 
   /// Applies how the last launch ended, at launch: a crash blamed on a feature stops it until Try Again. A build other

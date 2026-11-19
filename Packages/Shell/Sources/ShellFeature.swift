@@ -53,8 +53,11 @@ struct ShellFeature {
     var isPointerInsideWindow = false
     /// Something of Vortex's is in use outside the window (a drag, Quick Look, the folder picker); it stays open meanwhile.
     var isHeldOpen = false
-    /// Keyboard cleaning, which covers the window and keeps it open while the keys are locked.
-    var keyboardCleaning = KeyboardCleaningFeature.State()
+    /// The cover a utility shows over the window now (`WindowCover`), as keyboard cleaning's lock screen: the window
+    /// stays open under it. Only the utility writes it; the shell reads it as it is, whenever it decides.
+    @SharedReader(.windowCover) var windowCover
+    /// The cover the shell last heard of (`windowCoverChanged`): whether it held the keyboard, for what changes as it goes.
+    var shownCover: WindowCover?
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
     var everyScreenHasNotch = true
     /// Some connected display has a notch, so the notch is a way in.
@@ -559,7 +562,8 @@ struct ShellFeature {
     case quitButtonTapped
     /// Settings › General's "Check for Updates".
     case checkForUpdatesTapped
-    case keyboardCleaning(KeyboardCleaningFeature.Action)
+    /// A utility put its cover up over the window, or took it down (`@Shared(.windowCover)`).
+    case windowCoverChanged(WindowCover?)
     /// Safe mode's "Start All": every added feature that waits starts, each on a trial, and safe mode ends.
     case startAllTapped
     /// Starts one feature in safe mode, on a trial.
@@ -594,6 +598,9 @@ struct ShellFeature {
     case permissionStatusesChanged([Permission: PermissionStatus])
     /// A feature asked for the page of one permission.
     case permissionPageRequested(Permission)
+    /// A feature asked for the page of a permission macOS refused while it reads granted, as keyboard cleaning after a
+    /// lock macOS didn't let start: the page says to turn the switch off and on again.
+    case refusedPageRequested(Permission)
     /// «Continue setup» in the menu bar menu, and QA's `onboarding open`.
     case continueSetupTapped
     case onboarding(OnboardingFeature.Action)
@@ -607,6 +614,7 @@ struct ShellFeature {
   @Dependency(\.featuresClient) var features
   @Dependency(\.fileClient) var files
   @Dependency(\.hotkeyClient) var hotkeys
+  @Dependency(\.keyboardLockClient) var keyboardLock
   @Dependency(\.launchGuard) var launchGuard
   @Dependency(\.launchAtLoginClient) var launchAtLogin
   @Dependency(\.permissionPage) var permissionPage
@@ -615,6 +623,7 @@ struct ShellFeature {
   @Dependency(\.systemClient) var system
   @Dependency(\.systemSettingsNamesClient) var systemSettingsNames
   @Dependency(\.windowClient) var window
+  @Dependency(\.windowCovers) var windowCovers
 
   private enum CancelID: Hashable {
     case hoverOpen
@@ -637,9 +646,6 @@ struct ShellFeature {
   var body: some ReducerOf<Self> {
     CombineReducers {
       BindingReducer()
-      Scope(state: \.keyboardCleaning, action: \.keyboardCleaning) {
-        KeyboardCleaningFeature()
-      }
       Scope(state: \.onboarding, action: \.onboarding) {
         OnboardingFeature()
       }
@@ -648,27 +654,28 @@ struct ShellFeature {
         case .binding:
           return .none
 
-        case .keyboardCleaning(.stopTapped):
-          // The keyboard is back on: the window closes, and the keys go back to the app the user was in. A required
-          // permission that went during the lock blocks only now.
-          let effect = close(&state)
-          return state.isBlocked ? .merge(effect, .send(.onboarding(.blocked))) : effect
-
-        case .keyboardCleaning(.accessLost), .keyboardCleaning(.lockFailed):
-          // The lock ended by itself, and Home with its warning shows; blocked meanwhile, the blocking page takes over
-          // now, as after «Turn the keyboard back on».
-          guard state.isBlocked else { return .none }
-          return .merge(close(&state), .send(.onboarding(.blocked)))
-
-        case let .keyboardCleaning(.delegate(.openPage(lockRefused))):
-          // Opening a page closes the notch window first.
-          return .merge(
-            close(&state),
-            .send(.onboarding(.pageRequested(.accessibility, lockRefused ? .lockRefused : .request)))
-          )
-
-        case .keyboardCleaning:
-          return .none
+        case let .windowCoverChanged(cover):
+          let old = state.shownCover
+          guard cover != old else { return .none }
+          state.shownCover = cover
+          var effects: [Effect<Action>] = []
+          let wasHeld = old?.holdsKeyboard == true
+          let isHeld = cover?.holdsKeyboard == true
+          if wasHeld != isHeld {
+            // Vortex in front taking every key, or the keys back to the app that was in front.
+            effects.append(.run { _ in await window.holdKeyboard(isHeld) })
+          }
+          guard cover == nil else {
+            // A cover never shows over nothing: one that comes while the window is closed opens it, as an action that
+            // needs the window open does.
+            if !state.isOpen { effects.append(open(.hotkey, &state)) }
+            return .merge(effects)
+          }
+          // The cover went, however it ended: the window closes with it, and a required permission that went meanwhile
+          // blocks Vortex only now.
+          effects.append(close(&state))
+          if state.isBlocked { effects.append(.send(.onboarding(.blocked))) }
+          return .merge(effects)
 
         case let .onboarding(.featureToggled(id)):
           // Added or removed at once, without a trial or a page: before the user's choice nothing runs anyway, and the
@@ -745,8 +752,17 @@ struct ShellFeature {
               }
             },
             .run { send in
-              for await permission in permissionPage.requests() {
-                await send(.permissionPageRequested(permission))
+              for await request in permissionPage.requests() {
+                switch request {
+                case let .page(permission): await send(.permissionPageRequested(permission))
+                case let .refused(permission): await send(.refusedPageRequested(permission))
+                }
+              }
+            },
+            // A utility's cover, each time it puts it up or takes it down.
+            .run { send in
+              for await cover in await windowCovers.changes() {
+                await send(.windowCoverChanged(cover))
               }
             },
             .run { send in
@@ -841,8 +857,8 @@ struct ShellFeature {
             return perform
           case .closed:
             guard state.isOpen else { return perform }
-            // The window can't go while keyboard cleaning's lock or the erase question holds it, so nothing runs.
-            guard !state.keyboardCleaning.isLocked, state.eraseConfirmation == nil else { return .none }
+            // The window can't go while a utility's cover or the erase question holds it, so nothing runs.
+            guard state.windowCover == nil, state.eraseConfirmation == nil else { return .none }
             // The window goes first: what the action shows on the screen never sits over or behind it.
             return .concatenate(close(&state), perform)
           case .open:
@@ -1038,10 +1054,6 @@ struct ShellFeature {
           let old = state.permissionStatuses
           state.$permissionStatuses.withLock { $0 = statuses }
           var effects: [Effect<Action>] = [.send(.onboarding(.statusesChanged(old: old)))]
-          // While the keyboard is locked, losing Accessibility ends the lock at once; no page opens by itself.
-          if state.keyboardCleaning.isLocked, statuses[.accessibility] == .notGranted {
-            effects.append(.send(.keyboardCleaning(.accessLost)))
-          }
           if old.isEmpty {
             // The first read: the onboarding shows if it isn't done, and an entry point waiting for it goes on.
             // A notch window opened before it closes first when the onboarding window shows.
@@ -1062,8 +1074,12 @@ struct ShellFeature {
           return .merge(close(&state), .send(.onboarding(.continueSetupTapped)))
 
         case let .permissionPageRequested(permission):
-          // The page opens in the onboarding's window; the notch window closes first, except over the lock.
+          // The page opens in the onboarding's window; the notch window closes first, except under a cover.
           return .merge(close(&state), .send(.onboarding(.pageRequested(permission, .request))))
+
+        case let .refusedPageRequested(permission):
+          // As any page, its words aside; it doesn't close by itself on a grant.
+          return .merge(close(&state), .send(.onboarding(.pageRequested(permission, .lockRefused))))
         }
       }
     }
@@ -1071,8 +1087,8 @@ struct ShellFeature {
       Reduce { state, _ in
         state.$appBlocked.withLock { $0 = new.isBlocked }
         // Becoming blocked after the launch's read, however it happened: the notch window closes and the blocking page
-        // opens. During a lock this waits for the lock to end.
-        guard new.isBlocked, !old.isBlocked, old.isRead, !state.keyboardCleaning.isLocked else { return .none }
+        // opens. Under a utility's cover this waits for the cover to go.
+        guard new.isBlocked, !old.isBlocked, old.isRead, state.windowCover == nil else { return .none }
         return .merge(close(&state), .send(.onboarding(.blocked)))
       }
     }
@@ -1372,12 +1388,13 @@ struct ShellFeature {
       state.everyScreenHasNotch = everyScreenHasNotch
       state.hasNotchScreen = anyScreenHasNotch
       guard let reason = state.openReason else { return .none }
-      // A window kept open for keyboard cleaning moves to the new screens; any other was placed for the old ones.
-      return state.keyboardCleaning.isLocked ? .run { _ in await window.present(reason) } : close(&state)
+      // A window kept open under a utility's cover moves to the new screens; any other was placed for the old ones.
+      return state.windowCover != nil ? .run { _ in await window.present(reason) } : close(&state)
 
     case let .keyPressedWhileHeld(key):
-      // The key went nowhere, but the lock screen washes it as if the lock had held it back.
-      return .send(.keyboardCleaning(.keyPressed(key)))
+      // The key went nowhere, but it reaches the lock's presses as if the lock had held it back: keyboard cleaning's
+      // lock screen washes it.
+      return .run { _ in await keyboardLock.reportPassed(key) }
     }
   }
 
@@ -1423,9 +1440,9 @@ struct ShellFeature {
   }
 
   private func close(_ state: inout State) -> Effect<Action> {
-    // Keyboard cleaning keeps the window open until the user turns the keyboard back on, and the erase question until
-    // the user answers it.
-    guard !state.keyboardCleaning.isLocked, state.eraseConfirmation == nil else { return .none }
+    // A utility's cover keeps the window open until it goes, as keyboard cleaning's until the user turns the keyboard
+    // back on, and the erase question until the user answers it.
+    guard state.windowCover == nil, state.eraseConfirmation == nil else { return .none }
     state.openReason = nil
     state.isPointerInsideWindow = false
     // Every tab's request ends with the window, and so does the dock's strip: the next open is regular, and nothing has

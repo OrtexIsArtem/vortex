@@ -24,6 +24,9 @@ public struct KeyboardLockClient: Sendable {
   /// The keys the lock holds back, each once as it goes down: never on release, and a key held down counts once. Keys
   /// with no place on the drawn keyboard are left out. It ends with `unlock`.
   public var presses: @Sendable () async -> AsyncStream<KeyboardKey> = { .finished }
+  /// A key that got past the lock and went down in Vortex's window, which the shell dropped while it held the keyboard
+  /// for a cover (`WindowCover.holdsKeyboard`): it comes out of `presses` as the lock's own keys do.
+  public var reportPassed: @Sendable (_ key: KeyboardKey) async -> Void
   /// The physical layout of the keyboard used last, as macOS knows it. Read on the main thread.
   public var layout: @Sendable () -> KeyboardLayout = { .ansi }
 }
@@ -33,6 +36,7 @@ extension KeyboardLockClient: DependencyKey {
     lock: { await KeyboardTap.start() },
     unlock: { await KeyboardTap.stop() },
     presses: { await KeyboardTap.presses() },
+    reportPassed: { key in await KeyboardTap.deliver(key) },
     layout: { KeyboardLayout.current }
   )
 
@@ -111,6 +115,11 @@ private enum KeyboardTap {
     CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
     CFMachPortInvalidate(port)
     tap = nil
+  }
+
+  /// A key that got past the tap: to whoever listens, as the tap's own.
+  static func deliver(_ key: KeyboardKey) {
+    listeners.values.forEach { $0.yield(key) }
   }
 
   static func presses() -> AsyncStream<KeyboardKey> {

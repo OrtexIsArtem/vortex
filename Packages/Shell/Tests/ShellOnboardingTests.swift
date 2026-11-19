@@ -7,8 +7,8 @@ import VortexPlatform
 @testable import VortexShell
 
 /// The shell around the onboarding: entry points while blocked, becoming blocked by any route,
-/// the notch window giving way to a page, keyboard cleaning during a revoke, the menu bar icon,
-/// the first read and Done's hint.
+/// the notch window giving way to a page, the menu bar icon, the first read and Done's hint. A utility's cover during a
+/// revoke: WindowCoverShellTests.
 @MainActor
 struct ShellOnboardingTests {
   let clock = TestClock()
@@ -55,8 +55,6 @@ struct ShellOnboardingTests {
       $0.windowClient.setSize = { _ in }
       $0.hotkeyClient.presses = { _ in .finished }
       $0.launchGuard.beginTrial = { _ in }
-      $0.keyboardLockClient.layout = { .ansi }
-      $0.keyboardLockClient.presses = { .finished }
       $0.settingsClient.save = { _ in }
       $0.featuresClient.setEnabled = { _, _ in }
       $0.onboardingProgress.save = { _ in }
@@ -254,78 +252,6 @@ struct ShellOnboardingTests {
     #expect(store.state.onboarding.pages.contains(.permission(.screenRecording)))
   }
 
-  // MARK: - Keyboard cleaning
-
-  @Test
-  func anotherRequiredLossDuringTheLockWaitsForTheKeyboard() async {
-    var granted = OnboardingNeeds.allOn
-    let store = makeStore(required: [.screenRecording], statuses: granted)
-    store.dependencies.keyboardLockClient.lock = { true }
-    store.dependencies.keyboardLockClient.unlock = {}
-    await store.send(.openHotkeyPressed)
-    await store.send(.keyboardCleaning(.startTapped))
-    #expect(store.state.keyboardCleaning.isLocked)
-
-    // Another required permission goes: the lock screen stays, nothing opens.
-    granted[.screenRecording] = .notGranted
-    await store.send(.permissionStatusesChanged(granted))
-    #expect(store.state.keyboardCleaning.isLocked)
-    #expect(store.state.openReason == .hotkey)
-    #expect(store.state.onboarding.presentation == .hidden)
-    // «Turn the keyboard back on»: the window closes, and only now Vortex is blocked.
-    await store.send(.keyboardCleaning(.stopTapped))
-    #expect(store.state.openReason == nil)
-    await store.receive(\.onboarding.blocked)
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .blocked), .window))
-  }
-
-  @Test
-  func losingAccessibilityDuringTheLockEndsItAndOpensNothing() async {
-    let store = makeStore(statuses: OnboardingNeeds.allOn)
-    store.dependencies.keyboardLockClient.lock = { true }
-    store.dependencies.keyboardLockClient.unlock = {}
-    await store.send(.openHotkeyPressed)
-    await store.send(.keyboardCleaning(.startTapped))
-    var lost = OnboardingNeeds.allOn
-    lost[.accessibility] = .notGranted
-    await store.send(.permissionStatusesChanged(lost))
-    await store.receive(\.keyboardCleaning.accessLost)
-    #expect(!store.state.keyboardCleaning.isLocked)
-    #expect(store.state.openReason == .hotkey)
-    #expect(store.state.onboarding.presentation == .hidden)
-  }
-
-  /// Required Accessibility lost during a lock: the lock ends at once, and Vortex is blocked then.
-  @Test
-  func losingRequiredAccessibilityDuringTheLockEndsItAndOpensTheBlockingPage() async {
-    let store = makeStore(required: [.accessibility], statuses: OnboardingNeeds.allOn)
-    store.dependencies.keyboardLockClient.lock = { true }
-    store.dependencies.keyboardLockClient.unlock = {}
-    await store.send(.openHotkeyPressed)
-    await store.send(.keyboardCleaning(.startTapped))
-    var lost = OnboardingNeeds.allOn
-    lost[.accessibility] = .notGranted
-    await store.send(.permissionStatusesChanged(lost))
-    // Still locked when the statuses arrive: nothing yet.
-    #expect(store.state.onboarding.presentation == .hidden)
-    await store.receive(\.keyboardCleaning.accessLost)
-    #expect(!store.state.keyboardCleaning.isLocked)
-    #expect(store.state.openReason == nil)
-    await store.receive(\.onboarding.blocked)
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .blocked), .window))
-  }
-
-  @Test
-  func keyboardCleaningWithoutAccessOpensThePageAfterClosingTheNotchWindow() async {
-    let store = makeStore()
-    await store.send(.openHotkeyPressed)
-    await store.send(.keyboardCleaning(.startTapped))
-    await store.receive(\.keyboardCleaning.delegate)
-    await store.receive(\.onboarding.pageRequested)
-    #expect(store.state.openReason == nil)
-    #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .request), .window))
-  }
-
   // MARK: - The menu bar icon and Done's hint
 
   @Test
@@ -422,6 +348,22 @@ struct ShellOnboardingTests {
     await store.send(.onboarding(.featureToggled("tasks")))
     #expect(store.state.onboarding.pages.contains(.permission(.screenRecording)))
     #expect(store.state.runningFeatures.map(\.id) == [])
+  }
+
+  /// Accessibility's page shows only while keyboard cleaning, the utility that needs it, is chosen: Home, which used to
+  /// bring it with its keyboard button, needs nothing.
+  @Test
+  func accessibilitysPageShowsOnlyWhileKeyboardCleaningIsChosen() async {
+    let store = makeStore(progress: .at(.features), featuresChosen: false)
+    #expect(store.state.onboarding.choosableUtilities.map(\.id) == ["keyboard"])
+    #expect(store.state.onboarding.chosen.contains("keyboard"))
+    #expect(store.state.onboarding.pages.contains(.permission(.accessibility)))
+    await store.send(.onboarding(.featureToggled("keyboard")))
+    #expect(!store.state.onboarding.pages.contains(.permission(.accessibility)))
+    #expect(store.state.permissionCatalog.entry(for: .accessibility) == nil)
+    await store.send(.onboarding(.featureToggled("keyboard")))
+    #expect(store.state.onboarding.pages.contains(.permission(.accessibility)))
+    #expect(store.state.permissionCatalog.entry(for: .accessibility)?.needs.map(\.feature) == ["keyboard"])
   }
 
   /// Leaving the Features page is the user's choice: the chosen features start.
@@ -567,20 +509,25 @@ struct ShellOnboardingTests {
     #expect(store.state.onboarding.presentation == .hidden)
   }
 
-  /// Only signature-bound permissions with a yellow dot open a page: keyboard cleaning's Accessibility waits for Home's
-  /// button, whose page then says at once to turn the switch off and on. Notifications, which a new signature keeps,
-  /// neither open nor say so.
+  /// Only signature-bound permissions open a page: keyboard cleaning's Accessibility, a utility's own, with its yellow
+  /// marks, opens as Screen Recording does, and says at once to turn the switch off and on. Without the utility added,
+  /// nothing needs it, and nothing opens. Notifications, which a new signature keeps, neither open nor say so.
   @Test
   func onlySignatureBoundPermissionsAFeatureNeedsOpenAPage() async {
     let store = makeStore(progress: Self.finished(grantedBefore: [.accessibility, .notifications]), statuses: nil)
     await launch(store, Self.allOn(but: .accessibility, .notifications))
-    #expect(store.state.onboarding.presentation == .hidden)
-    await store.send(.permissionPageRequested(.accessibility))
-    await store.receive(\.onboarding.pageRequested)
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .afterUpdate), .window))
     #expect(store.state.onboarding.showsRecheckHint(.accessibility))
+    await store.send(.onboarding(.closeTapped))
     await store.send(.permissionPageRequested(.notifications))
     await store.receive(\.onboarding.pageRequested)
     #expect(!store.state.onboarding.showsRecheckHint(.notifications))
+
+    let without = makeStore(
+      progress: Self.finished(grantedBefore: [.accessibility]), disabled: ["keyboard"], statuses: nil
+    )
+    await launch(without, Self.allOn(but: .accessibility))
+    #expect(without.state.onboarding.presentation == .hidden)
   }
 
   /// An unfinished onboarding and blocked mode come first, and no page of the update waits after them.

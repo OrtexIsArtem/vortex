@@ -219,6 +219,8 @@
         QALog.record("keyboardLock", "unlock")
       }
       client.presses = { QASystem.shared.keyPresses() }
+      // A run never holds the keyboard, so no key reaches it; one handed over goes to the listeners all the same.
+      client.reportPassed = { key in _ = QASystem.shared.pressKey(key) }
       client.layout = { KeyboardLayout(rawValue: simulation.keyboardLayout) ?? .ansi }
       return client
     }()

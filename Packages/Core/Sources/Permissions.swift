@@ -91,13 +91,31 @@ extension SharedReaderKey where Self == InMemoryKey<Bool>.Default {
 @DependencyClient
 public struct PermissionPage: Sendable {
   public var open: @Sendable (_ permission: Permission) async -> Void
+  /// The page of a permission that reads granted while macOS refused what it allows, as a keyboard lock it didn't let
+  /// start: it says to turn the switch off and on again, and stays until the user closes it.
+  public var openRefused: @Sendable (_ permission: Permission) async -> Void
   /// The pages features ask for, one after another. Only the shell reads them.
-  public var requests: @Sendable () -> AsyncStream<Permission> = { .finished }
+  public var requests: @Sendable () -> AsyncStream<Request> = { .finished }
+
+  /// A page a feature asks for.
+  public enum Request: Equatable, Sendable {
+    /// The permission's page (`open`).
+    case page(Permission)
+    /// The page of a permission macOS refused while it reads granted (`openRefused`).
+    case refused(Permission)
+
+    public var permission: Permission {
+      switch self {
+      case let .page(permission), let .refused(permission): permission
+      }
+    }
+  }
 }
 
 extension PermissionPage: DependencyKey {
   public static let liveValue = PermissionPage(
-    open: { permission in PermissionPageChannel.shared.send(permission) },
+    open: { permission in PermissionPageChannel.shared.send(.page(permission)) },
+    openRefused: { permission in PermissionPageChannel.shared.send(.refused(permission)) },
     requests: { PermissionPageChannel.shared.requests() }
   )
 
@@ -117,26 +135,26 @@ final class PermissionPageChannel: Sendable {
   static let shared = PermissionPageChannel()
 
   private struct State {
-    var listeners: [UUID: AsyncStream<Permission>.Continuation] = [:]
-    var waiting: Permission?
+    var listeners: [UUID: AsyncStream<PermissionPage.Request>.Continuation] = [:]
+    var waiting: PermissionPage.Request?
   }
 
   private let state = LockIsolated(State())
 
-  func send(_ permission: Permission) {
+  func send(_ request: PermissionPage.Request) {
     state.withValue { state in
       guard !state.listeners.isEmpty else {
-        state.waiting = permission
+        state.waiting = request
         return
       }
       for listener in state.listeners.values {
-        listener.yield(permission)
+        listener.yield(request)
       }
     }
   }
 
-  func requests() -> AsyncStream<Permission> {
-    let (stream, continuation) = AsyncStream.makeStream(of: Permission.self)
+  func requests() -> AsyncStream<PermissionPage.Request> {
+    let (stream, continuation) = AsyncStream.makeStream(of: PermissionPage.Request.self)
     let id = UUID()
     continuation.onTermination = { [state] _ in
       state.withValue { _ = $0.listeners.removeValue(forKey: id) }

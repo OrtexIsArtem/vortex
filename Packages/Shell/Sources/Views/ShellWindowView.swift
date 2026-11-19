@@ -2,13 +2,15 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Everything inside the window: the sidebar and the selected tab, or keyboard cleaning's screen over them.
+/// Everything inside the window: the sidebar and the selected tab, or a utility's cover over them, as keyboard
+/// cleaning's lock screen.
 struct ShellWindowView: View {
   let store: StoreOf<ShellFeature>
   @Environment(\.notchCutout) private var notchCutout
 
   var body: some View {
-    let isCovered = store.keyboardCleaning.isLocked
+    let cover = store.windowCover.flatMap { FeatureViews.shared.windowCover($0.feature) }
+    let isCovered = cover != nil
     let isSidebarWaiting = store.focusedFeature != nil
     ZStack {
       HStack(spacing: 0) {
@@ -22,15 +24,18 @@ struct ShellWindowView: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
           .environment(\.notchCutout, notchCutout?.offsetBy(dx: -VortexMetrics.sidebarWidth, dy: 0))
       }
-      // Under keyboard cleaning's screen the tabs stay mounted, out of sight and reach.
+      // Under a utility's cover the tabs stay mounted, out of sight and reach.
       .opacity(isCovered ? 0 : 1)
       .allowsHitTesting(!isCovered)
       .accessibilityHidden(isCovered)
       if let id = store.eraseConfirmation, let feature = store.features.first(where: { $0.id == id }) {
         EraseConfirmation(store: store, feature: feature)
       }
-      if isCovered {
-        KeyboardCleaningView(store: store.scope(state: \.keyboardCleaning, action: \.keyboardCleaning))
+      if let cover {
+        // As the window lays it out, the notch where it cuts in.
+        cover
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .environment(\.notchCutout, notchCutout)
       }
     }
     .overlay(alignment: .bottom) {

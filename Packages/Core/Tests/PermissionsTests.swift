@@ -94,21 +94,21 @@ struct PermissionPageTests {
   func theShellGetsEveryRequestWhileItListens() async {
     let channel = PermissionPageChannel()
     var requests = channel.requests().makeAsyncIterator()
-    channel.send(.accessibility)
-    channel.send(.screenRecording)
-    #expect(await requests.next() == .accessibility)
-    #expect(await requests.next() == .screenRecording)
+    channel.send(.page(.accessibility))
+    channel.send(.page(.screenRecording))
+    #expect(await requests.next() == .page(.accessibility))
+    #expect(await requests.next() == .page(.screenRecording))
   }
 
   @Test
   func theLatestRequestMadeBeforeTheShellListensWaitsForIt() async {
     let channel = PermissionPageChannel()
-    channel.send(.notifications)
-    channel.send(.pasteboard)
+    channel.send(.page(.notifications))
+    channel.send(.page(.pasteboard))
     var requests = channel.requests().makeAsyncIterator()
-    channel.send(.accessibility)
-    #expect(await requests.next() == .pasteboard)
-    #expect(await requests.next() == .accessibility)
+    channel.send(.page(.accessibility))
+    #expect(await requests.next() == .page(.pasteboard))
+    #expect(await requests.next() == .page(.accessibility))
   }
 
   @Test
@@ -116,9 +116,9 @@ struct PermissionPageTests {
     let channel = PermissionPageChannel()
     var first = channel.requests().makeAsyncIterator()
     var second = channel.requests().makeAsyncIterator()
-    channel.send(.screenRecording)
-    #expect(await first.next() == .screenRecording)
-    #expect(await second.next() == .screenRecording)
+    channel.send(.page(.screenRecording))
+    #expect(await first.next() == .page(.screenRecording))
+    #expect(await second.next() == .page(.screenRecording))
   }
 
   @Test
@@ -131,9 +131,22 @@ struct PermissionPageTests {
     stopped.cancel()
     #expect(await stopped.value == nil)
     // With nobody listening, the request waits for the next listener instead of going to the one that stopped.
-    channel.send(.accessibility)
+    channel.send(.page(.accessibility))
     var requests = channel.requests().makeAsyncIterator()
-    #expect(await requests.next() == .accessibility)
+    #expect(await requests.next() == .page(.accessibility))
+  }
+
+  /// The page of a permission macOS refused while it reads granted reaches the shell as such, in order with the others.
+  @Test
+  func aRefusedPageReachesTheShellAsSuch() async {
+    let channel = PermissionPageChannel()
+    var requests = channel.requests().makeAsyncIterator()
+    channel.send(.refused(.accessibility))
+    channel.send(.page(.accessibility))
+    #expect(await requests.next() == .refused(.accessibility))
+    #expect(await requests.next() == .page(.accessibility))
+    #expect(PermissionPage.Request.refused(.screenRecording).permission == .screenRecording)
+    #expect(PermissionPage.Request.page(.notifications).permission == .notifications)
   }
 
   @Test

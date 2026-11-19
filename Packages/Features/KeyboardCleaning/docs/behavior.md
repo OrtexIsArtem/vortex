@@ -1,21 +1,23 @@
-# Keyboard cleaning
+# Behavior
 
 ## The lock
-- Home's keyboard button locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media.
+- Its button in Home's utilities dock, or its shortcut, locks every key on the Mac: letters, modifiers, Esc, the function row and the keys for brightness, sound and media.
+- The shell opens the window first if it is closed (the action needs it open); then the lock screen covers it.
 - Mouse and trackpad keep working during the lock.
 - macOS never lets an app lock the Touch ID (power) button or Caps Lock: Caps Lock may stay on after cleaning.
 - Without Accessibility the button opens Accessibility's page and locks nothing, never asking macOS itself.
 - A lock macOS refuses opens Accessibility's page too, which says to turn the switch off and on again when the status reads granted, and never closes by itself.
-- Accessibility lost during a lock ends it at once and opens no page of its own.
+- Accessibility lost during a lock ends it at once and opens no page of its own; the window closes with the lock screen.
 - A required permission lost during a lock blocks Vortex only once the lock ends.
 - A lock ended before macOS took the keys never takes them afterwards.
+- Removing the utility, or anything else that stops it, ends a lock under way.
 - If Vortex quits or crashes, the keys come back.
 
 ## The window
-- During the lock the window shows only the lock screen: the drawn keyboard on top, "Keyboard cleaning mode" and "All keys are locked" bottom left, "Turn the keyboard back on" bottom right.
+- During the lock the lock screen covers the whole window (`WindowCover`): the drawn keyboard on top, "Keyboard cleaning mode" and "All keys are locked" bottom left, "Turn the keyboard back on" bottom right.
 - Nothing closes the window during the lock: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut.
 - New displays move the window there.
-- Vortex comes to the front with the lock and drops any key that still reaches it.
+- Vortex comes to the front with the lock and drops any key that still reaches it; the key still washes its place on the drawing.
 - "Turn the keyboard back on" lets the keys go at once and closes the window.
 - The app that was in front then gets the front and the keys back.
 

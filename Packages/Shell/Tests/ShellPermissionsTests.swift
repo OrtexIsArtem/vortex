@@ -25,28 +25,31 @@ private enum Needing {
     id: "secrets", title: "Keys", symbol: "key.horizontal",
     permissionNeeds: [PermissionNeed(.notifications, reason: "Shows Claude's key requests when the window is closed.")]
   )
-  static let all = [home, timer, tasks, clipboard, keys]
+  static let keyboard = FeatureDescriptor(
+    id: "keyboard", title: "Keyboard Cleaning", symbol: "keyboard", kind: .utility,
+    permissionNeeds: [PermissionNeed(.accessibility, reason: "Locks the keyboard while you clean it.")]
+  )
+  static let all = [home, timer, tasks, clipboard, keys, keyboard]
 }
 
 struct PermissionCatalogTests {
+  /// Every need comes from an enabled feature or utility, in sidebar order, with its own reason.
   @Test
-  func needsComeFromEnabledFeaturesInSidebarOrderAndKeyboardCleaningWhileHomeIsOn() {
+  func needsComeFromEnabledFeaturesAndUtilitiesInSidebarOrder() {
     let catalog = PermissionCatalog(features: Needing.all, required: [])
     #expect(catalog.entries.map(\.permission) == [.notifications, .accessibility, .screenRecording, .pasteboard])
-    #expect(catalog.entry(for: .notifications)?.needs.map(\.owner) == [.feature("timer"), .feature("secrets")])
+    #expect(catalog.entry(for: .notifications)?.needs.map(\.feature) == ["timer", "secrets"])
     #expect(catalog.entry(for: .notifications)?.reasons == Needing.timer.permissionNeeds.map(\.reason) + Needing.keys.permissionNeeds.map(\.reason))
-    #expect(catalog.entry(for: .accessibility)?.needs.map(\.owner) == [.keyboardCleaning])
-    #expect(catalog.entry(for: .accessibility)?.reasons == [PermissionCatalog.keyboardCleaningReason])
-    #expect(catalog.entry(for: .screenRecording)?.needs.map(\.owner) == [.feature("tasks")])
-    #expect(catalog.entry(for: .pasteboard)?.needs.map(\.owner) == [.feature("clipboard")])
-    // Those a feature's yellow dot names: keyboard cleaning's Accessibility isn't one.
-    #expect(catalog.featurePermissions == [.notifications, .screenRecording, .pasteboard])
+    #expect(catalog.entry(for: .accessibility)?.needs.map(\.feature) == ["keyboard"])
+    #expect(catalog.entry(for: .accessibility)?.reasons == Needing.keyboard.permissionNeeds.map(\.reason))
+    #expect(catalog.entry(for: .screenRecording)?.needs.map(\.feature) == ["tasks"])
+    #expect(catalog.entry(for: .pasteboard)?.needs.map(\.feature) == ["clipboard"])
   }
 
-  /// The keyboard button is on Home: without it, keyboard cleaning needs nothing.
+  /// Home needs nothing: Accessibility comes only with keyboard cleaning, the utility that locks the keyboard.
   @Test
-  func withoutHomeKeyboardCleaningNeedsNothing() {
-    let catalog = PermissionCatalog(features: [Needing.timer], required: [])
+  func homeNeedsNothingAccessibilityComesWithKeyboardCleaning() {
+    let catalog = PermissionCatalog(features: [Needing.home, Needing.timer], required: [])
     #expect(catalog.entries.map(\.permission) == [.notifications])
     #expect(catalog.entry(for: .accessibility) == nil)
   }
@@ -57,7 +60,7 @@ struct PermissionCatalogTests {
     settings.addedFeatures = Needing.all.map(\.id).filter { !["tasks", "timer"].contains($0) }
     let state = ShellFeature.State(settings: settings, features: Needing.all)
     #expect(state.permissionCatalog.entries.map(\.permission) == [.notifications, .accessibility, .pasteboard])
-    #expect(state.permissionCatalog.entry(for: .notifications)?.needs.map(\.owner) == [.feature("secrets")])
+    #expect(state.permissionCatalog.entry(for: .notifications)?.needs.map(\.feature) == ["secrets"])
   }
 
   /// A required permission nothing enabled needs has no page, so it can never block.
@@ -196,9 +199,11 @@ struct ShellPermissionsTests {
     }
   #endif
 
+  /// A page a feature asks for reaches the shell, and so does the page of a permission macOS refused while it reads
+  /// granted, which says to turn the switch off and on again.
   @Test
   func aPageAFeatureAsksForReachesTheShell() async {
-    let (requests, sendRequest) = AsyncStream.makeStream(of: Permission.self)
+    let (requests, sendRequest) = AsyncStream.makeStream(of: PermissionPage.Request.self)
     let asked = AsyncStream.makeStream(of: Permission.self)
     let store = makeStore()
     launchedQuietly(store)
@@ -208,10 +213,14 @@ struct ShellPermissionsTests {
     store.exhaustivity = .off
 
     let launch = await store.send(.task)
-    sendRequest.yield(.screenRecording)
+    sendRequest.yield(.page(.screenRecording))
     await store.receive(\.permissionPageRequested)
     await store.receive(\.onboarding.pageRequested)
     #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    sendRequest.yield(.refused(.accessibility))
+    await store.receive(\.refusedPageRequested)
+    await store.receive(\.onboarding.pageRequested)
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .lockRefused), .window))
     await launch.cancel()
   }
 
@@ -269,7 +278,7 @@ struct ShellPermissionsTests {
     let store = makeStore(disabled: ["tasks"], required: [.screenRecording])
     await firstRead(store, Self.allOff)
     await store.send(.featureAdded("tasks")) {
-      $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets"]
+      $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets", "keyboard"]
       $0.settings.lastTab = "feature:tasks"
       $0.$appBlocked.withLock { $0 = true }
       $0.onboarding.catalog = $0.permissionCatalog
@@ -278,7 +287,7 @@ struct ShellPermissionsTests {
       $0.onboarding.presentation = .single(.init(permission: .screenRecording, kind: .blocked), .window)
     }
     await store.send(.featureRemoved("tasks")) {
-      $0.settings.addedFeatures = ["home", "timer", "clipboard", "secrets"]
+      $0.settings.addedFeatures = ["home", "timer", "clipboard", "secrets", "keyboard"]
       $0.removedForUndo = "tasks"
       $0.$appBlocked.withLock { $0 = false }
       $0.onboarding.catalog = $0.permissionCatalog
@@ -287,14 +296,15 @@ struct ShellPermissionsTests {
     await store.finish()
   }
 
-  /// Keyboard cleaning's Accessibility counts only while Home, with its button, is on.
+  /// Accessibility counts only while keyboard cleaning, the utility that needs it, is added: added, a required one
+  /// that is off blocks at once.
   @Test
-  func keyboardCleaningBlocksOnlyWhileHomeIsOn() async {
-    let store = makeStore(disabled: ["home"], required: [.accessibility])
+  func keyboardCleaningsAccessibilityBlocksOnlyWhileItIsAdded() async {
+    let store = makeStore(disabled: ["keyboard"], required: [.accessibility])
     await firstRead(store, Self.allOff)
-    await store.send(.featureAdded("home")) {
-      $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets"]
-      $0.settings.lastTab = "feature:home"
+    #expect(!store.state.appBlocked)
+    await store.send(.featureAdded("keyboard")) {
+      $0.settings.addedFeatures = ["home", "timer", "tasks", "clipboard", "secrets", "keyboard"]
       $0.$appBlocked.withLock { $0 = true }
       $0.onboarding.catalog = $0.permissionCatalog
     }

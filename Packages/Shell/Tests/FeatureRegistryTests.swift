@@ -111,11 +111,18 @@ struct FeatureRegistryTests {
     }
   #endif
 
-  /// Keys and Screen Text wait for the user's choice; the maintainer recommends the rest.
+  /// Keys and Screen Text wait for the user's choice; the maintainer recommends the rest, keyboard cleaning among them,
+  /// as Home brought it to everyone before it became a utility.
   @Test
   func onlyHomeIsBuiltInAndKeysAndScreenTextAreNotRecommended() {
     #expect(FeatureRegistry.all.filter { $0.isBuiltIn }.map { $0.id } == ["home"])
-    #expect(FeatureRegistry.all.filter { $0.isRecommended }.map { $0.id } == ["timer", "tasks", "clipboard", "shelf"])
+    #expect(FeatureRegistry.all.filter { $0.isRecommended }.map { $0.id } == ["timer", "tasks", "clipboard", "shelf", "keyboard"])
+  }
+
+  /// The utilities, which have no tab, come in the catalog's order: keyboard cleaning, then Screen Text.
+  @Test
+  func theUtilitiesAreKeyboardCleaningAndScreenText() {
+    #expect(FeatureRegistry.all.filter { $0.kind == .utility }.map { $0.id } == ["keyboard", "screentext"])
   }
 
   /// Erase Data can reach every shipped feature's settings file and folder, and nothing of another feature's: each

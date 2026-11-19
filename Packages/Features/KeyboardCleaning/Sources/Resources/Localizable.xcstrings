@@ -1,0 +1,127 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "All keys are locked" : {
+      "comment" : "The lock screen, under its title",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Усі клавіші заблоковано"
+          }
+        }
+      }
+    },
+    "Don't press Touch ID: it locks your Mac, and Vortex can't block it." : {
+      "comment" : "Touch ID's tooltip on the drawn keyboard, and VoiceOver's hint on the lock screen's title",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не натискайте Touch ID: він замикає Mac, і Vortex не може його заблокувати."
+          }
+        }
+      }
+    },
+    "Every key on your Mac stops working while you clean: letters, Esc, the function row, brightness and sound. The keyboard is drawn on the screen, and each key you wipe looks cleaner. One click turns it back on." : {
+      "comment" : "The utility's page in the catalog",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поки ви чистите клавіатуру, на Mac не працює жодна клавіша: літери, Esc, функціональні клавіші, яскравість і звук. Клавіатуру намальовано на екрані, і кожна протерта клавіша стає чистішою. Один клік — і вона знову працює."
+          }
+        }
+      }
+    },
+    "Keyboard Cleaning" : {
+      "comment" : "The utility's name: in the catalog, Settings › Features and the onboarding",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очищення клавіатури"
+          }
+        }
+      }
+    },
+    "Keyboard cleaning mode" : {
+      "comment" : "The lock screen's title",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Режим очищення клавіатури"
+          }
+        }
+      }
+    },
+    "Lock every key while you wipe the keyboard" : {
+      "comment" : "The utility's one line in the catalog and the onboarding",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блокує всі клавіші, поки ви протираєте клавіатуру"
+          }
+        }
+      }
+    },
+    "Lock Keyboard" : {
+      "comment" : "Its button in Home's utilities dock, for VoiceOver and its tooltip",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокувати клавіатуру"
+          }
+        }
+      }
+    },
+    "Lock the keyboard for cleaning" : {
+      "comment" : "What its button does, under its shortcut in Settings › Features",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокувати клавіатуру для очищення"
+          }
+        }
+      }
+    },
+    "Locks the keyboard while you clean it." : {
+      "comment" : "Why it needs Accessibility",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блокує клавіатуру, поки ви її чистите."
+          }
+        }
+      }
+    },
+    "Turn the keyboard back on" : {
+      "comment" : "The lock screen's button that ends the lock",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увімкнути клавіатуру"
+          }
+        }
+      }
+    },
+    "While the keys are locked, Vortex reads only which key goes down, to draw it cleaner, and keeps none of it." : {
+      "comment" : "Under its settings: what the lock reads of the keys",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поки клавіші заблоковано, Vortex бачить лише, яка клавіша натиснута, щоб показати її чистішою, і нічого з цього не зберігає."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

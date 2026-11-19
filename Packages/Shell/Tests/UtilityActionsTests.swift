@@ -19,12 +19,12 @@ struct UtilityActionsTests {
   let streams = LockIsolated<[String: AsyncStream<Void>.Continuation]>([:])
 
   static let copy = UtilityActionInfo(id: "screentext.copy", feature: "screentext", window: .closed, shortcut: "copyScreenText")
-  static let clean = UtilityActionInfo(id: "home.keyboard", feature: "home", window: .open)
+  static let clean = UtilityActionInfo(id: "keyboard.lock", feature: "keyboard", window: .open)
   static let toggle = UtilityActionInfo(id: "timer.toggle", feature: "timer", window: .unchanged, shortcut: "toggleTimer")
 
   func makeStore(_ actions: [UtilityActionInfo] = [copy, clean, toggle]) -> TestStoreOf<ShellFeature> {
-    let store = shell.makeStore(features: [.home, .timer, .screenText]) {
-      $0.addedFeatures = ["home", "timer", "screentext"]
+    let store = shell.makeStore(features: [.home, .timer, .screenText, .cleaning]) {
+      $0.addedFeatures = ["home", "timer", "screentext", "keyboard"]
       $0.lastTab = "feature:timer"
     }
     store.dependencies.featuresClient.utilityActions = { ids in
@@ -55,19 +55,19 @@ struct UtilityActionsTests {
   func theRunningFeaturesActionsAreReadAndTheirShortcutsListenedFor() async {
     let store = makeStore()
     let task = await shell.launch(store)
-    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.clean, Self.toggle, Self.copy] }
+    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.toggle, Self.copy, Self.clean] }
 
     await store.send(.featureRemoved("screentext")) {
-      $0.settings.addedFeatures = ["home", "timer"]
+      $0.settings.addedFeatures = ["home", "timer", "keyboard"]
       $0.removedForUndo = "screentext"
     }
-    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.clean, Self.toggle] }
+    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.toggle, Self.clean] }
     #expect(!listening.value.contains("copyScreenText"))
     await store.send(.undoRemoveTapped) {
-      $0.settings.addedFeatures = ["home", "timer", "screentext"]
+      $0.settings.addedFeatures = ["home", "timer", "screentext", "keyboard"]
       $0.removedForUndo = nil
     }
-    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.clean, Self.toggle, Self.copy] }
+    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.toggle, Self.copy, Self.clean] }
     await shell.clock.advance(by: .milliseconds(400))
     await task.cancel()
     endShortcuts()
@@ -81,7 +81,7 @@ struct UtilityActionsTests {
   func aShortcutRunsItsAction() async {
     let store = makeStore()
     let task = await shell.launch(store)
-    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.clean, Self.toggle, Self.copy] }
+    await store.receive(\.utilityActionsLoaded) { $0.utilityActions = [Self.toggle, Self.copy, Self.clean] }
     for _ in 0..<100 where streams.value["copyScreenText"] == nil {
       await Task.yield()
     }
@@ -116,19 +116,19 @@ struct UtilityActionsTests {
   func anActionThatNeedsTheWindowOpenOpensItFirstAndOneThatDoesntCareLeavesIt() async {
     let store = makeStore()
     await store.send(.binding(.set(\.utilityActions, [Self.clean, Self.toggle]))) { $0.utilityActions = [Self.clean, Self.toggle] }
-    await store.send(.utilityActionPressed("home.keyboard")) { $0.openReason = .hotkey }
+    await store.send(.utilityActionPressed("keyboard.lock")) { $0.openReason = .hotkey }
     await store.finish()
-    #expect(log.value == ["present hotkey", "perform home.keyboard"])
+    #expect(log.value == ["present hotkey", "perform keyboard.lock"])
 
     log.setValue([])
-    await store.send(.utilityActionPressed("home.keyboard"))
+    await store.send(.utilityActionPressed("keyboard.lock"))
     await store.send(.utilityActionPressed("timer.toggle"))
     await store.finish()
-    #expect(log.value == ["perform home.keyboard", "perform timer.toggle"])
+    #expect(log.value == ["perform keyboard.lock", "perform timer.toggle"])
   }
 
-  /// While the window must stay open (the erase question, keyboard cleaning's lock), an action that needs it closed
-  /// doesn't run; neither does one of a feature that doesn't run.
+  /// While the window must stay open (the erase question, a utility's cover as keyboard cleaning's lock screen), an
+  /// action that needs it closed doesn't run; neither does one of a feature that doesn't run.
   @Test
   func nothingRunsWhileTheWindowMustStayOrForAFeatureThatDoesntRun() async {
     let store = makeStore()
@@ -137,10 +137,15 @@ struct UtilityActionsTests {
     await store.send(.binding(.set(\.eraseConfirmation, "tasks"))) { $0.eraseConfirmation = "tasks" }
     await store.send(.utilityActionPressed("screentext.copy"))
     await store.send(.binding(.set(\.eraseConfirmation, nil))) { $0.eraseConfirmation = nil }
-    await store.send(.binding(.set(\.keyboardCleaning.isLocked, true))) { $0.keyboardCleaning.isLocked = true }
+    // The cover is the utility's to put up: here as keyboard cleaning puts its lock screen up.
+    store.exhaustivity = .off(showSkippedAssertions: false)
+    @Shared(.windowCover) var cover
+    $cover.withLock { $0 = WindowCover(feature: "keyboard", holdsKeyboard: true) }
     await store.send(.utilityActionPressed("screentext.copy"))
     await store.send(.utilityActionPressed("tasks.capture"))
     await store.finish()
     #expect(log.value == ["present click"])
+    #expect(store.state.isOpen)
+    $cover.withLock { $0 = nil }
   }
 }

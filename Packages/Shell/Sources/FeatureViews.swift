@@ -15,6 +15,7 @@ final class FeatureViews {
   private var tabs: [FeatureID: AnyView] = [:]
   private var homeWidgets: [FeatureID: [HomeWidget]] = [:]
   private var utilityActions: [FeatureID: [UtilityAction]] = [:]
+  private var windowCovers: [FeatureID: AnyView?] = [:]
   private var settings: [FeatureID: AnyView?] = [:]
   private var onboardingSteps: [FeatureID: OnboardingStep?] = [:]
 
@@ -31,6 +32,11 @@ final class FeatureViews {
   /// The feature's utility actions, none if it has none.
   func utilityActions(_ id: FeatureID) -> [UtilityAction] {
     cached(id, in: &utilityActions) { $0.makeUtilityActions() } ?? []
+  }
+
+  /// The screen the feature shows over the window while its cover is up, if it has one.
+  func windowCover(_ id: FeatureID) -> AnyView? {
+    cached(id, in: &windowCovers) { $0.makeWindowCover() } ?? nil
   }
 
   /// The feature's own settings, if it has any: on its page in Settings › Features, after its tab's shortcut.

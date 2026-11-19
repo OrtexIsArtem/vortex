@@ -83,6 +83,7 @@ targets:
         - package: VortexKit/FeatureTemplateTests
         - package: VortexKit/FeatureClipboardTests
         - package: VortexKit/FeatureHomeTests
+        - package: VortexKit/FeatureKeyboardCleaningTests
         - package: VortexKit/FeatureScreenTextTests
         - package: VortexKit/FeatureSecretsTests
         - package: VortexKit/FeatureShelfTests

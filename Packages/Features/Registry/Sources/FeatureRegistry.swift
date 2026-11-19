@@ -1,5 +1,6 @@
 import FeatureClipboard
 import FeatureHome
+import FeatureKeyboardCleaning
 import FeatureScreenText
 import FeatureSecrets
 import FeatureShelf
@@ -20,6 +21,7 @@ public enum FeatureRegistry {
     ClipboardModule.self,
     ShelfModule.self,
     SecretsModule.self,
+    KeyboardCleaningModule.self,
     ScreenTextModule.self,
   ]
 

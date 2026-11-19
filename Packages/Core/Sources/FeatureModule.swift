@@ -49,6 +49,9 @@ public protocol FeatureModule {
   static func makeHomeWidgets() -> [HomeWidget]
   /// The feature's one-click actions, at most two, which the shell places among the utilities; see `UtilityAction`.
   static func makeUtilityActions() -> [UtilityAction]
+  /// The screen the feature shows over the whole window while `@Shared(.windowCover)` names it, as keyboard cleaning's
+  /// lock screen; see `WindowCover`. Nil without one.
+  static func makeWindowCover() -> AnyView?
   /// Called at launch and whenever the user turns the feature on or off. Start and stop background work here.
   static func setEnabled(_ isEnabled: Bool)
   /// Files given to Vortex outside the feature's tab, see `acceptsFileDrops`. The window stays as it is.
@@ -101,6 +104,7 @@ extension FeatureModule {
   public static func makeSettings() -> AnyView? { nil }
   public static func makeHomeWidgets() -> [HomeWidget] { [] }
   public static func makeUtilityActions() -> [UtilityAction] { [] }
+  public static func makeWindowCover() -> AnyView? { nil }
   public static func setEnabled(_ isEnabled: Bool) {}
   public static func receiveFiles(_ urls: [URL]) {}
   public static var permissionNeeds: [PermissionNeed] { [] }

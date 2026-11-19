@@ -18,7 +18,6 @@
         try perform(Entry(arguments), store: store, window: window)
       }
       QA.register(command: "tab") { arguments in try selectTab(arguments, store: store) }
-      QA.register(command: "keyboard") { arguments in try pressKeyboard(arguments, store: store) }
       QA.register(command: "screens") { arguments in
         guard let text = arguments["set"], let screens = QALaunch.screens(text) else {
           throw QAError("screens takes set=notch, set=plain or set=notch+plain")
@@ -353,32 +352,6 @@
       }
     }
 
-    /// `keyboard press=start`: Home's keyboard button, on Home in the open window; `keyboard press=stop`:
-    /// «Turn the keyboard back on» on the lock screen; `keyboard key=<name>`: a key of the locked keyboard going down,
-    /// by its `KeyboardKey` name (a, digit1, f1, leftShift, return, upArrow, section…).
-    static func pressKeyboard(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
-      if let name = arguments["key"] {
-        guard store.keyboardCleaning.isLocked else { throw QAError("the keyboard is not locked") }
-        guard let key = KeyboardKey.allCases.first(where: { "\($0)" == name }) else {
-          throw QAError("no key \(name); keys: \(KeyboardKey.allCases.map { "\($0)" }.joined(separator: ", "))")
-        }
-        guard QA.pressKey(key) > 0 else { throw QAError("nothing listens for the locked keyboard yet") }
-        return
-      }
-      switch arguments["press"] {
-      case "start":
-        guard store.isOpen, store.selectedTab == .feature("home") else {
-          throw QAError("the keyboard button is on Home, in the open window")
-        }
-        store.send(.keyboardCleaning(.startTapped))
-      case "stop":
-        guard store.keyboardCleaning.isLocked else { throw QAError("the keyboard is not locked") }
-        store.send(.keyboardCleaning(.stopTapped))
-      default:
-        throw QAError("keyboard takes press=start, press=stop or key=<name>")
-      }
-    }
-
     // MARK: - State
 
     /// The shell's part of the state dump.
@@ -394,11 +367,9 @@
       /// The running features' utility actions, in sidebar order: "<id> <window need>[ <shortcut>]".
       var utilityActions: [String]
       var fileFeature: FeatureID?
-      var keyboardLocked: Bool
-      /// The board the lock screen draws: ansi, iso or jis (drawn as ansi).
-      var keyboardLayout: String
-      /// How washed each pressed key looks, 1 to 3, by `KeyboardKey` name.
-      var keyboardWashes: [String: Int]
+      /// The utility whose cover is over the window, "<id>" with " holdsKeyboard" when Vortex holds the keyboard for it;
+      /// null without one. Keyboard cleaning's own state is its `keyboard` section.
+      var cover: String?
       var screens: [String]
       var everyScreenHasNotch: Bool
       /// Whether the menu bar icon would show; QA puts none in the menu bar.
@@ -426,10 +397,7 @@
           "\(action.id) \(action.window)" + (action.shortcut.map { " \($0)" } ?? "")
         }
         fileFeature = state.fileFeature?.id
-        keyboardLocked = state.keyboardCleaning.isLocked
-        let cleaning = state.keyboardCleaning
-        keyboardLayout = cleaning.layout.rawValue
-        keyboardWashes = Dictionary(uniqueKeysWithValues: cleaning.presses.keys.map { ("\($0)", cleaning.washes(of: $0)) })
+        cover = state.windowCover.map { $0.feature + ($0.holdsKeyboard ? " holdsKeyboard" : "") }
         screens = QA.screens.map(\.rawValue)
         everyScreenHasNotch = state.everyScreenHasNotch
         menuBarIcon = window.qaIsMenuBarIconShown
@@ -444,9 +412,8 @@
       }
 
       private enum CodingKeys: String, CodingKey {
-        case isOpen, openReason, selectedTab, settingsSection, settingsFeature, sidebar, utilityActions, fileFeature, keyboardLocked
-        case keyboardLayout
-        case keyboardWashes, screens, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
+        case isOpen, openReason, selectedTab, settingsSection, settingsFeature, sidebar, utilityActions, fileFeature, cover
+        case screens, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
         case launchAtLogin, language, needsRestartForLanguage, settings
       }
 
@@ -461,9 +428,7 @@
         try container.encode(sidebar, forKey: .sidebar)
         try container.encode(utilityActions, forKey: .utilityActions)
         try container.encode(fileFeature, forKey: .fileFeature)
-        try container.encode(keyboardLocked, forKey: .keyboardLocked)
-        try container.encode(keyboardLayout, forKey: .keyboardLayout)
-        try container.encode(keyboardWashes, forKey: .keyboardWashes)
+        try container.encode(cover, forKey: .cover)
         try container.encode(screens, forKey: .screens)
         try container.encode(everyScreenHasNotch, forKey: .everyScreenHasNotch)
         try container.encode(menuBarIcon, forKey: .menuBarIcon)

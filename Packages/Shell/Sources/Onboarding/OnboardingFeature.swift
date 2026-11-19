@@ -90,13 +90,13 @@ struct OnboardingFeature {
     /// The version that stands for a release that kept no grants: 0.1.1 and earlier.
     static let earlierVersion = "earlier"
 
-    /// After an update, a version or build other than the last launch's: the signature-bound permissions with a yellow
-    /// dot, needed by an enabled feature, that macOS reported granted under that last version and that read
-    /// `notGranted` now, in onboarding order.
+    /// After an update, a version or build other than the last launch's: the signature-bound permissions, needed by an
+    /// enabled feature or utility and so marked yellow where it shows, that macOS reported granted under that last
+    /// version and that read `notGranted` now, in onboarding order.
     var lostInUpdate: [Permission] {
       let previous = progress.version ?? Self.earlierVersion
       guard previous != appVersion else { return [] }
-      return catalog.featurePermissions.filter { permission in
+      return catalog.entries.map(\.permission).filter { permission in
         Self.signatureBound.contains(permission) && statuses[permission] == .notGranted
           && grantedVersion(permission) == previous
       }
@@ -401,7 +401,8 @@ struct OnboardingFeature {
       case request
       /// The first missing required permission after the onboarding is done.
       case blocked
-      /// The keyboard lock was refused while the status read granted: no auto-close.
+      /// macOS refused what the permission allows while it read granted, as keyboard cleaning's lock
+      /// (`PermissionPage.openRefused`): no auto-close.
       case lockRefused
       /// Reopened once after the relaunch it started.
       case afterRelaunch

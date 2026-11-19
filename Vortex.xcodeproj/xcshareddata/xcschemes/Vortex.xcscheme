@@ -110,6 +110,17 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "FeatureKeyboardCleaningTests"
+               BuildableName = "FeatureKeyboardCleaningTests"
+               BlueprintName = "FeatureKeyboardCleaningTests"
+               ReferencedContainer = "container:Packages">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "FeatureScreenTextTests"
                BuildableName = "FeatureScreenTextTests"
                BlueprintName = "FeatureScreenTextTests"

@@ -100,16 +100,6 @@
         }
       }
     },
-    "All keys are locked" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Усі клавіші заблоковано"
-          }
-        }
-      }
-    },
     "Allow notifications" : {
       "localizations" : {
         "uk" : {
@@ -380,17 +370,6 @@
         }
       }
     },
-    "Don't press Touch ID: it locks your Mac, and Vortex can't block it." : {
-      "comment" : "Tooltip of the Touch ID button drawn on the keyboard cleaning screen.",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не натискайте Touch ID: він замикає Mac, і Vortex не може його заблокувати."
-          }
-        }
-      }
-    },
     "Drag Vortex to the Applications folder in Finder." : {
       "comment" : "Text of the alert after moving Vortex to the Applications folder failed",
       "localizations" : {
@@ -573,17 +552,6 @@
         }
       }
     },
-    "Keyboard cleaning mode" : {
-      "comment" : "Title of the screen that covers the window while every key is locked for cleaning",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Режим очищення клавіатури"
-          }
-        }
-      }
-    },
     "Keyboard shortcut" : {
       "localizations" : {
         "uk" : {
@@ -621,17 +589,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Світла"
-          }
-        }
-      }
-    },
-    "Locks the keyboard while you clean it." : {
-      "comment" : "Why keyboard cleaning needs Accessibility, next to the permission",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Блокує клавіатуру, поки ви її чистите."
           }
         }
       }
@@ -1378,16 +1335,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Увімкнути"
-          }
-        }
-      }
-    },
-    "Turn the keyboard back on" : {
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Увімкнути клавіатуру"
           }
         }
       }

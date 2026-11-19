@@ -573,4 +573,21 @@ struct QAClientsTests {
     #expect(afterUnlock.isEmpty)
     #expect(QA.pressKey(.a) == 0)
   }
+
+  /// A key that got past the lock and reached Vortex, which the shell dropped, comes out of the lock's presses as the
+  /// lock's own do.
+  @Test
+  @MainActor
+  func aKeyThatGotPastTheLockComesOutOfItsPresses() async {
+    let lock = KeyboardLockClient.qa
+    let presses = await lock.presses()
+    let received = Task {
+      var keys: [KeyboardKey] = []
+      for await key in presses.prefix(1) { keys.append(key) }
+      return keys
+    }
+    await lock.reportPassed(.q)
+    #expect(await received.value == [.q])
+    await lock.unlock()
+  }
 }

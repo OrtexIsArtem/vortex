@@ -57,6 +57,45 @@ struct ShellSettingsTests {
     #expect(settings.stoppedFeatures == ["timer"])
   }
 
+  /// The first launch of the build that makes keyboard cleaning a utility of its own keeps it added for every user who
+  /// had Vortex before, as Home brought it, and no news in the catalog. It runs once: removed later, it stays removed.
+  @Test
+  func anUpdateKeepsKeyboardCleaningAddedOnce() {
+    let all: [FeatureDescriptor] = [.home, .timer, .tasks, .cleaning]
+    var settings = ShellSettings()
+    settings.addedFeatures = ["home", "timer"]
+    settings.seenFeatures = ["home", "timer", "tasks"]
+    let migrated = settings.prepareLaunch(all: all, isFreshInstall: false, verdict: .normal, version: "1")
+    #expect(migrated)
+    #expect(settings.addedFeatures == ["home", "timer", "keyboard"])
+    #expect(settings.seenFeatures.contains("keyboard"))
+    #expect(settings.migrations == ["keyboard.added"])
+    settings.addedFeatures = ["home", "timer"]
+    let again = settings.prepareLaunch(all: all, isFreshInstall: false, verdict: .normal, version: "1")
+    #expect(!again)
+    #expect(settings.addedFeatures == ["home", "timer"])
+  }
+
+  /// A fresh install, and an update from before the catalog, settle keyboard cleaning by their own rules: recommended,
+  /// and never turned off before, it is added either way; the migration counts as done without running. A build without
+  /// it changes nothing, and leaves the migration for the build that brings it.
+  @Test
+  func otherLaunchesSettleKeyboardCleaningByTheirOwnRules() {
+    let all: [FeatureDescriptor] = [.home, .timer, .cleaning]
+    var fresh = ShellSettings()
+    _ = fresh.prepareLaunch(all: all, isFreshInstall: true, verdict: .normal, version: "1")
+    #expect(fresh.addedFeatures == ["home", "timer", "keyboard"] && fresh.migrations == ["keyboard.added"])
+    var old = ShellSettings()
+    old.disabledFeatures = ["timer"]
+    _ = old.prepareLaunch(all: all, isFreshInstall: false, verdict: .normal, version: "1")
+    #expect(old.addedFeatures == ["home", "keyboard"] && old.migrations == ["keyboard.added"])
+    var without = ShellSettings()
+    without.addedFeatures = ["home"]
+    let changed = without.prepareLaunch(all: [.home, .timer], isFreshInstall: false, verdict: .normal, version: "1")
+    #expect(!changed)
+    #expect(without.addedFeatures == ["home"] && without.migrations.isEmpty)
+  }
+
   @Test
   func anUpdateKeepsTheFeaturesTheUserHad() {
     var settings = ShellSettings()
@@ -92,6 +131,7 @@ struct ShellSettingsTests {
     #expect(settings.disabledFeatures == ["tasks"])
     #expect(settings.featuresChosen)
     #expect(settings.seenFeatures.isEmpty && settings.stoppedFeatures.isEmpty && settings.pendingErase.isEmpty)
+    #expect(settings.migrations.isEmpty)
   }
 
   @Test

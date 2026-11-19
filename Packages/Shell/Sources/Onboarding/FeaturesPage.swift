@@ -75,7 +75,7 @@ struct FeaturesPage: View {
     }
   }
 
-  /// The permissions the next pages ask for, from what the chosen features and keyboard cleaning need.
+  /// The permissions the next pages ask for, from what the chosen features and utilities need.
   private var asks: String {
     store.catalog.entries
       .filter { store.statuses[$0.permission] != .notNeeded }

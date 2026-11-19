@@ -23,10 +23,10 @@
       }
     }
 
-    /// Whether a place shows: the window is open on it, and keyboard cleaning's lock screen, which covers the tabs and
-    /// takes no clicks through, isn't up.
+    /// Whether a place shows: the window is open on it, and no utility's cover, as keyboard cleaning's lock screen, which
+    /// covers the tabs and takes no clicks through, is up.
     nonisolated static func isShowing(_ place: QA.Place, in state: ShellFeature.State) -> Bool {
-      guard state.isOpen, !state.keyboardCleaning.isLocked else { return false }
+      guard state.isOpen, state.windowCover == nil else { return false }
       switch place {
       case let .tab(id): return state.selectedTab == .feature(id)
       case .featureSettings:

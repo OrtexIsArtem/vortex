@@ -40,7 +40,13 @@ enum OnboardingNeeds {
     id: "secrets", title: "Keys", symbol: "key.horizontal",
     permissionNeeds: [PermissionNeed(.notifications, reason: "Shows Claude's key requests when the window is closed.")]
   )
-  static let all = [home, timer, tasks, clipboard, keys]
+  /// The utility that needs Accessibility.
+  static let keyboard = FeatureDescriptor(
+    id: "keyboard", title: "Keyboard Cleaning", symbol: "keyboard", kind: .utility,
+    permissionNeeds: [PermissionNeed(.accessibility, reason: "Locks the keyboard while you clean it.")],
+    isRecommended: true
+  )
+  static let all = [home, timer, tasks, clipboard, keys, keyboard]
 
   static let allOff = Dictionary(uniqueKeysWithValues: Permission.allCases.map { ($0, PermissionStatus.notGranted) })
   static let allOn = Dictionary(uniqueKeysWithValues: Permission.allCases.map { ($0, PermissionStatus.granted) })
