@@ -13,19 +13,34 @@ struct ShelfVisibilityTracking: ViewModifier {
   /// Runs right after `.tabShown`.
   var onShown: () -> Void = {}
   @Environment(\.isWindowOpen) private var isWindowOpen
+  #if DEBUG
+    /// This view among the shelf's views on screen, for QA's `shelf` command (`ShelfOnScreen`).
+    @State private var qaToken = UUID()
+  #endif
 
   func body(content: Content) -> some View {
     content
       .task(id: isWindowOpen) {
         guard isWindowOpen else { return }
         store.send(.tabShown)
+        #if DEBUG
+          ShelfOnScreen.views.insert(qaToken)
+        #endif
         onShown()
       }
       .onChange(of: isWindowOpen) { wasOpen, isOpen in
-        if wasOpen, !isOpen { store.send(.tabHidden) }
+        if wasOpen, !isOpen {
+          store.send(.tabHidden)
+          #if DEBUG
+            ShelfOnScreen.views.remove(qaToken)
+          #endif
+        }
       }
       .onDisappear {
         if isWindowOpen { store.send(.tabHidden) }
+        #if DEBUG
+          ShelfOnScreen.views.remove(qaToken)
+        #endif
       }
   }
 }

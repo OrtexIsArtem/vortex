@@ -11,4 +11,4 @@ A place for files the user puts aside to drag into another app, as many times as
 
 Code: ShelfFeature.swift (logic, tested), ShelfItem.swift (the item and its table), Views/ (tab, tile, Home widget,
 ShelfVisibilityTracking: when the tab or the Home widget shows and hides), ShelfModule.swift (entry point for the
-registry: takes files).
+registry: takes files), ShelfQA.swift (QA mode's `shelf` command).

@@ -49,6 +49,9 @@ public enum ShelfModule: FeatureModule {
   }
 
   public static func setEnabled(_ isEnabled: Bool) {
+    #if DEBUG
+      registerQACommands()
+    #endif
     store.send(isEnabled ? .start : .stop)
   }
 
