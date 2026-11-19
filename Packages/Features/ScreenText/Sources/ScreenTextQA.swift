@@ -209,34 +209,36 @@
           context.fill(CGRect(origin: .zero, size: size))
         }
         var frames: [String: CGRect] = [:]
+        // Under the notch, where the media rig's takes and the catalog's preview frame the screen: the chat and the link's
+        // code side by side in the first row, the other two codes and a bare part in the second.
+        let middle = size.width / 2
 
         // A chat window with three lines.
-        let chat = CGRect(x: size.width * 0.08, y: size.height * 0.16, width: 560, height: 210)
+        let chat = CGRect(x: middle - 400, y: 96, width: 460, height: 172)
         fill(context, chat, gray: 0.97, radius: 14)
-        let lineHeight: CGFloat = 40
+        let lineHeight: CGFloat = 36
         for (row, line) in lines.enumerated() {
-          drawText(line, in: context, at: CGPoint(x: chat.minX + 28, y: chat.minY + 36 + CGFloat(row) * lineHeight), size: 22)
+          drawText(line, in: context, at: CGPoint(x: chat.minX + 24, y: chat.minY + 30 + CGFloat(row) * lineHeight), size: 20)
         }
-        frames["text"] = CGRect(x: chat.minX + 16, y: chat.minY + 20, width: chat.width - 32, height: lineHeight * 3 + 16)
+        frames["text"] = CGRect(x: chat.minX + 12, y: chat.minY + 16, width: chat.width - 24, height: lineHeight * 3 + 20)
 
         // Three QR codes on cards, with captions.
-        let side: CGFloat = 170
-        let top = chat.maxY + 60
-        for (index, (name, payload, caption)) in [
-          ("linkCode", link, "Scan to open"),
-          ("textCode", text, "Your order"),
-          ("wifiCode", wifi, "Office Wi-Fi"),
-        ].enumerated() {
-          let card = CGRect(x: chat.minX + CGFloat(index) * (side + 60), y: top, width: side + 30, height: side + 70)
+        let side: CGFloat = 150
+        for (name, payload, caption, origin) in [
+          ("linkCode", link, "Scan to open", CGPoint(x: middle + 100, y: 96)),
+          ("textCode", text, "Your order", CGPoint(x: middle - 400, y: 330)),
+          ("wifiCode", wifi, "Office Wi-Fi", CGPoint(x: middle - 160, y: 330)),
+        ] {
+          let card = CGRect(origin: origin, size: CGSize(width: side + 30, height: side + 64))
           fill(context, card, gray: 1, radius: 12)
           let code = CGRect(x: card.minX + 15, y: card.minY + 15, width: side, height: side)
           drawCode(payload, in: context, at: code)
-          drawText(caption, in: context, at: CGPoint(x: card.minX + 15, y: code.maxY + 16), size: 15)
+          drawText(caption, in: context, at: CGPoint(x: card.minX + 15, y: code.maxY + 13), size: 14)
           frames[name] = card
         }
 
         // A bare part of the screen, with nothing to read.
-        frames["empty"] = CGRect(x: size.width * 0.62, y: size.height * 0.16, width: 260, height: 160)
+        frames["empty"] = CGRect(x: middle + 100, y: 340, width: 220, height: 160)
 
         guard let image = context.makeImage() else { throw QAError("the fixture could not be drawn") }
         let data = NSMutableData()
