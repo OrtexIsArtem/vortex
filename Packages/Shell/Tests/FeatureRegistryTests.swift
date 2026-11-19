@@ -111,8 +111,9 @@ struct FeatureRegistryTests {
     }
   #endif
 
+  /// Keys and Screen Text wait for the user's choice; the maintainer recommends the rest.
   @Test
-  func onlyHomeIsBuiltInAndKeysIsTheOneNotRecommended() {
+  func onlyHomeIsBuiltInAndKeysAndScreenTextAreNotRecommended() {
     #expect(FeatureRegistry.all.filter { $0.isBuiltIn }.map { $0.id } == ["home"])
     #expect(FeatureRegistry.all.filter { $0.isRecommended }.map { $0.id } == ["timer", "tasks", "clipboard", "shelf"])
   }

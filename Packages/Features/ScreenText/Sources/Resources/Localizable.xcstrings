@@ -1,0 +1,224 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld lines" : {
+      "comment" : "The notch, right of the cutout, after Copied: how many lines of text were copied",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld рядок"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld рядки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld рядків"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld рядка"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Copied" : {
+      "comment" : "The notch, left of the cutout: Copied · 2 lines, Copied · QR code",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопійовано"
+          }
+        }
+      }
+    },
+    "Copy Text" : {
+      "comment" : "The utility action's button",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіювати текст"
+          }
+        }
+      }
+    },
+    "Copy text from the screen" : {
+      "comment" : "The utility action's tooltip, and the shortcut's row in the settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіювати текст з екрана"
+          }
+        }
+      }
+    },
+    "Copy text you can't select, right off the screen" : {
+      "comment" : "The feature's one line in the catalog",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копіюйте текст, який не виділити, просто з екрана"
+          }
+        }
+      }
+    },
+    "Esc to cancel" : {
+      "comment" : "The hint on the frozen screen",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc — скасувати"
+          }
+        }
+      }
+    },
+    "Frame the text" : {
+      "comment" : "The hint on the frozen screen",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обведіть текст"
+          }
+        }
+      }
+    },
+    "Freezes the screen: the text in the frame you draw goes to the clipboard." : {
+      "comment" : "The shortcut's row in the settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заморожує екран: текст у рамці, яку ви обведете, потрапляє в буфер обміну."
+          }
+        }
+      }
+    },
+    "Link copied" : {
+      "comment" : "The notch, left of the cutout, with the link's host on the right",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посилання скопійовано"
+          }
+        }
+      }
+    },
+    "No text found" : {
+      "comment" : "The notch, when the frame holds no text and no QR code",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст не знайдено"
+          }
+        }
+      }
+    },
+    "Press your shortcut and frame the text on the frozen screen: a screenshot in a chat, a video frame, an error. It's on the clipboard at once, and a QR code in the frame is copied as its link or text. Read on this Mac, in English, Ukrainian and Russian." : {
+      "comment" : "The feature's page in the catalog",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисніть своє клавіатурне скорочення й обведіть текст на замороженому екрані: знімок у чаті, кадр відео, помилку. Він одразу в буфері обміну, а QR-код у рамці копіюється як посилання чи текст. Розпізнається на цьому Mac — англійською, українською й російською."
+          }
+        }
+      }
+    },
+    "QR code" : {
+      "comment" : "The notch, right of the cutout: Copied · QR code",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QR-код"
+          }
+        }
+      }
+    },
+    "Reading the text…" : {
+      "comment" : "The hint on the frozen screen once the mouse is let go",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читання тексту…"
+          }
+        }
+      }
+    },
+    "Reads the text in a frame you draw on the screen." : {
+      "comment" : "Why the feature needs Screen Recording",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читає текст у рамці, яку ви обводите на екрані."
+          }
+        }
+      }
+    },
+    "Screen Text" : {
+      "comment" : "Feature name in the catalog and settings, and on the frozen screen's notch",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст з екрана"
+          }
+        }
+      }
+    },
+    "Text and QR codes are read on this Mac. Vortex keeps none of it." : {
+      "comment" : "Under the settings",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст і QR-коди розпізнаються на цьому Mac. Vortex нічого з цього не зберігає."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

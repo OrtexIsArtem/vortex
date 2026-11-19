@@ -1,5 +1,6 @@
 import FeatureClipboard
 import FeatureHome
+import FeatureScreenText
 import FeatureSecrets
 import FeatureShelf
 import FeatureTasks
@@ -19,6 +20,7 @@ public enum FeatureRegistry {
     ClipboardModule.self,
     ShelfModule.self,
     SecretsModule.self,
+    ScreenTextModule.self,
   ]
 
   public static func module(for id: FeatureID) -> (any FeatureModule.Type)? {
