@@ -4,12 +4,14 @@ import VortexCore
 import VortexPlatform
 
 /// The clipboard tab: search and Clear next to the notch, and the history as a grid of cards. Click a card to copy it
-/// again, drag it into any app.
+/// again, drag it into any app; its eye, or Space over it, shows it in Quick Look.
 public struct ClipboardView: View {
   @Bindable var store: StoreOf<ClipboardFeature>
   @Environment(\.notchCutout) private var cutout
-  @Environment(\.isWindowOpen) private var isWindowOpen
   @FocusState private var isSearchFocused: Bool
+  /// The grid has the keyboard: Space shows the card under the pointer in Quick Look.
+  @FocusState private var isGridFocused: Bool
+  @State private var cardUnderPointer = CardUnderPointer()
 
   public init(store: StoreOf<ClipboardFeature>) {
     self.store = store
@@ -39,7 +41,8 @@ public struct ClipboardView: View {
                   isRevealed: store.revealed.contains(item.id),
                   isJustCopied: store.justCopied == item.id,
                   wholeText: store.wholeText?.id == item.id ? store.wholeText?.text : nil,
-                  now: timeline.date
+                  now: timeline.date,
+                  onHover: { isHovered in cardUnderPointer.hovered(item.id, isHovered) }
                 ) { action in
                   store.send(action, animation: .snappy(duration: 0.25))
                 }
@@ -47,6 +50,7 @@ public struct ClipboardView: View {
                 .onAppear {
                   if !item.fileURLs.isEmpty { store.send(.cardAppeared(item.id)) }
                 }
+                .onDisappear { cardUnderPointer.hovered(item.id, false) }
               }
             }
           }
@@ -56,6 +60,17 @@ public struct ClipboardView: View {
           .padding(.bottom, 16)
         }
         .scrollIndicators(.never)
+        // Space as in Finder: Quick Look on the card under the pointer, and again to close it. The search field, which
+        // takes a space as typed, is not in the grid.
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isGridFocused)
+        .onKeyPress(.space, phases: .down) { _ in
+          store.send(.spacePressed(over: cardUnderPointer.id))
+          return .handled
+        }
+        // Held down, it toggles once; its repeats are taken without doing anything, as AppKit would beep at them.
+        .onKeyPress(.space, phases: .repeat) { _ in .handled }
       }
       // Under the grid rather than over it, as in Tasks: laid over a scroll view, a toast doesn't get the click.
       if let pending = store.pendingRemoval {
@@ -80,9 +95,12 @@ public struct ClipboardView: View {
       .opacity(0)
       .accessibilityHidden(true)
     }
-    .task(id: isWindowOpen) {
-      if isWindowOpen { store.send(.tabShown) }
-    }
+    .modifier(
+      ClipboardVisibilityTracking(store: store) {
+        // Space works at once, unless the search field has the keyboard.
+        if !isSearchFocused { isGridFocused = true }
+      }
+    )
   }
 
   /// The title left of the notch; search and Clear right of it, as in Tasks.
@@ -121,6 +139,21 @@ public struct ClipboardView: View {
         tools
           .padding(.trailing, 18)
       }
+    }
+  }
+}
+
+/// The card under the pointer, for Space. A plain reference, so the pointer going from card to card redraws nothing.
+@MainActor
+private final class CardUnderPointer {
+  private(set) var id: ClipboardItem.ID?
+
+  /// The pointer came over a card or left it; a card that goes from the screen under the pointer counts as left.
+  func hovered(_ card: ClipboardItem.ID, _ isOver: Bool) {
+    if isOver {
+      id = card
+    } else if id == card {
+      id = nil
     }
   }
 }

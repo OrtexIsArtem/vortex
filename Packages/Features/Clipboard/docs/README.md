@@ -11,4 +11,4 @@ Keeps what the user copied for the time they choose (a month by default), plus p
 | contracts.md | what it takes from Core and Platform |
 
 Code: ClipboardFeature.swift (logic, tested), ClipboardItem.swift (the item, its table and writes), ClipboardSettings.swift, LinkAddress.swift,
-Views/ (tab, card, Home widget, settings section, Undo toast), ClipboardModule.swift (registry entry), ClipboardQA.swift (QA mode's `clipboard` command).
+Views/ (tab, card, Home widget, settings section, Undo toast, ClipboardVisibilityTracking: when the tab or the Home widget shows and hides), ClipboardModule.swift (registry entry), ClipboardQA.swift (QA mode's `clipboard` command).

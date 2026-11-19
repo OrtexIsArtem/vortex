@@ -75,6 +75,41 @@ public struct ClipboardItem: Identifiable, Equatable, Sendable {
     }
   }
 
+  /// Vortex's own folder in the system's temporary one, for the texts Quick Look shows (`quickLookTextURL`), deleted
+  /// when the tab hides. A QA run has its own, as it has its own data folder.
+  static let quickLookFolder: URL = {
+    let vortex: URL = {
+      #if DEBUG
+        if case let .named(name, _) = QALaunch.current {
+          return URL.temporaryDirectory.appending(path: "Vortex QA", directoryHint: .isDirectory)
+            .appending(path: name, directoryHint: .isDirectory)
+        }
+      #endif
+      return URL.temporaryDirectory.appending(path: "Vortex", directoryHint: .isDirectory)
+    }()
+    return vortex.appending(path: "Clipboard", directoryHint: .isDirectory)
+  }()
+
+  /// Whether the item has the eye that shows it in Quick Look: never a secret, shown or not, which Quick Look would
+  /// show in plain; nor an image or files marked "Not found".
+  func opensInQuickLook(isUnavailable: Bool) -> Bool {
+    !isConcealed && !isUnavailable
+  }
+
+  /// The file Quick Look shows a text or a link from: in the item's own folder in `quickLookFolder`, named as a copied
+  /// image is ("Text 2026-10-04 at 14.03.12.txt"). Nil for an image or files, which Quick Look shows as they are.
+  var quickLookTextURL: URL? {
+    let isLink: Bool
+    switch content {
+    case .text: isLink = false
+    case .link: isLink = true
+    case .image, .files: return nil
+    }
+    return Self.quickLookFolder
+      .appending(path: id.uuidString, directoryHint: .isDirectory)
+      .appending(path: ClipboardFeature.textFileName(isLink: isLink, copiedAt: copiedAt))
+  }
+
   /// The start of a text memory keeps once it is saved; nil when the text is short enough to keep whole.
   static func preview(of text: String) -> String? {
     text.utf8.count > previewBytes ? String(text.prefix(utf8Bytes: previewBytes)) : nil

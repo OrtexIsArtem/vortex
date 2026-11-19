@@ -17,8 +17,13 @@ struct ClipboardFeatureTests {
   /// The same writes with the secret flag and the source they were given.
   let writes = LockIsolated<[Write]>([])
   let savedFiles = LockIsolated<[URL]>([])
+  /// What each file written last holds.
+  let fileContents = LockIsolated<[URL: Data]>([:])
   let removedFiles = LockIsolated<[URL]>([])
   let missingFiles = LockIsolated<Set<URL>>([])
+  /// What Quick Look was asked to show, call by call, and how many times it was asked to close.
+  let quickLooked = LockIsolated<[[URL]]>([])
+  let quickLookClosed = LockIsolated(0)
 
   static let terminal = AppInfo(bundleID: "com.apple.Terminal", name: "Terminal")
   static let passwords = AppInfo(bundleID: "com.example.passwords", name: "Passwords")
@@ -44,7 +49,10 @@ struct ClipboardFeatureTests {
       }
       $0.appsClient.running = { [] }
       $0.permissionsClient.refresh = {}
-      $0.fileClient.write = { [savedFiles] _, url in savedFiles.withValue { $0.append(url) } }
+      $0.fileClient.write = { [savedFiles, fileContents] data, url in
+        savedFiles.withValue { $0.append(url) }
+        fileContents.withValue { $0[url] = data }
+      }
       $0.fileClient.read = { _ in Data([1, 2, 3]) }
       $0.fileClient.contents = { _ in [] }
       $0.fileClient.remove = { [removedFiles] url in removedFiles.withValue { $0.append(url) } }
@@ -53,6 +61,8 @@ struct ClipboardFeatureTests {
       }
       // A new image is read for search: it says nothing unless a test gives it text (`readImages`).
       $0.textRecognitionClient.recognizeForSearch = { _ in "" }
+      $0.quickLookClient.toggle = { [quickLooked] urls in quickLooked.withValue { $0.append(urls) } }
+      $0.quickLookClient.close = { [quickLookClosed] in quickLookClosed.withValue { $0 += 1 } }
     }
   }
 

@@ -2,7 +2,7 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// One item of the history: a preview, where it was copied and when. Pin and delete appear on hover.
+/// One item of the history: a preview, where it was copied and when. Quick Look's eye, pin and delete appear on hover.
 struct ClipboardCard: View {
   let item: ClipboardItem
   let isUnavailable: Bool
@@ -11,11 +11,29 @@ struct ClipboardCard: View {
   /// The whole text of a long item, once read: without it a long text doesn't drag.
   let wholeText: String?
   let now: Date
+  /// The pointer came over the card or left it.
+  var onHover: @MainActor (Bool) -> Void = { _ in }
   let send: @MainActor (ClipboardFeature.Action) -> Void
   @State private var isHovered = false
 
+  /// The eye's target past its circle: 44 pt square, grown up to the card's edge, down and into the preview, never
+  /// into the pin's target next to it.
+  static let eyeOutset = EdgeInsets(top: 6, leading: 14, bottom: 8, trailing: 0)
+
   private var isImage: Bool {
     if case .image = item.content { true } else { false }
+  }
+
+  /// Under the pointer: its buttons show.
+  private var showsButtons: Bool {
+    #if DEBUG
+      if ClipboardQAPointer.shared.card == item.id { return true }
+    #endif
+    return isHovered
+  }
+
+  private var opensInQuickLook: Bool {
+    item.opensInQuickLook(isUnavailable: isUnavailable)
   }
 
   var body: some View {
@@ -39,6 +57,7 @@ struct ClipboardCard: View {
         onClick: { _ in send(.itemTapped(item.id)) },
         onHover: { isHovered in
           self.isHovered = isHovered
+          onHover(isHovered)
           // A long text drags out whole: its whole text is read while the pointer is over it.
           if isHovered, item.isTruncated { send(.itemHovered(item.id)) }
         }
@@ -57,6 +76,15 @@ struct ClipboardCard: View {
     .accessibilityHint(Text("Copies it again", bundle: .module))
     .accessibilityAddTraits(.isButton)
     .accessibilityAction { send(.itemTapped(item.id)) }
+    .accessibilityActions {
+      if opensInQuickLook {
+        Button {
+          send(.quickLookTapped(item.id))
+        } label: {
+          Text("Quick Look", bundle: .module)
+        }
+      }
+    }
     .accessibilityAction(named: item.isPinned ? Text("Unpin", bundle: .module) : Text("Pin", bundle: .module)) {
       send(.pinTapped(item.id))
     }
@@ -166,7 +194,13 @@ struct ClipboardCard: View {
           send(.revealTapped(item.id))
         }
       }
-      if isHovered {
+      // Where a secret has its own eye, Show: a secret never goes to Quick Look, so the two never meet.
+      if showsButtons, opensInQuickLook {
+        CardButton(symbol: "eye", label: Text("Quick Look", bundle: .module), outset: Self.eyeOutset) {
+          send(.quickLookTapped(item.id))
+        }
+      }
+      if showsButtons {
         CardButton(
           symbol: item.isPinned ? "pin.fill" : "pin",
           label: item.isPinned ? Text("Unpin", bundle: .module) : Text("Pin", bundle: .module)
@@ -174,7 +208,7 @@ struct ClipboardCard: View {
           send(.pinTapped(item.id))
         }
       }
-      if isHovered {
+      if showsButtons {
         CardButton(symbol: "xmark", label: Text("Delete", bundle: .module)) {
           send(.deleteTapped(item.id))
         }
@@ -191,6 +225,14 @@ struct ClipboardCard: View {
       Text("Copy", bundle: .module)
     }
     .disabled(isUnavailable)
+    if !item.isConcealed {
+      Button {
+        send(.quickLookTapped(item.id))
+      } label: {
+        Text("Quick Look", bundle: .module)
+      }
+      .disabled(isUnavailable)
+    }
     Button {
       send(.pinTapped(item.id))
     } label: {
@@ -241,6 +283,9 @@ struct ClipboardCard: View {
 private struct CardButton: View {
   let symbol: String
   let label: Text
+  /// Its target past its 30 pt frame, while it looks and lays out the same: macOS hits a button only inside its label's
+  /// frame, so the label grows, and the button gives the growth back to the layout.
+  var outset = EdgeInsets()
   let action: () -> Void
 
   var body: some View {
@@ -251,11 +296,13 @@ private struct CardButton: View {
         .frame(width: 24, height: 24)
         .background(Circle().fill(VortexColor.raised))
         .frame(width: 30, height: 30)
+        .padding(outset)
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .help(label)
     .accessibilityLabel(label)
+    .padding(EdgeInsets(top: -outset.top, leading: -outset.leading, bottom: -outset.bottom, trailing: -outset.trailing))
   }
 }
 

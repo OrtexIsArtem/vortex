@@ -34,4 +34,24 @@ struct ClipboardQATests {
     #expect(throws: QAError.self) { try action(4, "click") }
     #expect(throws: QAError.self) { try action(1, "drag") }
   }
+
+  @Test
+  func aCardCommandPressesTheEyeOnlyWhereItShows() throws {
+    let text = ClipboardItem(id: UUID(), content: .text("short"), source: nil, copiedAt: .now, fingerprint: "a")
+    var secret = ClipboardItem(id: UUID(), content: .text("hunter2"), source: nil, copiedAt: .now, fingerprint: "b")
+    secret.isConcealed = true
+    let gone = ClipboardItem(
+      id: UUID(), content: .files([URL(fileURLWithPath: "/tmp/gone.zip")]), source: nil, copiedAt: .now, fingerprint: "c"
+    )
+    func action(_ place: Int) throws -> ClipboardFeature.Action? {
+      try ClipboardModule.cardAction(
+        ["card": "", "n": "\(place)", "do": "quickLook"], shown: [text, secret, gone], unavailable: [gone.id]
+      )
+    }
+
+    #expect(try action(1) == .quickLookTapped(text.id))
+    // A secret and a card marked "Not found" have no eye.
+    #expect(throws: QAError.self) { try action(2) }
+    #expect(throws: QAError.self) { try action(3) }
+  }
 }

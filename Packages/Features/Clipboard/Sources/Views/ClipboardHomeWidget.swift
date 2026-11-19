@@ -3,10 +3,10 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The clipboard on Home: the history as one-line rows. A click copies again, a row drags out, a drop copies.
+/// The clipboard on Home: the history as one-line rows. A click copies again, a row drags out, its eye shows it in
+/// Quick Look, a drop copies.
 struct ClipboardHomeWidget: View {
   let store: StoreOf<ClipboardFeature>
-  @Environment(\.isWindowOpen) private var isWindowOpen
   @State private var isTargeted = false
 
   var body: some View {
@@ -60,14 +60,12 @@ struct ClipboardHomeWidget: View {
     .dropTarget(isTargeted: $isTargeted) { items in
       store.send(.dropped(items))
     }
-    .task(id: isWindowOpen) {
-      if isWindowOpen { store.send(.tabShown) }
-    }
+    .modifier(ClipboardVisibilityTracking(store: store))
   }
 }
 
 /// One item of the history in one line: a tiny picture of an image, an icon for any other kind, and the start of it.
-/// Secrets stay dots.
+/// Secrets stay dots. Under the pointer, Quick Look's eye shows at its end.
 private struct ClipboardRow: View {
   let item: ClipboardItem
   let isUnavailable: Bool
@@ -75,12 +73,26 @@ private struct ClipboardRow: View {
   /// The whole text of a long item, once read: without it a long text doesn't drag.
   let wholeText: String?
   let send: @MainActor (ClipboardFeature.Action) -> Void
+  @State private var isHovered = false
 
   /// The column of the picture or the icon, as wide as a picture in every row, so all the text starts at one place.
   static let leadingWidth: CGFloat = 22
   static let spacing: CGFloat = 10
   /// Where the text starts; the hairlines between rows start there too.
   static let textInset = leadingWidth + spacing
+  static let height: CGFloat = 34
+  /// The eye's target: 44 pt wide and as tall as the row, as a taller one would reach into the rows around it.
+  static let eyeTarget = CGSize(width: 44, height: height)
+  /// What the text leaves the eye at the row's end.
+  static let eyeRoom: CGFloat = 28
+
+  private var opensInQuickLook: Bool {
+    item.opensInQuickLook(isUnavailable: isUnavailable)
+  }
+
+  private var showsEye: Bool {
+    isHovered && opensInQuickLook
+  }
 
   var body: some View {
     HStack(spacing: Self.spacing) {
@@ -91,18 +103,23 @@ private struct ClipboardRow: View {
         .truncationMode(.tail)
       Spacer(minLength: 0)
     }
-    .frame(height: 34)
+    .padding(.trailing, showsEye ? Self.eyeRoom : 0)
+    .frame(height: Self.height)
     .opacity(isUnavailable ? 0.45 : 1)
     .overlay {
       DragSourceArea(
-        // Home has no eye to show a secret, so a secret never drags from here.
+        // Home has no Show for a secret, so a secret never drags from here.
         items: { isUnavailable ? [] : item.dragItems(isRevealed: false, wholeText: wholeText) },
         onClick: { _ in send(.itemTapped(item.id)) },
-        // A long text drags out whole: its whole text is read while the pointer is over it.
         onHover: { isHovered in
+          self.isHovered = isHovered
+          // A long text drags out whole: its whole text is read while the pointer is over it.
           if isHovered, item.isTruncated { send(.itemHovered(item.id)) }
         }
       )
+    }
+    .overlay(alignment: .trailing) {
+      if showsEye { eye }
     }
     .contextMenu {
       Button {
@@ -111,6 +128,14 @@ private struct ClipboardRow: View {
         Text("Copy", bundle: .module)
       }
       .disabled(isUnavailable)
+      if !item.isConcealed {
+        Button {
+          send(.quickLookTapped(item.id))
+        } label: {
+          Text("Quick Look", bundle: .module)
+        }
+        .disabled(isUnavailable)
+      }
       Button {
         send(.pinTapped(item.id))
       } label: {
@@ -128,6 +153,31 @@ private struct ClipboardRow: View {
     .accessibilityHint(Text("Copies it again", bundle: .module))
     .accessibilityAddTraits(.isButton)
     .accessibilityAction { send(.itemTapped(item.id)) }
+    .accessibilityActions {
+      if opensInQuickLook {
+        Button {
+          send(.quickLookTapped(item.id))
+        } label: {
+          Text("Quick Look", bundle: .module)
+        }
+      }
+    }
+  }
+
+  /// Quick Look's eye, quiet as the row's icons, at the row's end.
+  private var eye: some View {
+    Button {
+      send(.quickLookTapped(item.id))
+    } label: {
+      Image(systemName: "eye")
+        .font(.system(size: 12))
+        .foregroundStyle(VortexColor.secondaryText)
+        .frame(width: Self.eyeTarget.width, height: Self.eyeTarget.height, alignment: .trailing)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .help(Text("Quick Look", bundle: .module))
+    .accessibilityLabel(Text("Quick Look", bundle: .module))
   }
 
   /// The picture of an image; for anything else, or until the picture is made, the icon of its kind. After a click the

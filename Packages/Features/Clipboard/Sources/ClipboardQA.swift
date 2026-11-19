@@ -18,9 +18,11 @@
     /// - `press=clear|undo` presses Clear or Undo, refused while it doesn't show (nothing unpinned, no Undo);
     /// - `keep=week|month|threeMonths|year|forever` chooses Keep history;
     /// - `search text=<query>` types the query (empty: no search);
-    /// - `card n=<1-based place among the cards shown> do=click|hover|unhover|pin|unpin|delete` acts on a card as the
-    ///   pointer does: `click` copies it again, `hover` reads a long text's whole text, `unhover` sends nothing (the card
-    ///   only hides its buttons), `pin` and `unpin` press the pin button that shows, `delete` its ×;
+    /// - `card n=<1-based place among the cards shown> do=click|hover|unhover|pin|unpin|delete|quickLook` acts on a card
+    ///   as the pointer does: `click` copies it again, `hover` shows its buttons and reads a long text's whole text,
+    ///   `unhover` hides its buttons and sends nothing, `pin` and `unpin` press the pin button that shows, `delete` its
+    ///   ×, `quickLook` its eye, refused on a card that has none (a secret, "Not found"); the Quick Look panel never
+    ///   shows, its calls are logged (`quickLook`);
     /// - `seed count=<n> [images=<n>]` adds generated items spread over the last year, through the real writes, and
     ///   reads the history again; Keep history removes the older ones as usual, so choose `keep=forever` first.
     /// The state section `clipboard` has the counts, the choice, the search, a pending Undo, the whole text the hover
@@ -52,7 +54,15 @@
         } else if arguments["search"] != nil {
           store.send(.queryChanged(arguments["text"] ?? ""))
         } else if arguments["card"] != nil {
-          if let action = try cardAction(arguments, shown: store.shownItems) {
+          let shown = store.shownItems
+          let action = try cardAction(arguments, shown: shown, unavailable: store.unavailable)
+          // The pointer over a card, as a snapshot shows it: its buttons.
+          switch arguments["do"] {
+          case "hover": ClipboardQAPointer.shared.card = Int(arguments["n"] ?? "").map { shown[$0 - 1].id }
+          case "unhover": ClipboardQAPointer.shared.card = nil
+          default: break
+          }
+          if let action {
             store.send(action)
           }
         } else {
@@ -73,8 +83,12 @@
     }
 
     /// What `card n= do=` sends: the action the card's views send for that pointer action, or nil when they send
-    /// none (`unhover`, `hover` on anything but a long text).
-    static func cardAction(_ arguments: [String: String], shown: [ClipboardItem]) throws -> ClipboardFeature.Action? {
+    /// none (`unhover`, `hover` on anything but a long text). `unavailable`: the cards marked "Not found".
+    static func cardAction(
+      _ arguments: [String: String],
+      shown: [ClipboardItem],
+      unavailable: Set<ClipboardItem.ID> = []
+    ) throws -> ClipboardFeature.Action? {
       guard let place = Int(arguments["n"] ?? ""), shown.indices.contains(place - 1) else {
         throw QAError("card takes n=<1…\(shown.count)>, a place among the cards shown")
       }
@@ -95,8 +109,13 @@
         return .pinTapped(item.id)
       case "delete":
         return .deleteTapped(item.id)
+      case "quickLook":
+        guard item.opensInQuickLook(isUnavailable: unavailable.contains(item.id)) else {
+          throw QAError("card \(place) has no eye: it is a secret or marked Not found")
+        }
+        return .quickLookTapped(item.id)
       default:
-        throw QAError("card takes do=click|hover|unhover|pin|unpin|delete")
+        throw QAError("card takes do=click|hover|unhover|pin|unpin|delete|quickLook")
       }
     }
 
@@ -296,6 +315,15 @@
       else { return Data() }
       return png
     }()
+  }
+
+  /// The card QA's `clipboard card n= do=hover` put the pointer on, which shows its buttons as the real pointer does;
+  /// `do=unhover` takes it off. Nil outside QA mode, where only the pointer shows them.
+  @MainActor
+  @Observable
+  final class ClipboardQAPointer {
+    static let shared = ClipboardQAPointer()
+    var card: ClipboardItem.ID?
   }
 
   /// A small seeded random generator, so a seed gives the same items every time.

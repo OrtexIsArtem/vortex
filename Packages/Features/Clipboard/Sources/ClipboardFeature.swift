@@ -89,6 +89,9 @@ public struct ClipboardFeature: Sendable {
     var imagesToRead: [ClipboardItem.ID] = []
     /// The image being read now: one at a time, so a burst of copies never starts Vision requests side by side.
     var readingImage: ClipboardItem.ID?
+    /// Quick Look was asked to show an item since the tab or the widget on Home was last hidden: hiding them closes it
+    /// and deletes the texts written for it. Quick Look showing the shelf's files is left alone.
+    var hasShownQuickLook = false
     @Shared(.clipboardSettings) var settings
     /// What macOS says about Paste from Other Apps, read by the shell: the settings row, and no recording while it
     /// reads `notGranted`.
@@ -176,8 +179,14 @@ public struct ClipboardFeature: Sendable {
     case hourPassed
     case revealTapped(ClipboardItem.ID)
     case showInFinderTapped(ClipboardItem.ID)
+    /// The eye of a card or a Home row, or its menu item: Quick Look shows the item, or closes when it already does.
+    case quickLookTapped(ClipboardItem.ID)
+    /// Space in the tab: Quick Look on the card under the pointer, as the eye; over no card it closes Quick Look.
+    case spacePressed(over: ClipboardItem.ID?)
     /// The tab became visible: the window opened on it, or the user switched to it.
     case tabShown
+    /// The tab or the widget on Home left the open window, or the window closed on it: Quick Look closes.
+    case tabHidden
     /// A card came on screen: its files are checked, once per showing of the tab.
     case cardAppeared(ClipboardItem.ID)
     case filesChecked(checked: Set<ClipboardItem.ID>, missing: Set<ClipboardItem.ID>)
@@ -205,6 +214,7 @@ public struct ClipboardFeature: Sendable {
   @Dependency(\.pasteboardClient) var pasteboard
   @Dependency(\.permissionPage) var permissionPage
   @Dependency(\.permissionsClient) var permissions
+  @Dependency(\.quickLookClient) var quickLook
   @Dependency(\.systemClient) var system
   @Dependency(\.textRecognitionClient) var textRecognition
   @Dependency(\.uuid) var uuid
@@ -217,6 +227,7 @@ public struct ClipboardFeature: Sendable {
     case undo
     case search
     case imageText
+    case quickLook
   }
 
   public init() {}
@@ -520,6 +531,15 @@ public struct ClipboardFeature: Sendable {
         guard let urls = state.items[id: id]?.fileURLs, !urls.isEmpty else { return .none }
         return .run { [files] _ in await files.revealInFinder(urls) }
 
+      case let .quickLookTapped(id):
+        return showInQuickLook(id, &state)
+
+      case let .spacePressed(id):
+        if let id { return showInQuickLook(id, &state) }
+        // Over no card Space closes Quick Look, unless what it shows isn't the clipboard's.
+        guard state.hasShownQuickLook else { return .none }
+        return .run { _ in await quickLook.close() }
+
       case .tabShown:
         state.revealed = []
         state.query = ""
@@ -529,6 +549,18 @@ public struct ClipboardFeature: Sendable {
         state.checkedFiles = []
         let newest = state.items.lazy.filter { !$0.fileURLs.isEmpty }.prefix(Self.filesCheckedOnShow)
         return .merge(.cancel(id: CancelID.search), pruning, checkFiles(Array(newest), &state))
+
+      case .tabHidden:
+        guard state.hasShownQuickLook else { return .none }
+        state.hasShownQuickLook = false
+        // The texts written for Quick Look go once it no longer shows them.
+        return .concatenate(
+          .cancel(id: CancelID.quickLook),
+          .run { [files] _ in
+            await quickLook.close()
+            await files.remove(ClipboardItem.quickLookFolder)
+          }
+        )
 
       case let .cardAppeared(id):
         guard let item = state.items[id: id] else { return .none }
@@ -609,14 +641,29 @@ public struct ClipboardFeature: Sendable {
   /// "Image 2026-10-04 at 14.03.12.png": the name the image has when dragged into another app, in the words macOS gives
   /// such an image in the app's language; the date and time read the same in every language.
   static func imageFileName(copiedAt date: Date) -> String {
+    let (day, time) = dayAndTime(date)
+    let name = String(localized: "Image \(day) at \(time)", bundle: .module, comment: "File name of a copied image: the date and the time")
+    return "\(name).png"
+  }
+
+  /// "Text 2026-10-04 at 14.03.12.txt", "Link …" for a link: the name Quick Look shows over a text or a link, as a
+  /// copied image is named (`imageFileName`).
+  static func textFileName(isLink: Bool, copiedAt date: Date) -> String {
+    let (day, time) = dayAndTime(date)
+    let name = isLink
+      ? String(localized: "Link \(day) at \(time)", bundle: .module, comment: "File name of a link shown in Quick Look: the date and the time it was copied")
+      : String(localized: "Text \(day) at \(time)", bundle: .module, comment: "File name of a text shown in Quick Look: the date and the time it was copied")
+    return "\(name).txt"
+  }
+
+  /// "2026-10-04" and "14.03.12", the same in every language.
+  private static func dayAndTime(_ date: Date) -> (day: String, time: String) {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd"
     let day = formatter.string(from: date)
     formatter.dateFormat = "HH.mm.ss"
-    let time = formatter.string(from: date)
-    let name = String(localized: "Image \(day) at \(time)", bundle: .module, comment: "File name of a copied image: the date and the time")
-    return "\(name).png"
+    return (day, formatter.string(from: date))
   }
 
   /// Whether a file lives in Vortex's own data folder: the history's image files, the shelf's copies. Such a file goes
@@ -768,6 +815,54 @@ public struct ClipboardFeature: Sendable {
   /// The history changed while a search is shown: its results again, at once.
   private func searchAgain(_ state: State) -> Effect<Action> {
     state.isSearching ? search(state) : .none
+  }
+
+  /// Shows an item in Quick Look, or closes Quick Look when it already shows it (`QuickLookClient.toggle`): an image as
+  /// its PNG, files as they are, a text or a link whole, written to its file in Vortex's temporary folder
+  /// (`ClipboardItem.quickLookTextURL`), the same file each time. Never a secret, nor an item marked "Not found"; files
+  /// gone since the last check get the mark instead.
+  private func showInQuickLook(_ id: ClipboardItem.ID, _ state: inout State) -> Effect<Action> {
+    guard let item = state.items[id: id], item.opensInQuickLook(isUnavailable: state.unavailable.contains(id)) else {
+      return .none
+    }
+    state.hasShownQuickLook = true
+    guard let textURL = item.quickLookTextURL else {
+      let urls = item.fileURLs
+      return .run { [files] send in
+        for url in urls where await files.info(url) == nil {
+          await send(.filesChecked(checked: [id], missing: [id]))
+          return
+        }
+        try Task.checkCancellation()
+        await quickLook.toggle(urls)
+      }
+      .cancellable(id: CancelID.quickLook, cancelInFlight: true)
+    }
+    // Memory may hold only the start of a long text: its whole text, read when the pointer came over it, or now.
+    let known: String?
+    switch item.content {
+    case let .text(text):
+      known = item.isTruncated ? state.wholeText.flatMap { $0.id == id ? $0.text : nil } : text
+    case let .link(link):
+      // As its card reads it (`LinkAddress`).
+      known = LinkAddress.readable(link.absoluteString)
+    case .image, .files:
+      known = nil
+    }
+    return .run { [files] _ in
+      let text: String
+      if let known {
+        text = known
+      } else {
+        text = try await database.read { db in try ClipboardItem.wholeText(of: id, db) }
+      }
+      try await files.write(Data(text.utf8), textURL)
+      try Task.checkCancellation()
+      await quickLook.toggle([textURL])
+    } catch: { error, _ in
+      logger.error("Showing a text in Quick Look failed: \(error, privacy: .public)")
+    }
+    .cancellable(id: CancelID.quickLook, cancelInFlight: true)
   }
 
   /// Checks whether the files of these items are still there, each once per showing of the tab; missing ones are
