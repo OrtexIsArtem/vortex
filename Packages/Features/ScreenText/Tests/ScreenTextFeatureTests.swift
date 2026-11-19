@@ -228,7 +228,7 @@ struct ScreenTextFeatureTests {
     await clock.advance(by: .milliseconds(500))
     await store.receive(\.messageExpired)
     #expect(store.state.message == nil)
-    #expect(store.state.lastMessage == ShownMessage(message: .nothingFound, shownAt: now.value, hiddenAt: now.value))
+    #expect(store.state.lastMessage == ScreenTextFeature.ShownMessage(message: .nothingFound, shownAt: now.value, hiddenAt: now.value))
     await store.send(.stop)
   }
 

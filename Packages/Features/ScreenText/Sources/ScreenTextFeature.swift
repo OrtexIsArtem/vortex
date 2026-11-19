@@ -10,41 +10,43 @@ extension Hotkey {
   static let copyScreenText = Hotkey("copyScreenText")
 }
 
-/// What was read in the frame.
-public enum Reading: Equatable, Sendable {
-  /// What a QR code holds, as it spells it.
-  case qrCode(String)
-  /// The lines of text, top to bottom, none blank; none when there is no text.
-  case lines([String])
-}
+extension ScreenTextFeature {
+  /// What was read in the frame.
+  public enum Reading: Equatable, Sendable {
+    /// What a QR code holds, as it spells it.
+    case qrCode(String)
+    /// The lines of text, top to bottom, none blank; none when there is no text.
+    case lines([String])
+  }
 
-/// What the notch says once the frame is read, for about 1.5 s.
-public enum Message: Equatable, Sendable {
-  /// "Copied · N lines".
-  case copiedLines(Int)
-  /// "Link copied · host": a QR code's web address.
-  case copiedLink(host: String)
-  /// "Copied · QR code": anything else a QR code holds.
-  case copiedCode
-  /// "No text found": nothing was copied.
-  case nothingFound
-}
+  /// What the notch says once the frame is read, for about 1.5 s.
+  public enum Message: Equatable, Sendable {
+    /// "Copied · N lines".
+    case copiedLines(Int)
+    /// "Link copied · host": a QR code's web address.
+    case copiedLink(host: String)
+    /// "Copied · QR code": anything else a QR code holds.
+    case copiedCode
+    /// "No text found": nothing was copied.
+    case nothingFound
+  }
 
-/// A message the notch showed, with when it came and went (nil while it shows).
-public struct ShownMessage: Equatable, Sendable {
-  public var message: Message
-  public var shownAt: Date
-  public var hiddenAt: Date?
-}
+  /// A message the notch showed, with when it came and went (nil while it shows).
+  public struct ShownMessage: Equatable, Sendable {
+    public var message: Message
+    public var shownAt: Date
+    public var hiddenAt: Date?
+  }
 
-/// A capture, from the frozen screen to the read of its frame.
-public struct Capture: Equatable, Identifiable, Sendable {
-  public let id: UUID
-  let screenshot: Screenshot
-  /// The app in front when the screen froze: where the text comes from, which the copy names.
-  let frontApp: String?
-  /// The frame being drawn, or drawn, in points from the screen's top left corner.
-  var frame: CGRect?
+  /// A capture, from the frozen screen to the read of its frame.
+  public struct Capture: Equatable, Identifiable, Sendable {
+    public let id: UUID
+    let screenshot: Screenshot
+    /// The app in front when the screen froze: where the text comes from, which the copy names.
+    let frontApp: String?
+    /// The frame being drawn, or drawn, in points from the screen's top left corner.
+    var frame: CGRect?
+  }
 }
 
 /// Text off the screen: the screen freezes, the user frames an area, and what's in it goes to the pasteboard as a copy

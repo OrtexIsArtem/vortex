@@ -59,6 +59,10 @@ public enum ScreenTextModule: FeatureModule {
   public static func setEnabled(_ isEnabled: Bool) {
     if overlay == nil {
       overlay = ScreenTextOverlay(store: store)
+      #if DEBUG
+        // A QA run takes commands only on its own channel (VortexPlatform's `QA`): ScreenTextQA.swift.
+        registerQACommands(overlay: overlay)
+      #endif
     }
     store.send(isEnabled ? .start : .stop)
   }

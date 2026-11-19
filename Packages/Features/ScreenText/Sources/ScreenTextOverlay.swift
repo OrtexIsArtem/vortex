@@ -10,7 +10,7 @@ final class ScreenTextOverlay: NSObject {
   private let store: StoreOf<ScreenTextFeature>
   let overlay = ScreenOverlay()
   /// The capture on screen, so a new capture replaces it and an update does not.
-  private var shown: Capture.ID?
+  private var shown: ScreenTextFeature.Capture.ID?
   private var observation: ObserveToken?
 
   init(store: StoreOf<ScreenTextFeature>) {

@@ -114,6 +114,18 @@
       (date.timeIntervalSince(QALog.started) * 1_000).rounded() / 1_000
     }
 
+    /// The picture a capture sees as the main display, fixtures/screen.png in the run's folder, read at each capture;
+    /// without it a capture sees a plain picture. A feature's QA may write one, a tester may put one in.
+    public static var screenFixture: URL {
+      QAPaths.fixturesFolder.appending(path: "screen.png")
+    }
+
+    /// The main display as a capture sees it: its size in points, and its pixels per point.
+    @MainActor
+    public static var fixtureDisplay: (size: CGSize, scale: CGFloat) {
+      QAFixtures.mainDisplay
+    }
+
     /// Records something QA mode must never do, such as showing a window on a display.
     public static func violation(_ client: String, _ event: String, _ detail: [String: String] = [:]) {
       QALog.violation(client, event, detail)

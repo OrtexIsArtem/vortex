@@ -770,6 +770,9 @@ final class WindowController: NSObject {
 #if DEBUG
   // MARK: - QA mode
 
+  /// The window `snapshot window=ears` draws the closed notch in, made at its first snapshot.
+  @MainActor private var qaEarsSnapshot: NSWindow?
+
   /// What the shell's QA commands drive: the events the user would make at the notch, the menu bar icon and the window.
   extension WindowController {
     func qaEmit(_ event: WindowEvent) {
@@ -778,6 +781,27 @@ final class WindowController: NSObject {
 
     var qaPanel: NSWindow? { mainPanel }
     var qaMenu: NSMenu? { menuBarMenu }
+
+    /// The closed notch with the ears the run's indicators make now, at the notch size the run pretends, in a window
+    /// of its own that is never ordered in: a QA run draws no ears, so `snapshot window=ears` draws them here.
+    func qaEarsWindow() -> NSWindow {
+      let model = EarsModel()
+      model.notchSize = QA.notchSize
+      model.ears = currentEars
+      model.earWidth = EarsMetrics.earWidth(for: currentEars)
+      let shoulder = model.earWidth > 0 ? VortexMetrics.shoulder : 0
+      let size = CGSize(width: model.notchSize.width + (model.earWidth + shoulder) * 2, height: model.notchSize.height)
+      let window = qaEarsSnapshot ?? {
+        let window = NSWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        qaEarsSnapshot = window
+        return window
+      }()
+      window.contentView = NSHostingView(rootView: NotchEarsView(model: model).frame(width: size.width, height: size.height))
+      window.setFrame(QA.offscreen(CGRect(origin: .zero, size: size)), display: false)
+      return window
+    }
     /// Whether the menu bar icon would show: QA puts none in the menu bar.
     var qaIsMenuBarIconShown: Bool { isMenuBarIconWanted }
     var qaEars: NotchEars { currentEars }

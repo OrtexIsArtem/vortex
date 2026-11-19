@@ -11,6 +11,7 @@
     static func install(store: StoreOf<ShellFeature>) {
       let window = WindowController.shared
       QA.registerWindow(id: "notch", mode: { store.openReason.map { "\($0)" } }) { window.qaPanel }
+      QA.registerWindow(id: "ears") { window.qaEarsWindow() }
       QA.registerState(section: "shell") { State(store: store, window: window) }
       PermissionsQA.install(store: store)
       QA.register(command: "entry") { arguments in

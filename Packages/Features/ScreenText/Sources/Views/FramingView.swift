@@ -30,7 +30,7 @@ struct FramingView: View {
 /// Drawing the frame: the screen dims except inside it, the pointer is a crosshair, and the hint says what to do.
 private struct FrameArea: View {
   let store: StoreOf<ScreenTextFeature>
-  let capture: Capture
+  let capture: ScreenTextFeature.Capture
   let isReading: Bool
   @State private var start: CGPoint?
 

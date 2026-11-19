@@ -19,13 +19,19 @@
       runningApps.first { $0.bundleID == bundleID }?.name ?? bundleID
     }
 
+    /// The main display's size in points and its pixels per point, as a capture sees it.
+    @MainActor
+    static var mainDisplay: (size: CGSize, scale: CGFloat) {
+      let screen = NSScreen.screens.first
+      return (screen?.frame.size ?? CGSize(width: 1512, height: 982), screen?.backingScaleFactor ?? 2)
+    }
+
     /// The main display as a capture sees it: fixtures/screen.png in the run's folder when there is one, otherwise a
     /// plain dark picture with two light windows on it, the main display's size. Never a real screenshot.
     @MainActor
     static func screenshot() -> Screenshot {
       let screen = NSScreen.screens.first
-      let scale = screen?.backingScaleFactor ?? 2
-      let size = screen?.frame.size ?? CGSize(width: 1512, height: 982)
+      let (size, scale) = mainDisplay
       let file = QAPaths.fixturesFolder.appending(path: "screen.png")
       let image = ScreenImage(contentsOf: file, scale: scale) ?? drawn(size: size, scale: scale)
       return Screenshot(

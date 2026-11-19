@@ -35,6 +35,11 @@ public final class ScreenOverlay {
 
   public var isShown: Bool { panel != nil }
 
+  #if DEBUG
+    /// QA mode: the window that shows it, for `snapshot`; nil while it doesn't show.
+    public var qaWindow: NSWindow? { panel }
+  #endif
+
   /// `over` is the bundle id of the app the user was in when the screen was taken, nil when not known. While another
   /// overlay shows a frozen screen this one doesn't show, and calls `onInterrupted`: one frozen screen at a time
   /// (`FrozenScreen`).
@@ -67,8 +72,8 @@ public final class ScreenOverlay {
     NSApp.activate()
   }
 
-  /// QA mode (`QA`): the overlay opens off the displays, never takes the keyboard or the front, and real apps coming to
-  /// the front don't interrupt it.
+  /// QA mode (`QA`): the overlay opens off the displays (on them in a visible run, which the pointer passes through),
+  /// never takes the keyboard or the front, and real apps coming to the front don't interrupt it.
   private static var isQA: Bool {
     #if DEBUG
       QA.isActive
@@ -90,7 +95,7 @@ public final class ScreenOverlay {
       return
     }
     #if DEBUG
-      if Self.isQA { QA.log("overlay", "showKeepingFront", ["shown": "off the displays"]) }
+      if Self.isQA { QA.log("overlay", "showKeepingFront", ["shown": QA.isVisible ? "on the display" : "off the displays"]) }
     #endif
     // Shown the other way: that ends first, with the front given back.
     if isShown, !keepsFront { close() }
@@ -134,7 +139,11 @@ public final class ScreenOverlay {
     panel.onReturn = onReturn
     panel.contentView = NSHostingView(rootView: AnyView(content.environment(\.notchCutout, screen.notchInPoints)))
     #if DEBUG
-      panel.setFrame(Self.isQA ? QA.offscreen(screen.frame) : screen.frame, display: true)
+      // A visible QA run (`--qa-visible`) shows it where plain Vortex does, to record a demo, and the user's pointer
+      // passes through it, as through its notch window; any other run keeps it off the displays.
+      let isOffscreen = Self.isQA && !QA.isVisible
+      panel.ignoresMouseEvents = Self.isQA && QA.isVisible
+      panel.setFrame(isOffscreen ? QA.offscreen(screen.frame) : screen.frame, display: true)
     #else
       panel.setFrame(screen.frame, display: true)
     #endif
