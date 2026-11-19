@@ -21,6 +21,7 @@
 - Nothing found: "No text found", and the pasteboard stays as it was.
 - The copy is the user's own: Clipboard keeps it by its rules, named after the app that was in front when the screen froze; a copy over an app Clipboard ignores isn't kept, but is still on the pasteboard.
 - Text and codes are read on this Mac by Apple Vision (English, Ukrainian, Russian), off the main thread.
+- A frame over 1,600 px either way is read in overlapping tiles at full resolution, so small text in a frame as wide as the screen is read whole, each line once.
 
 ## The notch's message
 - It shows about 1.5 s in the closed notch's ears, then goes; nothing opens and nothing flashes.

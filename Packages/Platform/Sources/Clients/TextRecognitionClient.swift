@@ -64,11 +64,10 @@ private func inBackground<Result: Sendable>(_ reading: @escaping @Sendable () th
   }
 }
 
-/// Vision's accurate reading of an image: its lines (`readingLines`), joined by "\n"; empty when there is no text.
+/// Vision's accurate reading of an image, in tiles it keeps at full resolution (`readPieces`): its lines (`lines(of:)`),
+/// joined by "\n"; empty when there is no text.
 private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
-  let request = textRequest(correctsLanguage: correctsLanguage)
-  try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
-  return lines(readBy: request)
+  lines(of: try readPieces(in: image, correctsLanguage: correctsLanguage)).joined(separator: "\n")
 }
 
 /// What the largest QR code in the image holds as text; nil without one. A code that holds only bytes has no text.
@@ -90,11 +89,6 @@ private func textRequest(correctsLanguage: Bool) -> VNRecognizeTextRequest {
   request.recognitionLanguages = recognitionLanguages
   request.usesLanguageCorrection = correctsLanguage
   return request
-}
-
-/// What a request read: its lines (`readingLines`), joined by "\n"; empty when there is no text.
-private func lines(readBy request: VNRecognizeTextRequest) -> String {
-  readingLines(request.results ?? []).joined(separator: "\n")
 }
 
 /// One read for search, which its caller may give up, as Clipboard does when it stops: given up before Vision starts,
@@ -212,6 +206,140 @@ private func showsThrough(_ image: CGImage) -> Bool {
   context.draw(image, in: CGRect(x: 0, y: 0, width: probeSide, height: probeSide))
   let pixels = UnsafeRawBufferPointer(start: context.data, count: probeSide * probeSide * 4)
   return stride(from: 3, to: pixels.count, by: 4).contains { pixels[$0] < 255 }
+}
+
+// MARK: - Reading in tiles
+
+/// The side of the tiles a picture is read in, in pixels. Vision shrinks a larger picture before it reads it, and small
+/// text drops below what it can read: with 11 pt text at 2x, a picture 2,000 px wide is read whole, one 2,100–2,300 px
+/// wide in part and one 2,400 px wide not at all; one 2,234 px tall whole and one 2,400 px tall in part. 1,600 px each
+/// way leaves a safe margin. A whole screen of 3,456 × 2,234 px is six tiles.
+let tileSide = 1_600
+/// How much neighbouring tiles overlap at least, in pixels: a line two tiles cut is long enough in both to be stitched,
+/// and one two rows of tiles cut is whole in one of them.
+let tileOverlap = 240
+
+/// Where a picture `width` × `height` px is cut into tiles of at most `side` px each way, spread evenly so that
+/// neighbours overlap by at least `overlap` px; one tile when the picture is small enough. In pixels from the top left.
+func tiles(width: Int, height: Int, side: Int = tileSide, overlap: Int = tileOverlap) -> [CGRect] {
+  func spans(_ length: Int) -> [(start: Int, length: Int)] {
+    guard length > side else { return [(0, length)] }
+    let count = Int((Double(length - overlap) / Double(side - overlap)).rounded(.up))
+    let stride = Double(length - side) / Double(count - 1)
+    return (0..<count).map { (Int((Double($0) * stride).rounded()), side) }
+  }
+  return spans(height).flatMap { row in
+    spans(width).map { column in CGRect(x: column.start, y: row.start, width: column.length, height: row.length) }
+  }
+}
+
+/// Whether a piece read in `tile`, from `top` to `bottom` in the picture's pixels from its top, is whole: not cut by an
+/// edge the tile shares with the tile above or below, which holds the piece whole. The picture's own edges cut nothing.
+func isWhole(top: CGFloat, bottom: CGFloat, in tile: CGRect, pictureHeight: CGFloat) -> Bool {
+  let slack: CGFloat = 2
+  let cutAtTop = tile.minY > 0 && top <= tile.minY + slack
+  let cutAtBottom = tile.maxY < pictureHeight && bottom >= tile.maxY - slack
+  return !cutAtTop && !cutAtBottom
+}
+
+/// A piece of text Vision read in one tile, with its box in the whole picture, in Vision's coordinates (0…1, from the
+/// bottom left).
+struct ReadPiece: Equatable {
+  var text: String
+  var box: CGRect
+  var tile: Int
+}
+
+/// The picture's pieces of text, read tile by tile at full resolution (`tiles`), each piece once whole: one a tile's
+/// inner top or bottom edge cuts is left out (`isWhole`).
+func readPieces(in image: CGImage, correctsLanguage: Bool) throws -> [ReadPiece] {
+  let width = CGFloat(image.width), height = CGFloat(image.height)
+  var pieces: [ReadPiece] = []
+  for (index, tile) in tiles(width: image.width, height: image.height).enumerated() {
+    let isWholePicture = tile.size == CGSize(width: width, height: height)
+    guard let part = isWholePicture ? image : image.cropping(to: tile) else { continue }
+    let request = textRequest(correctsLanguage: correctsLanguage)
+    try VNImageRequestHandler(cgImage: part, options: [:]).perform([request])
+    for observation in request.results ?? [] {
+      guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { continue }
+      let box = observation.boundingBox
+      let top = tile.minY + (1 - box.maxY) * tile.height
+      let bottom = tile.minY + (1 - box.minY) * tile.height
+      guard isWhole(top: top, bottom: bottom, in: tile, pictureHeight: height) else { continue }
+      let inPicture = CGRect(
+        x: (tile.minX + box.minX * tile.width) / width,
+        y: 1 - bottom / height,
+        width: box.width * tile.width / width,
+        height: (bottom - top) / height
+      )
+      pieces.append(ReadPiece(text: text, box: inPicture, tile: index))
+    }
+  }
+  return pieces
+}
+
+/// The lines the pieces make (`readingRows`), the pieces of a row joined by a space, left to right; a stretch two tiles
+/// both read comes once, and a line a tile's edge cuts is stitched (`merged`).
+func lines(of pieces: [ReadPiece]) -> [String] {
+  readingRows(pieces, box: \.box).compactMap { row in
+    var merged: [ReadPiece] = []
+    for piece in row {
+      if let last = merged.last, last.tile != piece.tile, piece.box.minX < last.box.maxX {
+        merged[merged.count - 1] = VortexPlatform.merged(last, piece)
+      } else {
+        merged.append(piece)
+      }
+    }
+    let line = merged.map(\.text).joined(separator: " ")
+    return line.isEmpty ? nil : line
+  }
+}
+
+/// Two reads from neighbouring tiles whose stretches overlap on a row, `a` starting first, as one: the one that holds
+/// the other's stretch, or the two stitched where they agree (`stitched`).
+func merged(_ a: ReadPiece, _ b: ReadPiece) -> ReadPiece {
+  // About 7 px of a whole screen's width: reads of one stretch end a few pixels apart.
+  let slack: CGFloat = 0.002
+  if b.box.maxX <= a.box.maxX + slack { return ReadPiece(text: a.text, box: a.box.union(b.box), tile: a.tile) }
+  if a.box.minX >= b.box.minX - slack { return ReadPiece(text: b.text, box: a.box.union(b.box), tile: b.tile) }
+  return ReadPiece(text: stitched(a, b), box: a.box.union(b.box), tile: b.tile)
+}
+
+/// A line two tiles cut, `a` the left part and `b` the right, each read up to its tile's edge, where letters may be cut
+/// and misread: the longest run of at least 3 characters the two agree on in their overlap joins them, a's characters
+/// after it and b's before it left out. Without one, each keeps its part up to the overlap's middle.
+func stitched(_ a: ReadPiece, _ b: ReadPiece) -> String {
+  let left = Array(a.text), right = Array(b.text)
+  let overlapStart = b.box.minX, overlapEnd = min(a.box.maxX, b.box.maxX)
+  /// How many of a piece's characters lie between `start` and `end`, by their share of its width.
+  func characters(of characters: [Character], in box: CGRect, from start: CGFloat, to end: CGFloat) -> Int {
+    guard box.width > 0 else { return 0 }
+    let share = min(max((end - start) / box.width, 0), 1)
+    return Int((share * CGFloat(characters.count)).rounded())
+  }
+  // The characters in the overlap, and a few to spare.
+  let tail = Array(left.suffix(characters(of: left, in: a.box, from: overlapStart, to: overlapEnd) + 3))
+  let head = Array(right.prefix(characters(of: right, in: b.box, from: overlapStart, to: overlapEnd) + 3))
+  // The longest common run of the tail and the head: its length, and where it ends in each.
+  var best = (length: 0, tailEnd: 0, headEnd: 0)
+  var previous = [Int](repeating: 0, count: head.count + 1)
+  for i in tail.indices {
+    var current = [Int](repeating: 0, count: head.count + 1)
+    for j in head.indices where tail[i] == head[j] {
+      current[j + 1] = previous[j] + 1
+      if current[j + 1] > best.length { best = (current[j + 1], i + 1, j + 1) }
+    }
+    previous = current
+  }
+  if best.length >= 3 {
+    let leftEnd = left.count - tail.count + best.tailEnd - best.length
+    let rightStart = best.headEnd - best.length
+    return String(left[..<leftEnd]) + String(right[rightStart...])
+  }
+  let middle = (overlapStart + overlapEnd) / 2
+  let leftKeep = characters(of: left, in: a.box, from: a.box.minX, to: middle)
+  let rightDrop = characters(of: right, in: b.box, from: b.box.minX, to: middle)
+  return String(left.prefix(leftKeep)) + String(right.dropFirst(rightDrop))
 }
 
 /// The lines Vision read, top to bottom: the pieces of a row (a message and its time, a line number and its line, a
