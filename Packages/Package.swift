@@ -64,7 +64,9 @@ let package = Package(
     .testTarget(
       name: "VortexPlatformTests",
       dependencies: ["VortexPlatform", composableArchitecture],
-      path: "Platform/Tests"
+      path: "Platform/Tests",
+      // Pictures the reading tests read, crops of the screens QA's tester drew.
+      resources: [.copy("Fixtures")]
     ),
     .target(
       name: "VortexShell",

@@ -64,7 +64,7 @@ private func inBackground<Result: Sendable>(_ reading: @escaping @Sendable () th
   }
 }
 
-/// Vision's accurate reading of an image: its lines in `readingOrder`, joined by "\n"; empty when there is no text.
+/// Vision's accurate reading of an image: its lines (`readingLines`), joined by "\n"; empty when there is no text.
 private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
   let request = textRequest(correctsLanguage: correctsLanguage)
   try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
@@ -92,9 +92,9 @@ private func textRequest(correctsLanguage: Bool) -> VNRecognizeTextRequest {
   return request
 }
 
-/// What a request read: its lines in `readingOrder`, joined by "\n"; empty when there is no text.
+/// What a request read: its lines (`readingLines`), joined by "\n"; empty when there is no text.
 private func lines(readBy request: VNRecognizeTextRequest) -> String {
-  readingOrder(request.results ?? []).joined(separator: "\n")
+  readingLines(request.results ?? []).joined(separator: "\n")
 }
 
 /// One read for search, which its caller may give up, as Clipboard does when it stops: given up before Vision starts,
@@ -128,7 +128,7 @@ private final class SearchRead: @unchecked Sendable {
     return lines.joined(separator: "\n")
   }
 
-  /// Vision's lines of one image, in `readingOrder`.
+  /// Vision's lines of one image (`readingLines`).
   private func read(_ image: CGImage) throws -> [String] {
     let request = textRequest(correctsLanguage: false)
     try lock.withLock {
@@ -143,7 +143,7 @@ private final class SearchRead: @unchecked Sendable {
     }
     // Vision ignores a cancel that comes before it starts.
     try checkGivenUp()
-    return readingOrder(request.results ?? [])
+    return readingLines(request.results ?? [])
   }
 
   private func checkGivenUp() throws {
@@ -214,22 +214,42 @@ private func showsThrough(_ image: CGImage) -> Bool {
   return stride(from: 3, to: pixels.count, by: 4).contains { pixels[$0] < 255 }
 }
 
-/// Lines top to bottom; pieces of text side by side on one row (columns, a sender and a time) left to right. Vision
-/// measures from the bottom left, so a higher line has a larger y.
-func readingOrder(_ observations: [VNRecognizedTextObservation]) -> [String] {
-  readingOrder(observations, box: \.boundingBox).compactMap { $0.topCandidates(1).first?.string }
+/// The lines Vision read, top to bottom: the pieces of a row (a message and its time, a line number and its line, a
+/// line Vision read in parts) joined by a space, left to right (`readingRows`). Vision measures from the bottom left, so
+/// a higher line has a larger y.
+func readingLines(_ observations: [VNRecognizedTextObservation]) -> [String] {
+  readingLines(observations, box: \.boundingBox) { $0.topCandidates(1).first?.string ?? "" }
 }
 
-/// The same order for anything with a box in Vision's coordinates.
+/// The same lines for anything with a box in Vision's coordinates and a text.
+func readingLines<Item>(_ items: [Item], box: (Item) -> CGRect, text: (Item) -> String) -> [String] {
+  readingRows(items, box: box)
+    .map { row in row.map(text).filter { !$0.isEmpty }.joined(separator: " ") }
+    .filter { !$0.isEmpty }
+}
+
+/// The pieces in reading order, row after row (`readingRows`).
 func readingOrder<Item>(_ items: [Item], box: (Item) -> CGRect) -> [Item] {
-  var rows: [(midY: CGFloat, items: [Item])] = []
+  readingRows(items, box: box).flatMap(\.self)
+}
+
+/// Pieces of text grouped into rows by where they are: rows top to bottom, a row's pieces left to right. A piece shares
+/// a row with its first piece when the two overlap from top to bottom by at least half the lower one's height, so a
+/// smaller time set on a message's baseline, or a slightly slanted line, stays on its row, and the next line doesn't.
+func readingRows<Item>(_ items: [Item], box: (Item) -> CGRect) -> [[Item]] {
+  var rows: [(first: CGRect, items: [Item])] = []
   for item in items.sorted(by: { box($0).midY > box($1).midY }) {
-    // Within half a line's height of the row's first piece, it belongs to that row.
-    if let last = rows.indices.last, abs(rows[last].midY - box(item).midY) < box(item).height / 2 {
-      rows[last].items.append(item)
+    let piece = box(item)
+    if let row = rows.indices.last(where: { sharesRow(rows[$0].first, piece) }) {
+      rows[row].items.append(item)
     } else {
-      rows.append((box(item).midY, [item]))
+      rows.append((piece, [item]))
     }
   }
-  return rows.flatMap { row in row.items.sorted { box($0).minX < box($1).minX } }
+  return rows.map { row in row.items.sorted { box($0).minX < box($1).minX } }
+}
+
+/// Whether two boxes overlap from top to bottom by at least half the lower one's height.
+func sharesRow(_ a: CGRect, _ b: CGRect) -> Bool {
+  min(a.maxY, b.maxY) - max(a.minY, b.minY) >= min(a.height, b.height) / 2
 }

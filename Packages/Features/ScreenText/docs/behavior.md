@@ -17,7 +17,7 @@
 - An http or https address in a code is "Link copied · host": the host as the code spells it, in lower case, without "www.", and past 24 characters cut in the middle.
 - Anything else in a code is "Copied · QR code".
 - A Wi-Fi network (`WIFI:`) or a one-time code's secret (`otpauth://`, `otpauth-migration://`) is copied hidden from clipboard histories (concealed); the notch never shows it.
-- No code: the lines of text, top to bottom, joined by line breaks; blank lines and spaces around them go. "Copied · 2 lines", plurals in en and uk.
+- No code: the lines of text, top to bottom, joined by line breaks; a line's pieces on one row (a message and its time, a line number and its line) joined by a space; blank lines and spaces around them go. "Copied · 2 lines" counts these lines, plurals in en and uk.
 - Nothing found: "No text found", and the pasteboard stays as it was.
 - The copy is the user's own: Clipboard keeps it by its rules, named after the app that was in front when the screen froze; a copy over an app Clipboard ignores isn't kept, but is still on the pasteboard.
 - Text and codes are read on this Mac by Apple Vision (English, Ukrainian, Russian), off the main thread.
