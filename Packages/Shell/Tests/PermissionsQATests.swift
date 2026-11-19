@@ -69,7 +69,7 @@
     @Test
     func aFeatureWithoutATabMarksOnlyItsSettingsRows() {
       let screenText = FeatureDescriptor(
-        id: "screentext", title: "Screen Text", symbol: "text.viewfinder", hasTab: false,
+        id: "screentext", title: "Screen Text", symbol: "text.viewfinder", kind: .utility,
         permissionNeeds: [PermissionNeed(.screenRecording, reason: "Reads the text in a frame you draw.")]
       )
       let marks = PermissionsQA.marks(of: screenText, [.screenRecording: .notGranted])

@@ -68,8 +68,8 @@ struct FeatureRegistryTests {
   }
 
   /// Every shipped feature's utility actions follow the rules: at most two, ids that start with the feature's id, no
-  /// shortcut shared, none named like a tab's (`open-<id>`), which the shell keeps for itself. A feature without a tab
-  /// shows itself somewhere: through its settings, which every feature without a tab has, or its utility actions.
+  /// shortcut shared, none named like a tab's (`open-<id>`), which the shell keeps for itself. A utility, which has no
+  /// tab, offers at least one action: the button it is on Home's utilities button.
   @Test
   func everyShippedFeaturesUtilityActionsFollowTheRules() {
     var shortcuts: Set<String> = []
@@ -80,8 +80,8 @@ struct FeatureRegistryTests {
         #expect(!shortcut.hasPrefix("open-") && shortcut != "openVortex", "\(module.id): \(shortcut)")
         #expect(shortcuts.insert(shortcut).inserted, "\(module.id): \(shortcut) is another feature's")
       }
-      if !module.hasTab {
-        #expect(module.makeSettings() != nil || !actions.isEmpty, "\(module.id) has no tab and nothing else")
+      if module.kind == .utility {
+        #expect(!actions.isEmpty, "\(module.id) is a utility without an action")
       }
     }
   }

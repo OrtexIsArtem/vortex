@@ -3,6 +3,20 @@ import SwiftUI
 /// Stable identifier of a feature: used in settings, for the sidebar order and as the prefix of its database tables.
 public typealias FeatureID = String
 
+/// What a module is to the user: a feature, with a tab of its own, or a utility, which does one clear thing and has no
+/// tab. The one source of whether a module has a tab (`hasTab`).
+public enum FeatureKind: String, Sendable, Equatable, CaseIterable {
+  /// A tab in the sidebar, which a module has unless it says it is a utility.
+  case feature
+  /// One clear action and no tab: it shows itself through its utility actions (`FeatureModule.makeUtilityActions()`),
+  /// which Home's utilities button offers, its own shortcut, its settings and the notch. The catalog and Settings ›
+  /// Features list utilities as a group of their own.
+  case utility
+
+  /// Only a feature has a tab.
+  public var hasTab: Bool { self == .feature }
+}
+
 /// The contract every feature implements to plug into the app shell.
 ///
 /// The shell (sidebar, settings, notch) knows features only through this protocol and never imports a feature
@@ -21,13 +35,13 @@ public protocol FeatureModule {
   /// drop doesn't reach Vortex) or opened with Vortex (`vortex shelf add`) arrive in `receiveFiles(_:)`. The first
   /// enabled feature that accepts files gets them.
   static var acceptsFileDrops: Bool { get }
-  /// Whether the feature has a tab in the sidebar, as every feature has unless it says otherwise. One without a tab
-  /// shows itself only through what it offers elsewhere: its settings, its own shortcuts, its utility actions
-  /// (`makeUtilityActions()`), the notch. The shell gives it no sidebar icon, no Open on its catalog page and no
-  /// shortcut that opens its tab, and never calls `makeTab()`.
-  static var hasTab: Bool { get }
+  /// A feature, with a tab in the sidebar, unless it says it is a utility, which has none (`FeatureKind`). A utility
+  /// shows itself only through what it offers elsewhere: its utility actions (`makeUtilityActions()`) on Home's
+  /// utilities button and from their shortcuts, its settings, the notch. The shell gives it no sidebar icon, no Open on
+  /// its catalog page and no shortcut that opens a tab, and never calls `makeTab()`.
+  static var kind: FeatureKind { get }
   /// Content of the feature's sidebar tab. It stays mounted while the window is closed, so work that should
-  /// run only while it is visible goes into `.task(id: isWindowOpen)`. A feature without a tab (`hasTab`) leaves it out.
+  /// run only while it is visible goes into `.task(id: isWindowOpen)`. A utility (`kind`) leaves it out.
   static func makeTab() -> AnyView
   /// The feature's own section in Settings › Features, if it has settings.
   static func makeSettings() -> AnyView?
@@ -81,8 +95,8 @@ public protocol FeatureModule {
 
 extension FeatureModule {
   public static var acceptsFileDrops: Bool { false }
-  public static var hasTab: Bool { true }
-  /// Only a feature without a tab goes without its own: the shell never asks it for one.
+  public static var kind: FeatureKind { .feature }
+  /// Only a utility goes without its own: the shell never asks it for one.
   public static func makeTab() -> AnyView { AnyView(EmptyView()) }
   public static func makeSettings() -> AnyView? { nil }
   public static func makeHomeWidgets() -> [HomeWidget] { [] }
@@ -108,7 +122,7 @@ extension FeatureModule {
       id: id,
       title: title,
       symbol: symbol,
-      hasTab: hasTab,
+      kind: kind,
       acceptsFileDrops: acceptsFileDrops,
       permissionNeeds: permissionNeeds,
       summary: summary,
@@ -132,8 +146,8 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
   public var id: FeatureID
   public var title: LocalizedStringResource
   public var symbol: String
-  /// See `FeatureModule.hasTab`.
-  public var hasTab: Bool
+  /// See `FeatureModule.kind`.
+  public var kind: FeatureKind
   public var acceptsFileDrops: Bool
   /// See `FeatureModule.permissionNeeds`.
   public var permissionNeeds: [PermissionNeed]
@@ -155,7 +169,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     id: FeatureID,
     title: LocalizedStringResource,
     symbol: String,
-    hasTab: Bool = true,
+    kind: FeatureKind = .feature,
     acceptsFileDrops: Bool = false,
     permissionNeeds: [PermissionNeed] = [],
     summary: LocalizedStringResource = "",
@@ -174,7 +188,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     self.id = id
     self.title = title
     self.symbol = symbol
-    self.hasTab = hasTab
+    self.kind = kind
     self.acceptsFileDrops = acceptsFileDrops
     self.permissionNeeds = permissionNeeds
     self.summary = summary
@@ -190,4 +204,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     self.hasOnboardingStep = hasOnboardingStep
     self.preview = preview
   }
+
+  /// Whether the module has a tab in the sidebar: a feature does, a utility doesn't (`kind`).
+  public var hasTab: Bool { kind.hasTab }
 }

@@ -6,8 +6,8 @@ import VortexCore
 @testable import VortexShell
 
 extension FeatureDescriptor {
-  /// A feature without a tab, as Screen Text: its settings, its shortcut and the notch are all it shows.
-  static let screenText = FeatureDescriptor(id: "screentext", title: "Screen Text", symbol: "text.viewfinder", hasTab: false)
+  /// A utility, as Screen Text: its utility action, its settings, its shortcut and the notch are all it shows.
+  static let screenText = FeatureDescriptor(id: "screentext", title: "Screen Text", symbol: "text.viewfinder", kind: .utility)
 }
 
 /// A feature without a tab runs like any other, but has no tab: no sidebar icon, no Open on its page, no shortcut that
