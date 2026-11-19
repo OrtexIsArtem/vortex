@@ -16,7 +16,7 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 <table>
   <tr>
     <td width="50%"><b>Timer</b><br><img src=".github/media/timer.gif" alt="Start on Home, then the countdown runs in the closed notch"></td>
-    <td width="50%"><b>Clipboard</b><br><img src=".github/media/clipboard.gif" alt="Each copy appears as a card in the Clipboard tab, newest first, and a search for build narrows them to two"></td>
+    <td width="50%"><b>Clipboard</b><br><img src=".github/media/clipboard.gif" alt="Each copy appears as a card in the Clipboard tab, newest first, a screenshot among them; a search for build finds a note by its text and the screenshot by the words on it"></td>
   </tr>
   <tr>
     <td><b>Shelf</b><br><img src=".github/media/shelf.gif" alt="Two builds land in a watched folder, the notch flashes for each, and the Shelf tab holds both"></td>
