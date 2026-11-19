@@ -156,18 +156,20 @@ struct FeaturePageView: View {
       case .available, .removed:
         primary(Text("Add", bundle: .module)) { store.send(.featureAdded(feature.id)) }
       case .added:
+        // A feature without a tab has nothing to open: its settings are the way on, as the primary button.
+        let offersOpen = store.state.pageOffersOpen(feature.id)
         // One row where the buttons fit; where they don't (Ukrainian), Home's on a row of its own.
         ViewThatFits(in: .horizontal) {
           HStack(spacing: 8) {
-            primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
+            if offersOpen { open }
             home
-            settings
+            settings(isPrimary: !offersOpen)
             remove
           }
           VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-              primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
-              settings
+              if offersOpen { open }
+              settings(isPrimary: !offersOpen)
               remove
             }
             home
@@ -216,16 +218,26 @@ struct FeaturePageView: View {
     }
   }
 
-  /// The feature's own page in Settings › Features; hidden while it has none, as before the feature runs.
+  /// Open, onto the feature's tab.
+  private var open: some View {
+    primary(Text("Open", bundle: .module)) { store.send(.openFeatureTapped(feature.id)) }
+  }
+
+  /// The feature's own page in Settings › Features; hidden while it has none, as before the feature runs. The primary
+  /// button for a feature without a tab, which has no Open.
   @ViewBuilder
-  private var settings: some View {
+  private func settings(isPrimary: Bool) -> some View {
     if store.state.hasSettingsPage(feature.id) {
-      Button {
-        store.send(.featureSettingsTapped(feature.id))
-      } label: {
-        Text("Settings", bundle: .module)
+      if isPrimary {
+        primary(Text("Settings", bundle: .module)) { store.send(.featureSettingsTapped(feature.id)) }
+      } else {
+        Button {
+          store.send(.featureSettingsTapped(feature.id))
+        } label: {
+          Text("Settings", bundle: .module)
+        }
+        .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
       }
-      .buttonStyle(QuietCapsuleButtonStyle(height: 36, fontSize: 13))
     }
   }
 

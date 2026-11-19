@@ -79,7 +79,9 @@
       for need in feature.permissionNeeds {
         settings[need.permission] = PermissionMark(statuses[need.permission])
       }
-      return Marks(control: control, sidebar: feature.permissionNeeds.firstOff(in: statuses), settings: settings)
+      // A feature without a tab has no sidebar icon to put a dot on.
+      let sidebar = feature.hasTab ? feature.permissionNeeds.firstOff(in: statuses) : nil
+      return Marks(control: control, sidebar: sidebar, settings: settings)
     }
 
     struct State: Encodable {
@@ -89,7 +91,7 @@
       /// What the shell read; empty before the first read.
       var read: [Permission: PermissionStatus]
       var simulation: QAPermissions.Snapshot
-      /// Enabled features only, by id.
+      /// Running features only, by id, those without a tab too.
       var marks: [FeatureID: Marks]
 
       @MainActor init(store: StoreOf<ShellFeature>) {
@@ -99,7 +101,7 @@
         appBlocked = store.appBlocked
         read = statuses
         simulation = QAPermissions.snapshot
-        marks = Dictionary(uniqueKeysWithValues: store.sidebarFeatures.map { ($0.id, PermissionsQA.marks(of: $0, statuses)) })
+        marks = Dictionary(uniqueKeysWithValues: store.runningFeatures.map { ($0.id, PermissionsQA.marks(of: $0, statuses)) })
       }
     }
   }

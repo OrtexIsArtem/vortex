@@ -250,7 +250,8 @@ private struct FeatureRow: View {
 }
 
 /// A feature's page in Settings › Features: back to the list, the feature's name, the shortcut that opens Vortex on its
-/// tab, then the feature's own settings with their permission rows, as the feature makes them.
+/// tab (none for a feature without a tab), then the feature's own settings with their permission rows, as the feature
+/// makes them.
 private struct FeatureSettingsPage: View {
   let store: StoreOf<ShellFeature>
   let feature: FeatureDescriptor
@@ -271,11 +272,13 @@ private struct FeatureSettingsPage: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 0) {
-          SettingsRow(
-            title: Text("Keyboard shortcut", bundle: .module),
-            caption: Text("Opens Vortex right on the \(Text(feature.title)) tab.", bundle: .module)
-          ) {
-            HotkeyRecorder(.open(feature.id), label: Text("Keyboard shortcut", bundle: .module))
+          if let shortcut = store.state.tabShortcut(feature.id) {
+            SettingsRow(
+              title: Text("Keyboard shortcut", bundle: .module),
+              caption: Text("Opens Vortex right on the \(Text(feature.title)) tab.", bundle: .module)
+            ) {
+              HotkeyRecorder(shortcut, label: Text("Keyboard shortcut", bundle: .module))
+            }
           }
           if let settings = FeatureViews.shared.settings(feature.id) {
             settings

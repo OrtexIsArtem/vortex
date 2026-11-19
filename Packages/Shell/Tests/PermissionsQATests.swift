@@ -65,6 +65,17 @@
       #expect(!PermissionsQA.isShowing(.featureSettings, in: state))
     }
 
+    /// A feature without a tab has no sidebar icon to put a dot on; its settings rows mark the permission all the same.
+    @Test
+    func aFeatureWithoutATabMarksOnlyItsSettingsRows() {
+      let screenText = FeatureDescriptor(
+        id: "screentext", title: "Screen Text", symbol: "text.viewfinder", hasTab: false,
+        permissionNeeds: [PermissionNeed(.screenRecording, reason: "Reads the text in a frame you draw.")]
+      )
+      let marks = PermissionsQA.marks(of: screenText, [.screenRecording: .notGranted])
+      #expect(marks == PermissionsQA.Marks(control: nil, sidebar: nil, settings: [.screenRecording: .warning]))
+    }
+
     @Test
     func noMarksBeforeTheFirstReadAndNoYellowForRestart() {
       #expect(PermissionsQA.marks(of: Self.tasks, [:]) == PermissionsQA.Marks(control: nil, sidebar: nil, settings: [:]))

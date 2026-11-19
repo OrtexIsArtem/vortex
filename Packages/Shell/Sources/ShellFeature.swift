@@ -161,20 +161,33 @@ struct ShellFeature {
       }
     }
 
-    /// The sidebar shows the features that run.
+    /// The sidebar shows the features that run and have a tab (`FeatureDescriptor.hasTab`).
     var sidebarFeatures: [FeatureDescriptor] {
-      runningFeatures
+      runningFeatures.filter(\.hasTab)
     }
 
-    /// Settings › Features: the running features with something to set, in sidebar order. That is every one: each has
-    /// its tab, so its tab's shortcut, which its page shows before the feature's own settings (`makeSettings()`).
+    /// Settings › Features: the running features with something to set, in sidebar order. That is every one: a feature
+    /// with a tab has its tab's shortcut, which its page shows before the feature's own settings (`makeSettings()`); one
+    /// without a tab has only its own settings, as its shortcuts are there.
     var settingsFeatures: [FeatureDescriptor] {
-      sidebarFeatures
+      runningFeatures
     }
 
     /// Whether the feature has a page in Settings › Features; the Settings button on its catalog page shows only then.
     func hasSettingsPage(_ id: FeatureID) -> Bool {
       settingsFeatures.contains { $0.id == id }
+    }
+
+    /// The shortcut that opens Vortex on the feature's tab, which its page in Settings › Features records; nil for a
+    /// feature without a tab, which has none.
+    func tabShortcut(_ id: FeatureID) -> Hotkey? {
+      features.contains { $0.id == id && $0.hasTab } ? .open(id) : nil
+    }
+
+    /// Whether the feature's catalog page offers Open: it is added and has a tab to open.
+    func pageOffersOpen(_ id: FeatureID) -> Bool {
+      guard case .added = pageState(id) else { return false }
+      return features.contains { $0.id == id && $0.hasTab }
     }
 
     /// The feature page Settings › Features shows, in that segment; nil for the list.
@@ -628,6 +641,7 @@ struct ShellFeature {
           }
           // Only the running features start; nothing of the others runs, not even a stop.
           let running = state.runningFeatures.map(\.id)
+          let tabbed = state.runningFeatures.filter(\.hasTab).map(\.id)
           return .merge(
             .run { [
               isVisible = state.isMenuBarIconVisible,
@@ -646,7 +660,8 @@ struct ShellFeature {
                 await send(.openHotkeyPressed)
               }
             },
-            .merge(running.map(listenForTabHotkey)),
+            // A feature without a tab has no shortcut to open one.
+            .merge(tabbed.map(listenForTabHotkey)),
             .concatenate(
               .run { [theme = state.settings.theme] send in
                 await system.applyTheme(theme)
@@ -1070,9 +1085,10 @@ struct ShellFeature {
       state.pendingFiles = []
     }
     let cancellations: [Effect<Action>] = stopped.map { .cancel(id: CancelID.tabHotkey($0)) }
+    let startedTabs = new.filter { started.contains($0.id) && $0.hasTab }.map(\.id)
     return .merge(
       .merge(cancellations),
-      .merge(started.map(listenForTabHotkey)),
+      .merge(startedTabs.map(listenForTabHotkey)),
       .run { [waitingFiles] _ in
         for id in stopped {
           await features.setEnabled(id, false)
@@ -1283,14 +1299,15 @@ struct ShellFeature {
     return open(.hotkey, &state, tab: page)
   }
 
-  /// Adds the feature, which starts on a trial, saved before it runs; its tab is the one the window opens on next.
+  /// Adds the feature, which starts on a trial, saved before it runs; its tab, if it has one, is the one the window
+  /// opens on next.
   private func add(_ id: FeatureID, _ state: inout State) -> Effect<Action> {
     guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn else { return .none }
     let before = state.runningFeatures.map(\.id)
     state.setAdded(id, true)
     state.settings.stoppedFeatures.removeAll { $0 == id }
     if state.isSafeMode { state.safeModeStarted.insert(id) }
-    state.settings.lastTab = Tab.feature(id).storageValue
+    if feature.hasTab { state.settings.lastTab = Tab.feature(id).storageValue }
     beginTrials(of: state.runningFeatures.map(\.id).filter { !before.contains($0) })
     // Added back, a feature needs no Undo any more.
     guard state.removedForUndo == id else { return saveSettingsNow(state) }
