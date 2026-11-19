@@ -71,6 +71,66 @@ struct CatalogCard: View {
   }
 }
 
+/// A utility in the catalog's Utilities section, one compact row: its symbol, name and one line, with its badges, a
+/// button onto its page; at the end the switch that adds or removes it, by Add and Remove's rules.
+struct UtilityRow: View {
+  let feature: FeatureDescriptor
+  let badges: [CatalogBadge]
+  /// A permission the added utility needs is off.
+  var warning: Permission?
+  let isAdded: Bool
+  /// False while the maintainer pauses it: the switch shows and doesn't move.
+  let switchable: Bool
+  let switched: @MainActor (Bool) -> Void
+  let open: () -> Void
+  @State private var isHovered = false
+
+  var body: some View {
+    HStack(spacing: 8) {
+      Button(action: open) {
+        HStack(spacing: 12) {
+          Image(systemName: feature.symbol)
+            .font(.system(size: 14))
+            .foregroundStyle(VortexColor.primaryText)
+            .frame(width: 30, height: 30)
+            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(VortexColor.raised))
+            .overlay(alignment: .topTrailing) {
+              if let warning {
+                WarningMark(warning, style: .dot).offset(x: 3, y: -3)
+              }
+            }
+          VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 7) {
+              Text(feature.title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(VortexColor.primaryText)
+              ForEach(badges, id: \.self) { CatalogBadgeView(badge: $0) }
+            }
+            Text(feature.summary)
+              .font(.system(size: 11.5))
+              .foregroundStyle(VortexColor.secondaryText)
+              .lineLimit(1)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.leading, 14)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .onHover { isHovered = $0 }
+      .accessibilityElement(children: .combine)
+      Toggle(isOn: Binding(get: { isAdded }, set: { switched($0) })) {
+        Text(feature.title)
+      }
+      .toggleStyle(.vortex)
+      .disabled(!switchable)
+      .padding(.trailing, 8)
+    }
+    .background(VortexColor.primaryText.opacity(isHovered ? 0.03 : 0))
+  }
+}
+
 /// The marks a catalog card can carry.
 enum CatalogBadge: Hashable {
   case recommended

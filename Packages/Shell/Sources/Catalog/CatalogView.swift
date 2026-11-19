@@ -3,8 +3,9 @@ import SwiftUI
 import VortexCore
 import VortexPlatform
 
-/// The catalog: every feature Vortex ships but the built-in ones, those added and those you can add, in the large
-/// window. A card opens the feature's page.
+/// The catalog: every feature Vortex ships but the built-in ones, those added and those you can add, then the utilities
+/// in a section of their own, in the large window. A card or a utility's row opens its page; a row's switch adds or
+/// removes the utility.
 struct CatalogView: View {
   let store: StoreOf<ShellFeature>
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
@@ -37,6 +38,10 @@ struct CatalogView: View {
               .foregroundStyle(VortexColor.tertiaryText)
           } else {
             section(Text("Can add", bundle: .module), count: available.count, features: available, isAdded: false)
+          }
+          let utilities = store.catalogUtilities
+          if !utilities.isEmpty {
+            utilitySection(utilities)
           }
         }
         .padding(.leading, 10)
@@ -71,6 +76,38 @@ struct CatalogView: View {
           .frame(height: height)
         }
       }
+    }
+  }
+
+  /// "Utilities": a compact row for each, added or not, in one card; the switch at the end of a row adds or removes it.
+  private func utilitySection(_ utilities: [FeatureDescriptor]) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 6) {
+        Text("Utilities", bundle: .module).foregroundStyle(VortexColor.secondaryText)
+        Text(verbatim: "\(utilities.count)").monospacedDigit().foregroundStyle(VortexColor.tertiaryText)
+      }
+      .font(.system(size: 12))
+      VStack(spacing: 0) {
+        ForEach(Array(utilities.enumerated()), id: \.element.id) { index, utility in
+          let isAdded = store.state.isAdded(utility)
+          UtilityRow(
+            feature: utility,
+            badges: badges(for: utility, isAdded: isAdded),
+            warning: isAdded ? store.state.permissionOff(for: utility) : nil,
+            isAdded: isAdded,
+            switchable: utility.suspension == nil,
+            switched: { store.send(.utilitySwitched(utility.id, isOn: $0)) },
+            open: { store.send(.tabSelected(.catalogPage(utility.id))) }
+          )
+          if index < utilities.count - 1 {
+            Hairline().padding(.leading, 56)
+          }
+        }
+      }
+      .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(VortexColor.card))
+      // A row's hover fill stays inside the card's corners.
+      .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(VortexColor.cardEdge))
     }
   }
 

@@ -45,7 +45,8 @@
 
     // MARK: - The catalog
 
-    /// `catalog open`: the sidebar's catalog icon; `catalog page id=<feature id>`: a card, onto the feature's page. In
+    /// `catalog open`: the sidebar's catalog icon; `catalog page id=<feature id>`: a card or a utility's row, onto its
+    /// page; `catalog switch id=<utility id> on=true|false`: a utility's switch in the Utilities section, on the list. In
     /// the open window only, as a click would be.
     static func catalog(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
       guard store.isOpen else { throw QAError("the window is closed") }
@@ -56,8 +57,16 @@
           throw QAError("no page for \(id); the catalog has \(store.catalogFeatures.map(\.id).joined(separator: ", "))")
         }
         store.send(.tabSelected(.catalogPage(id)))
+      } else if arguments["switch"] != nil, let id = arguments["id"], let isOn = arguments["on"].flatMap(Bool.init) {
+        guard store.selectedTab == .catalog else { throw QAError("the catalog's list doesn't show: `catalog open` first") }
+        guard let utility = store.catalogUtilities.first(where: { $0.id == id }) else {
+          let ids = store.catalogUtilities.map(\.id)
+          throw QAError("no utility \(id); the Utilities section has \(ids.isEmpty ? "none" : ids.joined(separator: ", "))")
+        }
+        guard utility.suspension == nil else { throw QAError("\(id) is paused: its switch doesn't move") }
+        store.send(.utilitySwitched(id, isOn: isOn))
       } else {
-        throw QAError("catalog takes open, or page id=<feature id>")
+        throw QAError("catalog takes open, page id=<feature id>, or switch id=<utility id> on=true|false")
       }
     }
 

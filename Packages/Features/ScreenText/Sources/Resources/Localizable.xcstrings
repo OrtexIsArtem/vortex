@@ -120,17 +120,6 @@
         }
       }
     },
-    "Freezes the screen: the text in the frame you draw goes to the clipboard." : {
-      "comment" : "The shortcut's row in the settings",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Заморожує екран: текст у рамці, яку ви обведете, потрапляє в буфер обміну."
-          }
-        }
-      }
-    },
     "Link copied" : {
       "comment" : "The notch, left of the cutout, with the link's host on the right",
       "localizations" : {

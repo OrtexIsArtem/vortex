@@ -1403,6 +1403,17 @@
         }
       }
     },
+    "Utilities" : {
+      "comment" : "The catalog's section, Settings › Features' group and the onboarding's group of utilities: modules that do one clear thing and have no tab; as macOS names its Utilities folder",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Утиліти"
+          }
+        }
+      }
+    },
     "Version" : {
       "comment" : "Settings › General: the row with the app's version",
       "localizations" : {

@@ -194,23 +194,36 @@ private struct ActivationSettings: View {
   }
 }
 
-/// The running features with something to set, in sidebar order, each a row onto its own page. Features are added and
-/// removed in the catalog.
+/// The running features with something to set, in sidebar order, each a row onto its own page; then the running
+/// utilities, as a group of their own. Features are added and removed in the catalog.
 private struct FeatureList: View {
   let store: StoreOf<ShellFeature>
 
   var body: some View {
-    let features = store.settingsFeatures
-    if features.isEmpty {
+    let groups = store.state.settingsGroups
+    if groups.features.isEmpty, groups.utilities.isEmpty {
       Text("Features you add with settings show them here", bundle: .module)
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.tertiaryText)
         .padding(.vertical, 14)
     } else {
-      ForEach(features) { feature in
-        FeatureRow(feature: feature, warning: store.state.permissionOff(for: feature)) {
-          store.send(.settingsRowTapped(feature.id))
-        }
+      rows(groups.features)
+      if !groups.utilities.isEmpty {
+        Text("Utilities", bundle: .module)
+          .font(.system(size: 12))
+          .foregroundStyle(VortexColor.secondaryText)
+          .accessibilityAddTraits(.isHeader)
+          .padding(.top, groups.features.isEmpty ? 8 : 22)
+          .padding(.bottom, 2)
+        rows(groups.utilities)
+      }
+    }
+  }
+
+  private func rows(_ features: [FeatureDescriptor]) -> some View {
+    ForEach(features) { feature in
+      FeatureRow(feature: feature, warning: store.state.permissionOff(for: feature)) {
+        store.send(.settingsRowTapped(feature.id))
       }
     }
   }
@@ -250,8 +263,8 @@ private struct FeatureRow: View {
 }
 
 /// A feature's page in Settings › Features: back to the list, the feature's name, the shortcut that opens Vortex on its
-/// tab (none for a feature without a tab), then the feature's own settings with their permission rows, as the feature
-/// makes them.
+/// tab (none for a utility), the shortcuts of its utility actions, then the feature's own settings with their
+/// permission rows, as the feature makes them.
 private struct FeatureSettingsPage: View {
   let store: StoreOf<ShellFeature>
   let feature: FeatureDescriptor
@@ -278,6 +291,15 @@ private struct FeatureSettingsPage: View {
               caption: Text("Opens Vortex right on the \(Text(feature.title)) tab.", bundle: .module)
             ) {
               HotkeyRecorder(shortcut, label: Text("Keyboard shortcut", bundle: .module))
+            }
+          }
+          // The shell listens for these: what each does is its action's help.
+          ForEach(store.state.utilityShortcuts(feature.id), id: \.id) { info in
+            if let name = info.shortcut,
+               let action = FeatureViews.shared.utilityActions(feature.id).first(where: { $0.id == info.id }) {
+              SettingsRow(title: Text("Keyboard shortcut", bundle: .module), caption: Text(action.help)) {
+                HotkeyRecorder(Hotkey(name), label: Text(action.label))
+              }
             }
           }
           if let settings = FeatureViews.shared.settings(feature.id) {

@@ -170,10 +170,21 @@ struct ShellFeature {
     }
 
     /// Settings › Features: the running features with something to set, in sidebar order. That is every one: a feature
-    /// with a tab has its tab's shortcut, which its page shows before the feature's own settings (`makeSettings()`); one
-    /// without a tab has only its own settings, as its shortcuts are there.
+    /// with a tab has its tab's shortcut, and a utility the shortcuts of its utility actions, which its page shows before
+    /// the module's own settings (`makeSettings()`).
     var settingsFeatures: [FeatureDescriptor] {
       runningFeatures
+    }
+
+    /// Settings › Features as its list shows them: the features with a tab, then the utilities as a group of their own.
+    var settingsGroups: (features: [FeatureDescriptor], utilities: [FeatureDescriptor]) {
+      (settingsFeatures.filter(\.hasTab), settingsFeatures.filter { !$0.hasTab })
+    }
+
+    /// The running utility actions of a feature that have a shortcut, which its page in Settings › Features records first:
+    /// the shell listens for them.
+    func utilityShortcuts(_ id: FeatureID) -> [UtilityActionInfo] {
+      utilityActions.filter { $0.feature == id && $0.shortcut != nil }
     }
 
     /// Whether the feature has a page in Settings › Features; the Settings button on its catalog page shows only then.
@@ -305,15 +316,21 @@ struct ShellFeature {
       orderedFeatures.filter { !$0.isBuiltIn }
     }
 
-    /// The catalog's "Added" section.
+    /// The catalog's "Added" section: the features with a tab the user added. Utilities have a section of their own.
     var catalogAdded: [FeatureDescriptor] {
-      catalogFeatures.filter(isAdded)
+      catalogFeatures.filter { $0.hasTab && isAdded($0) }
     }
 
-    /// The catalog's "Can add" section: the recommended features first.
+    /// The catalog's "Can add" section: the features with a tab not added, the recommended ones first.
     var catalogAvailable: [FeatureDescriptor] {
-      let available = features.filter { !$0.isBuiltIn && !isAdded($0) }
+      let available = features.filter { !$0.isBuiltIn && $0.hasTab && !isAdded($0) }
       return available.filter(\.isRecommended) + available.filter { !$0.isRecommended }
+    }
+
+    /// The catalog's "Utilities" section, after the features: every utility, added or not, in the user's order, so a row
+    /// stays where it is as its switch adds or removes it.
+    var catalogUtilities: [FeatureDescriptor] {
+      catalogFeatures.filter { $0.kind == .utility }
     }
 
     /// Features the catalog hasn't shown yet; one paused in this release is never new.
@@ -321,11 +338,12 @@ struct ShellFeature {
       Set(catalogFeatures.filter { !settings.seenFeatures.contains($0.id) && $0.suspension == nil }.map(\.id))
     }
 
-    /// Whether the catalog's sidebar icon has a dot: a feature is new, stopped after a crash, or waits in safe mode.
+    /// Whether the catalog's sidebar icon has a dot: a feature or a utility is new, stopped after a crash, or waits in
+    /// safe mode.
     var catalogDot: Bool {
       let running = Set(runningFeatures.map(\.id))
       return !unseenFeatures.isEmpty
-        || catalogAdded.contains { feature in
+        || catalogFeatures.filter(isAdded).contains { feature in
           let isStopped = settings.stoppedFeatures.contains(feature.id)
           let waitsInSafeMode = isSafeMode && settings.featuresChosen && feature.suspension == nil && !isStopped
             && !running.contains(feature.id)
@@ -527,6 +545,8 @@ struct ShellFeature {
     case featureAdded(FeatureID)
     /// A feature's page: Remove. The feature stops, and Undo shows for 5 s.
     case featureRemoved(FeatureID)
+    /// A utility's switch in the catalog's Utilities section: on adds it as Add does, off removes it as Remove does.
+    case utilitySwitched(FeatureID, isOn: Bool)
     case undoRemoveTapped
     case undoExpired
     /// A feature's page: Open, which goes to its tab.
@@ -854,25 +874,20 @@ struct ShellFeature {
           return add(id, &state)
 
         case let .featureRemoved(id):
-          guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, state.isAdded(feature)
+          return remove(id, &state)
+
+        case let .utilitySwitched(id, isOn):
+          // Only a utility has a switch, and a paused one shows it off and still.
+          guard let feature = state.features.first(where: { $0.id == id }), feature.kind == .utility, !feature.isBuiltIn,
+                feature.suspension == nil, state.isAdded(feature) != isOn
           else { return .none }
-          state.setAdded(id, false)
-          state.safeModeStarted.remove(id)
-          state.removedForUndo = id
-          var effects: [Effect<Action>] = [
-            saveSettingsNow(state),
-            .run { send in
-              try await clock.sleep(for: .seconds(5))
-              await send(.undoExpired)
-            }
-            .cancellable(id: CancelID.undoRemove, cancelInFlight: true),
-          ]
-          // A permission page only this feature asked for goes with it; the blocking page stays until the user closes it.
-          if let single = state.onboarding.single, single.kind == .request,
-             state.permissionCatalog.entry(for: single.permission) == nil {
-            effects.append(.send(.onboarding(.closeTapped)))
+          guard isOn else { return remove(id, &state) }
+          let effect = add(id, &state)
+          // Its own setup shows on its page, under its buttons, as after Add there.
+          if feature.hasOnboardingStep, !state.onboarding.stepsDone.contains(id) {
+            state.selectedTab = .catalogPage(id)
           }
-          return .merge(effects)
+          return effect
 
         case .undoRemoveTapped:
           guard let id = state.removedForUndo else { return .none }
@@ -1388,6 +1403,29 @@ struct ShellFeature {
     guard state.removedForUndo == id else { return saveSettingsNow(state) }
     state.removedForUndo = nil
     return .merge(.cancel(id: CancelID.undoRemove), saveSettingsNow(state))
+  }
+
+  /// Removes the feature, which stops, saved at once; Undo shows for 5 s. Its data stays until Erase Data.
+  private func remove(_ id: FeatureID, _ state: inout State) -> Effect<Action> {
+    guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, state.isAdded(feature)
+    else { return .none }
+    state.setAdded(id, false)
+    state.safeModeStarted.remove(id)
+    state.removedForUndo = id
+    var effects: [Effect<Action>] = [
+      saveSettingsNow(state),
+      .run { send in
+        try await clock.sleep(for: .seconds(5))
+        await send(.undoExpired)
+      }
+      .cancellable(id: CancelID.undoRemove, cancelInFlight: true),
+    ]
+    // A permission page only this feature asked for goes with it; the blocking page stays until the user closes it.
+    if let single = state.onboarding.single, single.kind == .request,
+       state.permissionCatalog.entry(for: single.permission) == nil {
+      effects.append(.send(.onboarding(.closeTapped)))
+    }
+    return .merge(effects)
   }
 
   /// A window opened on the way past closes once the pointer leaves it.

@@ -25,6 +25,11 @@ struct OnboardingFeature {
     var choosable: [FeatureDescriptor] = []
     /// The ones checked there: those the user has added.
     var chosen: Set<FeatureID> = []
+
+    /// The Features page's first group: the features with a tab.
+    var choosableFeatures: [FeatureDescriptor] { choosable.filter(\.hasTab) }
+    /// Its second group, "Utilities".
+    var choosableUtilities: [FeatureDescriptor] { choosable.filter { !$0.hasTab } }
     @SharedReader(.permissionStatuses) var statuses
     @SharedReader(.onboardingStepsDone) var stepsDone
     /// Whether the window shows, what, and as the full window or the guide panel.

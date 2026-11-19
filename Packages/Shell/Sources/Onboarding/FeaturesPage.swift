@@ -2,8 +2,9 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// The onboarding's Features page, right after Welcome: the features to start with, the recommended ones checked. The
-/// list scrolls; the footer stays, with how many are chosen and what Vortex asks for next.
+/// The onboarding's Features page, right after Welcome: the features to start with, then the utilities as a group of
+/// their own, the recommended ones checked. The list scrolls; the footer stays, with how many are chosen and what Vortex
+/// asks for next.
 struct FeaturesPage: View {
   let store: StoreOf<OnboardingFeature>
 
@@ -21,13 +22,21 @@ struct FeaturesPage: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 6)
           VStack(spacing: 0) {
-            ForEach(store.choosable) { feature in
-              FeatureChoiceRow(feature: feature, isChosen: store.chosen.contains(feature.id)) {
-                store.send(.featureToggled(feature.id))
-              }
-            }
+            rows(store.choosableFeatures)
           }
           .padding(.top, 18)
+          let utilities = store.choosableUtilities
+          if !utilities.isEmpty {
+            Text("Utilities", bundle: .module)
+              .font(.system(size: 12))
+              .foregroundStyle(VortexColor.secondaryText)
+              .accessibilityAddTraits(.isHeader)
+              .padding(.top, 22)
+            VStack(spacing: 0) {
+              rows(utilities)
+            }
+            .padding(.top, 2)
+          }
         }
       }
       Hairline()
@@ -35,6 +44,14 @@ struct FeaturesPage: View {
         .frame(height: 72)
     }
     .padding(.horizontal, 40)
+  }
+
+  private func rows(_ features: [FeatureDescriptor]) -> some View {
+    ForEach(features) { feature in
+      FeatureChoiceRow(feature: feature, isChosen: store.chosen.contains(feature.id)) {
+        store.send(.featureToggled(feature.id))
+      }
+    }
   }
 
   private var footer: some View {
