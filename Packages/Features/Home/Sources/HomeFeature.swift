@@ -25,6 +25,8 @@ struct HomeFeature: Sendable {
     @Shared(.homeAddRequests) var addRequests
     /// What the shell hears back: the features with a widget on Home.
     @Shared(.featuresOnHome) var featuresOnHome
+    /// And the features whose request found no room, until a widget of theirs is on Home.
+    @Shared(.noRoomOnHome) var noRoomOnHome
 
     var available: Set<String> { Set(widgets.map(\.id)) }
 
@@ -52,9 +54,14 @@ struct HomeFeature: Sendable {
     /// The features with a widget on Home as it is saved: what the shell hears. The editor's draft counts once Done
     /// keeps it.
     var featuresKept: Set<FeatureID> {
-      let grid = (saved?.visible(available) ?? []).map(\.widget)
-      let kept = Set(grid + [saved?.notchRowWidget(available)].compactMap { $0 })
-      return Set(widgets.filter { kept.contains($0.id) }.map(\.feature))
+      features(on: saved)
+    }
+
+    /// The features with a widget that shows on `layout`: on its grid or in its notch row.
+    func features(on layout: HomeLayout?) -> Set<FeatureID> {
+      let grid = (layout?.visible(available) ?? []).map(\.widget)
+      let shown = Set(grid + [layout?.notchRowWidget(available)].compactMap { $0 })
+      return Set(widgets.filter { shown.contains($0.id) }.map(\.feature))
     }
 
     /// Home is the editor: the window is wider, with the panel of widgets on the right.
@@ -190,8 +197,9 @@ struct HomeFeature: Sendable {
         guard !features.isEmpty, !state.isEditing else { return .none }
         let after = adding(features, to: state.saved, state)
         if after != state.saved { state.$saved.withLock { $0 = after } }
-        // Each request goes once taken, with or without room.
+        // Each request goes once taken, with or without room; the shell hears of those without.
         state.$addRequests.withLock { $0.removeAll { features.contains($0) } }
+        tellNoRoom(features, on: after, &state)
         return .none
 
       case let .widgetsChanged(widgets):
@@ -292,9 +300,24 @@ struct HomeFeature: Sendable {
     .onChange(of: \.featuresKept) { _, features in
       Reduce { state, _ in
         state.$featuresOnHome.withLock { $0 = features }
+        // A feature with a widget on Home has found room: its page's "No room on Home" goes.
+        if !state.noRoomOnHome.isDisjoint(with: features) {
+          state.$noRoomOnHome.withLock { $0.subtract(features) }
+        }
         return .none
       }
     }
+  }
+
+  /// Tells the shell which of the requested features found no room: a widget of theirs runs, yet none shows on the
+  /// layout Home keeps. Their pages say so.
+  private func tellNoRoom(_ requests: [FeatureID], on layout: HomeLayout?, _ state: inout State) {
+    let onHome = state.features(on: layout)
+    let noRoom = requests.filter { feature in
+      !onHome.contains(feature) && state.widgets.contains { $0.feature == feature }
+    }
+    guard !noRoom.isEmpty else { return }
+    state.$noRoomOnHome.withLock { $0.formUnion(noRoom) }
   }
 
   /// Ends the editor; the next one starts again with the feature list. Done keeps the draft, in one write and none when
@@ -314,6 +337,7 @@ struct HomeFeature: Sendable {
     let kept = adding(requests, to: keepingDraft ? draft : state.saved, state)
     if kept != state.saved { state.$saved.withLock { $0 = kept } }
     if !requests.isEmpty { state.$addRequests.withLock { $0.removeAll { requests.contains($0) } } }
+    tellNoRoom(requests, on: kept, &state)
     return .none
   }
 

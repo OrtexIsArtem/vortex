@@ -85,9 +85,40 @@ struct CatalogTests {
     #expect(state.homeOnPage("shelf") == .canAdd)
     #expect(state.homeOnPage("tasks") == nil)
     #expect(state.homeOnPage("music") == nil)
+    // Home found no room for it: the button stays, with the line under it.
+    @Shared(.noRoomOnHome) var noRoom
+    $noRoom.withLock { $0 = ["shelf"] }
+    #expect(state.homeOnPage("shelf") == .noRoom)
     @Shared(.featuresOnHome) var onHome
     $onHome.withLock { $0 = ["shelf"] }
     #expect(state.homeOnPage("shelf") == .onHome)
+  }
+
+  /// "Add to Home" that found no room: the page says so until it is left, back to the list here; the button stays, so
+  /// the user can try again.
+  @Test
+  func thePageSaysThereIsNoRoomUntilItIsLeft() async {
+    let files = HomeWidgetInfo(
+      id: "shelf.files", feature: "shelf", place: .grid([.medium]), name: "Files", featureName: "Shelf", featureSymbol: "tray"
+    )
+    let store = shell.makeStore { $0.seenFeatures = ["timer", "shelf", "tasks"] }
+    await store.send(.homeWidgetsLoaded([files])) { $0.homeWidgets = [files] }
+    await shell.openByHover(store)
+    await store.send(.tabSelected(.catalogPage("shelf"))) {
+      $0.selectedTab = .catalogPage("shelf")
+      $0.openReason = .click
+    }
+    await store.send(.addToHomeTapped("shelf")) { $0.$homeAddRequests.withLock { $0 = ["shelf"] } }
+    // Home takes the request and finds no room.
+    store.state.$homeAddRequests.withLock { $0 = [] }
+    store.state.$noRoomOnHome.withLock { $0 = ["shelf"] }
+    #expect(store.state.homeOnPage("shelf") == .noRoom)
+    await store.send(.window(.escapePressed)) {
+      $0.selectedTab = .catalog
+      $0.$homeAddRequests.withLock { $0 = [] }
+      $0.$noRoomOnHome.withLock { $0 = [] }
+    }
+    #expect(store.state.homeOnPage("shelf") == .canAdd)
   }
 
   /// Home hears of the running features' widgets from the shell, in sidebar order: at launch and whenever the running

@@ -173,4 +173,11 @@ extension SharedReaderKey where Self == InMemoryKey<Set<FeatureID>>.Default {
   public static var featuresOnHome: Self {
     Self[.inMemory("featuresOnHome"), default: []]
   }
+
+  /// The features whose "Add to Home" found no room: their page says so under its buttons. Home puts a feature in as
+  /// it takes a request without room, and takes it out once a widget of the feature is on Home; the shell empties it
+  /// whenever the window's tab changes, so it speaks only for the page in view.
+  public static var noRoomOnHome: Self {
+    Self[.inMemory("noRoomOnHome"), default: []]
+  }
 }

@@ -18,15 +18,23 @@ struct FeaturePageView: View {
       HStack(alignment: .top, spacing: 28) {
         FeaturePreviewView(feature: feature)
           .frame(width: 400, height: 250)
-        ScrollView {
-          details(state)
-            .padding(.bottom, 18)
-            // Erase Data's fill reaches past the text's left edge, and a scroll view clips what lies outside: the
-            // details get that room here and the scroll view takes it back below, so nothing moves.
-            .padding(.leading, EraseDataButton.inset)
+        ScrollViewReader { proxy in
+          ScrollView {
+            details(state)
+              .padding(.bottom, 18)
+              // Erase Data's fill reaches past the text's left edge, and a scroll view clips what lies outside: the
+              // details get that room here and the scroll view takes it back below, so nothing moves.
+              .padding(.leading, EraseDataButton.inset)
+          }
+          .scrollBounceBehavior(.basedOnSize)
+          .padding(.leading, -EraseDataButton.inset)
+          // Where the buttons take two rows, as in Ukrainian, "No room on Home" lands at the bottom edge: it scrolls
+          // into view as it comes.
+          .onChange(of: store.state.homeOnPage(feature.id) == .noRoom) { _, isNoRoom in
+            guard isNoRoom else { return }
+            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(NoRoomOnHome.id, anchor: .bottom) }
+          }
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .padding(.leading, -EraseDataButton.inset)
       }
       .padding(.leading, 10)
       .padding(.trailing, 18)
@@ -90,6 +98,11 @@ struct FeaturePageView: View {
 
       buttons(state)
         .padding(.top, 2)
+
+      if store.state.homeOnPage(feature.id) == .noRoom {
+        NoRoomOnHome()
+          .id(NoRoomOnHome.id)
+      }
 
       if case let .removed(bytes) = state {
         EraseDataButton(bytes: bytes) { store.send(.eraseTapped(feature.id)) }
@@ -176,8 +189,8 @@ struct FeaturePageView: View {
   @ViewBuilder
   private var home: some View {
     switch store.state.homeOnPage(feature.id) {
-    case .canAdd:
-      // A feature added later doesn't go on Home by itself.
+    case .canAdd, .noRoom:
+      // A feature added later doesn't go on Home by itself. Without room the button stays, to try again.
       Button {
         store.send(.addToHomeTapped(feature.id))
       } label: {
@@ -253,6 +266,24 @@ struct FeaturePageView: View {
     case .added:
       nil
     }
+  }
+}
+
+/// Under the buttons once "Add to Home" found no room: why nothing happened, and what to do about it in Home's editor.
+private struct NoRoomOnHome: View {
+  /// Where the page scrolls to as the line comes.
+  static let id = "noRoomOnHome"
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text("No room on Home", bundle: .module)
+        .font(.system(size: 12.5))
+      Text("Remove a widget or choose a smaller size in Home's editor.", bundle: .module)
+        .font(.system(size: 11.5))
+        .foregroundStyle(VortexColor.tertiaryText)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .accessibilityElement(children: .combine)
   }
 }
 

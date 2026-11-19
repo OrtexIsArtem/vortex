@@ -49,6 +49,8 @@
       var chosenSizes: [String: String]
       var addRequests: [String]
       var featuresOnHome: [String]
+      /// The features whose request found no room, as their pages say.
+      var noRoomOnHome: [String]
 
       /// A layout as plain words: its notch row, and its places in their order.
       struct Layout: Encodable, Equatable {
@@ -84,6 +86,7 @@
         chosenSizes = state.chosenSizes.mapValues(\.rawValue)
         addRequests = state.addRequests
         featuresOnHome = state.featuresOnHome.sorted()
+        noRoomOnHome = state.noRoomOnHome.sorted()
       }
     }
 

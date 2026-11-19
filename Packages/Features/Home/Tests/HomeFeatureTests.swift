@@ -745,9 +745,10 @@ struct HomeFeatureTests {
     }
   }
 
-  /// Without room a request goes all the same, and Home stays as it is.
+  /// Without room a request goes all the same and Home stays as it is; the shell hears that it found no room, so the
+  /// feature's page can say so.
   @Test
-  func anAddRequestWithoutRoomOnlyGoes() async {
+  func anAddRequestWithoutRoomGoesAndTellsTheShell() async {
     let store = makeStore(saved: fullGrid, addRequests: ["clipboard"])
     await store.send(.widgetsChanged([timer, clipboard, pinned, shelf])) {
       $0.widgets = [self.timer, self.clipboard, self.pinned, self.shelf]
@@ -755,8 +756,60 @@ struct HomeFeatureTests {
     }
     await store.send(.addRequestsChanged(["clipboard"])) {
       $0.$addRequests.withLock { $0 = [] }
+      $0.$noRoomOnHome.withLock { $0 = ["clipboard"] }
     }
     #expect(store.state.saved == fullGrid)
+  }
+
+  /// A request that waited for the editor and finds no room as it ends tells the shell so too.
+  @Test
+  func anAddRequestThatWaitedForTheEditorAndFindsNoRoomTellsTheShell() async {
+    let store = makeStore(saved: fullGrid, addRequests: ["clipboard"])
+    await store.send(.widgetsChanged([timer, clipboard, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "shelf"] }
+    }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = self.fullGrid
+    }
+    await store.send(.addRequestsChanged(["clipboard"]))
+    await store.send(.doneTapped) {
+      $0.isEditing = false
+      $0.draft = nil
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$noRoomOnHome.withLock { $0 = ["clipboard"] }
+    }
+  }
+
+  /// A feature that found no room leaves the shell's list once a widget of it is on Home, however it got there: here
+  /// the editor makes room and adds it.
+  @Test
+  func aFeatureThatFoundNoRoomLeavesTheListOnceAWidgetOfItIsOnHome() async {
+    let store = makeStore(saved: fullGrid, addRequests: ["clipboard"])
+    await store.send(.widgetsChanged([timer, clipboard, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "shelf"] }
+    }
+    await store.send(.addRequestsChanged(["clipboard"])) {
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$noRoomOnHome.withLock { $0 = ["clipboard"] }
+    }
+    await store.send(.editTapped) {
+      $0.isEditing = true
+      $0.draft = self.fullGrid
+    }
+    await store.send(.removeTapped("shelf.files")) { $0.draft?.placed = [] }
+    await store.send(.addTapped("clipboard.history")) {
+      $0.draft?.placed = [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)]
+    }
+    await store.send(.doneTapped) {
+      $0.isEditing = false
+      $0.draft = nil
+      $0.$saved.withLock { $0?.placed = [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)] }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard"] }
+      $0.$noRoomOnHome.withLock { $0 = [] }
+    }
   }
 
   /// The shell hears which features have a widget on Home, as it changes: their pages say "On Home". An edit counts

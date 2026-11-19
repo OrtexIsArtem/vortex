@@ -5,7 +5,8 @@
 - `setEnabled(true)` starts following `@Shared(.runningHomeWidgets)` and `@Shared(.homeAddRequests)`, and `setEnabled(false)` stops it.
 - `@Shared(.featuresOnHome)`: the features with a widget on Home as saved, the editor's edits counted once Done keeps them; only Home writes it.
 - Takes each feature out of `homeAddRequests` once it has put its first widget on Home or found no room; a request that comes while the editor is open waits for it to end.
-- QA mode (debug builds, HomeQA.swift), while the open window shows Home: the command `home edit|done|cancel|feature id=|back|hover [id=]|resize id= size=|add id= [size=]|remove id=|move id= column= row=`, each what the editor's control sends, and the state section `home`: the layout, the editor's draft, what shows, the editor, the copy and the requests.
+- `@Shared(.noRoomOnHome)`: Home puts in each feature whose request found no room, and takes it out once a widget of the feature is on Home, however it got there; the shell empties it as the tab changes.
+- QA mode (debug builds, HomeQA.swift), while the open window shows Home: the command `home edit|done|cancel|feature id=|back|hover [id=]|resize id= size=|add id= [size=]|remove id=|move id= column= row=`, each what the editor's control sends, and the state section `home`: the layout, the editor's draft, what shows, the editor, the copy, the requests and those that found no room.
 
 ## Uses
 - VortexCore:

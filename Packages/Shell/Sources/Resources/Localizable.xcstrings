@@ -688,6 +688,16 @@
         }
       }
     },
+    "No room on Home" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає місця на головній"
+          }
+        }
+      }
+    },
     "Not in the list? Click + and choose Vortex." : {
       "localizations" : {
         "uk" : {
@@ -999,6 +1009,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прибрати «%@»"
+          }
+        }
+      }
+    },
+    "Remove a widget or choose a smaller size in Home's editor." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приберіть віджет або виберіть менший розмір у редакторі головної."
           }
         }
       }

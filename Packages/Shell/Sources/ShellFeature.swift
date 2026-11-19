@@ -37,6 +37,8 @@ struct ShellFeature {
     @Shared(.homeAddRequests) var homeAddRequests
     /// What Home tells back: the features with a widget on it.
     @SharedReader(.featuresOnHome) var featuresOnHome
+    /// And the features whose "Add to Home" found no room; emptied whenever the tab changes.
+    @Shared(.noRoomOnHome) var noRoomOnHome
     /// The feature whose ear the pointer is over in the closed notch; nil on the cutout and while the pointer is away.
     /// Hovering opens the window on that feature's tab.
     var hoveredEar: FeatureID?
@@ -337,10 +339,11 @@ struct ShellFeature {
     }
 
     /// What a feature's page says about Home: nothing unless the feature runs with widgets; "On Home" while one of them
-    /// is on it; "Add to Home" otherwise.
+    /// is on it; "Add to Home" otherwise, with "No room on Home" under the buttons once Home found no room for it.
     func homeOnPage(_ id: FeatureID) -> HomeOnPage? {
       guard case .added = pageState(id), (homeWidgets ?? []).contains(where: { $0.feature == id }) else { return nil }
-      return featuresOnHome.contains(id) ? .onHome : .canAdd
+      if featuresOnHome.contains(id) { return .onHome }
+      return noRoomOnHome.contains(id) ? .noRoom : .canAdd
     }
 
     /// The feature whose tab has the focus: the sidebar dims, and the other tabs and their shortcuts wait.
@@ -358,6 +361,8 @@ struct ShellFeature {
   /// A feature's page and Home: whether "Add to Home" shows, or "On Home".
   enum HomeOnPage: Equatable, Sendable {
     case canAdd
+    /// "Add to Home" found no room: the button stays, and a line under the buttons says why nothing happened.
+    case noRoom
     case onHome
   }
 
@@ -966,6 +971,14 @@ struct ShellFeature {
     .onChange(of: \.language) { _, language in
       Reduce { _, _ in
         .run { _ in system.setLanguage(language) }
+      }
+    }
+    .onChange(of: \.selectedTab) { _, _ in
+      Reduce { state, _ in
+        // "No room on Home" speaks only for the page in view: it goes as the page is left, and a page coming into view
+        // never shows an answer to a request made on an earlier visit.
+        if !state.noRoomOnHome.isEmpty { state.$noRoomOnHome.withLock { $0 = [] } }
+        return .none
       }
     }
     .onChange(of: \.selectedTab.isCatalog) { _, isInCatalog in

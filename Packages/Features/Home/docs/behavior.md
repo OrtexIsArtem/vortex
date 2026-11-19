@@ -41,7 +41,7 @@
 - A feature that goes or comes back while the editor is open changes what is saved and the editor's draft alike, each by the rules above, so Done and Cancel both leave a layout that follows them.
 
 ## Add to Home
-- "Add to Home" on a feature's page puts its first widget on Home: in the notch row while it is free, or at its first size that fits in the first free place; without room nothing happens.
+- "Add to Home" on a feature's page puts its first widget on Home: in the notch row while it is free, or at its first size that fits in the first free place; without room Home stays as it is and tells the shell, whose page says "No room on Home".
 - An "Add to Home" that comes while the editor is open waits for it to end, then goes into the layout kept.
 - Home tells the shell which features have a widget on it as saved: their pages say "On Home"; the editor's edits count once Done keeps them.
 

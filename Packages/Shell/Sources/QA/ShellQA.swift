@@ -84,7 +84,10 @@
         store.send(.eraseTapped(id))
         store.send(.eraseConfirmed)
       } else if arguments["home"] != nil {
-        guard store.state.homeOnPage(id) == .canAdd else { throw QAError("\(id)'s page has no Add to Home") }
+        // The button stays after a request that found no room, to try again.
+        guard [.canAdd, .noRoom].contains(store.state.homeOnPage(id)) else {
+          throw QAError("\(id)'s page has no Add to Home")
+        }
         store.send(.addToHomeTapped(id))
       } else if arguments["settings"] != nil {
         guard case .added = page, store.state.hasSettingsPage(id) else { throw QAError("\(id)'s page has no Settings") }

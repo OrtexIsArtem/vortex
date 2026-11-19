@@ -24,6 +24,7 @@
 - The looping preview without sound, paused while the window is closed (its still with Reduce Motion, its symbol without either); the details, the permissions it needs, what it keeps and who made it.
 - Not added: Add. Added: Open, "Add to Home" while none of the feature's widgets is on Home ("✓ On Home" once one is, neither without widgets), Settings (the feature's own page in Settings › Features, hidden while it doesn't run) and Remove. Paused: "Temporarily Unavailable" with the maintainer's reason. Stopped: Try Again and Remove. Waiting in safe mode: Start.
 - Add saves at once, starts the feature on a trial and makes its tab the one the window opens on next; the window stays on the page.
+- "Add to Home" that finds no room keeps the button and shows "No room on Home" and "Remove a widget or choose a smaller size in Home's editor." under the buttons, until the page is left or a widget of the feature gets on Home.
 - An added feature whose own setup step isn't done shows that step on its page; a permission it needs that is off shows "Turn on".
 - Remove saves at once, stops the feature, leaves its tab and shows "<Name> removed · Undo" for 5 s; a permission page only it asked for closes, the blocking page stays.
 - Files given to Vortex while no running feature takes them open the page of the one that would, with "Add <Name> to keep files"; once it runs it gets them (until Vortex quits).
