@@ -29,6 +29,8 @@
       QA.register(command: "catalog") { arguments in try catalog(arguments, store: store) }
       QA.register(command: "feature") { arguments in try feature(arguments, store: store) }
       QA.register(command: "utility") { arguments in try pressUtility(arguments, store: store) }
+      QA.register(command: "utilities") { arguments in try utilities(arguments, store: store) }
+      QA.registerState(section: "utilities") { UtilitiesState(store.state) }
       QA.register(command: "launch") { arguments in
         guard let word = arguments["set"] else { throw QAError("launch takes set=normal|safe|stop:<feature id>") }
         try LaunchQA.setNextVerdict(word)
@@ -121,6 +123,54 @@
         throw QAError("no utility action \(id) runs; there are \(ids.isEmpty ? "none" : ids.joined(separator: ", "))")
       }
       store.send(.utilityActionPressed(id))
+    }
+
+    /// `utilities open|close`: Home's utilities button, in the open window on Home; `utilities press id=<action id>`: a
+    /// button of the strip that is out, which puts it away and runs the action as its shortcut does. The strip's pencil
+    /// is Home's: `home edit`.
+    static func utilities(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
+      if arguments["open"] != nil {
+        guard store.isOpen, case let .feature(id) = store.selectedTab,
+              store.features.contains(where: { $0.id == id && $0.isBuiltIn })
+        else { throw QAError("the utilities button is on Home, in the open window") }
+        guard !store.isDockOpen else { throw QAError("the dock is out already") }
+        guard !store.dockActions.isEmpty else { throw QAError("no utility runs, so the button is the pencil: `home edit`") }
+        guard store.focusedFeature == nil else { throw QAError("Home's editor is open: the button hides") }
+        store.send(.dockToggled)
+      } else if arguments["close"] != nil {
+        guard store.isDockOpen else { throw QAError("the dock isn't out") }
+        store.send(.dockToggled)
+      } else if arguments["press"] != nil, let id = arguments["id"] {
+        guard store.isDockOpen else { throw QAError("the dock isn't out: `utilities open` first") }
+        guard store.dockActions.contains(where: { $0.id == id }) else {
+          throw QAError("the dock has no \(id); it has \(store.dockActions.map(\.id).joined(separator: ", "))")
+        }
+        store.send(.utilityActionPressed(id))
+      } else {
+        throw QAError("utilities takes open, close or press id=<action id>")
+      }
+    }
+
+    /// The utilities dock in the state dump.
+    struct UtilitiesState: Encodable {
+      /// Home's button: "utilities", or "pencil" while no utility action runs.
+      var button: String
+      var isOpen: Bool
+      /// The open window's size: regular, large or dock; "closed" while it is.
+      var windowSize: String
+      /// Its buttons in order: "<action id> <window need>", then " keys=<keys>" and " warning=<permission>" when set.
+      var buttons: [String]
+
+      init(_ state: ShellFeature.State) {
+        button = state.dockActions.isEmpty ? "pencil" : "utilities"
+        isOpen = state.isDockOpen
+        windowSize = state.openWindowSize.map { "\($0)" } ?? "closed"
+        buttons = state.dockActions.map { action in
+          "\(action.id) \(action.window)"
+            + (state.dockKeys[action.id].map { " keys=\($0)" } ?? "")
+            + (state.dockWarning(action).map { " warning=\($0.rawValue)" } ?? "")
+        }
+      }
     }
 
     // MARK: - entry

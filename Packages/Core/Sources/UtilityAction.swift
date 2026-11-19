@@ -59,7 +59,7 @@ public struct UtilityAction: Identifiable {
 
   /// The action without its words and what it does: what the shell keeps in its state.
   public var info: UtilityActionInfo {
-    UtilityActionInfo(id: id, feature: feature, window: window, shortcut: shortcut)
+    UtilityActionInfo(id: id, feature: feature, window: window, permission: permission, shortcut: shortcut)
   }
 
   /// What's wrong with a feature's actions, empty when nothing is: at most two, ids `<feature>.<name>` and each once,
@@ -87,12 +87,21 @@ public struct UtilityActionInfo: Equatable, Sendable {
   public var id: String
   public var feature: FeatureID
   public var window: UtilityAction.WindowNeed
+  /// The permission its button's warning names while it reads `notGranted`.
+  public var permission: Permission?
   public var shortcut: String?
 
-  public init(id: String, feature: FeatureID, window: UtilityAction.WindowNeed, shortcut: String? = nil) {
+  public init(
+    id: String,
+    feature: FeatureID,
+    window: UtilityAction.WindowNeed,
+    permission: Permission? = nil,
+    shortcut: String? = nil
+  ) {
     self.id = id
     self.feature = feature
     self.window = window
+    self.permission = permission
     self.shortcut = shortcut
   }
 }

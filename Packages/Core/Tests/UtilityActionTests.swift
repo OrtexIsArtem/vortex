@@ -51,7 +51,12 @@ struct UtilityActionTests {
     #expect(action("home.keyboard", window: .open).window == .open)
     #expect(action("clock.toggle", window: .unchanged).window == .unchanged)
     #expect(action("screentext.copy").permission == nil && action("screentext.copy").shortcut == nil)
-    #expect(copy.info == UtilityActionInfo(id: "screentext.copy", feature: "screentext", window: .closed, shortcut: "copyScreenText"))
+    #expect(
+      copy.info == UtilityActionInfo(
+        id: "screentext.copy", feature: "screentext", window: .closed, permission: .screenRecording,
+        shortcut: "copyScreenText"
+      )
+    )
   }
 
   /// The action runs what the feature gave.

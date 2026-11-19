@@ -91,6 +91,29 @@ private struct TabContent: View {
     }
     .environment(\.homeWidgets, homeWidgets)
     .environment(\.keyboardCleaning) { store.send(.keyboardCleaning(.startTapped)) }
+    .environment(\.utilitiesDock, utilitiesDock)
+  }
+
+  /// Home's utilities dock: the running utility actions in catalog order, with their words from their features, the
+  /// keys of their shortcuts and their warnings; a button runs its action as its shortcut does.
+  private var utilitiesDock: UtilitiesDock {
+    let state = store.state
+    let buttons = state.dockActions.compactMap { info -> UtilitiesDockButton? in
+      guard let action = FeatureViews.shared.utilityActions(info.feature).first(where: { $0.id == info.id }) else {
+        return nil
+      }
+      return UtilitiesDockButton(
+        id: info.id, symbol: action.symbol, label: action.label, keys: state.dockKeys[info.id],
+        warning: state.dockWarning(info)
+      )
+    }
+    return UtilitiesDock(
+      buttons: buttons,
+      isOpen: state.isDockOpen,
+      toggle: { store.send(.dockToggled) },
+      close: { store.send(.dockClosed) },
+      run: { store.send(.utilityActionPressed($0)) }
+    )
   }
 
   /// Widgets of the running features, in sidebar order, with their feature's name and symbol: Home lays them out.

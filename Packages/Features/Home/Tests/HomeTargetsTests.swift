@@ -65,8 +65,23 @@ struct HomeTargetsTests {
     }
   }
 
+  /// The utilities dock as the shell gives it: two buttons, whose clicks are noted.
+  func dock(isOpen: Bool, buttons: [UtilitiesDockButton]? = nil) -> UtilitiesDock {
+    let sent = sent
+    return UtilitiesDock(
+      buttons: buttons ?? [
+        UtilitiesDockButton(id: "keyboard.lock", symbol: "keyboard", label: "Lock Keyboard", warning: .accessibility),
+        UtilitiesDockButton(id: "screentext.copy", symbol: "text.viewfinder", label: "Copy Text", keys: "⌃⌥T"),
+      ],
+      isOpen: isOpen,
+      toggle: { sent.names.append("dock toggle") },
+      close: { sent.names.append("dock close") },
+      run: { sent.names.append("run \($0)") }
+    )
+  }
+
   /// Home as the window shows it, in a panel of its own: the store only notes what the controls send.
-  func show(_ state: HomeFeature.State, width: CGFloat) async throws -> Panel {
+  func show(_ state: HomeFeature.State, width: CGFloat, dock: UtilitiesDock? = nil) async throws -> Panel {
     let sent = sent
     let store = Store(initialState: state) {
       Reduce<HomeFeature.State, HomeFeature.Action> { _, action in
@@ -88,6 +103,7 @@ struct HomeTargetsTests {
         .environment(\.windowRequest) { _ in }
         .environment(\.showCatalog) { sent.names.append("catalog") }
         .environment(\.keyboardCleaning) { sent.names.append("keyboard") }
+        .environment(\.utilitiesDock, dock)
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     )
     panel.orderFrontRegardless()
@@ -245,6 +261,60 @@ struct HomeTargetsTests {
     #expect(clear.frame.width >= 39, "Clear: \(clear.frame)")
     #expect(clear.isSolid, "Clear: \(clear.frame)")
     #expect(clear.frame.minY >= done.frame.maxY, "Clear: \(clear.frame), Done: \(done.frame)")
+  }
+
+  // MARK: - The utilities button and its strip
+
+  /// Home with the timer in the notch row and Clipboard's history on the grid, outside the editor.
+  var home: HomeFeature.State {
+    var state = HomeFeature.State()
+    state.$saved.withLock { $0 = layout }
+    state.widgets = infos
+    return state
+  }
+
+  /// The button at the notch row's right end is a 44 pt target, the row's whole height less 4 pt above and below, and
+  /// its last 44 pt; with utilities it toggles the strip, without them it is the pencil, Edit Home itself.
+  @Test
+  func theUtilitiesButtonIsA44PtTargetAtTheRowsRightEndAndThePencilWithoutUtilities() async throws {
+    for (dock, name) in [(dock(isOpen: false), "dock toggle"), (dock(isOpen: false, buttons: []), "editTapped")] {
+      let panel = try await show(home, width: HomeView.gridWidth, dock: dock)
+      defer { panel.orderOut(nil) }
+      let area = CGRect(x: HomeView.gridWidth - 60, y: 0, width: 60, height: VortexMetrics.headerHeight)
+      let targets = await targets(in: panel, area)
+      let button = try #require(targets[name], "\(name): \(targets.keys.sorted())")
+      #expect(button.frame.width >= 44 && button.frame.height >= 44 && button.isSolid, "\(name): \(button.frame)")
+      #expect(button.frame.maxX <= HomeView.gridWidth && button.frame.minX >= HomeView.gridWidth - UtilitiesButton.slot)
+    }
+  }
+
+  /// Without the shell, as in a preview, the button is the pencil too.
+  @Test
+  func withoutTheShellTheButtonIsThePencil() {
+    #expect(UtilitiesButton.Mode(nil) == .pencil)
+    #expect(UtilitiesButton.Mode(dock(isOpen: false, buttons: [])) == .pencil)
+    #expect(UtilitiesButton.Mode(dock(isOpen: false)) == .utilities)
+  }
+
+  /// The open strip holds the buttons in one column, in the dock's order, each a 44 pt target, then, set apart, the
+  /// pencil; a click anywhere else on Home puts the strip away.
+  @Test
+  func theStripsButtonsAre44PtTargetsInOrderWithThePencilLast() async throws {
+    let panel = try await show(home, width: HomeView.gridWidth + HomeView.dockWidth, dock: dock(isOpen: true))
+    defer { panel.orderOut(nil) }
+    let strip = CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.dockWidth, height: 200)
+    let targets = await targets(in: panel, strip)
+    let lock = try #require(targets["run keyboard.lock"])
+    let copy = try #require(targets["run screentext.copy"])
+    let pencil = try #require(targets["editTapped"])
+    for (name, target) in [("lock", lock), ("copy", copy), ("pencil", pencil)] {
+      #expect(target.frame.width >= 44 && target.frame.height >= 44 && target.isSolid, "\(name): \(target.frame)")
+    }
+    #expect(lock.frame.maxY <= copy.frame.minY && copy.frame.maxY < pencil.frame.minY)
+    // The first sits beside the notch row's button, the column going down from there.
+    #expect(lock.frame.minY >= 0 && lock.frame.maxY <= VortexMetrics.headerHeight)
+    #expect(click(panel, at: CGPoint(x: 200, y: 200)) == "dock close")
+    #expect(click(panel, at: CGPoint(x: HomeView.gridWidth - 22, y: 26)) == "dock close")
   }
 
   // MARK: - The corner buttons

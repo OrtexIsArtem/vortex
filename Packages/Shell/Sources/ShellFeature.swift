@@ -36,6 +36,11 @@ struct ShellFeature {
     /// The running features' utility actions, in sidebar order, as last read: at launch once every feature has started,
     /// then whenever the running features or their order change. The shell listens for their shortcuts and runs them.
     var utilityActions: [UtilityActionInfo] = []
+    /// Home's utilities dock is out: the strip at the window's right with the running utility actions, which grows the
+    /// window (`WindowSize.dock`). The button again, Esc, a click outside, another tab or the window closing put it away.
+    var isDockOpen = false
+    /// The keys of the dock's actions' shortcuts, by action id, read as it comes out: its tooltips name them.
+    var dockKeys: [String: String] = [:]
     /// "Add to Home" on features' pages, until Home takes each request.
     @Shared(.homeAddRequests) var homeAddRequests
     /// What Home tells back: the features with a widget on it.
@@ -185,6 +190,19 @@ struct ShellFeature {
     /// the shell listens for them.
     func utilityShortcuts(_ id: FeatureID) -> [UtilityActionInfo] {
       utilityActions.filter { $0.feature == id && $0.shortcut != nil }
+    }
+
+    /// The buttons of Home's utilities dock: the running utility actions in catalog order, those of features with a tab
+    /// first, then the utilities', each in the user's order.
+    var dockActions: [UtilityActionInfo] {
+      let utilities = Set(features.filter { $0.kind == .utility }.map(\.id))
+      return utilityActions.filter { !utilities.contains($0.feature) } + utilityActions.filter { utilities.contains($0.feature) }
+    }
+
+    /// The permission a dock button's yellow warning names: the one its action needs, while it reads `notGranted`.
+    func dockWarning(_ action: UtilityActionInfo) -> Permission? {
+      guard let permission = action.permission, PermissionMark(permissionStatuses[permission]) == .warning else { return nil }
+      return permission
     }
 
     /// Whether the feature has a page in Settings › Features; the Settings button on its catalog page shows only then.
@@ -366,12 +384,12 @@ struct ShellFeature {
       return .added(needsSetup: feature.hasOnboardingStep && !onboarding.stepsDone.contains(id))
     }
 
-    /// The catalog needs the large window; a feature's tab has the window it asked for, and every other tab the
-    /// regular one.
+    /// The catalog needs the large window; a feature's tab has the window it asked for, or the one with the utilities
+    /// dock's strip while that is out, and every other tab the regular one.
     var windowSize: WindowSize {
       if selectedTab.isCatalog { return .large }
       guard case let .feature(id) = selectedTab else { return .regular }
-      return requests[id]?.size ?? .regular
+      return requests[id]?.size ?? (isDockOpen ? .dock : .regular)
     }
 
     /// How a feature's page marks a permission it needs, as the feature's settings page does: once the feature is added,
@@ -519,8 +537,15 @@ struct ShellFeature {
     case homeWidgetsLoaded([HomeWidgetInfo])
     /// The running features' utility actions, read anew.
     case utilityActionsLoaded([UtilityActionInfo])
-    /// A utility action's shortcut, or a press of its button: the window as the action needs it, then the action.
+    /// A utility action's shortcut, or a press of its button: the dock put away, the window as the action needs it, then
+    /// the action.
     case utilityActionPressed(String)
+    /// Home's utilities button: its strip comes out, or goes.
+    case dockToggled
+    /// A click on Home outside the dock's strip.
+    case dockClosed
+    /// The keys of the dock's actions' shortcuts, by action id, for its tooltips.
+    case dockKeysLoaded([String: String])
     case featureDropped(FeatureID, onto: FeatureID)
     case settingsShown
     case launchAtLoginChanged(Bool)
@@ -764,6 +789,8 @@ struct ShellFeature {
           return close(&state)
 
         case let .tabSelected(tab):
+          // A click in the sidebar is a click outside the dock's strip, whatever it chooses.
+          state.isDockOpen = false
           guard state.isAvailable(tab), state.focusedFeature.map({ tab == .feature($0) }) ?? true else { return .none }
           state.selectedTab = tab
           guard tab.isCatalog else {
@@ -792,6 +819,8 @@ struct ShellFeature {
         case let .utilityActionsLoaded(actions):
           let old = state.utilityActions
           state.utilityActions = actions
+          // The strip goes with its last button.
+          if state.dockActions.isEmpty { state.isDockOpen = false }
           // Each shortcut is listened for while its action is there: an action that went frees its keys; a new or changed
           // one listens, in place of what listened for it before.
           let gone = old.filter { action in !actions.contains { $0.id == action.id } }
@@ -804,6 +833,8 @@ struct ShellFeature {
         case let .utilityActionPressed(id):
           // Only a running feature's action: one that stopped, or never ran, does nothing.
           guard let action = state.utilityActions.first(where: { $0.id == id }) else { return .none }
+          // Chosen in the dock or by its shortcut, the strip goes first.
+          state.isDockOpen = false
           let perform = Effect<Action>.run { _ in await features.performUtilityAction(action.feature, id) }
           switch action.window {
           case .unchanged:
@@ -822,6 +853,28 @@ struct ShellFeature {
             return .concatenate(opening, perform)
           }
 
+        case .dockToggled:
+          if state.isDockOpen {
+            state.isDockOpen = false
+            return .none
+          }
+          // Only in the open window, on a tab, with something to offer, and while no tab holds the focus, as Home's
+          // editor does.
+          guard state.isOpen, case .feature = state.selectedTab, state.focusedFeature == nil, !state.dockActions.isEmpty
+          else { return .none }
+          state.isDockOpen = true
+          // Growing the window is deliberate, as a tab's request is: it no longer closes when the pointer leaves it.
+          state.openReason = .click
+          return .merge(.cancel(id: CancelID.pointerLeaveClose), readDockKeys(state.dockActions))
+
+        case .dockClosed:
+          state.isDockOpen = false
+          return .none
+
+        case let .dockKeysLoaded(keys):
+          state.dockKeys = keys
+          return .none
+
         case let .windowRequested(id, request):
           // Only while the window is open: a tab left mounted behind the closed window can't make the next open large.
           guard state.isOpen else { return .none }
@@ -829,6 +882,8 @@ struct ShellFeature {
           // Growing or taking the focus is deliberate, as going to the catalog is: the window no longer closes when the
           // pointer leaves it.
           guard request != .regular else { return .none }
+          // The tab's own size takes the place of the dock's strip, as Home's editor does after the dock's pencil.
+          state.isDockOpen = false
           state.openReason = .click
           return .cancel(id: CancelID.pointerLeaveClose)
 
@@ -1078,6 +1133,8 @@ struct ShellFeature {
         // "No room on Home" speaks only for the page in view: it goes as the page is left, and a page coming into view
         // never shows an answer to a request made on an earlier visit.
         if !state.noRoomOnHome.isEmpty { state.$noRoomOnHome.withLock { $0 = [] } }
+        // The dock's strip is Home's: it goes as Home's tab is left, however it is.
+        state.isDockOpen = false
         return .none
       }
     }
@@ -1192,6 +1249,19 @@ struct ShellFeature {
     .cancellable(id: CancelID.utilityActions, cancelInFlight: true)
   }
 
+  /// Reads the keys of the dock's actions' shortcuts for its tooltips, as the strip comes out: the user may have recorded
+  /// them since.
+  private func readDockKeys(_ actions: [UtilityActionInfo]) -> Effect<Action> {
+    .run { send in
+      var keys: [String: String] = [:]
+      for action in actions {
+        guard let name = action.shortcut, let shortcut = await hotkeys.shortcut(Hotkey(name)) else { continue }
+        keys[action.id] = shortcut
+      }
+      await send(.dockKeysLoaded(keys))
+    }
+  }
+
   /// Listens for a utility action's shortcut, if it has one, while the action is there; cancelling it frees the keys. A
   /// press runs the action as a click does.
   private func listenForUtilityShortcut(_ action: UtilityActionInfo) -> Effect<Action> {
@@ -1269,6 +1339,8 @@ struct ShellFeature {
       return isActive ? .cancel(id: CancelID.pointerLeaveClose) : .none
 
     case .clickedOutside:
+      // The dock's strip goes with any click outside it, even where the window stays.
+      state.isDockOpen = false
       guard state.isOpen, state.settings.closeOnClickOutside, !state.isHeldOpen else { return .none }
       return close(&state)
 
@@ -1277,6 +1349,11 @@ struct ShellFeature {
       // Esc answers the erase question with Cancel.
       if state.eraseConfirmation != nil {
         state.eraseConfirmation = nil
+        return .none
+      }
+      // Then it puts the dock's strip away, and the window stays.
+      if state.isDockOpen {
+        state.isDockOpen = false
         return .none
       }
       // From a feature's page Esc goes back to the catalog's list.
@@ -1351,8 +1428,10 @@ struct ShellFeature {
     guard !state.keyboardCleaning.isLocked, state.eraseConfirmation == nil else { return .none }
     state.openReason = nil
     state.isPointerInsideWindow = false
-    // Every tab's request ends with the window: the next open is regular, and nothing has the focus.
+    // Every tab's request ends with the window, and so does the dock's strip: the next open is regular, and nothing has
+    // the focus.
     state.requests = [:]
+    state.isDockOpen = false
     // The catalog is left as the window closes, so it never shows at the next open.
     if state.selectedTab.isCatalog {
       state.selectedTab = state.restoredTab

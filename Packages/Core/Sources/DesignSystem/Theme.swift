@@ -55,15 +55,19 @@ extension NSColor {
 }
 
 /// The sizes the window takes. Every tab fits the regular one; a few pages, such as the catalog, need the large one,
-/// which grows right from the regular window's left edge, so the sidebar stays where it is.
+/// which grows right from the regular window's left edge, so the sidebar stays where it is. So does Home's utilities
+/// dock, by a strip of its own.
 public enum WindowSize: Sendable, Equatable {
   case regular
   case large
+  /// The regular window and, at its right, the strip of Home's utilities dock, as wide as the sidebar: 736×440.
+  case dock
 
   public var size: CGSize {
     switch self {
     case .regular: VortexMetrics.windowSize
     case .large: CGSize(width: 880, height: 440)
+    case .dock: CGSize(width: VortexMetrics.windowSize.width + VortexMetrics.dockWidth, height: VortexMetrics.windowSize.height)
     }
   }
 }
@@ -73,6 +77,9 @@ public enum VortexMetrics {
   /// The regular window, `WindowSize.regular`.
   public static let windowSize = CGSize(width: 680, height: 440)
   public static let sidebarWidth: CGFloat = 56
+  /// The strip of Home's utilities dock at the window's right: as wide as the sidebar at its left, with its 44 pt
+  /// targets in one column.
+  public static let dockWidth: CGFloat = sidebarWidth
   /// Height of the top row that flanks the notch.
   public static let headerHeight: CGFloat = 52
   /// Concave fillet where the window meets the top edge of the screen.

@@ -2,27 +2,32 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Home: a widget in the row next to the notch, and the others as cards on the 4×2 grid under it. In the editor Home
-/// stays where it is, and the window grows to the right for the panel of widgets.
+/// Home: a widget in the row next to the notch, with the utilities button at the row's right end, and the others as
+/// cards on the 4×2 grid under it. In the editor Home stays where it is, and the window grows to the right for the panel
+/// of widgets; so it does by a narrow strip for the utilities dock.
 struct HomeView: View {
   let store: StoreOf<HomeFeature>
   @Environment(\.homeWidgets) private var widgets
   @Environment(\.keyboardCleaning) private var keyboardCleaning
+  @Environment(\.utilitiesDock) private var dock
   @Environment(\.isWindowOpen) private var isWindowOpen
   @Environment(\.windowRequest) private var windowRequest
   @Environment(\.showCatalog) private var showCatalog
 
-  /// The grid fills the regular window's tab; the panel takes what the large window adds.
+  /// The grid fills the regular window's tab; the panel takes what the large window adds, the dock's strip what its
+  /// window adds.
   static let gridWidth = HomeGrid.frame(column: 0, row: 0, size: .full).maxX + HomeGrid.sideInset
   static let panelWidth = WindowSize.large.size.width - WindowSize.regular.size.width
+  static let dockWidth = WindowSize.dock.size.width - WindowSize.regular.size.width
   /// What the editor asks of the window: the large one, with the focus.
   static let editorWindow = WindowRequest(size: .large, isFocused: true)
 
   var body: some View {
     let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    let isDockOpen = !store.isEditing && dock?.isOpen == true
     HStack(spacing: 0) {
       VStack(spacing: 0) {
-        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] }, byID: byID)
+        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] }, byID: byID, dock: dock)
         GridArea(store: store, byID: byID)
       }
       .frame(width: Self.gridWidth)
@@ -41,9 +46,25 @@ struct HomeView: View {
             .padding(12)
         }
       }
+      .overlay {
+        // A click anywhere on Home outside the strip puts it away, the row's button included. A button, as the first
+        // click in a window opened by hover reaches buttons only.
+        if isDockOpen, let dock {
+          Button {
+            dock.close()
+          } label: {
+            Color.clear.contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .accessibilityHidden(true)
+        }
+      }
       if store.isEditing {
         HomeEditorPanel(store: store, byID: byID, showCatalog: showCatalog)
           .frame(width: Self.panelWidth)
+      } else if isDockOpen, let dock {
+        UtilitiesStrip(dock: dock) { store.send(.editTapped) }
+          .frame(width: Self.dockWidth)
       }
     }
     // While the window grows, the panel waits past its right edge.
@@ -64,13 +85,27 @@ struct HomeView: View {
   }
 }
 
-/// The row next to the notch: its widget, or Home's title.
+/// The row next to the notch: its widget, or Home's title, and at its right end, outside the editor, the utilities
+/// button, in a slot of its own after the widget's controls, so the notch stays in the window's middle.
 private struct NotchRow: View {
   let store: StoreOf<HomeFeature>
   let widget: HomeWidget?
   let byID: [String: HomeWidget]
+  let dock: UtilitiesDock?
 
   var body: some View {
+    HStack(spacing: 0) {
+      content
+        .frame(maxWidth: .infinity)
+      if !store.isEditing {
+        UtilitiesButton(dock: dock) { store.send(.editTapped) }
+          .frame(width: UtilitiesButton.slot)
+      }
+    }
+    .frame(height: VortexMetrics.headerHeight)
+  }
+
+  private var content: some View {
     Group {
       if widget == nil, case let .notchRow(id) = store.preview, let copy = byID[id] {
         // The copy of a widget from the panel, in the row it would go to.
@@ -96,8 +131,6 @@ private struct NotchRow: View {
           .padding(.leading, 10)
       }
     }
-    .frame(maxWidth: .infinity)
-    .frame(height: VortexMetrics.headerHeight)
   }
 }
 

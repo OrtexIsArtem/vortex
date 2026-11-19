@@ -271,6 +271,17 @@
         }
       }
     },
+    "Utilities" : {
+      "comment" : "The button at the right end of Home's notch row, and its strip: the utilities, as macOS names its Utilities folder",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Утиліти"
+          }
+        }
+      }
+    },
     "Widgets" : {
       "comment" : "The editor's panel: back from a feature's widgets to the list",
       "localizations" : {
