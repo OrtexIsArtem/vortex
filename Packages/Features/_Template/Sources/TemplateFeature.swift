@@ -30,7 +30,7 @@ public enum TemplateModule: FeatureModule {
         feature: id,
         title: LocalizedStringResource("Count", bundle: .atURL(Bundle.module.bundleURL)),
         place: .grid([.small, .medium]),
-        view: AnyView(TemplateHomeWidget(store: store))
+        view: TemplateHomeWidget(store: store)
       ),
     ]
   }
