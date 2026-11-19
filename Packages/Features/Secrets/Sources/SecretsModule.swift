@@ -15,6 +15,11 @@ public enum SecretsModule: FeatureModule {
   public static let keeps: LocalizedStringResource? = LocalizedStringResource("Key names and settings; the values are in your keychain.", bundle: .atURL(Bundle.module.bundleURL))
   public static let eraseNote: LocalizedStringResource? = LocalizedStringResource("Your keys are deleted from the keychain and Claude Code loses access to Vortex.", bundle: .atURL(Bundle.module.bundleURL))
   public static let hasOnboardingStep = true
+  /// The files in Resources/Catalog/, which the build copies to the top of the bundle, without the folder.
+  public static let preview: FeaturePreview? = FeaturePreview(
+    video: Bundle.module.url(forResource: "preview", withExtension: "mov"),
+    still: Bundle.module.url(forResource: "still", withExtension: "jpg")
+  )
   public static let permissionNeeds = [
     PermissionNeed(
       .notifications,

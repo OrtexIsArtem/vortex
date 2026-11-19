@@ -14,6 +14,11 @@ public enum ShelfModule: FeatureModule {
   public static let isRecommended = true
   public static let keeps: LocalizedStringResource? = LocalizedStringResource("Copies of the files on the shelf.", bundle: .atURL(Bundle.module.bundleURL))
   public static let dataFolder: String? = "Shelf"
+  /// The files in Resources/Catalog/, which the build copies to the top of the bundle, without the folder.
+  public static let preview: FeaturePreview? = FeaturePreview(
+    video: Bundle.module.url(forResource: "preview", withExtension: "mov"),
+    still: Bundle.module.url(forResource: "still", withExtension: "jpg")
+  )
   public static let acceptsFileDrops = true
 
   /// One store for the life of the app: files arrive and expire while the window is closed.

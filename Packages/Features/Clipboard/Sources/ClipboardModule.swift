@@ -15,6 +15,11 @@ public enum ClipboardModule: FeatureModule {
   public static let isRecommended = true
   public static let keeps: LocalizedStringResource? = LocalizedStringResource("Clipboard history and pinned items.", bundle: .atURL(Bundle.module.bundleURL))
   public static let dataFolder: String? = "Clipboard"
+  /// The files in Resources/Catalog/, which the build copies to the top of the bundle, without the folder.
+  public static let preview: FeaturePreview? = FeaturePreview(
+    video: Bundle.module.url(forResource: "preview", withExtension: "mov"),
+    still: Bundle.module.url(forResource: "still", withExtension: "jpg")
+  )
   public static let permissionNeeds = [
     PermissionNeed(
       .pasteboard,

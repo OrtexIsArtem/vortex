@@ -1,5 +1,7 @@
+import AVFoundation
 import FeatureRegistry
 import Foundation
+import ImageIO
 import Testing
 import VortexCore
 
@@ -21,6 +23,38 @@ struct FeatureRegistryTests {
       #expect(!String(localized: d.summary).isEmpty, "\(d.id) has no summary")
       #expect(!String(localized: d.details).isEmpty, "\(d.id) has no details")
       #expect(!d.author.isEmpty, "\(d.id) has no author")
+    }
+  }
+
+  /// Every shipped feature but the built-in ones shows itself at work on its page in the catalog: its preview's video
+  /// and still are files in its own bundle, the one its title is translated from, and both can be read: the still is
+  /// an image, and AVFoundation plays the video.
+  @Test
+  func everyShippedFeatureBringsItsCatalogMedia() async {
+    for module in FeatureRegistry.all where !module.isBuiltIn {
+      let id = module.id
+      guard let video = module.descriptor.preview?.video, let still = module.descriptor.preview?.still else {
+        Issue.record("\(id) has no video or no still in its preview")
+        continue
+      }
+      guard case .atURL(let bundle) = module.title.bundle else {
+        Issue.record("\(id)'s title isn't built from its own bundle, so its bundle is unknown here")
+        continue
+      }
+      let bundlePath = bundle.resolvingSymlinksInPath().path + "/"
+      for file in [video, still] {
+        #expect(
+          file.isFileURL && file.resolvingSymlinksInPath().path.hasPrefix(bundlePath),
+          "\(id): \(file) is outside its bundle \(bundlePath)"
+        )
+        #expect(FileManager.default.isReadableFile(atPath: file.path), "\(id): \(file.path) can't be read")
+      }
+      let image = CGImageSourceCreateWithURL(still as CFURL, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+      #expect(image != nil, "\(id): the still \(still.lastPathComponent) isn't an image")
+      let asset = AVURLAsset(url: video)
+      let isPlayable = (try? await asset.load(.isPlayable)) ?? false
+      let pictures = (try? await asset.loadTracks(withMediaType: .video)) ?? []
+      #expect(isPlayable && !pictures.isEmpty, "\(id): the video \(video.lastPathComponent) doesn't play")
     }
   }
 
