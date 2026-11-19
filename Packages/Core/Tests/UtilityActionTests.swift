@@ -3,7 +3,7 @@ import Testing
 
 @testable import VortexCore
 
-/// The one-click actions features offer as utilities, which the shell places, and the rules they follow.
+/// The one-click actions features offer as utilities, which the shell places and runs, and the rules they follow.
 @MainActor
 struct UtilityActionTests {
   func action(_ id: String, window: UtilityAction.WindowNeed = .closed) -> UtilityAction {
@@ -23,17 +23,35 @@ struct UtilityActionTests {
     #expect(!UtilityAction.problems([action("screentext.copy"), action("screentext.copy")], feature: "screentext").isEmpty)
   }
 
-  /// What the shell needs to place and run an action is plain data: what the window must be when it runs, closed for
-  /// one that works on the screen, open for one that covers the window, and the permission a warning names.
+  /// Two actions can't share a shortcut: one press would run both.
+  @Test
+  func twoActionsOfAFeatureNeverShareAShortcut() {
+    func action(_ id: String, shortcut: String?) -> UtilityAction {
+      UtilityAction(
+        id: id, feature: "screentext", symbol: "text.viewfinder", label: "Copy Text", help: "Copy text", window: .closed,
+        shortcut: shortcut
+      ) {}
+    }
+    #expect(UtilityAction.problems([action("screentext.a", shortcut: "a"), action("screentext.b", shortcut: "b")], feature: "screentext").isEmpty)
+    #expect(UtilityAction.problems([action("screentext.a", shortcut: nil), action("screentext.b", shortcut: nil)], feature: "screentext").isEmpty)
+    #expect(!UtilityAction.problems([action("screentext.a", shortcut: "a"), action("screentext.b", shortcut: "a")], feature: "screentext").isEmpty)
+  }
+
+  /// What the shell needs to place and run an action is plain data: what the window must be when it runs (closed for
+  /// one that works on the screen, open for one whose screen covers the window, as it is for one that doesn't care),
+  /// the shortcut that runs it, and the permission a warning names.
   @Test
   func anActionSaysWhatTheWindowMustBeAndWhatItNeeds() {
     let copy = UtilityAction(
       id: "screentext.copy", feature: "screentext", symbol: "text.viewfinder", label: "Copy Text",
-      help: "Copy text from the screen", window: .closed, permission: .screenRecording
+      help: "Copy text from the screen", window: .closed, permission: .screenRecording, shortcut: "copyScreenText"
     ) {}
     #expect(copy.window == .closed && copy.permission == .screenRecording && copy.feature == "screentext")
+    #expect(copy.shortcut == "copyScreenText")
     #expect(action("home.keyboard", window: .open).window == .open)
-    #expect(action("screentext.copy").permission == nil)
+    #expect(action("clock.toggle", window: .unchanged).window == .unchanged)
+    #expect(action("screentext.copy").permission == nil && action("screentext.copy").shortcut == nil)
+    #expect(copy.info == UtilityActionInfo(id: "screentext.copy", feature: "screentext", window: .closed, shortcut: "copyScreenText"))
   }
 
   /// The action runs what the feature gave.

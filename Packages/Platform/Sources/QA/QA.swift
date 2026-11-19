@@ -109,6 +109,11 @@
       QALog.record(client, event, detail)
     }
 
+    /// Seconds from the run's start to `date`, to the millisecond, as the events log counts its times.
+    public static func time(of date: Date) -> Double {
+      (date.timeIntervalSince(QALog.started) * 1_000).rounded() / 1_000
+    }
+
     /// Records something QA mode must never do, such as showing a window on a display.
     public static func violation(_ client: String, _ event: String, _ detail: [String: String] = [:]) {
       QALog.violation(client, event, detail)

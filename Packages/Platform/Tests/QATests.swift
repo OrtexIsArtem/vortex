@@ -212,6 +212,13 @@ struct QASimulationTests {
     #expect(simulation.qrCode == "https://example.com" && simulation.recognizedText == "live")
     try simulation.set(["qrCode": ""])
     #expect(simulation.qrCode == "")
+    try simulation.set(["readDelay": "1.5"])
+    #expect(simulation.readDelay == 1.5)
+    let delayed = simulation
+    #expect(throws: QAError.self) { try simulation.set(["readDelay": "-1"]) }
+    #expect(throws: QAError.self) { try simulation.set(["readDelay": "soon"]) }
+    #expect(simulation == delayed)
+    try simulation.set(["readDelay": "0"])
 
     let before = simulation
     #expect(throws: QAError.self) { try simulation.set(["keyboardLockRefuses": "yes"]) }
@@ -405,8 +412,8 @@ struct QAClientsTests {
     #expect(received.value.map(\.content) == [.text("from Safari")])
   }
 
-  /// A copy Vortex makes for the user comes back as a copy, as on the real pasteboard: Clipboard keeps it, with Vortex as
-  /// its source.
+  /// A copy Vortex makes for the user comes back as a copy, as the real pasteboard reads it: from the app it names
+  /// (Vortex without one), a lone web address as a link, a secret hidden.
   @Test
   func aCopyForTheUserComesBackAsACopy() async {
     let pasteboard = PasteboardClient.qa
@@ -415,16 +422,42 @@ struct QAClientsTests {
     let listening = Task {
       for await copy in copies {
         received.withValue { $0.append(copy) }
-        break
+        if received.value.count == 3 { break }
       }
     }
     await Task.yield()
-    await pasteboard.copy(.text("read off the screen"))
-    await listening.value
-    #expect(received.value.map(\.content) == [.text("read off the screen")])
-    #expect(received.value.first?.source?.bundleID == Bundle.main.bundleIdentifier ?? "io.github.ortexisartem.vortex")
+    await pasteboard.copy(.text("read off the screen"), false, "com.apple.TextEdit")
     let dump = QASystem.shared.pasteboardDump() as? [String: Any]
     #expect(dump?["content"] as? String == "text: read off the screen")
+    #expect(dump?["source"] as? String == "com.apple.TextEdit")
+    await pasteboard.copy(.text(" https://example.com/docs?id=7 "), false, nil)
+    await pasteboard.copy(.text("WIFI:S:Office;T:WPA;P:hunter22;;"), true, "com.apple.Safari")
+    #expect((QASystem.shared.pasteboardDump() as? [String: Any])?["content"] as? String == "<concealed>")
+    await listening.value
+    let copies3 = received.value
+    #expect(copies3.map(\.content) == [
+      .text("read off the screen"), .link(URL(string: "https://example.com/docs?id=7")!), .text("WIFI:S:Office;T:WPA;P:hunter22;;"),
+    ])
+    #expect(copies3.map(\.source?.bundleID) == ["com.apple.TextEdit", PasteboardFormat.ownBundleID, "com.apple.Safari"])
+    #expect(copies3[0].source?.name == "TextEdit")
+    #expect(copies3.map(\.isConcealed) == [false, false, true])
+    #expect(copies3[0].frontApps == ["com.apple.TextEdit"])
+  }
+
+  /// A read can be made to take its time, so Esc and other things can come while it runs; it stops when cancelled.
+  @Test
+  func aReadTakesTheSimulatedDelay() async throws {
+    defer { QASimulation.update { $0 = QASimulation() } }
+    let recognition = TextRecognitionClient.qa
+    let picture = QRCodeReadingTests.image(text: "Release notes")
+    QASimulation.update { $0.readDelay = 0.3 }
+    let start = ContinuousClock.now
+    #expect(try await recognition.recognize(picture) == "QA text")
+    #expect(try await recognition.readQRCode(picture) == nil)
+    #expect(ContinuousClock.now - start >= .milliseconds(550))
+    let cancelled = Task { try await recognition.recognize(picture) }
+    cancelled.cancel()
+    await #expect(throws: CancellationError.self) { try await cancelled.value }
   }
 
   @Test

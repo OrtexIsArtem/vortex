@@ -105,6 +105,8 @@ public struct Screenshot: Equatable, Sendable {
 
 public enum ScreenCaptureError: Error, Equatable {
   case noDisplay
+  /// Another capture's frozen screen shows: one at a time (`FrozenScreen`).
+  case frozenScreenShown
 }
 
 /// Screenshots of a whole display. They need the Screen Recording permission, which also reveals other apps' window
@@ -112,13 +114,15 @@ public enum ScreenCaptureError: Error, Equatable {
 /// captures and opens the shell's page instead of asking.
 @DependencyClient
 public struct ScreenCaptureClient: Sendable {
-  /// The display under the pointer as it looks now, without Vortex's own windows.
+  /// The display under the pointer as it looks now, without Vortex's own windows. Refused while a frozen screen shows
+  /// (`ScreenCaptureError.frozenScreenShown`).
   public var captureScreenUnderPointer: @Sendable () async throws -> Screenshot
 }
 
 extension ScreenCaptureClient: DependencyKey {
   public static let liveValue = ScreenCaptureClient(
     captureScreenUnderPointer: {
+      guard await !FrozenScreen.isShown else { throw ScreenCaptureError.frozenScreenShown }
       let target = await MainActor.run { () -> (id: CGDirectDisplayID, scale: CGFloat, notch: CGRect?, dock: CGFloat)? in
         let pointer = NSEvent.mouseLocation
         guard let screen = NSScreen.screens.first(where: { NSMouseInRect(pointer, $0.frame, false) }) ?? NSScreen.main

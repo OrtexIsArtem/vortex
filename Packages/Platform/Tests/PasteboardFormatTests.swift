@@ -127,7 +127,8 @@ struct PasteboardFormatTests {
   }
 
   /// What Vortex copies for the user, such as text it read off the screen, isn't its own write: the watcher reports it
-  /// as it reports a copy in another app, so Clipboard's history keeps it, with Vortex as its source.
+  /// as it reports a copy in another app, so Clipboard's history keeps it, marked with the app it came from and hidden
+  /// when it is a secret.
   @Test(.timeLimit(.minutes(1)))
   func aCopyForTheUserIsReportedAsACopy() async {
     pasteboard.clearContents()
@@ -137,12 +138,21 @@ struct PasteboardFormatTests {
     watcher.start()
     defer { watcher.stop() }
     try? await Task.sleep(for: .milliseconds(100))
-    PasteboardFormat.write(.text("Fix the pay button"), isConcealed: false, source: nil, to: pasteboard, isUserCopy: true)
+    let textEdit = AppInfo(bundleID: "com.apple.TextEdit", name: "TextEdit")
+    PasteboardFormat.write(.text("Fix the pay button"), isConcealed: false, source: textEdit, to: pasteboard, isUserCopy: true)
     #expect(!PasteboardFormat.isOwnWrite(pasteboard, changeCount: pasteboard.changeCount))
-    #expect(pasteboard.string(forType: PasteboardFormat.sourceType) == PasteboardFormat.ownBundleID)
+    #expect(pasteboard.string(forType: PasteboardFormat.sourceType) == "com.apple.TextEdit")
     var iterator = copies.makeAsyncIterator()
     let copy = await iterator.next()
     #expect(copy?.content == .text("Fix the pay button"))
+    #expect(copy?.source?.bundleID == "com.apple.TextEdit")
+    #expect(copy?.isConcealed == false)
+
+    try? await Task.sleep(for: .milliseconds(100))
+    PasteboardFormat.write(.text("WIFI:S:Office;T:WPA;P:hunter22;;"), isConcealed: true, source: nil, to: pasteboard, isUserCopy: true)
+    #expect(pasteboard.string(forType: PasteboardFormat.sourceType) == PasteboardFormat.ownBundleID)
+    let secret = await iterator.next()
+    #expect(secret?.isConcealed == true)
   }
 
   // Bounded, so a runner without a pasteboard server fails instead of hanging.

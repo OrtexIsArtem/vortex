@@ -306,20 +306,28 @@
 
   extension PasteboardClient {
     /// In memory: `sim copy` copies in another app; what Vortex writes stays here; what it copies for the user comes
-    /// back as a copy, from Vortex, as on the real pasteboard.
+    /// back as a copy, as the real pasteboard reads it: from the app it names, a lone web address as a link.
     static let qa: PasteboardClient = {
       var client = PasteboardClient()
       client.copies = { QASystem.shared.copies() }
       client.write = { content, isConcealed, source in
         QASystem.shared.write(content, isConcealed: isConcealed, source: source)
       }
-      client.copy = { content in
-        let vortex = PasteboardFormat.ownBundleID
-        QASystem.shared.copy(PasteboardCopy(
-          content: content,
-          source: AppInfo(bundleID: vortex, name: "Vortex"),
-          frontApps: [vortex, simulation.frontApp]
-        ))
+      client.copy = { content, isConcealed, sourceApp in
+        let source = sourceApp ?? PasteboardFormat.ownBundleID
+        var read = content
+        if case let .text(text) = content, let link = PasteboardFormat.webLink(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
+          read = .link(link)
+        }
+        QASystem.shared.copy(
+          PasteboardCopy(
+            content: read,
+            isConcealed: isConcealed,
+            source: AppInfo(bundleID: source, name: sourceApp == nil ? "Vortex" : QAFixtures.name(of: source)),
+            frontApps: [source]
+          ),
+          event: "copied for the user"
+        )
       }
       return client
     }()
@@ -337,10 +345,15 @@
 
   extension ScreenCaptureClient {
     /// A capture sees fixtures/screen.png, or a plain picture, as the main display; only while the simulated Screen
-    /// Recording works for this process (`QAPermissions.screenCaptureWorks`).
+    /// Recording works for this process (`QAPermissions.screenCaptureWorks`), and as plain Vortex never while a frozen
+    /// screen shows.
     static let qa: ScreenCaptureClient = {
       var client = ScreenCaptureClient()
       client.captureScreenUnderPointer = {
+        guard await !FrozenScreen.isShown else {
+          QALog.record("screenCapture", "capture", ["result": "refused: a frozen screen shows"])
+          throw ScreenCaptureError.frozenScreenShown
+        }
         guard QAPermissions.screenCaptureWorks else {
           QALog.record("screenCapture", "capture", ["result": "no access"])
           throw QAError("Screen Recording is off in the simulation")
@@ -401,17 +414,23 @@
   extension TextRecognitionClient {
     /// Every image says `recognizedText` and holds the QR code `qrCode` (empty: none). With `live` either is read in the
     /// image itself with Apple Vision, as plain Vortex reads it, so a run can go end to end on images it renders itself.
-    /// Only sizes are logged, never the text.
+    /// A picture's read takes `readDelay` first, and stops when cancelled. Only sizes are logged, never the text.
     static let qa: TextRecognitionClient = {
       let live = TextRecognitionClient.liveValue
+      @Sendable func wait() async throws {
+        let delay = simulation.readDelay
+        if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+      }
       var client = TextRecognitionClient()
       client.recognize = { image in
         QALog.record("textRecognition", "recognize", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
+        try await wait()
         let text = simulation.recognizedText
         return text == "live" ? try await live.recognize(image) : text
       }
       client.readQRCode = { image in
         QALog.record("textRecognition", "readQRCode", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
+        try await wait()
         let code = simulation.qrCode
         if code == "live" { return try await live.readQRCode(image) }
         return code.isEmpty ? nil : code

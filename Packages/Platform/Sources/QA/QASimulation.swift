@@ -36,6 +36,8 @@
     var recognizedText = "QA text"
     /// What a QR code on any image holds; empty: no code. `live` looks for one in the image itself with Apple Vision.
     var qrCode = ""
+    /// Seconds a picture's text or QR code takes to read, so something can come while it reads; 0: at once.
+    var readDelay: Double = 0
     /// Results of commands, the first whose `match` the command contains; without one a command exits 0, silent.
     var commandRules: [CommandRule] = []
 
@@ -93,6 +95,7 @@
       chooseApp = value(.chooseApp, defaults.chooseApp)
       recognizedText = value(.recognizedText, defaults.recognizedText)
       qrCode = value(.qrCode, defaults.qrCode)
+      readDelay = value(.readDelay, defaults.readDelay)
       commandRules = value(.commandRules, defaults.commandRules)
     }
 
@@ -126,10 +129,15 @@
         case "chooseApp": copy.chooseApp = text()
         case "recognizedText": copy.recognizedText = value
         case "qrCode": copy.qrCode = value
+        case "readDelay":
+          guard let seconds = Double(value), seconds.isFinite, seconds >= 0 else {
+            throw QAError("readDelay takes seconds, not \"\(value)\"")
+          }
+          copy.readDelay = seconds
         default:
           throw QAError(
-            "sim set knows keyboardLockRefuses, keyboardLayout, launchAtLogin, "
-              + "frontApp, frontTitle, frontURL, chooseFolder, chooseApp, recognizedText and qrCode, not \(key)"
+            "sim set knows keyboardLockRefuses, keyboardLayout, launchAtLogin, frontApp, frontTitle, frontURL, "
+              + "chooseFolder, chooseApp, recognizedText, qrCode and readDelay, not \(key)"
           )
         }
       }

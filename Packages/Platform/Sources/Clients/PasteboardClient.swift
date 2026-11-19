@@ -52,8 +52,9 @@ public struct PasteboardClient: Sendable {
   /// managers to hide it, as the source app did. `copies` skips it: Vortex wrote it.
   public var write: @Sendable (_ content: PasteboardContent, _ isConcealed: Bool, _ source: AppInfo?) async -> Void
   /// Copies content for the user, as a copy in any app would: `copies` reports it, unlike `write`, so Clipboard's
-  /// history keeps it. Marked with Vortex as the app it came from, as text Vortex read off the screen does.
-  public var copy: @Sendable (_ content: PasteboardContent) async -> Void
+  /// history keeps it, by Clipboard's own rules. Marked with the app it came from, by bundle id (nil: Vortex), as text
+  /// read off the screen comes from the app the user was in; `isConcealed` asks clipboard managers to hide it.
+  public var copy: @Sendable (_ content: PasteboardContent, _ isConcealed: Bool, _ sourceApp: String?) async -> Void
 }
 
 extension PasteboardClient: DependencyKey {
@@ -68,8 +69,10 @@ extension PasteboardClient: DependencyKey {
     write: { content, isConcealed, source in
       PasteboardFormat.write(content, isConcealed: isConcealed, source: source, to: .general)
     },
-    copy: { content in
-      PasteboardFormat.write(content, isConcealed: false, source: nil, to: .general, isUserCopy: true)
+    copy: { content, isConcealed, sourceApp in
+      // Only the bundle id goes on the pasteboard: a reader names the app itself.
+      let source = sourceApp.map { AppInfo(bundleID: $0, name: $0) }
+      PasteboardFormat.write(content, isConcealed: isConcealed, source: source, to: .general, isUserCopy: true)
     }
   )
 

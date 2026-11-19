@@ -43,8 +43,8 @@
       QALog.record("pasteboard", "write", ["content": Self.describe(clip), "source": source?.bundleID ?? ""])
     }
 
-    /// A copy made in another app.
-    func copy(_ copy: PasteboardCopy) {
+    /// A copy made in another app, or one Vortex made for the user (`event`), which listeners get alike.
+    func copy(_ copy: PasteboardCopy, event: String = "copied in another app") {
       let clip = pasteboard.withValue { clip in
         clip = Clip(
           content: copy.content,
@@ -56,8 +56,9 @@
       }
       let listeners = copyListeners.value.values
       listeners.forEach { $0.yield(copy) }
-      QALog.record("pasteboard", "copied in another app", [
+      QALog.record("pasteboard", event, [
         "content": Self.describe(clip),
+        "source": copy.source?.bundleID ?? "",
         "listeners": "\(listeners.count)",
       ])
     }

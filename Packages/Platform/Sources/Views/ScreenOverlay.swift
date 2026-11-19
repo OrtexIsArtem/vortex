@@ -35,7 +35,9 @@ public final class ScreenOverlay {
 
   public var isShown: Bool { panel != nil }
 
-  /// `over` is the bundle id of the app the user was in when the screen was taken, nil when not known.
+  /// `over` is the bundle id of the app the user was in when the screen was taken, nil when not known. While another
+  /// overlay shows a frozen screen this one doesn't show, and calls `onInterrupted`: one frozen screen at a time
+  /// (`FrozenScreen`).
   public func show(
     _ content: some View,
     on displayID: CGDirectDisplayID,
@@ -44,6 +46,11 @@ public final class ScreenOverlay {
     onReturn: @escaping @MainActor () -> Void,
     onInterrupted: @escaping @MainActor () -> Void
   ) {
+    // Two captures started together each took the screen: the second to show gives way, as if interrupted.
+    if let frozen = FrozenScreen.shown, frozen !== self {
+      Task { @MainActor in onInterrupted() }
+      return
+    }
     // Vortex itself in front is no interruption: the user was in its window. A QA run's front app is simulated.
     let front = Self.isQA ? nil : Self.frontApp()
     guard front == nil || front?.bundleIdentifier == app else {
@@ -54,6 +61,7 @@ public final class ScreenOverlay {
     guard let screen = NSScreen.screens.first(where: { $0.displayNumber == displayID }) ?? NSScreen.main else { return }
     stopKeepingFront()
     present(content, on: screen, takesKeyboard: true, onEscape: onEscape, onReturn: onReturn, onInterrupted: onInterrupted)
+    FrozenScreen.shown = self
     guard !Self.isQA else { return }
     coveredApp = front ?? app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
     NSApp.activate()
@@ -186,6 +194,7 @@ public final class ScreenOverlay {
   }
 
   public func close() {
+    if FrozenScreen.shown === self { FrozenScreen.shown = nil }
     stopWatchingActivations()
     // The content's pointer, such as a crosshair, would stay until the app under it sets one.
     NSCursor.arrow.set()
@@ -216,6 +225,17 @@ public final class ScreenOverlay {
     }
     coveredApp = nil
   }
+}
+
+/// The frozen screen showing now, whichever feature froze it: one at a time. While it shows, `ScreenCaptureClient`
+/// refuses to take the screen and another overlay's `show` gives way, so Tasks' capture and Screen Text's never stack,
+/// even when their shortcuts are the same keys. A whole screen shown with `showKeepingFront` is no frozen screen.
+@MainActor
+public enum FrozenScreen {
+  /// Weak: an overlay that's gone holds nothing.
+  static weak var shown: ScreenOverlay?
+
+  public static var isShown: Bool { shown != nil }
 }
 
 private final class OverlayPanel: NSPanel {
