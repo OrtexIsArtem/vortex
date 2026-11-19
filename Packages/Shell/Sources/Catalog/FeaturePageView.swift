@@ -5,7 +5,7 @@ import VortexCore
 import VortexPlatform
 
 /// A feature's page in the catalog: its preview, what it does and needs, what it keeps and who made it, and what the
-/// user can do with it now. A feature whose own setup isn't done shows the setup right here.
+/// user can do with it now. A feature whose own setup isn't done shows the setup right here, under its buttons.
 struct FeaturePageView: View {
   let store: StoreOf<ShellFeature>
   let feature: FeatureDescriptor
@@ -79,10 +79,6 @@ struct FeaturePageView: View {
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(VortexColor.raised))
       }
 
-      if case .added(needsSetup: true) = state, let step = FeatureViews.shared.onboardingStep(feature.id) {
-        step.view
-      }
-
       needs
 
       VStack(alignment: .leading, spacing: 6) {
@@ -102,6 +98,11 @@ struct FeaturePageView: View {
       if store.state.homeOnPage(feature.id) == .noRoom {
         NoRoomOnHome()
           .id(NoRoomOnHome.id)
+      }
+
+      // The feature's own setup comes under the buttons, which stay where Add was.
+      if case .added(needsSetup: true) = state, let step = FeatureViews.shared.onboardingStep(feature.id) {
+        step.view
       }
 
       if case let .removed(bytes) = state {
