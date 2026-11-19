@@ -34,9 +34,10 @@ struct WindowChromeView: View {
 
     // `content` keeps the same place in the view tree for both placements, so moving between
     // displays never rebuilds a tab or loses its state. It is laid out from the window's left edge, which stays put
-    // as the window grows right.
+    // as the window grows right: content wider than the window for a moment, as Home is while its editor's panel waits
+    // for the window to grow, runs past the right edge instead of pushing the sidebar out left.
     content
-      .frame(width: size.width, height: size.height)
+      .frame(width: size.width, height: size.height, alignment: .topLeading)
       .environment(\.notchCutout, notch)
       .environment(\.isWindowOpen, isExpanded)
       .opacity(isExpanded ? 1 : 0)
