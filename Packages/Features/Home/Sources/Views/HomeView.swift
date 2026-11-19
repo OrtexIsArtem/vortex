@@ -201,13 +201,18 @@ private struct GridArea: View {
 private struct CornerButtons: View {
   let keyboardCleaning: (@MainActor () -> Void)?
   let edit: () -> Void
+  /// The buttons' targets past their 36 pt circles, toward 44 pt: up to the capsule's top and left edges, as a widget
+  /// may lie behind it, half the 2 pt between them, and down into the margin under it, the pencil right into the
+  /// margin beside it too.
+  static let keyboardOutset = EdgeInsets(top: 2, leading: 2, bottom: 6, trailing: 1)
+  static let pencilOutset = EdgeInsets(top: 2, leading: 1, bottom: 6, trailing: 7)
 
   var body: some View {
     HStack(spacing: 2) {
       if let keyboardCleaning {
-        KeyboardCleaningButton(action: keyboardCleaning)
+        KeyboardCleaningButton(outset: Self.keyboardOutset, action: keyboardCleaning)
       }
-      CornerButton(symbol: "pencil", label: Text("Edit Home", bundle: .module), action: edit)
+      CornerButton(symbol: "pencil", label: Text("Edit Home", bundle: .module), outset: Self.pencilOutset, action: edit)
     }
     .padding(.horizontal, 2)
     .frame(height: 40)
@@ -217,12 +222,14 @@ private struct CornerButtons: View {
   }
 }
 
-/// A round button in the corner capsule, which lights up under the pointer.
+/// A round button in the corner capsule, which lights up while the pointer is over its target.
 private struct CornerButton<Badge: View>: View {
   let symbol: String
   let label: Text
   /// The tooltip, when it says more than the label.
   var help: Text?
+  /// Its target past the circle.
+  let outset: EdgeInsets
   let action: () -> Void
   @ViewBuilder var badge: Badge
   @State private var isHovered = false
@@ -235,23 +242,25 @@ private struct CornerButton<Badge: View>: View {
         .frame(width: 36, height: 36)
         .background(Circle().fill(isHovered ? VortexColor.track : .clear))
         .overlay(alignment: .topTrailing) { badge }
-        .contentShape(Circle())
+        .hitTarget(outset)
     }
     .buttonStyle(.plain)
     .onHover { isHovered = $0 }
     .help(help ?? label)
     .accessibilityLabel(label)
+    .padding(outset.inward)
   }
 }
 
 extension CornerButton where Badge == EmptyView {
-  init(symbol: String, label: Text, action: @escaping () -> Void) {
-    self.init(symbol: symbol, label: label, help: nil, action: action) { EmptyView() }
+  init(symbol: String, label: Text, outset: EdgeInsets, action: @escaping () -> Void) {
+    self.init(symbol: symbol, label: label, help: nil, outset: outset, action: action) { EmptyView() }
   }
 }
 
 /// Keyboard cleaning's button: what a click does is the shell's. Accessibility off: a yellow warning on it.
 private struct KeyboardCleaningButton: View {
+  let outset: EdgeInsets
   let action: @MainActor () -> Void
   @SharedReader(.permissionStatuses) private var permissionStatuses
 
@@ -261,6 +270,7 @@ private struct KeyboardCleaningButton: View {
       symbol: "keyboard",
       label: Text("Lock the keyboard for cleaning", bundle: .module),
       help: showsWarning ? Text(Permission.accessibility.offLabel) : nil,
+      outset: outset,
       action: action
     ) {
       if showsWarning {

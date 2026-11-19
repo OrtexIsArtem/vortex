@@ -9,6 +9,7 @@
     /// QA mode's `home` command, while the open window shows Home. Each sends what the editor's control sends:
     /// - `edit`, `done`, `cancel`: the pencil, Done and Cancel;
     /// - `feature id=<feature>`, `back`: a feature's row in the panel, and back to the list;
+    /// - `search [text=<query>]`: what the panel's search field holds, typed in, or emptied without `text=`;
     /// - `hover [id=<widget>]`: the pointer over a widget in the panel, or off it;
     /// - `resize id=<widget> size=small|medium|wide|large|full`: a size in the widget's switcher;
     /// - `add id=<widget> [size=]`: Add, after choosing the size;
@@ -91,7 +92,7 @@
     }
 
     static func qaActions(_ arguments: [String: String]) throws -> [HomeFeature.Action] {
-      let verbs = ["edit", "done", "cancel", "feature", "back", "hover", "resize", "add", "remove", "move"]
+      let verbs = ["edit", "done", "cancel", "feature", "back", "search", "hover", "resize", "add", "remove", "move"]
       let named = verbs.filter { arguments[$0] == "" }
       guard named.count == 1, let verb = named.first else {
         throw QAError("home takes one of \(verbs.joined(separator: ", "))")
@@ -119,6 +120,8 @@
         return [.featureTapped(FeatureID(feature))]
       case "back":
         return [.backTapped]
+      case "search":
+        return [.searchChanged(arguments["text"] ?? "")]
       case "hover":
         return [.hovered(arguments["id"].flatMap { $0.isEmpty ? nil : $0 })]
       case "resize":

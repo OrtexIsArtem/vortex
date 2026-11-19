@@ -52,6 +52,8 @@ private struct FeatureList: View {
   let store: StoreOf<HomeFeature>
   let showCatalog: (@MainActor () -> Void)?
   @FocusState private var isSearchFocused: Bool
+  /// "More widgets in Features" past its 30 pt: up the 6 pt to the list, and down into the panel's bottom padding.
+  static let linkOutset = EdgeInsets(top: 6, leading: 0, bottom: 8, trailing: 0)
 
   var body: some View {
     let sections = store.panelSections
@@ -96,9 +98,10 @@ private struct FeatureList: View {
         .font(.system(size: 11.5))
         .foregroundStyle(VortexColor.secondaryText)
         .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-        .contentShape(Rectangle())
+        .hitTarget(Self.linkOutset)
       }
       .buttonStyle(.plain)
+      .padding(Self.linkOutset.inward)
       .padding(.top, 6)
     }
   }
@@ -170,6 +173,8 @@ private struct FeatureWidgets: View {
   let store: StoreOf<HomeFeature>
   let feature: FeatureID
   let byID: [String: HomeWidget]
+  /// "‹ Widgets" past its 30 pt: up the 6 pt to the row of Cancel and Done, and down over the feature's name.
+  static let backOutset = EdgeInsets(top: 6, leading: 0, bottom: 8, trailing: 0)
 
   var body: some View {
     let own = store.widgets.filter { $0.feature == feature }
@@ -184,15 +189,18 @@ private struct FeatureWidgets: View {
       .font(.system(size: 12.5))
       .foregroundStyle(VortexColor.secondaryText)
       .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-      .contentShape(Rectangle())
+      .hitTarget(Self.backOutset)
     }
     .buttonStyle(.plain)
+    .padding(Self.backOutset.inward)
     .padding(.top, 6)
 
     Text(verbatim: own.first?.featureName ?? "")
       .font(.system(size: 13, weight: .semibold))
       .foregroundStyle(VortexColor.primaryText)
       .padding(.top, 2)
+      // "‹ Widgets" takes clicks over its top.
+      .allowsHitTesting(false)
 
     ScrollView {
       VStack(spacing: 12) {
@@ -215,6 +223,9 @@ private struct PanelWidget: View {
   let info: HomeWidgetInfo
   let widget: HomeWidget?
   @State private var isHovered = false
+  /// Add past its 24 pt: up the 8 pt gap and over the preview above it, and down half the 8 pt gap to the size chips,
+  /// which take the other half.
+  static let addOutset = EdgeInsets(top: 16, leading: 0, bottom: 4, trailing: 0)
 
   var body: some View {
     let sizes: [HomeWidgetSize] = if case let .grid(sizes) = info.place { sizes } else { [] }
@@ -238,7 +249,8 @@ private struct PanelWidget: View {
           } label: {
             Text("Add", bundle: .module)
           }
-          .buttonStyle(PrimaryCapsuleButtonStyle(height: 24, fontSize: 11))
+          .buttonStyle(OutsetButtonStyle(style: PrimaryCapsuleButtonStyle(height: 24, fontSize: 11), outset: Self.addOutset))
+          .padding(Self.addOutset.inward)
         } else {
           (isOnHome ? Text("On Home", bundle: .module) : Text("No room", bundle: .module))
             .font(.system(size: 11))
@@ -270,12 +282,15 @@ private struct PanelWidget: View {
           .font(.system(size: 11))
           .foregroundStyle(VortexColor.tertiaryText)
           .fixedSize(horizontal: false, vertical: true)
+          // The size chips take clicks over its top.
+          .allowsHitTesting(false)
       }
     }
     .padding(10)
+    // The fill takes the pointer over the whole card for the hover; a content shape would also cut the chips' targets
+    // off at the card's edge.
     .background(shape.fill(VortexColor.primaryText.opacity(isHovered ? 0.05 : 0.02)))
-    .overlay(shape.strokeBorder(VortexColor.primaryText.opacity(isHovered ? 0.16 : 0.07), lineWidth: 1))
-    .contentShape(shape)
+    .overlay(shape.strokeBorder(VortexColor.primaryText.opacity(isHovered ? 0.16 : 0.07), lineWidth: 1).allowsHitTesting(false))
     .onHover { isInside in
       isHovered = isInside
       store.send(.hovered(isInside ? info.id : nil), animation: .easeOut(duration: 0.15))
@@ -322,6 +337,9 @@ private struct SizeChip: View {
   let isChosen: Bool
   let isEnabled: Bool
   let action: () -> Void
+  /// Past its 24 pt: up half the 8 pt gap to Add's row, down over the card's padding into the room under the card,
+  /// and half the 6 pt gaps beside it.
+  static let outset = EdgeInsets(top: 4, leading: 3, bottom: 16, trailing: 3)
 
   var body: some View {
     Button(action: action) {
@@ -331,9 +349,10 @@ private struct SizeChip: View {
         .frame(height: 24)
         .background(Capsule().fill(isChosen ? VortexColor.accent : VortexColor.raised))
         .foregroundStyle(isChosen ? VortexColor.onAccent : VortexColor.primaryText)
-        .contentShape(Capsule())
+        .hitTarget(Self.outset)
     }
     .buttonStyle(.plain)
+    .padding(Self.outset.inward)
     // The chosen size stays enabled, or macOS would dim it like one that doesn't fit; choosing it again changes nothing.
     .disabled(!isEnabled)
     .opacity(isEnabled || isChosen ? 1 : 0.35)
@@ -346,6 +365,9 @@ private struct SizeChip: View {
 private struct PanelSearchField: View {
   @Binding var query: String
   var isFocused: FocusState<Bool>.Binding
+  /// The clear button past the field's height: up its 10 pt padding to 2 pt under Done's capsule, the 6 pt to the
+  /// text, and right over the field's and the panel's padding to the window's edge. The list starts at its bottom.
+  static let clearOutset = EdgeInsets(top: 12, leading: 6, bottom: 0, trailing: 22)
 
   var body: some View {
     HStack(spacing: 6) {
@@ -370,8 +392,12 @@ private struct PanelSearchField: View {
           Image(systemName: "xmark.circle.fill")
             .font(.system(size: 11))
             .foregroundStyle(VortexColor.tertiaryText)
+            // The field's whole height, the glyph in its middle as before.
+            .frame(maxHeight: .infinity)
+            .hitTarget(Self.clearOutset)
         }
         .buttonStyle(.plain)
+        .padding(Self.clearOutset.inward)
         .accessibilityLabel(Text("Clear search", bundle: .module))
       }
     }

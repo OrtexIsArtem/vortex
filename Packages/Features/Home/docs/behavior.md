@@ -49,3 +49,6 @@
 - A capsule in Home's bottom right corner holds the keyboard button, while the shell offers it, and the pencil; it hides in the editor.
 - The keyboard button locks the keyboard for cleaning: what a click does is the shell's.
 - While Accessibility reads `notGranted`, the keyboard button shows a yellow warning with the tooltip "Accessibility is off"; none before the first read.
+
+## Targets
+- The corner buttons, the panel's size chips, Add, "‹ Widgets", "More widgets in Features" and the search's clear button take clicks past what they draw, toward 44 pt, into room no other control's target takes; nothing they draw moves (HomeTargetsTests).

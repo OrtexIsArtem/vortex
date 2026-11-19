@@ -34,6 +34,8 @@ struct HomeQATests {
     )
     #expect(try actions("remove id=shelf.files") == [.removeTapped("shelf.files")])
     #expect(try actions("move id=shelf.files column=2 row=1") == [.dropped("shelf.files", column: 2, row: 1)])
+    #expect(try actions("search text=sh") == [.searchChanged("sh")])
+    #expect(try actions("search") == [.searchChanged("")])
   }
 
   @Test
