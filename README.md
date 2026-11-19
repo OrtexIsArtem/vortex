@@ -30,6 +30,17 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 
 Vortex speaks English and Ukrainian, and follows light and dark mode.
 
+## Features and Home
+During setup you choose your features, with the recommended ones checked. Add or remove any of them later in **Features**, the puzzle piece in the sidebar. A feature you haven't added doesn't run, and Vortex asks for no permission on its behalf. A removed feature keeps its data until you erase it with **Erase Data…** on its page.
+
+Home is a 4×2 grid of widgets that you lay out yourself, with room for one more in the row next to the notch. The pencil in Home's corner opens the editor:
+- Drag a widget, and the others make room.
+- Pick a feature in the panel on the right to add its widgets or change their size.
+- Remove a widget with its **−**.
+- Press **Done** to keep the changes, or **Cancel** to leave Home as it was.
+
+To build a feature or a widget of your own, see [CONTRIBUTING.md](CONTRIBUTING.md) and its [step-by-step guide to widgets](CONTRIBUTING.md#make-a-widget-for-home).
+
 ## Privacy
 - Vortex never goes online by itself: no analytics, no update checks. Network traffic comes only from commands that Claude runs through Keys, after you allow them.
 - Its only listener is the MCP server for Claude Code. It listens on this Mac's loopback interface and needs a token.
@@ -94,7 +105,7 @@ To keep the permissions across rebuilds, sign the build with your Apple team. A 
 For daily use, prefer `make install` over a Run in Xcode: a debug session ends when the Mac sleeps for a while, and the app with it.
 
 ## Claude Code
-During setup, press **Connect** on the Claude Code page. Later, open **Keys**, press **Copy**, and run the command once in Terminal. Claude Code then lists your keys by name and can use them in commands.
+Add **Keys** first: check it during setup, or add it later in **Features**. During setup, press **Connect** on the Claude Code page. Later, open **Keys**, press **Copy**, and run the command once in Terminal. Claude Code then lists your keys by name and can use them in commands.
 
 ## License
 [MIT](LICENSE). Release downloads include the licenses of the open-source packages Vortex uses.
