@@ -812,6 +812,65 @@ struct HomeFeatureTests {
     }
   }
 
+  /// A feature that found no room leaves the shell's list once its first widget would fit, while its page still shows:
+  /// here Shelf, which filled Home, is removed from the sidebar's menu. Home doesn't add the widget; the page offers
+  /// "Add to Home" again.
+  @Test
+  func aFeatureThatFoundNoRoomLeavesTheListOnceRoomFreesUp() async {
+    let store = makeStore(saved: fullGrid, addRequests: ["clipboard"])
+    await store.send(.widgetsChanged([timer, clipboard, shelf])) {
+      $0.widgets = [self.timer, self.clipboard, self.shelf]
+      $0.$featuresOnHome.withLock { $0 = ["timer", "shelf"] }
+    }
+    await store.send(.addRequestsChanged(["clipboard"])) {
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$noRoomOnHome.withLock { $0 = ["clipboard"] }
+    }
+    await store.send(.widgetsChanged([timer, clipboard])) {
+      $0.widgets = [self.timer, self.clipboard]
+      $0.$saved.withLock { $0?.placed[0].away = 1 }
+      $0.$featuresOnHome.withLock { $0 = ["timer"] }
+      $0.$noRoomOnHome.withLock { $0 = [] }
+    }
+    #expect(store.state.visible.isEmpty)
+  }
+
+  /// The line stays while Add to Home would still find no room: a Small place that frees can't take Clipboard's first
+  /// widget, Large or Medium, though its second one would fit there. It goes once a Medium place frees.
+  @Test
+  func aFeatureThatFoundNoRoomKeepsTheLineUntilItsFirstWidgetWouldFit() async {
+    let notes = info("notes.card", .grid([.small]), name: "Card", featureName: "Notes")
+    let music = info("music.card", .grid([.small]), name: "Card", featureName: "Music")
+    let full = HomeLayout(notchRow: nil, placed: [
+      Placement(widget: "shelf.files", size: .wide, column: 0, row: 0),
+      Placement(widget: "tasks.list", size: .medium, column: 0, row: 1),
+      Placement(widget: "notes.card", size: .small, column: 2, row: 1),
+      Placement(widget: "music.card", size: .small, column: 3, row: 1),
+    ])
+    let store = makeStore(saved: full, addRequests: ["clipboard"])
+    await store.send(.widgetsChanged([clipboard, pinned, shelf, tasks, notes, music])) {
+      $0.widgets = [self.clipboard, self.pinned, self.shelf, self.tasks, notes, music]
+      $0.$featuresOnHome.withLock { $0 = ["shelf", "tasks", "notes", "music"] }
+    }
+    await store.send(.addRequestsChanged(["clipboard"])) {
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$noRoomOnHome.withLock { $0 = ["clipboard"] }
+    }
+    // Music goes: one Small place frees.
+    await store.send(.widgetsChanged([clipboard, pinned, shelf, tasks, notes])) {
+      $0.widgets = [self.clipboard, self.pinned, self.shelf, self.tasks, notes]
+      $0.$saved.withLock { $0?.placed[3].away = 1 }
+      $0.$featuresOnHome.withLock { $0 = ["shelf", "tasks", "notes"] }
+    }
+    // Notes goes too: a Medium place frees.
+    await store.send(.widgetsChanged([clipboard, pinned, shelf, tasks])) {
+      $0.widgets = [self.clipboard, self.pinned, self.shelf, self.tasks]
+      $0.$saved.withLock { $0?.placed[2].away = 2 }
+      $0.$featuresOnHome.withLock { $0 = ["shelf", "tasks"] }
+      $0.$noRoomOnHome.withLock { $0 = [] }
+    }
+  }
+
   /// The shell hears which features have a widget on Home, as it changes: their pages say "On Home". An edit counts
   /// once Done keeps it.
   @Test

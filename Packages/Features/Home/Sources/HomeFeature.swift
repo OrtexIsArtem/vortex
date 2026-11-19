@@ -57,6 +57,16 @@ struct HomeFeature: Sendable {
       features(on: saved)
     }
 
+    /// The features whose first widget would go on Home as it is saved, the way "Add to Home" puts it: in the notch row
+    /// while it is free, or at its first size that fits in the first free place.
+    var featuresWithRoom: Set<FeatureID> {
+      let layout = saved ?? HomeLayout()
+      let available = available
+      var seen: Set<FeatureID> = []
+      let firstWidgets = widgets.filter { seen.insert($0.feature).inserted }
+      return Set(firstWidgets.filter { layout.adding($0, available: available) != layout }.map(\.feature))
+    }
+
     /// The features with a widget that shows on `layout`: on its grid or in its notch row.
     func features(on layout: HomeLayout?) -> Set<FeatureID> {
       let grid = (layout?.visible(available) ?? []).map(\.widget)
@@ -301,6 +311,16 @@ struct HomeFeature: Sendable {
       Reduce { state, _ in
         state.$featuresOnHome.withLock { $0 = features }
         // A feature with a widget on Home has found room: its page's "No room on Home" goes.
+        if !state.noRoomOnHome.isDisjoint(with: features) {
+          state.$noRoomOnHome.withLock { $0.subtract(features) }
+        }
+        return .none
+      }
+    }
+    // A feature that found no room leaves the list once its first widget would fit, as when another widget goes: its
+    // page's "No room on Home" goes, and its "Add to Home" would now put the widget there. Home doesn't put it there.
+    .onChange(of: \.featuresWithRoom) { _, features in
+      Reduce { state, _ in
         if !state.noRoomOnHome.isDisjoint(with: features) {
           state.$noRoomOnHome.withLock { $0.subtract(features) }
         }
