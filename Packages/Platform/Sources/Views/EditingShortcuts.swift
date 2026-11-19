@@ -1,7 +1,8 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Vortex has no main menu, so nothing maps the standard editing shortcuts; its panels send them themselves.
+/// The standard editing shortcuts. Vortex's panels send them themselves, before AppKit asks the shell's main menu, which
+/// never shows and maps them the same way for windows Vortex doesn't make, such as Quick Look's.
 public enum EditingShortcuts {
   /// The action for ⌘X, ⌘C, ⌘V, ⌘A, ⌘Z, ⇧⌘Z and ⌘Q; nil for any other key. Under a Cyrillic or other non-Latin
   /// layout the keys count as in the Latin one, as in every Mac app.

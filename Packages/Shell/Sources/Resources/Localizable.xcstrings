@@ -326,6 +326,28 @@
         }
       }
     },
+    "Copy" : {
+      "comment" : "The Edit menu, which never shows: macOS's own name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіювати"
+          }
+        }
+      }
+    },
+    "Cut" : {
+      "comment" : "The Edit menu, which never shows: macOS's own name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вирізати"
+          }
+        }
+      }
+    },
     "Dark" : {
       "comment" : "Theme",
       "localizations" : {
@@ -376,6 +398,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перетягніть Vortex у папку «Програми» у Finder."
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "comment" : "The Edit menu, which never shows: macOS's own name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Редагування"
           }
         }
       }
@@ -895,6 +928,17 @@
         }
       }
     },
+    "Paste" : {
+      "comment" : "The Edit menu, which never shows: macOS's own name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставити"
+          }
+        }
+      }
+    },
     "Paused" : {
       "comment" : "Catalog badge: the feature doesn't run in this release",
       "localizations" : {
@@ -987,6 +1031,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рекомендовані вже ввімкнено. Будь-яку функцію можна додати чи прибрати пізніше у Функціях."
+          }
+        }
+      }
+    },
+    "Redo" : {
+      "comment" : "The Edit menu, which never shows: macOS's own name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторити"
           }
         }
       }
@@ -1100,6 +1155,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Розділи"
+          }
+        }
+      }
+    },
+    "Select All" : {
+      "comment" : "The Edit menu, which never shows: macOS's own name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вибрати все"
           }
         }
       }
@@ -1327,7 +1393,7 @@
       }
     },
     "Undo" : {
-      "comment" : "Undo toast",
+      "comment" : "Undo toast; the Edit menu's Undo, which never shows",
       "localizations" : {
         "uk" : {
           "stringUnit" : {

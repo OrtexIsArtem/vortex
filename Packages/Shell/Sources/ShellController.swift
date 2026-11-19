@@ -71,6 +71,8 @@ public final class ShellController: NSObject {
       // In a QA run, any window that lands on a display is a violation from here on, before the first one shows.
       QA.guardWindows()
     #endif
+    // Never shown, but its Edit menu gives the editing shortcuts to windows Vortex doesn't make, such as Quick Look's.
+    NSApp.mainMenu = MainMenu()
     WindowController.shared.install(content: ShellWindowView(store: store), menu: makeMenu())
     installOnboarding()
     store.send(.task)

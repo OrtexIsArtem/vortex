@@ -19,6 +19,7 @@
 ## Owns
 - The notch window, the ears around the notch and the menu bar icon (Window/). Nothing outside the shell opens or closes the window.
 - The onboarding window and its guide panel (Onboarding/).
+- The app's main menu, which never shows (Window/MainMenu.swift): its Edit menu gives ⌘X ⌘C ⌘V ⌘A ⌘Z ⇧⌘Z, read as the panels read them (`EditingShortcuts`), also under a Cyrillic layout, to windows that don't send them themselves, such as Quick Look's panel; the panels send theirs first, and it has no Quit.
 
 ## Uses
 - FeatureRegistry: every `FeatureModule` — its descriptor (`permissionNeeds` and the catalog's fields), read for every feature; `makeTab()`, `makeSettings()`, `makeHomeWidgets()` and `makeOnboardingStep()` through `FeatureViews` (each made once, only for a running feature), `receiveFiles(_:)` and `setEnabled(_:)`, each call marked in the launch record; `eraseData()` at launch for a feature being erased.

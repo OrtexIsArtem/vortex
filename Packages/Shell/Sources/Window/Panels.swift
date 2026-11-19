@@ -95,7 +95,8 @@ final class VortexPanel: NSPanel {
     MainActor.assumeIsolated { QuickLook.shared.endControl(panel) }
   }
 
-  /// The app has no main menu, so nothing maps the standard editing shortcuts; the panel sends them itself.
+  /// The panel sends the standard editing shortcuts itself, and ⌘Q, which the main menu (`MainMenu`) doesn't have:
+  /// AppKit asks the key window before the menu, so a press acts once.
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
     if let action = EditingShortcuts.action(for: event), NSApp.sendAction(action, to: nil, from: self) {
       return true
