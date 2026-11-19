@@ -1,24 +1,25 @@
 # Catalog
 
 ## What runs
-- A feature runs only once added: its start, views, onboarding step, notch indicator, tab shortcut and utility actions with their shortcuts. Of one not added the shell reads only its description.
+- A feature or a utility (`FeatureKind`) runs only once added: its start, views, onboarding step, notch indicator, tab shortcut, utility actions with their shortcuts and its buttons in Home's dock. Of one not added the shell reads only its description.
 - Home is built in: always added and running, safe mode included, never stopped after a crash, never in the catalog or on the Features page.
 - An added feature doesn't run before the user chooses features (a fresh install), while the maintainer pauses it (`suspension`), after a crash stopped it, or in safe mode until started.
 - However what runs changes, a feature that stops gets `setEnabled(false)`, leaves the sidebar, frees its tab shortcut and its utility actions' shortcuts and hides its notch indicator; one that starts gets `setEnabled(true)`.
-- The permissions Vortex asks for come from the added features, paused ones left out.
+- The permissions Vortex asks for come from the added features and utilities, paused ones left out: Accessibility only with keyboard cleaning.
 
 ## The onboarding's Features page
-- Right after Welcome, while the onboarding isn't completed: every feature but Home and the paused ones, the recommended ones checked; a check adds the feature, an uncheck removes it, without a trial.
+- Right after Welcome, while the onboarding isn't completed: every feature but Home and the paused ones, then the utilities under "Utilities", the recommended ones checked; a check adds it, an uncheck removes it, without a trial.
 - The footer counts the checked features and names the permissions the next pages ask for; leaving the page with Next, or closing the onboarding, starts the checked ones.
 
 ## The catalog
 - The puzzle-piece icon above Settings opens the catalog in the large window; the feature icons above it scroll when there are more than fit.
-- The icon has a dot while a feature is new, stopped after a crash, or waiting in safe mode.
-- Added comes first, in the user's order, then Can add, the recommended ones first; an empty section doesn't show, and with nothing to add the catalog says "Everything is added".
+- The icon has a dot while a feature or a utility is new, stopped after a crash, or waiting in safe mode.
+- Added comes first, in the user's order, then Can add, the recommended ones first, both of features with a tab; an empty section doesn't show, and with nothing to add the catalog says "Everything is added".
+- "Utilities" comes last: every utility, added or not, in the user's order, each a compact row in one card: symbol, name, one line, its badges, and a switch at the end. On, the switch adds it as Add does (saved at once, a trial, the list stays; one with a setup step not done goes to its page); off, it removes it as Remove does, with Undo. A paused utility's switch doesn't move.
 - A card: symbol, name, one line, and the badges Recommended (Can add only), New, Beta, Stopped or Paused; an added card has the yellow dot of a permission that is off.
 - Coming into the catalog marks every feature seen; the new ones keep "New" until the user leaves it.
 - In safe mode the banner shows on top with "Start All", and an added card that waits has "Start".
-- A card opens the feature's page; Esc on a page goes back to the list, on the list it closes the window.
+- A card or a utility's row opens its page; Esc on a page goes back to the list, on the list it closes the window.
 
 ## A feature's page
 - The looping preview without sound, paused while the window is closed (its still with Reduce Motion, read off the main thread with the symbol until it's there; the symbol without either); the details, the permissions it needs, what it keeps and who made it.
@@ -39,13 +40,12 @@
 - A crash during an erase doesn't repeat: the list was emptied first.
 
 ## Window sizes
-- The regular window is 680×440; the catalog, its pages and a feature's tab that asks for it (`windowRequest`, as Home's editor) use the large one, 880×440.
+- The regular window is 680×440; the catalog, its pages and a feature's tab that asks for it (`windowRequest`, as Home's editor) use the large one, 880×440; Home with the utilities dock out, the dock's, 736×440 (behavior.md).
 - A tab that asks for the focus dims the sidebar to 35 % and makes the other tabs and their shortcuts wait; asking for the regular window gives it back, and closing the window forgets every request.
 - The large window keeps the regular one's left edge, so the sidebar stays put, and grows right; it moves left only as far as the screen's visible area needs.
 - The content takes a new size at once; the outline follows with the opening's spring, or at once with Reduce Motion.
 - Every open starts at the regular size on an ordinary tab: the catalog is never restored.
-- Going to the catalog is a deliberate open, like a click on the notch: the pointer leaving no longer closes the window.
-- Closing the window leaves the catalog.
+- Going to the catalog is a deliberate open, like a click on the notch: the pointer leaving no longer closes the window. Closing the window leaves the catalog.
 - A leave right after the window shrank away from a still pointer isn't one.
 - Right-clicking a feature's icon offers "About <Name>" (its page) and "Remove <Name>"; Home has no menu. While a menu shows, the window stays open.
 

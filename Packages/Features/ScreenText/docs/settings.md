@@ -2,7 +2,7 @@
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| Copy text from the screen | none | the shortcut that runs the utility action; stored by KeyboardShortcuts under `copyScreenText`; the shell listens for it while the feature runs |
+| Keyboard shortcut ("Copy text from the screen") | none | the shortcut that runs the utility action; stored by KeyboardShortcuts under `copyScreenText`; the shell records it first on the page, captioned with the action's help, and listens for it while the feature runs |
 
 - Its page in Settings › Features has no "open on its tab" shortcut: it has no tab.
 - Screen Recording off: a row "⚠ Screen Recording · Reads the text in a frame you draw on the screen." with "Turn on", which opens the shell's page.

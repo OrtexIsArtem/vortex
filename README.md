@@ -11,7 +11,7 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 - **Shelf**: put files aside and drag them out later, into any app. Unpinned files clear after a day.
 - **Tasks**: press «+» in the Tasks tab, or a shortcut you set, to freeze the screen. Frame an area and press Return. You get a task with the screenshot, its recognized text and the page address from your browser.
 - **Keys for Claude**: keep database URLs, API tokens and passwords in the macOS keychain. Claude Code runs commands with `{{key}}` placeholders through a local MCP server and never sees a value. Vortex asks you once per key per session.
-- **Keyboard cleaning**: lock every key while you wipe the keyboard.
+- **Keyboard cleaning**: lock every key while you wipe the keyboard. It's a utility: its button waits behind the utilities button at the end of Home's top row.
 
 <table>
   <tr>
@@ -24,7 +24,7 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
   </tr>
   <tr>
     <td><b>Keys for Claude</b><br><img src=".github/media/keys.gif" alt="Claude Code asks for the github key; the notch shows it and the Keys tab asks Allow"></td>
-    <td><b>Keyboard cleaning</b><br><img src=".github/media/keyboard.gif" alt="Home's keyboard button locks every key until Turn the keyboard back on"></td>
+    <td><b>Keyboard cleaning</b><br><img src=".github/media/keyboard.gif" alt="The keyboard button among Home's utilities locks every key until Turn the keyboard back on"></td>
   </tr>
 </table>
 
@@ -33,7 +33,7 @@ Vortex speaks English and Ukrainian, and follows light and dark mode.
 ## Features and Home
 During setup you choose your features, with the recommended ones checked. Add or remove any of them later in **Features**, the puzzle piece in the sidebar. A feature you haven't added doesn't run, and Vortex asks for no permission on its behalf. A removed feature keeps its data until you erase it with **Erase Data…** on its page.
 
-Home is a 4×2 grid of widgets that you lay out yourself, with room for one more in the row next to the notch. The pencil in Home's corner opens the editor:
+Home is a 4×2 grid of widgets that you lay out yourself, with room for one more in the row next to the notch. The pencil opens the editor: the last button behind the utilities button at the end of that row, or that button itself while you have no utility:
 - Drag a widget, and the others make room.
 - Pick a feature in the panel on the right to add its widgets or change their size.
 - Remove a widget with its **−**.
@@ -87,7 +87,7 @@ The script downloads the latest release, checks that it is signed with Vortex's 
 
 Every release since 0.1.2 is signed with the same certificate, so macOS keeps Vortex's permissions across updates. Only the keychain asks again, as releases have no Team ID from Apple: click **Always Allow** for each key when macOS asks. A build of your own, signed with your team, avoids that too. See below.
 
-Updating from 0.1.0 or 0.1.1, macOS asks one last time for **Screen Recording** and **Accessibility**: switch Vortex off and on in System Settings. Vortex opens Screen Recording's page by itself; Accessibility's opens from Home's keyboard button. Each browser asks once more too.
+Updating from 0.1.0 or 0.1.1, macOS asks one last time for **Screen Recording** and **Accessibility**: switch Vortex off and on in System Settings. Vortex opens Screen Recording's page by itself; Accessibility's opens from keyboard cleaning's button among Home's utilities. Each browser asks once more too.
 
 ### Build it yourself
 You need Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen):

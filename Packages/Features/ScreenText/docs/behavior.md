@@ -1,8 +1,8 @@
 # Behavior
 
 ## Capture
-- The shortcut (none by default, set on the settings page) runs the utility action "Copy Text"; the shell runs it, its window closed first, so the frozen screen and the notch's message never sit over or behind it.
-- The shell will also place the action's button; until then the shortcut is the way in.
+- Its button in Home's utilities dock, or its shortcut (none by default, which the shell records on its page in Settings › Features), runs the utility action "Copy Text"; the shell runs it, the dock put away and the window closed first, so the frozen screen and the notch's message never sit over or behind it.
+- The button's tooltip is "Copy Text" with the shortcut's keys; it has a yellow warning while Screen Recording reads `notGranted`.
 - The app in front is noted, then the display under the pointer is taken and freezes; Vortex's own windows aren't on it.
 - The notch shows "Screen Text · Esc"; "Frame the text · Esc to cancel" shows above the Dock.
 - Dragging draws the frame, with a crosshair pointer; outside it the screen dims.

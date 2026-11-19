@@ -1,6 +1,6 @@
 # Screen Text
 
-Copies text the mouse can't select: a shortcut freezes the screen, a frame picks the text, and it's on the clipboard; a QR code in the frame is copied as its link or text. A feature without a tab.
+Copies text the mouse can't select: its button in Home's utilities dock, or its shortcut, freezes the screen, a frame picks the text, and it's on the clipboard; a QR code in the frame is copied as its link or text. A utility: no tab.
 
 | File | What it covers |
 | --- | --- |

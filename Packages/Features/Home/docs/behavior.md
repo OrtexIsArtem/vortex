@@ -18,7 +18,7 @@
 - Home follows the widgets the shell tells it whether its tab shows or not; at launch it changes nothing until the shell first tells them.
 
 ## The editor
-- The pencil in the bottom right corner, Home's right-click menu and the empty Home's button open the editor.
+- The pencil (the utilities strip's last button, or the notch row's button itself while no utility runs), Home's right-click menu and the empty Home's button open the editor.
 - The editor asks for the large window with the focus: the window grows right to 880 pt, and the sidebar dims and waits.
 - In the editor widgets don't answer the pointer, and free cells show dashed.
 - Under the pointer, or with the keyboard's focus (Tab), a widget has a 1 pt ring and "−" at its top left; "−" or Delete removes it.
@@ -46,10 +46,12 @@
 - An "Add to Home" that comes while the editor is open waits for it to end, then goes into the layout kept.
 - Home tells the shell which features have a widget on it as saved: their pages say "On Home"; the editor's edits count once Done keeps them.
 
-## The corner buttons
-- A capsule in Home's bottom right corner holds the keyboard button, while the shell offers it, and the pencil; it hides in the editor.
-- The keyboard button locks the keyboard for cleaning: what a click does is the shell's.
-- While Accessibility reads `notGranted`, the keyboard button shows a yellow warning with the tooltip "Accessibility is off"; none before the first read.
+## The utilities button and its strip
+- The notch row ends in a 44 pt slot for the utilities button, a 28 pt circle 8 pt from the window's edge, after the row widget's controls (the timer's Start), so the notch stays in the window's middle; without a row widget it sits at the row's end, right of Home's title. It hides in the editor.
+- With no utility running the button is the pencil, Edit Home itself; otherwise it brings out the strip, which the shell sizes, and is lit while the strip is out; a yellow dot on it while a button of the strip has its warning.
+- The strip, 56 pt at the window's right on the panel's shade: the dock's buttons in one column, the first beside the row's button, 28 pt circles in 44 pt targets, each with its tooltip, its label and its shortcut's keys, and a yellow warning while its permission is off; then, after a short line, the pencil.
+- A button puts the strip away and runs as the shell runs it; a click anywhere else on Home puts it away and does nothing more; the pencil opens the editor, whose window takes the strip's place.
+- Home's bottom right corner holds no button of its own: the grid reaches the window's edge.
 
 ## Targets
-- The corner buttons, the panel's size chips, Add, "‹ Widgets", "More widgets in Features" and the search's clear button take clicks past what they draw, toward 44 pt, into room no other control's target takes; nothing they draw moves (HomeTargetsTests).
+- The utilities button, the strip's buttons, the panel's size chips, Add, "‹ Widgets", "More widgets in Features" and the search's clear button take clicks past what they draw, toward 44 pt, into room no other control's target takes; nothing they draw moves (HomeTargetsTests).

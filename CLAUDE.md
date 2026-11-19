@@ -23,7 +23,7 @@ A macOS utility that lives in the notch and the menu bar. Setup, commands, the m
 1. A feature never imports another feature. Features talk only through contracts in VortexCore or through the app shell.
 2. A feature brings everything of its own: its sidebar tab, settings, Home widget, database tables prefixed with its id, their migrations, and its docs.
 3. To add a feature:
-   - copy Features/_Template to Features/<Name>, then rename the module and types;
+   - copy Features/_Template (a utility, with no tab: Features/_UtilityTemplate) to Features/<Name>, then rename the module and types;
    - add "<Name>" to `features` in Packages/Package.swift;
    - add its import and entry to Features/Registry.
 
@@ -33,7 +33,7 @@ A macOS utility that lives in the notch and the menu bar. Setup, commands, the m
 6. The notch window and the menu bar icon belong to the shell; features never open or close the window. A feature shows status in the notch by writing its own entry to `@Shared(.notchIndicators)` from its reducer.
 7. A feature asks for a macOS permission only through `PermissionPage`, and declares what it needs in `permissionNeeds`.
 8. A feature starts and stops its background work in `FeatureModule.setEnabled`. Its tab stays mounted while the window is closed, so work that should run only while visible goes into `.task(id: isWindowOpen)`.
-9. Each module declares its own shortcuts (`extension Hotkey { static let x = Hotkey("x") }`), listens with `HotkeyClient.presses`, and puts `HotkeyRecorder` in its own settings.
+9. Each module declares its own shortcuts (`extension Hotkey { static let x = Hotkey("x") }`), listens with `HotkeyClient.presses`, and puts `HotkeyRecorder` in its own settings. A utility action's shortcut is the exception: the module only names it in the action, and the shell records it on the module's page and listens for it.
 10. Data lives in DataFolder (~/Library/Application Support/Vortex):
     - A feature's tables go in the shared database (`@Dependency(\.database)`), named `<id>_…`. Its own `DatabaseMigrator` creates them, with migrations `<id>.v1`, `<id>.v2`…, before its first query.
     - Its files go in DataFolder/<Name>/.

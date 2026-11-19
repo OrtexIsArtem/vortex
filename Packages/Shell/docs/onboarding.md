@@ -10,7 +10,7 @@
 
 ## Pages
 - Order: Welcome, Features (catalog.md), Basics, Accessibility, Screen Recording, Paste from Other Apps, the running features' own steps, Done.
-- Only permissions that added features (or keyboard cleaning with Home) need get rows and pages; one macOS doesn't ask for (`notNeeded`) gets none.
+- Only permissions that added features and utilities need get rows and pages, so Accessibility's only while keyboard cleaning is added; one macOS doesn't ask for (`notNeeded`) gets none.
 - A saved page that no longer exists resumes at the next page in order, else Done.
 - Welcome: the vortex animation (about 2.5 s; only its last frame with Reduce Motion), "Vortex", three lines and "Get started"; a dark backdrop in both appearances.
 - Basics: the Notifications row and "Open at login"; after "Turn on" the hint about the notification shows for 15 s or until the status changes.

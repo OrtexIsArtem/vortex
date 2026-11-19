@@ -11,7 +11,6 @@
 ## Uses
 - VortexCore:
   - `HomeWidget`, `HomeWidgetSize`, `HomeGrid`, `HomeWidgetPlace`, `HomeWidgetInfo`, `View.homeWidgetCard(size:)`;
-  - the environment values `homeWidgets` (the views of the running features' widgets), `windowRequest` (the editor's large window with the focus), `showCatalog` ("More widgets in Features"), `keyboardCleaning` (the action behind the keyboard button), `isWindowOpen` (closing ends the editor as Cancel does) and `notchCutout` (the notch row widget reads it);
-  - `@SharedReader(.permissionStatuses)`, written by the shell: Accessibility's warning on the keyboard button;
-  - the design system (`VortexColor.dock`, `.panel`, `WarningMark`, `PermissionMark`, the capsule button styles).
+  - the environment values `homeWidgets` (the views of the running features' widgets), `windowRequest` (the editor's large window with the focus), `showCatalog` ("More widgets in Features"), `utilitiesDock` (the dock's buttons, whether its strip is out, and what the button, a click outside and a button do), `isWindowOpen` (closing ends the editor as Cancel does) and `notchCutout` (the notch row widget reads it);
+  - the design system (`VortexColor.dock`, `.panel`, `WarningMark` on the utilities button and the strip, the capsule button styles).
 - VortexPlatform: `QA`, in debug builds.

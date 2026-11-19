@@ -2,7 +2,7 @@
 
 | What | Where | How long |
 | --- | --- | --- |
-| Shell settings and the last tab, the added, chosen, seen, stopped and to-erase features | DataFolder/settings.json (~/Library/Application Support/Vortex; a QA run's own folder in QA mode) | Until changed |
+| Shell settings and the last tab, the added, chosen, seen, stopped and to-erase features, the one-time feature migrations made | DataFolder/settings.json (~/Library/Application Support/Vortex; a QA run's own folder in QA mode) | Until changed |
 | The launch record: when it started, the feature the shell is calling, whether it lived 15 s, the features on trial | DataFolder/launch.json, written at once and atomically on every change | Until the next launch reads it |
 | The crash mark: one byte the crash signal handler writes, 1 for the main thread and 2 for another | DataFolder/crash.marker | Until the next launch reads and deletes it |
 | Keyboard shortcuts | UserDefaults of the app, managed by KeyboardShortcuts | Until changed |
@@ -11,10 +11,10 @@
 | "Don't ask again" ticked with Not Now in the offer to move to /Applications | UserDefaults key moveToApplicationsDeclined, kept by Platform's AppInstallClient, release builds only | Forever |
 | Onboarding progress: page, return to Done, pending checks, pending single page, completed, restarted, login item applied; the version that launched last (`version`, short version and build, "0.1.2 (17)") and, of Accessibility and Screen Recording, the permissions macOS ties to the signature, each one macOS reported granted with the version that saw it last (`granted`) | DataFolder/onboarding.json, written at once on every change | Until `onboarding reset` in QA; a missing file means a fresh onboarding |
 | Permissions Vortex asked macOS for (notifications, Accessibility, Screen Recording) | ~/Library/Application Support/Vortex/permissions.json, kept by Platform's PermissionsClient | Forever |
-| Keys pressed during keyboard cleaning: how often each place on the drawn keyboard went down, never what it types | In memory only; the live lock never writes, logs or sends them (a QA run logs the keys its commands simulate) | Until the lock ends |
 
 - Missing, unknown or unreadable keys in settings.json fall back to their defaults; delays are clamped to 0–2 s.
 - A fresh install is one with none of settings.json, onboarding.json and vortex.sqlite; launch.json doesn't count. The launch that first settles the added features writes settings.json at once, so a quit before any other save can't make it look like an update.
 - Erase Data deletes a feature's tables `<id>_…`, its rows in `grdb_migrations` (`<id>.…`), `<id>.json`, its folder and its tab shortcut; its own `eraseData()` deletes what only it knows (catalog.md).
 - `version` is written after the launch's check for permissions an update dropped. A grant that reads `notGranted` under the version that saw it was turned off and is dropped; under a later version it stays, as granted before.
 - An onboarding.json without `version` (0.1.1 and earlier) counts Accessibility and Screen Recording as granted then when permissions.json says Vortex asked for them, for that launch's check only: `granted` never keeps the guess, and a guess an earlier build kept is dropped at launch.
+- `migrations` names the one-time changes to the saved features made already: `keyboard.added` kept keyboard cleaning added, and seen, for whoever had Vortex before the build that made it a utility; a fresh install, or a build without the utility, counts it as done only once it ships it.
