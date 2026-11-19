@@ -10,6 +10,7 @@
 - Priority is Low by default; Low, Medium or High.
 - Return saves, also from the title field; an emptied title is "Task N"; the retake button draws the frame again on the same frozen screen.
 - A second press of the shortcut while a capture is under way does nothing.
+- While another feature's frozen screen shows, as Screen Text's, a capture is refused; of two started together, the second to show gives way (Platform's one frozen screen at a time).
 - Vortex comes to the front with the frozen screen; saving or cancelling gives the front back to the app the user was in, with its keyboard focus.
 - Another app coming to the front ends the capture, so the frozen screen never hides it: a prompt of the system (Screen Recording's periodic confirmation, a browser's Automation) or ⌘Tab.
 

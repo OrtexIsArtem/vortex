@@ -11,7 +11,7 @@ How long items stay, Clear with Undo, and search are in history.md.
 - Copies made while an ignored app was in front (since the previous check) are not recorded.
 - What was recorded before an app was ignored stays.
 - Copies apps mark as transient or auto-generated (nspasteboard.org, text expanders) are not recorded.
-- What Vortex copies itself is not recorded again.
+- What Vortex copies itself is not recorded again; a copy it makes for the user (`PasteboardClient.copy`, as Screen Text's text) is, like any copy, from the app it names, by the rules above.
 - Copies marked secret (password managers) are shown as •••• until their own eye, Show, is clicked; Quick Look never shows them.
 - Secrets are kept in memory only and are gone when Vortex quits.
 - Secret images are not recorded.

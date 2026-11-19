@@ -1,10 +1,10 @@
 # Catalog
 
 ## What runs
-- A feature runs only once added: its start, views, onboarding step, notch indicator and tab shortcut. Of one not added the shell reads only its description.
+- A feature runs only once added: its start, views, onboarding step, notch indicator, tab shortcut and utility actions with their shortcuts. Of one not added the shell reads only its description.
 - Home is built in: always added and running, safe mode included, never stopped after a crash, never in the catalog or on the Features page.
 - An added feature doesn't run before the user chooses features (a fresh install), while the maintainer pauses it (`suspension`), after a crash stopped it, or in safe mode until started.
-- However what runs changes, a feature that stops gets `setEnabled(false)`, leaves the sidebar, frees its tab shortcut and hides its notch indicator; one that starts gets `setEnabled(true)`.
+- However what runs changes, a feature that stops gets `setEnabled(false)`, leaves the sidebar, frees its tab shortcut and its utility actions' shortcuts and hides its notch indicator; one that starts gets `setEnabled(true)`.
 - The permissions Vortex asks for come from the added features, paused ones left out.
 
 ## The onboarding's Features page
@@ -22,8 +22,8 @@
 
 ## A feature's page
 - The looping preview without sound, paused while the window is closed (its still with Reduce Motion, read off the main thread with the symbol until it's there; the symbol without either); the details, the permissions it needs, what it keeps and who made it.
-- Not added: Add. Added: Open, "Add to Home" while none of the feature's widgets is on Home ("✓ On Home" once one is, neither without widgets), Settings (the feature's own page in Settings › Features, hidden while it doesn't run) and Remove. Paused: "Temporarily Unavailable" with the maintainer's reason. Stopped: Try Again and Remove. Waiting in safe mode: Start.
-- Add saves at once, starts the feature on a trial and makes its tab the one the window opens on next; the window stays on the page.
+- Not added: Add. Added: Open (none without a tab, where Settings is the primary button), "Add to Home" while none of the feature's widgets is on Home ("✓ On Home" once one is, neither without widgets), Settings (the feature's own page in Settings › Features, hidden while it doesn't run) and Remove. Paused: "Temporarily Unavailable" with the maintainer's reason. Stopped: Try Again and Remove. Waiting in safe mode: Start.
+- Add saves at once, starts the feature on a trial and makes its tab, if it has one, the one the window opens on next; the window stays on the page.
 - "Add to Home" that finds no room keeps the button and shows "No room on Home" and "Remove a widget or choose a smaller size in Home's editor." under the buttons, until the page is left, a widget of the feature gets on Home, or Home has room for it again, as when another widget goes.
 - An added feature whose own setup step isn't done shows that step on its page, under its buttons, which stay where Add was.
 - Once added, a feature's permissions show as on its settings page: one that is off with the yellow mark, its tooltip and "Turn on"; one granted for the next launch with "Works after restart" and "Restart Vortex".

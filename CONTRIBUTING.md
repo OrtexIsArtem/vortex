@@ -50,6 +50,7 @@ For daily use, run `make install` instead of a debug session. A debug session en
 | FeatureClipboard | Packages/Features/Clipboard | clipboard history: the last copies plus pinned ones |
 | FeatureShelf | Packages/Features/Shelf | files put aside to drag into other apps |
 | FeatureTasks | Packages/Features/Tasks | tasks from the screen: screenshot, recognized text, source |
+| FeatureScreenText | Packages/Features/ScreenText | text off the screen: a frame on the frozen screen, its text or QR code copied; no tab |
 | FeatureSecrets | Packages/Features/Secrets | keys Claude uses by name, through a local MCP server |
 | FeatureTemplate | Packages/Features/_Template | the template for a new feature |
 | Tools | Tools/ | the `vortex` CLI |
@@ -62,7 +63,7 @@ Read the module's README first. When a change contradicts a line in these docs, 
 
 ## Architecture rules
 1. A feature never imports another feature. Features talk only through contracts in VortexCore, or through the shell.
-2. A feature brings everything of its own: its sidebar tab, settings, Home widgets, database tables (prefixed with its id), migrations and docs. Its settings (`makeSettings()`) show on its own page in Settings › Features, after the shortcut that opens its tab.
+2. A feature brings everything of its own: its sidebar tab (or none, see below), settings, Home widgets, utility actions, database tables (prefixed with its id), migrations and docs. Its settings (`makeSettings()`) show on its own page in Settings › Features, after the shortcut that opens its tab.
 3. To add a feature, copy `Features/_Template` to `Features/<Name>` and rename the module and its types. Then add `"<Name>"` to `features` in `Packages/Package.swift`, and its entry to `Features/Registry`. Removing a feature means deleting its folder and those lines; everything else must still build.
 4. If nobody provides a contract, the caller hides the control.
 5. System APIs (pasteboard, screenshots, files, keychain, hotkeys, permissions) are reached only through clients in VortexPlatform, so every feature can be tested with substituted clients.
@@ -81,6 +82,13 @@ Users add features from the catalog; a feature that isn't added runs no code. De
 - `isRecommended` puts it on a fresh install and marks it "Recommended": only the maintainer sets it. `isBeta` marks it "Beta".
 - Media: a 5–10 s HEVC video of the feature at work and a still, in `Sources/Resources/Catalog`, set in `preview`; the interface in them is in English. `make check` keeps each feature's media under 1.5 MB.
 - Pausing a feature for a release: set `suspension` with the reason the catalog shows; it stays in the build and in users' lists but doesn't run. A feature that doesn't compile is left out of the build instead: remove its name from `features` in `Packages/Package.swift` and its line from `Features/Registry`, and keep its folder.
+
+## A feature without a tab, and utility actions
+A feature that does one thing and has nothing to show in a tab, as Screen Text, sets `hasTab` to false and makes no `makeTab()`.
+- The shell gives it no sidebar icon, no Open on its catalog page (Settings is the primary button there) and no shortcut that opens a tab; its page in Settings › Features holds its own settings, which it should have.
+- Its one-click actions are utility actions (`makeUtilityActions()`, at most two): a symbol, a label, a help line, what a click does, the permission a warning names, the name of its own `Hotkey` that runs it, and what the window must be first (`WindowNeed`: `.closed` for an action that works on the screen, `.open` for one whose own screen covers the window, `.unchanged`).
+- The shell listens for the action's shortcut while the feature runs and runs the action after making the window what it needs; the feature records the shortcut with `HotkeyRecorder` on its settings page and never listens for it, opens or closes the window itself. The shell places no button for utility actions yet.
+- A feature with a tab may offer utility actions too; `FeatureRegistryTests` checks every shipped feature's against `UtilityAction.problems`.
 
 ## Make a widget for Home
 A widget shows a feature on Home: in the row next to the notch, or on the grid of 4×2 cells under it.

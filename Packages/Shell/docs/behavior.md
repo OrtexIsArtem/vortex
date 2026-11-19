@@ -10,11 +10,11 @@
 - Clicking the notch of a window that opened by hover keeps it open, as if the click had opened it.
 - The menu bar icon and the "Open Vortex" shortcut open and close the window.
 - A feature's shortcut opens the window on its tab, or switches to it; pressed again on that tab, it closes the window.
+- A utility action's shortcut runs it as its button will: the window first as the action needs it (closed: an open window closes, then it runs; open; or as it is), and nothing while keyboard cleaning's lock or the erase question holds the window open.
 - Dragging files, images, links or text to the notch opens the window on the first running feature that accepts files; with no such feature nothing happens.
 - The window grows out of the notch of the screen with the pointer, flush with the top of the screen and without a shadow; on a screen without a notch it opens under the menu bar icon, with a shadow.
 - The window opens on the Space in front, full-screen apps' Spaces included. When macOS keeps it on another full-screen Space, a new window takes its content and opens here.
-- The window opens on the last tab the user chose; if that feature is gone or doesn't run, on the first feature, then on Settings. Never on the catalog (catalog.md).
-- Opening for dragged files does not change the remembered tab.
+- The window opens on the last tab the user chose; if that feature is gone or doesn't run, on the first feature, then on Settings. Never on the catalog (catalog.md); opening for dragged files does not change the remembered tab.
 
 ## Files given to Vortex
 - Files dropped on the menu bar icon, or opened with Vortex (`vortex shelf add`, `open -a Vortex`), go to the first running feature that accepts files and the window stays as it is; without one the icon refuses the drop, and opened files open the page of the feature that would take them (catalog.md). On macOS 26 a drop on the icon never reaches Vortex: Control Center draws the icon.
@@ -35,7 +35,7 @@
 - While Home's keyboard button has the keys locked, keyboard-cleaning.md decides what the window does, over the rules above.
 
 ## Sidebar, features and permissions
-- The sidebar shows running features in the user's order; the catalog and Settings stay at the bottom, and the feature icons scroll when there are more than fit.
+- The sidebar shows running features with a tab in the user's order; the catalog and Settings stay at the bottom, and the feature icons scroll when there are more than fit.
 - A yellow dot on a feature's icon while a permission it needs reads `notGranted`: decoration with the tooltip "<Permission> is off"; a click on it, as on the icon, opens the tab. None before the first read, for ↻, or on Home and Settings.
 - Dropping a feature's icon onto another moves it to that place; other drags are refused.
 - Which features run, and how they are added and removed: catalog.md. At launch only running features start; nothing of the others runs, not even a stop.
@@ -47,7 +47,7 @@
 ## Settings
 - Settings › Features lists the running features in sidebar order, each a row with its symbol, name and a chevron; with none, "Features you add with settings show them here".
 - A feature's row there has the yellow dot of its sidebar icon, by the same rule and with the same tooltip; a click on it opens the page, as on the row.
-- A row opens the feature's page: "‹ Features", its name, the shortcut that opens Vortex on its tab, then the feature's own settings with their permission rows; "‹ Features" and Esc go back to the list.
+- A row opens the feature's page: "‹ Features", its name, the shortcut that opens Vortex on its tab (none without a tab), then the feature's own settings with their permission rows; "‹ Features" and Esc go back to the list.
 - Settings remembers the open page while the app runs, as it remembers the segment; once that feature stops running, the list shows.
 - Choosing another language asks for a relaunch; Restart relaunches Vortex. If Vortex hasn't quit within about 10 s, it isn't opened again.
 - The menu bar icon cannot be hidden while a display without a notch is connected or while neither hover nor click opens Vortex.

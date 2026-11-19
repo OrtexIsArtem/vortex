@@ -9,7 +9,7 @@
 | Hover delay | 0.3 s | 0–2 s in 0.1 s steps |
 | Open on click | on | |
 | "Open Vortex" shortcut | none | Set by the user; stored by KeyboardShortcuts |
-| A shortcut per feature tab | none | First on the feature's page in Settings › Features; stored by KeyboardShortcuts as `open-<feature id>`, listened for only while the feature runs |
+| A shortcut per feature tab | none | First on the feature's page in Settings › Features; stored by KeyboardShortcuts as `open-<feature id>`, listened for only while the feature runs; none for a feature without a tab |
 | Close on click outside | on | |
 | Close when the pointer leaves | on | Only for a window opened by hover or by dragging files |
 | Leave delay | 0.5 s | 0–2 s in 0.1 s steps |
