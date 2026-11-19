@@ -1,0 +1,61 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "A starting point for a new utility" : {
+      "comment" : "The template utility's one line",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основа для нової утиліти"
+          }
+        }
+      }
+    },
+    "Copy this folder to start a utility of your own: one clear action, with a button in Home's utilities dock and a shortcut." : {
+      "comment" : "The template utility's page",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіюйте цю теку, щоб почати власну утиліту: одна чітка дія, з кнопкою серед утиліт на головній і скороченням."
+          }
+        }
+      }
+    },
+    "Say Hello" : {
+      "comment" : "The template utility's button, for VoiceOver and its tooltip",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привітатися"
+          }
+        }
+      }
+    },
+    "Say hello in the notch" : {
+      "comment" : "What the template utility's button does",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привітатися у вирізі"
+          }
+        }
+      }
+    },
+    "Utility Template" : {
+      "comment" : "The template utility's name",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаблон утиліти"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

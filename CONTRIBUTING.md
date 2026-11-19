@@ -41,7 +41,7 @@ For daily use, run `make install` instead of a debug session. A debug session en
 | Module | Path | Purpose |
 | --- | --- | --- |
 | App | App/ | the entry point: starts the shell |
-| VortexShell | Packages/Shell | the notch window, menu bar icon, sidebar, settings, onboarding and keyboard cleaning |
+| VortexShell | Packages/Shell | the notch window, menu bar icon, sidebar, settings, onboarding, the utilities dock and the window covers |
 | VortexCore | Packages/Core | contracts between the shell and features (including the permissions they need), notch indicators, the database, the design system |
 | VortexPlatform | Packages/Platform | system clients:<br>• hotkeys, pasteboard, files, Quick Look<br>• screen capture, text recognition<br>• keychain, commands in the user's shell<br>• permissions, login item, QA mode |
 | FeatureRegistry | Packages/Features/Registry | the features the app ships, in sidebar order |
@@ -50,9 +50,11 @@ For daily use, run `make install` instead of a debug session. A debug session en
 | FeatureClipboard | Packages/Features/Clipboard | clipboard history: the last copies plus pinned ones |
 | FeatureShelf | Packages/Features/Shelf | files put aside to drag into other apps |
 | FeatureTasks | Packages/Features/Tasks | tasks from the screen: screenshot, recognized text, source |
-| FeatureScreenText | Packages/Features/ScreenText | text off the screen: a frame on the frozen screen, its text or QR code copied; no tab |
+| FeatureKeyboardCleaning | Packages/Features/KeyboardCleaning | a utility: every key locked while the keyboard is wiped, its lock screen over the window |
+| FeatureScreenText | Packages/Features/ScreenText | a utility: text off the screen, a frame on the frozen screen, its text or QR code copied |
 | FeatureSecrets | Packages/Features/Secrets | keys Claude uses by name, through a local MCP server |
 | FeatureTemplate | Packages/Features/_Template | the template for a new feature |
+| FeatureUtilityTemplate | Packages/Features/_UtilityTemplate | the template for a new utility |
 | Tools | Tools/ | the `vortex` CLI |
 
 Each module keeps short docs next to its code in `docs/`:
@@ -63,8 +65,8 @@ Read the module's README first. When a change contradicts a line in these docs, 
 
 ## Architecture rules
 1. A feature never imports another feature. Features talk only through contracts in VortexCore, or through the shell.
-2. A feature brings everything of its own: its sidebar tab (or none, see below), settings, Home widgets, utility actions, database tables (prefixed with its id), migrations and docs. Its settings (`makeSettings()`) show on its own page in Settings › Features, after the shortcut that opens its tab.
-3. To add a feature, copy `Features/_Template` to `Features/<Name>` and rename the module and its types. Then add `"<Name>"` to `features` in `Packages/Package.swift`, and its entry to `Features/Registry`. Removing a feature means deleting its folder and those lines; everything else must still build.
+2. A feature brings everything of its own: its sidebar tab (a utility has none, see "Make a utility"), settings, Home widgets, utility actions, database tables (prefixed with its id), migrations and docs. Its settings (`makeSettings()`) show on its own page in Settings › Features, after the shortcut that opens its tab or those of its utility actions.
+3. To add a feature, copy `Features/_Template` (a utility: `Features/_UtilityTemplate`) to `Features/<Name>` and rename the module and its types. Then add `"<Name>"` to `features` in `Packages/Package.swift`, and its entry to `Features/Registry`. Removing a feature means deleting its folder and those lines; everything else must still build.
 4. If nobody provides a contract, the caller hides the control.
 5. System APIs (pasteboard, screenshots, files, keychain, hotkeys, permissions) are reached only through clients in VortexPlatform, so every feature can be tested with substituted clients.
 6. The notch window and the menu bar icon belong to the shell. A feature shows status in the notch by writing its own entry to `@Shared(.notchIndicators)`.
@@ -83,12 +85,20 @@ Users add features from the catalog; a feature that isn't added runs no code. De
 - Media: a 5–10 s HEVC video of the feature at work and a still, in `Sources/Resources/Catalog`, set in `preview`; the interface in them is in English. `make check` keeps each feature's media under 1.5 MB.
 - Pausing a feature for a release: set `suspension` with the reason the catalog shows; it stays in the build and in users' lists but doesn't run. A feature that doesn't compile is left out of the build instead: remove its name from `features` in `Packages/Package.swift` and its line from `Features/Registry`, and keep its folder.
 
-## A feature without a tab, and utility actions
-A feature that does one thing and has nothing to show in a tab, as Screen Text, sets `hasTab` to false and makes no `makeTab()`.
-- The shell gives it no sidebar icon, no Open on its catalog page (Settings is the primary button there) and no shortcut that opens a tab; its page in Settings › Features holds its own settings, which it should have.
-- Its one-click actions are utility actions (`makeUtilityActions()`, at most two): a symbol, a label, a help line, what a click does, the permission a warning names, the name of its own `Hotkey` that runs it, and what the window must be first (`WindowNeed`: `.closed` for an action that works on the screen, `.open` for one whose own screen covers the window, `.unchanged`).
-- The shell listens for the action's shortcut while the feature runs and runs the action after making the window what it needs; the feature records the shortcut with `HotkeyRecorder` on its settings page and never listens for it, opens or closes the window itself. The shell places no button for utility actions yet.
-- A feature with a tab may offer utility actions too; `FeatureRegistryTests` checks every shipped feature's against `UtilityAction.problems`.
+## Make a utility
+A utility does one clear thing and needs no screen of its own, as Screen Text (the text in a frame on the screen) and Keyboard Cleaning do. It has no tab: its button lives in Home's utilities dock, and a user who doesn't want it removes it with one switch in the catalog's Utilities section. Make one when your idea is an action, not a place to look at; make a feature (above) when it needs a tab.
+
+`Packages/Features/_UtilityTemplate` is the full working example: one action that says hello in the closed notch, its shortcut, its test and its docs. Copy it to `Features/<Name>`, rename the module and its types, then add `"<Name>"` to `features` in `Packages/Package.swift` and its line to `Features/Registry`, as for a feature.
+
+- **The kind.** Set `kind` to `.utility` and make no `makeTab()`. The shell gives it no sidebar icon, no Open on its catalog page (Settings is the primary button there) and no shortcut that opens a tab. The catalog, Settings › Features and the onboarding's Features page list it in their Utilities group.
+- **Its action.** Return it from `makeUtilityActions()`: an id `<id>.<name>`, an SF Symbol, a label ("Copy Text") and a help line ("Copy text from the screen"), the permission its yellow mark names, the name of its own `Hotkey`, and what a click does. A utility offers one action, two at most; each is a round button in the dock, in catalog order, its tooltip the label and the shortcut's keys.
+- **The window.** Say what the window must be first (`WindowNeed`): `.closed` for an action that works on the screen, as Screen Text's frame does; `.open` for one whose own screen covers the window; `.unchanged` when it doesn't matter. The shell sees to it, puts the dock away, then runs the action. A utility never opens or closes the window itself.
+- **A screen over the window.** An `.open` action may cover the whole window while it works, as keyboard cleaning's lock screen does: return the view from `makeWindowCover()`, and put `WindowCover(feature: id)` in `@Shared(.windowCover)` from the reducer as the work starts, nil as it ends, however it ends. Meanwhile the window stays open and nothing closes it; when the cover goes, the window closes. `holdsKeyboard` keeps Vortex in front, dropping every key that reaches it.
+- **The shortcut.** Declare its `Hotkey` (`extension Hotkey { static let sayHello = Hotkey("sayHello") }`) and name it in the action: the shell records it on the utility's page in Settings › Features, first, and listens for it while the utility runs. Don't add a `HotkeyRecorder` for it yourself, and don't listen for it.
+- **Feedback.** Say what happened in the closed notch with your own entry in `@Shared(.notchIndicators)`, for a moment, as Screen Text's "Copied · 2 lines" does.
+- **Permissions and settings** work as a feature's: `permissionNeeds` (the onboarding asks for them only while the utility is added), `PermissionPage` instead of asking macOS, `makeSettings()` under the shortcut.
+- **Tests.** Keep the template's: the action follows `UtilityAction.problems`, its window need is the one you mean, and its reducer does what the button promises. `FeatureRegistryTests` checks every shipped utility offers an action.
+- A feature with a tab may offer utility actions too; their buttons come first in the dock.
 
 ## Make a widget for Home
 A widget shows a feature on Home: in the row next to the notch, or on the grid of 4×2 cells under it.

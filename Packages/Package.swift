@@ -95,5 +95,17 @@ let package = Package(
       dependencies: ["FeatureTemplate"] + featureBase,
       path: "Features/_Template/Tests"
     ),
+    // The template for a utility: one clear action and no tab. Not registered, as the feature template isn't.
+    .target(
+      name: "FeatureUtilityTemplate",
+      dependencies: featureBase,
+      path: "Features/_UtilityTemplate/Sources",
+      resources: [.process("Resources")]
+    ),
+    .testTarget(
+      name: "FeatureUtilityTemplateTests",
+      dependencies: ["FeatureUtilityTemplate"] + featureBase,
+      path: "Features/_UtilityTemplate/Tests"
+    ),
   ] + featureTargets
 )

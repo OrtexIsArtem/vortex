@@ -81,6 +81,7 @@ targets:
         - package: VortexKit/VortexPlatformTests
         - package: VortexKit/VortexShellTests
         - package: VortexKit/FeatureTemplateTests
+        - package: VortexKit/FeatureUtilityTemplateTests
         - package: VortexKit/FeatureClipboardTests
         - package: VortexKit/FeatureHomeTests
         - package: VortexKit/FeatureKeyboardCleaningTests
