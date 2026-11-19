@@ -2,7 +2,7 @@
 
 A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac without one. Hover over the notch and it opens with the tools you reach for a dozen times a day.
 
-![A build lands in a watched folder and the notch flashes; hovering over the notch opens Home with the timer in the row next to the notch, the build on the shelf and the clipboard's history](.github/media/hero.gif)
+![A build lands in a watched folder, the notch flashes and its ear counts it; hovering over the notch opens Home with the timer in the row next to the notch, the build on the shelf and the clipboard's history; the pointer rests on the new build, its dot goes, and the closed notch shows the timer alone again](.github/media/hero.gif)
 
 **Website:** [vortex-notch.web.app](https://vortex-notch.web.app), where you can try every feature in your browser. **Download:** [the latest release](https://github.com/OrtexIsArtem/vortex/releases/latest).
 
