@@ -357,6 +357,9 @@ struct FeaturePreviewView: View {
     }
     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     .accessibilityHidden(true)
+    // A preview of its own for each feature: going from one page straight to another's keeps the page's views, and the
+    // still read and the video playing for the first feature would show on the second one's page.
+    .id(feature.id)
   }
 
   private var symbol: some View {

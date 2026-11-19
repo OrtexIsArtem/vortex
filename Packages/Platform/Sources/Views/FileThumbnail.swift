@@ -5,15 +5,26 @@ import SwiftUI
 /// A picture of a file's content (an image, a PDF page, a video frame) made by Quick Look in the background.
 /// Shows `placeholder` while it is made and for files that have no such picture.
 public struct FileThumbnail<Placeholder: View>: View {
+  /// Makes a file's picture at a size and scale: Quick Look, through the cache; a test gives its own.
+  typealias Read = @MainActor @Sendable (URL, CGSize, CGFloat) async -> NSImage?
+
   private let url: URL
   private let size: CGSize
+  private let read: Read
   private let placeholder: Placeholder
   @State private var thumbnail: NSImage?
   @Environment(\.displayScale) private var displayScale
 
   public init(url: URL, size: CGSize, @ViewBuilder placeholder: () -> Placeholder) {
+    self.init(url: url, size: size, read: { url, size, scale in
+      await ThumbnailCache.shared.thumbnail(for: url, size: size, scale: scale)
+    }, placeholder: placeholder)
+  }
+
+  init(url: URL, size: CGSize, read: @escaping Read, @ViewBuilder placeholder: () -> Placeholder) {
     self.url = url
     self.size = size
+    self.read = read
     self.placeholder = placeholder()
   }
 
@@ -34,7 +45,11 @@ public struct FileThumbnail<Placeholder: View>: View {
       }
     }
     .task(id: url) {
-      thumbnail = await ThumbnailCache.shared.thumbnail(for: url, size: size, scale: displayScale)
+      let image = await read(url, size, displayScale)
+      // The view moved on to another file, which cancels this task, or went: the picture would land where it no longer
+      // belongs, over the newer one.
+      guard !Task.isCancelled else { return }
+      thumbnail = image
     }
   }
 }
