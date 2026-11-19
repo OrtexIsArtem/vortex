@@ -6,8 +6,11 @@ extension EnvironmentValues {
   /// Whether motion should be reduced: macOS's Reduce Motion, followed as it changes. A QA run started with
   /// `--qa-reduce-motion` has it on whatever macOS says. Animations read this rather than `accessibilityReduceMotion`.
   public var reduceMotion: Bool {
-    ReduceMotion.isForced || accessibilityReduceMotion
+    isReduceMotionForced || accessibilityReduceMotion
   }
+
+  /// `ReduceMotion.isForced`, unless a test sets it on a view to see it as a QA run with `--qa-reduce-motion` does.
+  @Entry var isReduceMotionForced = ReduceMotion.isForced
 }
 
 /// The same for AppKit code.

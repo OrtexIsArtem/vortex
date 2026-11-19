@@ -332,15 +332,15 @@ private struct DimmedWhilePressed: ButtonStyle {
   }
 }
 
-/// The feature's looping preview, without sound, paused while the window is closed; its still with Reduce Motion, and
-/// its symbol when it has neither.
+/// The feature's looping preview, without sound, paused while the window is closed; its still with Reduce Motion
+/// (macOS's, or a QA run's with `--qa-reduce-motion`), and its symbol when it has neither.
 struct FeaturePreviewView: View {
   /// The size the page shows it at.
   static let size = CGSize(width: 400, height: 250)
 
   let feature: FeatureDescriptor
   @Environment(\.isWindowOpen) private var isWindowOpen
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.reduceMotion) private var reduceMotion
 
   var body: some View {
     ZStack {

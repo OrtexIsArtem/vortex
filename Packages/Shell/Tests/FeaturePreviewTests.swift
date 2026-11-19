@@ -3,6 +3,7 @@ import SwiftUI
 import Testing
 import VortexCore
 
+@testable import VortexPlatform
 @testable import VortexShell
 
 /// A feature's page reads its still off the main thread: the page shows the feature's symbol on its card at once, and
@@ -87,6 +88,24 @@ struct FeaturePreviewTests {
     let first = try shownColor(host)
     #expect(!isRed(first), "the first frame shows \(first)")
     // Then the still.
+    let shown = try await shownColor(host, once: isRed)
+    #expect(isRed(shown), "the preview shows \(shown)")
+  }
+
+  /// With Reduce Motion, as a QA run with `--qa-reduce-motion` has it whatever macOS says, a feature that has a video
+  /// shows its still instead, and never opens the video.
+  @Test
+  func reduceMotionShowsTheStillInsteadOfTheVideo() async throws {
+    let url = try still(.red)
+    defer { try? FileManager.default.removeItem(at: url) }
+    let video = FileManager.default.temporaryDirectory.appending(path: "never-read-\(UUID().uuidString).mov")
+    let feature = FeatureDescriptor(
+      id: "music", title: "Music", symbol: "music.note", preview: FeaturePreview(video: video, still: url)
+    )
+    let host = NSHostingView(rootView: preview(feature).environment(\.isReduceMotionForced, true))
+    let window = offScreenWindow(host)
+    defer { window.orderOut(nil) }
+
     let shown = try await shownColor(host, once: isRed)
     #expect(isRed(shown), "the preview shows \(shown)")
   }
