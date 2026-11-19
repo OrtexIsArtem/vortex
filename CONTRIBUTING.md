@@ -82,11 +82,88 @@ Users add features from the catalog; a feature that isn't added runs no code. De
 - Media: a 5–10 s HEVC video of the feature at work and a still, in `Sources/Resources/Catalog`, set in `preview`; the interface in them is in English. `make check` keeps each feature's media under 1.5 MB.
 - Pausing a feature for a release: set `suspension` with the reason the catalog shows; it stays in the build and in users' lists but doesn't run. A feature that doesn't compile is left out of the build instead: remove its name from `features` in `Packages/Package.swift` and its line from `Features/Registry`, and keep its folder.
 
-## Home widgets
-A feature offers up to two widgets in `makeHomeWidgets()`; the user puts them on Home, a 4×2 grid, from Home's editor or the feature's page.
-- Each widget has an id `<feature id>.<name>`, a title, and either the notch row or one to three sizes in the order it prefers: Small 1×1, Medium 2×1, Wide 4×1, Large 2×2, Full 4×2. Cells are 143×182 pt, so every size is exact points.
-- Its view is made once and reads its size from `@Environment(\.homeWidgetSize)`; Home insets it 14 by 16 pt on its card.
-- Nothing warns when a widget spills over its size: preview each size with `#Preview { HomeWidgetPreview(widget, size: .medium) }`, and test that `HomeWidget.problems(makeHomeWidgets(), feature: id)` is empty, as `_Template` does.
+## Make a widget for Home
+A widget shows a feature on Home: in the row next to the notch, or on the grid of 4×2 cells under it.
+- A feature offers at most two.
+- On a fresh install, Home's first layout places the widgets of the features chosen during setup. After that the user places them: "Add to Home" on the feature's page in Features puts its first widget on Home, and Home's editor adds, moves, resizes and removes widgets.
+- Home draws the card, owns the grid and the editor, and decides where each widget goes. Your widget draws only its content.
+
+`Packages/Features/_Template` is the full working example: a widget in two sizes, its previews, its test and its docs. Home's own rules, such as the first layout and the editor, are in `Packages/Features/Home/docs/behavior.md`.
+
+### Sizes
+The grid's cells are 143×182 pt, 12 pt apart (`HomeGrid`). The window is the same size on every Mac, so every size is exact points. Home insets a widget 14 pt from the top and bottom of its card and 16 pt from its sides, which leaves this room inside:
+
+| Size | Cells | Card (pt) | Room inside (pt) |
+| --- | --- | --- | --- |
+| Small | 1×1 | 143×182 | 111×154 |
+| Medium | 2×1 | 298×182 | 266×154 |
+| Wide | 4×1 | 608×182 | 576×154 |
+| Large | 2×2 | 298×376 | 266×348 |
+| Full | 4×2 | 608×376 | 576×348 |
+
+- A widget on the grid lists one to three sizes, in the order it prefers. The first is its default: Home's first layout and "Add to Home" place it at that size, or at the next one when the first fits nowhere, and the editor's panel adds it at that size unless the user picks another.
+- A widget can take the row next to the notch instead. The row holds one widget, Timer's by default. There it has no card and gets the whole row, 624×52 pt; `homeWidgetSize` is nil, and `@Environment(\.notchCutout)` says where the notch cuts in, nil where there is none.
+
+### Step 1: declare it
+Return the widget from the module's `makeHomeWidgets()`. `_Template` offers one, Small or Medium:
+
+```swift
+public static func makeHomeWidgets() -> [HomeWidget] {
+  [
+    HomeWidget(
+      id: "template.count",
+      feature: id,
+      title: LocalizedStringResource("Count", bundle: .atURL(Bundle.module.bundleURL)),
+      place: .grid([.small, .medium]),
+      view: TemplateHomeWidget(store: store)
+    ),
+  ]
+}
+```
+
+- `id` is `<feature id>.<name>`. Home's saved layout finds the widget by it, so don't change it once the widget ships.
+- `title` is the widget's name in the editor, translated like any UI string.
+- `place` is `.grid` with its sizes in order, or `.notchRow`.
+- `view` takes the feature's store, the same one its tab uses.
+
+### Step 2: the view
+- Read the size from `@Environment(\.homeWidgetSize)` and fit each size you list. `_Template`'s widget adds its Increment button at Medium; Shelf's lays its files out six across at Wide and three across at the others.
+- Draw no card or background of your own. Home draws the card under the view, insets it, clips whatever spills over, and in the editor takes the pointer from it.
+- Keep to the app's monochrome design: colors from `VortexColor`, the type sizes the app already uses (the widgets on the grid start with the feature's name in 12 pt `secondaryText`), buttons in `.quietCapsule` or `.primaryCapsule`. Make what's clickable large: whole rows and capsule buttons, not bare icons.
+
+**Keep the widget's state in the feature's store, not in `@State`.** The shell calls `makeHomeWidgets()` once and keeps the view, but the view can show in two places at once: on Home and, while the editor is open, as its preview in the editor's panel. Each place is a copy with its own `@State`, and each runs its own `.onAppear`, `.task` and `.onDisappear`. So `@State` suits only what one copy shows alone, such as a drop highlight, and whatever the widget does on appearing or disappearing must be safe to run once per copy. Opening Clipboard's widget in the panel once emptied the search in the Clipboard tab: each copy told the store the tab was shown.
+
+### Step 3: preview every size
+Add a `#Preview` for each size the widget lists. `HomeWidgetPreview` draws Home as the window shows it, every cell outlined and the widget at its real size on its card; a widget of the notch row shows in its row, and `size` is ignored. Home clips what spills over a card and nothing warns, so these previews are where you see it.
+
+```swift
+#Preview("Widget, Small") {
+  HomeWidgetPreview(TemplateModule.makeHomeWidgets()[0], size: .small)
+}
+
+#Preview("Widget, Medium") {
+  HomeWidgetPreview(TemplateModule.makeHomeWidgets()[0], size: .medium)
+}
+```
+
+### Step 4: test the rules
+`HomeWidget.problems` lists what breaks Home's rules: more than two widgets, an id that doesn't start with `<feature id>.` or comes twice, a widget on the grid without one to three sizes, a size named twice. `_Template`'s tests check that it finds none; keep that test for your feature:
+
+```swift
+@Test
+func templateWidgetsFollowTheRules() {
+  let widgets = TemplateModule.makeHomeWidgets()
+  #expect(!widgets.isEmpty)
+  #expect(HomeWidget.problems(widgets, feature: TemplateModule.id).isEmpty)
+}
+```
+
+Once the feature is in `Features/Registry`, the shell's `FeatureRegistryTests` runs the same check on it.
+
+### Step 5: docs
+Add a line about the widget to two of the feature's docs:
+- `behavior.md`: what it shows at each size, as `_Template`'s "The widget on Home shows the counter; at Medium it has Increment too."
+- `contracts.md`: its id, name and sizes in order, as Clipboard's "Home widget `clipboard.history` ("History") on the grid: Large 2×2 first, the size Home's first layout gives it, then Medium 2×1."
 
 ## Code
 - Swift 6 language mode, strict concurrency. Declare public reducers `Sendable` explicitly.
