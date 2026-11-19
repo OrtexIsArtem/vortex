@@ -14,6 +14,7 @@ final class FeatureViews {
 
   private var tabs: [FeatureID: AnyView] = [:]
   private var homeWidgets: [FeatureID: [HomeWidget]] = [:]
+  private var utilityActions: [FeatureID: [UtilityAction]] = [:]
   private var settings: [FeatureID: AnyView?] = [:]
   private var onboardingSteps: [FeatureID: OnboardingStep?] = [:]
 
@@ -25,6 +26,11 @@ final class FeatureViews {
   /// The feature's widgets on Home, none if it has none.
   func homeWidgets(_ id: FeatureID) -> [HomeWidget] {
     cached(id, in: &homeWidgets) { $0.makeHomeWidgets() } ?? []
+  }
+
+  /// The feature's utility actions, none if it has none.
+  func utilityActions(_ id: FeatureID) -> [UtilityAction] {
+    cached(id, in: &utilityActions) { $0.makeUtilityActions() } ?? []
   }
 
   /// The feature's own settings, if it has any: on its page in Settings › Features, after its tab's shortcut.

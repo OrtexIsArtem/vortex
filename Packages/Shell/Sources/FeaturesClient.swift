@@ -19,6 +19,10 @@ struct FeaturesClient: Sendable {
   var eraseData: @Sendable (_ id: FeatureID) async -> Void
   /// The widgets of these running features, in their order, without their views: what Home lays out.
   var homeWidgets: @Sendable (_ ids: [FeatureID]) async -> [HomeWidgetInfo] = { _ in [] }
+  /// The utility actions of these running features, in their order, as plain data: what the shell runs and listens for.
+  var utilityActions: @Sendable (_ ids: [FeatureID]) async -> [UtilityActionInfo] = { _ in [] }
+  /// Runs a running feature's utility action, see `UtilityAction.perform`.
+  var performUtilityAction: @Sendable (_ feature: FeatureID, _ id: String) async -> Void
 }
 
 extension FeaturesClient: DependencyKey {
@@ -89,6 +93,18 @@ extension FeaturesClient: DependencyKey {
           }
         }
       }
+    },
+    utilityActions: { ids in
+      await MainActor.run {
+        // Made once, as the views of a running feature are (FeatureViews).
+        ids.flatMap { FeatureViews.shared.utilityActions($0).map(\.info) }
+      }
+    },
+    performUtilityAction: { feature, id in
+      @Dependency(\.launchGuard) var launchGuard
+      await MainActor.run {
+        launchGuard.around(feature) { FeatureViews.shared.utilityActions(feature).first { $0.id == id }?.perform() }
+      }
     }
   )
 
@@ -115,10 +131,11 @@ extension FeaturesClient: DependencyKey {
     }
   }
 
-  /// Unimplemented, but for Home's widgets: a test without features that offer any reads none.
+  /// Unimplemented, but for Home's widgets and the utility actions: a test without features that offer any reads none.
   static let testValue: FeaturesClient = {
     var client = FeaturesClient()
     client.homeWidgets = { _ in [] }
+    client.utilityActions = { _ in [] }
     return client
   }()
 }

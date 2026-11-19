@@ -67,6 +67,25 @@ struct FeatureRegistryTests {
     }
   }
 
+  /// Every shipped feature's utility actions follow the rules: at most two, ids that start with the feature's id, no
+  /// shortcut shared, none named like a tab's (`open-<id>`), which the shell keeps for itself. A feature without a tab
+  /// shows itself somewhere: through its settings, which every feature without a tab has, or its utility actions.
+  @Test
+  func everyShippedFeaturesUtilityActionsFollowTheRules() {
+    var shortcuts: Set<String> = []
+    for module in FeatureRegistry.all {
+      let actions = module.makeUtilityActions()
+      #expect(UtilityAction.problems(actions, feature: module.id) == [], "\(module.id)")
+      for shortcut in actions.compactMap(\.shortcut) {
+        #expect(!shortcut.hasPrefix("open-") && shortcut != "openVortex", "\(module.id): \(shortcut)")
+        #expect(shortcuts.insert(shortcut).inserted, "\(module.id): \(shortcut) is another feature's")
+      }
+      if !module.hasTab {
+        #expect(module.makeSettings() != nil || !actions.isEmpty, "\(module.id) has no tab and nothing else")
+      }
+    }
+  }
+
   #if canImport(FeatureHome)
     /// Home's first layout of the shipped features, in the default sidebar order, is Home as it was before its grid:
     /// the timer in the row next to the notch, Clipboard's history and the shelf side by side, 2×2 each. A new user

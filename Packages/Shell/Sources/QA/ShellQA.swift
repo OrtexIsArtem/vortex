@@ -27,6 +27,7 @@
       }
       QA.register(command: "catalog") { arguments in try catalog(arguments, store: store) }
       QA.register(command: "feature") { arguments in try feature(arguments, store: store) }
+      QA.register(command: "utility") { arguments in try pressUtility(arguments, store: store) }
       QA.register(command: "launch") { arguments in
         guard let word = arguments["set"] else { throw QAError("launch takes set=normal|safe|stop:<feature id>") }
         try LaunchQA.setNextVerdict(word)
@@ -95,6 +96,21 @@
       } else {
         throw QAError("feature takes add, remove, erase, home or settings, with id=<feature id>")
       }
+    }
+
+    // MARK: - Utility actions
+
+    /// `utility press id=<action id>`: a running feature's utility action, run as a press of its button or its
+    /// shortcut runs it: the window as the action needs it, then the action.
+    static func pressUtility(_ arguments: [String: String], store: StoreOf<ShellFeature>) throws {
+      guard arguments["press"] != nil, let id = arguments["id"] else {
+        throw QAError("utility takes press id=<action id>")
+      }
+      guard store.utilityActions.contains(where: { $0.id == id }) else {
+        let ids = store.utilityActions.map(\.id)
+        throw QAError("no utility action \(id) runs; there are \(ids.isEmpty ? "none" : ids.joined(separator: ", "))")
+      }
+      store.send(.utilityActionPressed(id))
     }
 
     // MARK: - entry
@@ -315,6 +331,8 @@
       var settingsFeature: FeatureID?
       /// Enabled features, in sidebar order.
       var sidebar: [FeatureID]
+      /// The running features' utility actions, in sidebar order: "<id> <window need>[ <shortcut>]".
+      var utilityActions: [String]
       var fileFeature: FeatureID?
       var keyboardLocked: Bool
       /// The board the lock screen draws: ansi, iso or jis (drawn as ansi).
@@ -344,6 +362,9 @@
         settingsSection = "\(state.settingsSection)"
         settingsFeature = state.settingsPage?.id
         sidebar = state.sidebarFeatures.map(\.id)
+        utilityActions = state.utilityActions.map { action in
+          "\(action.id) \(action.window)" + (action.shortcut.map { " \($0)" } ?? "")
+        }
         fileFeature = state.fileFeature?.id
         keyboardLocked = state.keyboardCleaning.isLocked
         let cleaning = state.keyboardCleaning
@@ -363,7 +384,7 @@
       }
 
       private enum CodingKeys: String, CodingKey {
-        case isOpen, openReason, selectedTab, settingsSection, settingsFeature, sidebar, fileFeature, keyboardLocked
+        case isOpen, openReason, selectedTab, settingsSection, settingsFeature, sidebar, utilityActions, fileFeature, keyboardLocked
         case keyboardLayout
         case keyboardWashes, screens, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
         case launchAtLogin, language, needsRestartForLanguage, settings
@@ -378,6 +399,7 @@
         try container.encode(settingsSection, forKey: .settingsSection)
         try container.encode(settingsFeature, forKey: .settingsFeature)
         try container.encode(sidebar, forKey: .sidebar)
+        try container.encode(utilityActions, forKey: .utilityActions)
         try container.encode(fileFeature, forKey: .fileFeature)
         try container.encode(keyboardLocked, forKey: .keyboardLocked)
         try container.encode(keyboardLayout, forKey: .keyboardLayout)

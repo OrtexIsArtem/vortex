@@ -33,6 +33,9 @@ struct ShellFeature {
     /// The running features' widgets, as last told to Home (`@Shared(.runningHomeWidgets)`): at launch once every
     /// feature has started, then whenever the running features or their order change. Nil until the launch tells them.
     var homeWidgets: [HomeWidgetInfo]?
+    /// The running features' utility actions, in sidebar order, as last read: at launch once every feature has started,
+    /// then whenever the running features or their order change. The shell listens for their shortcuts and runs them.
+    var utilityActions: [UtilityActionInfo] = []
     /// "Add to Home" on features' pages, until Home takes each request.
     @Shared(.homeAddRequests) var homeAddRequests
     /// What Home tells back: the features with a widget on it.
@@ -494,6 +497,10 @@ struct ShellFeature {
     case addToHomeTapped(FeatureID)
     /// The running features' widgets, read anew for Home.
     case homeWidgetsLoaded([HomeWidgetInfo])
+    /// The running features' utility actions, read anew.
+    case utilityActionsLoaded([UtilityActionInfo])
+    /// A utility action's shortcut, or a press of its button: the window as the action needs it, then the action.
+    case utilityActionPressed(String)
     case featureDropped(FeatureID, onto: FeatureID)
     case settingsShown
     case launchAtLoginChanged(Bool)
@@ -571,6 +578,10 @@ struct ShellFeature {
     case undoRemove
     /// Reading the running features' widgets for Home.
     case homeWidgets
+    /// Reading the running features' utility actions.
+    case utilityActions
+    /// The listener for a utility action's shortcut, by the action's id.
+    case utilityShortcut(String)
   }
 
   /// The newest release on GitHub. "Check for Updates" opens it in the browser: Vortex itself never goes online.
@@ -678,7 +689,8 @@ struct ShellFeature {
                 await send(.started)
               },
               // Once every feature has started, Home hears of the widgets that run, even of none, as in safe mode.
-              tellHome(running, current: nil)
+              tellHome(running, current: nil),
+              readUtilityActions(running, current: [])
             ),
             .run { send in
               for await statuses in permissions.updates() {
@@ -754,6 +766,39 @@ struct ShellFeature {
           @Shared(.runningHomeWidgets) var running
           $running.withLock { $0 = widgets }
           return .none
+
+        case let .utilityActionsLoaded(actions):
+          let old = state.utilityActions
+          state.utilityActions = actions
+          // Each shortcut is listened for while its action is there: an action that went frees its keys; a new or changed
+          // one listens, in place of what listened for it before.
+          let gone = old.filter { action in !actions.contains { $0.id == action.id } }
+          let new = actions.filter { !old.contains($0) }
+          return .merge(
+            .merge(gone.map { .cancel(id: CancelID.utilityShortcut($0.id)) }),
+            .merge(new.map(listenForUtilityShortcut))
+          )
+
+        case let .utilityActionPressed(id):
+          // Only a running feature's action: one that stopped, or never ran, does nothing.
+          guard let action = state.utilityActions.first(where: { $0.id == id }) else { return .none }
+          let perform = Effect<Action>.run { _ in await features.performUtilityAction(action.feature, id) }
+          switch action.window {
+          case .unchanged:
+            return perform
+          case .closed:
+            guard state.isOpen else { return perform }
+            // The window can't go while keyboard cleaning's lock or the erase question holds it, so nothing runs.
+            guard !state.keyboardCleaning.isLocked, state.eraseConfirmation == nil else { return .none }
+            // The window goes first: what the action shows on the screen never sits over or behind it.
+            return .concatenate(close(&state), perform)
+          case .open:
+            guard !state.isOpen else { return perform }
+            let opening = open(.hotkey, &state)
+            // Blocked, or waiting for the first status read, the window doesn't open, and the action doesn't run.
+            guard state.isOpen else { return opening }
+            return .concatenate(opening, perform)
+          }
 
         case let .windowRequested(id, request):
           // Only while the window is open: a tab left mounted behind the closed window can't make the next open large.
@@ -976,7 +1021,13 @@ struct ShellFeature {
     .onChange(of: \.runningFeatures) { old, new in
       Reduce { state, _ in
         // Home hears of the widgets even when only the order changed: its panel lists them in sidebar order.
-        .merge(syncRunning(from: old, to: new, &state), tellHome(new.map(\.id), current: state.homeWidgets ?? []))
+        .merge(
+          syncRunning(from: old, to: new, &state),
+          .concatenate(
+            tellHome(new.map(\.id), current: state.homeWidgets ?? []),
+            readUtilityActions(new.map(\.id), current: state.utilityActions)
+          )
+        )
       }
     }
     .onChange(of: \.onboardingContext) { _, context in
@@ -1112,6 +1163,27 @@ struct ShellFeature {
       if widgets != current { await send(.homeWidgetsLoaded(widgets)) }
     }
     .cancellable(id: CancelID.homeWidgets, cancelInFlight: true)
+  }
+
+  /// Reads the running features' utility actions, and tells them unless they are `current`. The newest read wins.
+  private func readUtilityActions(_ running: [FeatureID], current: [UtilityActionInfo]) -> Effect<Action> {
+    .run { send in
+      let actions = await features.utilityActions(running)
+      if actions != current { await send(.utilityActionsLoaded(actions)) }
+    }
+    .cancellable(id: CancelID.utilityActions, cancelInFlight: true)
+  }
+
+  /// Listens for a utility action's shortcut, if it has one, while the action is there; cancelling it frees the keys. A
+  /// press runs the action as a click does.
+  private func listenForUtilityShortcut(_ action: UtilityActionInfo) -> Effect<Action> {
+    guard let name = action.shortcut else { return .none }
+    return .run { send in
+      for await _ in hotkeys.presses(Hotkey(name)) {
+        await send(.utilityActionPressed(action.id))
+      }
+    }
+    .cancellable(id: CancelID.utilityShortcut(action.id), cancelInFlight: true)
   }
 
   /// Listens for the shortcut that opens the feature's tab while the feature runs; cancelling it frees the keys.
