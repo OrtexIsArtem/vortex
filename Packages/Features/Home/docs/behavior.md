@@ -29,7 +29,7 @@
 - An away widget takes no part in a drag: its place is free, and it keeps it; the notch row stays as it is.
 - The panel on the right: Cancel and Done, a search of feature and widget names in any case, "On Home" and "More" in sidebar order, and "More widgets in Features", which is Done, then the catalog.
 - A feature's row says "N widgets · M on Home", "1 widget · on Home", "N widgets" or "In the notch row", and opens the feature's widgets.
-- A widget in the panel: its preview, its name, "On Home", "No room" or Add, and its sizes as chips: "2×1".
+- A widget in the panel: its preview, laid out at its real size and scaled down (a notch row widget as wide as the row), its name, "On Home", "No room" or Add, and its sizes as chips: "2×1".
 - On Home a size applies in place, keeping the top left corner, and only if it fits there; a size that doesn't is dimmed.
 - Off Home a size is chosen for Add, and under the pointer the widget's copy shows at its real size, faint and dashed, where Add would put it, named "Files · 2×1".
 - Without room the panel says "No room" and "Remove a widget or choose a smaller size."

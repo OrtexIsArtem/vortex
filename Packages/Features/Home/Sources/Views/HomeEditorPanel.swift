@@ -299,20 +299,21 @@ private struct PanelWidget: View {
 }
 
 /// A widget at its real size, scaled down to the panel's width and kept short.
-private struct WidgetThumbnail: View {
+struct WidgetThumbnail: View {
   let widget: HomeWidget
   let size: HomeWidgetSize?
   /// The widest and tallest a preview gets in the panel.
   private static let box = CGSize(width: 154, height: 96)
 
   var body: some View {
-    let real = size?.points ?? CGSize(width: HomeGrid.frame(column: 0, row: 0, size: .full).width, height: VortexMetrics.headerHeight)
+    // The notch row is as wide as Home's column, the grid and its sides.
+    let real = size?.points ?? CGSize(width: HomeView.gridWidth, height: VortexMetrics.headerHeight)
     let scale = min(Self.box.width / real.width, Self.box.height / real.height)
     Group {
       if let size {
         WidgetFace(widget: widget, size: size)
       } else {
-        // The notch row's widget, as wide as Home.
+        // The notch row's widget, laid out as wide as its row.
         widget.view
           .frame(width: real.width, height: real.height)
           .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(VortexColor.dock))
