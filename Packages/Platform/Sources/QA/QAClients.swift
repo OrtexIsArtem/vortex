@@ -305,12 +305,21 @@
   }
 
   extension PasteboardClient {
-    /// In memory: `sim copy` copies in another app; what Vortex writes stays here.
+    /// In memory: `sim copy` copies in another app; what Vortex writes stays here; what it copies for the user comes
+    /// back as a copy, from Vortex, as on the real pasteboard.
     static let qa: PasteboardClient = {
       var client = PasteboardClient()
       client.copies = { QASystem.shared.copies() }
       client.write = { content, isConcealed, source in
         QASystem.shared.write(content, isConcealed: isConcealed, source: source)
+      }
+      client.copy = { content in
+        let vortex = PasteboardFormat.ownBundleID
+        QASystem.shared.copy(PasteboardCopy(
+          content: content,
+          source: AppInfo(bundleID: vortex, name: "Vortex"),
+          frontApps: [vortex, simulation.frontApp]
+        ))
       }
       return client
     }()
@@ -390,18 +399,27 @@
   }
 
   extension TextRecognitionClient {
-    /// Every image says `recognizedText`. For search, `live` reads the image with Apple Vision as plain Vortex does, so
-    /// a run can go end to end on images it renders itself. Only sizes are logged, never the text.
+    /// Every image says `recognizedText` and holds the QR code `qrCode` (empty: none). With `live` either is read in the
+    /// image itself with Apple Vision, as plain Vortex reads it, so a run can go end to end on images it renders itself.
+    /// Only sizes are logged, never the text.
     static let qa: TextRecognitionClient = {
+      let live = TextRecognitionClient.liveValue
       var client = TextRecognitionClient()
       client.recognize = { image in
         QALog.record("textRecognition", "recognize", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
-        return simulation.recognizedText
+        let text = simulation.recognizedText
+        return text == "live" ? try await live.recognize(image) : text
+      }
+      client.readQRCode = { image in
+        QALog.record("textRecognition", "readQRCode", ["size": "\(Int(image.size.width))×\(Int(image.size.height))"])
+        let code = simulation.qrCode
+        if code == "live" { return try await live.readQRCode(image) }
+        return code.isEmpty ? nil : code
       }
       client.recognizeForSearch = { imageData in
         QALog.record("textRecognition", "recognizeForSearch", ["bytes": "\(imageData.count)"])
         let text = simulation.recognizedText
-        return text == "live" ? try await TextRecognitionClient.liveValue.recognizeForSearch(imageData) : text
+        return text == "live" ? try await live.recognizeForSearch(imageData) : text
       }
       return client
     }()

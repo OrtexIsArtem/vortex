@@ -207,6 +207,11 @@ struct QASimulationTests {
     #expect(simulation.launchAtLogin == "requiresApproval")
     #expect(simulation.frontTitle == nil)
     #expect(simulation.chooseApp == "com.apple.Safari")
+    #expect(simulation.qrCode == "")
+    try simulation.set(["qrCode": "https://example.com", "recognizedText": "live"])
+    #expect(simulation.qrCode == "https://example.com" && simulation.recognizedText == "live")
+    try simulation.set(["qrCode": ""])
+    #expect(simulation.qrCode == "")
 
     let before = simulation
     #expect(throws: QAError.self) { try simulation.set(["keyboardLockRefuses": "yes"]) }
@@ -400,6 +405,28 @@ struct QAClientsTests {
     #expect(received.value.map(\.content) == [.text("from Safari")])
   }
 
+  /// A copy Vortex makes for the user comes back as a copy, as on the real pasteboard: Clipboard keeps it, with Vortex as
+  /// its source.
+  @Test
+  func aCopyForTheUserComesBackAsACopy() async {
+    let pasteboard = PasteboardClient.qa
+    let copies = pasteboard.copies()
+    let received = LockIsolated<[PasteboardCopy]>([])
+    let listening = Task {
+      for await copy in copies {
+        received.withValue { $0.append(copy) }
+        break
+      }
+    }
+    await Task.yield()
+    await pasteboard.copy(.text("read off the screen"))
+    await listening.value
+    #expect(received.value.map(\.content) == [.text("read off the screen")])
+    #expect(received.value.first?.source?.bundleID == Bundle.main.bundleIdentifier ?? "io.github.ortexisartem.vortex")
+    let dump = QASystem.shared.pasteboardDump() as? [String: Any]
+    #expect(dump?["content"] as? String == "text: read off the screen")
+  }
+
   @Test
   func theAppInFrontMovesByCommand() async throws {
     let apps = ActiveAppClient.qa
@@ -432,6 +459,34 @@ struct QAClientsTests {
     let png = TextRecognitionForSearchTests.png(width: 800, height: 200, size: 48, lines: [("release notes", 48)])
     #expect(try await recognition.recognizeForSearch(png).lowercased().contains("release notes"))
     await #expect(throws: (any Error).self) { try await recognition.recognizeForSearch(notAnImage) }
+  }
+
+  /// A picture's text is the simulated text, or with `live` what Apple Vision reads in the picture itself.
+  @Test
+  func recognitionReadsTheSimulatedTextOrWithLiveThePictureItself() async throws {
+    defer { QASimulation.update { $0 = QASimulation() } }
+    let recognition = TextRecognitionClient.qa
+    let picture = QRCodeReadingTests.image(text: "Release notes")
+    QASimulation.update { $0.recognizedText = "mcp server" }
+    #expect(try await recognition.recognize(picture) == "mcp server")
+    QASimulation.update { $0.recognizedText = "live" }
+    #expect(try await recognition.recognize(picture).lowercased().contains("release notes"))
+  }
+
+  /// No QR code by default; the simulated payload on any picture; with `live` what Apple Vision finds in the picture.
+  /// Only sizes are logged, never the payload.
+  @Test
+  func qrCodesAreTheSimulatedPayloadOrWithLiveThePicturesOwn() async throws {
+    defer { QASimulation.update { $0 = QASimulation() } }
+    let recognition = TextRecognitionClient.qa
+    let plain = QRCodeReadingTests.image(text: "No code here")
+    #expect(try await recognition.readQRCode(plain) == nil)
+    QASimulation.update { $0.qrCode = "https://example.com/menu" }
+    #expect(try await recognition.readQRCode(plain) == "https://example.com/menu")
+    #expect(QALog.events.value.last { $0.event == "readQRCode" }?.detail == ["size": "450×210"])
+    QASimulation.update { $0.qrCode = "live" }
+    #expect(try await recognition.readQRCode(plain) == nil)
+    #expect(try await recognition.readQRCode(QRCodeReadingTests.image(codes: [("Table 12", 60)])) == "Table 12")
   }
 
   @Test

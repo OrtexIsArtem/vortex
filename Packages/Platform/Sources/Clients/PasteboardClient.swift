@@ -49,8 +49,11 @@ public struct PasteboardClient: Sendable {
   /// while the stream is alive. Skips what Vortex wrote itself and what apps mark as transient.
   public var copies: @Sendable () -> AsyncStream<PasteboardCopy> = { .finished }
   /// Puts content back on the pasteboard, marked with the app it came from; `isConcealed` asks other clipboard
-  /// managers to hide it, as the source app did.
+  /// managers to hide it, as the source app did. `copies` skips it: Vortex wrote it.
   public var write: @Sendable (_ content: PasteboardContent, _ isConcealed: Bool, _ source: AppInfo?) async -> Void
+  /// Copies content for the user, as a copy in any app would: `copies` reports it, unlike `write`, so Clipboard's
+  /// history keeps it. Marked with Vortex as the app it came from, as text Vortex read off the screen does.
+  public var copy: @Sendable (_ content: PasteboardContent) async -> Void
 }
 
 extension PasteboardClient: DependencyKey {
@@ -64,6 +67,9 @@ extension PasteboardClient: DependencyKey {
     },
     write: { content, isConcealed, source in
       PasteboardFormat.write(content, isConcealed: isConcealed, source: source, to: .general)
+    },
+    copy: { content in
+      PasteboardFormat.write(content, isConcealed: false, source: nil, to: .general, isUserCopy: true)
     }
   )
 
@@ -245,8 +251,15 @@ enum PasteboardFormat {
   }
 
   /// Writes one pasteboard item per file, or a single item, with every type and marker at once, so a reader never
-  /// sees the content without its markers. The source marker names the app the content first came from.
-  static func write(_ content: PasteboardContent, isConcealed: Bool, source: AppInfo?, to pasteboard: NSPasteboard) {
+  /// sees the content without its markers. The source marker names the app the content first came from. Vortex's own
+  /// write is remembered, so the watcher skips it; a copy for the user (`isUserCopy`) is not, so the watcher reports it.
+  static func write(
+    _ content: PasteboardContent,
+    isConcealed: Bool,
+    source: AppInfo?,
+    to pasteboard: NSPasteboard,
+    isUserCopy: Bool = false
+  ) {
     var items: [NSPasteboardItem] = []
     switch content {
     case let .text(text):
@@ -279,12 +292,14 @@ enum PasteboardFormat {
     }
     pasteboard.clearContents()
     pasteboard.writeObjects(items)
+    guard !isUserCopy else { return }
     let name = pasteboard.name
     let changeCount = pasteboard.changeCount
     ownChangeCounts.withValue { $0[name] = changeCount }
   }
 
-  private static var ownBundleID: String {
+  /// Vortex's bundle id, which the source marker names for what Vortex copies itself.
+  static var ownBundleID: String {
     Bundle.main.bundleIdentifier ?? "io.github.ortexisartem.vortex"
   }
 }

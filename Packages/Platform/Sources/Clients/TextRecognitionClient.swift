@@ -3,11 +3,14 @@ import Foundation
 import ImageIO
 import Vision
 
-/// Text on images, recognized on this Mac by Apple Vision, offline: Ukrainian, Russian and English.
+/// Text on images, recognized on this Mac by Apple Vision, offline: Ukrainian, Russian and English. And QR codes.
 @DependencyClient
 public struct TextRecognitionClient: Sendable {
   /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background.
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
+  /// What a QR code in the image holds, as text: a link, or anything else it spells; nil when there is none, or none
+  /// that holds text. Of several, the largest. Apple Vision's barcode detection, QR codes only. Runs in the background.
+  public var readQRCode: @Sendable (_ image: ScreenImage) async throws -> String?
   /// The same from an image's data (a PNG file's), for search: read without language correction, which costs twice as
   /// much and finds nothing more, from the image scaled down to at most `searchedPixels` on its longer side; an image
   /// that shows through over white, then over black (`backgrounds`), a line read in both once. Throws for data that
@@ -19,6 +22,9 @@ extension TextRecognitionClient: DependencyKey {
   public static let liveValue = TextRecognitionClient(
     recognize: { image in
       try await inBackground { try text(in: image.cgImage, correctsLanguage: true) }
+    },
+    readQRCode: { image in
+      try await inBackground { try qrPayload(in: image.cgImage) }
     },
     recognizeForSearch: { imageData in
       let read = SearchRead()
@@ -50,10 +56,10 @@ let searchedPixels = 4_096
 struct NotAnImage: Error {}
 
 /// Runs a reading on the utility queue, off the caller's thread.
-private func inBackground(_ reading: @escaping @Sendable () throws -> String) async throws -> String {
+private func inBackground<Result: Sendable>(_ reading: @escaping @Sendable () throws -> Result) async throws -> Result {
   try await withCheckedThrowingContinuation { continuation in
     DispatchQueue.global(qos: .utility).async {
-      continuation.resume(with: Result(catching: reading))
+      continuation.resume(with: Swift.Result(catching: reading))
     }
   }
 }
@@ -63,6 +69,18 @@ private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
   let request = textRequest(correctsLanguage: correctsLanguage)
   try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
   return lines(readBy: request)
+}
+
+/// What the largest QR code in the image holds as text; nil without one. A code that holds only bytes has no text.
+private func qrPayload(in image: CGImage) throws -> String? {
+  let request = VNDetectBarcodesRequest()
+  request.symbologies = [.qr]
+  try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+  let codes = (request.results ?? []).compactMap { code -> (payload: String, area: CGFloat)? in
+    guard let payload = code.payloadStringValue, !payload.isEmpty else { return nil }
+    return (payload, code.boundingBox.width * code.boundingBox.height)
+  }
+  return codes.max { $0.area < $1.area }?.payload
 }
 
 /// Vision's accurate reading, in `recognitionLanguages`.

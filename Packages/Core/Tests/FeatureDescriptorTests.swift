@@ -36,6 +36,19 @@ private enum PlainModule: FeatureModule {
   static func makeTab() -> AnyView { AnyView(EmptyView()) }
 }
 
+/// A feature without a tab: it shows itself through its settings, Home's corner capsule and the notch, so it makes no
+/// tab at all.
+@MainActor
+private enum TablessModule: FeatureModule {
+  static let id: FeatureID = "tabless"
+  static let title: LocalizedStringResource = "Tabless"
+  static let symbol = "text.viewfinder"
+  static let summary: LocalizedStringResource = "Tabless"
+  static let details: LocalizedStringResource = "Tabless"
+  static let author = "@someone"
+  static let hasTab = false
+}
+
 @MainActor
 struct FeatureDescriptorTests {
   @Test
@@ -50,5 +63,14 @@ struct FeatureDescriptorTests {
     let d = PlainModule.descriptor
     #expect(!d.isRecommended && !d.isBeta && !d.isBuiltIn && !d.hasOnboardingStep)
     #expect(d.suspension == nil && d.keeps == nil && d.dataFolder == nil && d.preview == nil)
+  }
+
+  /// Every feature has a tab unless it says it has none; the shell reads that from the descriptor, making no view.
+  @Test
+  func aFeatureHasATabUnlessItSaysItHasNone() {
+    #expect(PlainModule.descriptor.hasTab)
+    #expect(SampleModule.descriptor.hasTab)
+    #expect(!TablessModule.descriptor.hasTab)
+    #expect(FeatureDescriptor(id: "plain", title: "Plain", symbol: "circle").hasTab)
   }
 }

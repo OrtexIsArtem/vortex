@@ -21,13 +21,20 @@ public protocol FeatureModule {
   /// drop doesn't reach Vortex) or opened with Vortex (`vortex shelf add`) arrive in `receiveFiles(_:)`. The first
   /// enabled feature that accepts files gets them.
   static var acceptsFileDrops: Bool { get }
+  /// Whether the feature has a tab in the sidebar, as every feature has unless it says otherwise. One without a tab
+  /// shows itself only through what it offers elsewhere: its settings, its own shortcuts, its utility actions
+  /// (`makeUtilityActions()`), the notch. The shell gives it no sidebar icon, no Open on its catalog page and no
+  /// shortcut that opens its tab, and never calls `makeTab()`.
+  static var hasTab: Bool { get }
   /// Content of the feature's sidebar tab. It stays mounted while the window is closed, so work that should
-  /// run only while it is visible goes into `.task(id: isWindowOpen)`.
+  /// run only while it is visible goes into `.task(id: isWindowOpen)`. A feature without a tab (`hasTab`) leaves it out.
   static func makeTab() -> AnyView
   /// The feature's own section in Settings › Features, if it has settings.
   static func makeSettings() -> AnyView?
   /// The feature's widgets on Home, one or two, each in 1–3 sizes of the grid or in the notch row; see `HomeWidget`.
   static func makeHomeWidgets() -> [HomeWidget]
+  /// The feature's one-click actions, at most two, which the shell places among the utilities; see `UtilityAction`.
+  static func makeUtilityActions() -> [UtilityAction]
   /// Called at launch and whenever the user turns the feature on or off. Start and stop background work here.
   static func setEnabled(_ isEnabled: Bool)
   /// Files given to Vortex outside the feature's tab, see `acceptsFileDrops`. The window stays as it is.
@@ -74,8 +81,12 @@ public protocol FeatureModule {
 
 extension FeatureModule {
   public static var acceptsFileDrops: Bool { false }
+  public static var hasTab: Bool { true }
+  /// Only a feature without a tab goes without its own: the shell never asks it for one.
+  public static func makeTab() -> AnyView { AnyView(EmptyView()) }
   public static func makeSettings() -> AnyView? { nil }
   public static func makeHomeWidgets() -> [HomeWidget] { [] }
+  public static func makeUtilityActions() -> [UtilityAction] { [] }
   public static func setEnabled(_ isEnabled: Bool) {}
   public static func receiveFiles(_ urls: [URL]) {}
   public static var permissionNeeds: [PermissionNeed] { [] }
@@ -97,6 +108,7 @@ extension FeatureModule {
       id: id,
       title: title,
       symbol: symbol,
+      hasTab: hasTab,
       acceptsFileDrops: acceptsFileDrops,
       permissionNeeds: permissionNeeds,
       summary: summary,
@@ -120,6 +132,8 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
   public var id: FeatureID
   public var title: LocalizedStringResource
   public var symbol: String
+  /// See `FeatureModule.hasTab`.
+  public var hasTab: Bool
   public var acceptsFileDrops: Bool
   /// See `FeatureModule.permissionNeeds`.
   public var permissionNeeds: [PermissionNeed]
@@ -141,6 +155,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     id: FeatureID,
     title: LocalizedStringResource,
     symbol: String,
+    hasTab: Bool = true,
     acceptsFileDrops: Bool = false,
     permissionNeeds: [PermissionNeed] = [],
     summary: LocalizedStringResource = "",
@@ -159,6 +174,7 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     self.id = id
     self.title = title
     self.symbol = symbol
+    self.hasTab = hasTab
     self.acceptsFileDrops = acceptsFileDrops
     self.permissionNeeds = permissionNeeds
     self.summary = summary

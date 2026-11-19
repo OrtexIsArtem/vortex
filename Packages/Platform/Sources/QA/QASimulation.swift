@@ -32,9 +32,10 @@
     var chooseFolder: String?
     /// The bundle id the app picker returns without showing; nil is Cancel.
     var chooseApp: String?
-    /// What text recognition finds on any image. `live` makes search read an image's data with Apple Vision, as plain
-    /// Vortex does.
+    /// What text recognition finds on any image. `live` reads the image itself with Apple Vision, as plain Vortex does.
     var recognizedText = "QA text"
+    /// What a QR code on any image holds; empty: no code. `live` looks for one in the image itself with Apple Vision.
+    var qrCode = ""
     /// Results of commands, the first whose `match` the command contains; without one a command exits 0, silent.
     var commandRules: [CommandRule] = []
 
@@ -91,6 +92,7 @@
       chooseFolder = value(.chooseFolder, defaults.chooseFolder)
       chooseApp = value(.chooseApp, defaults.chooseApp)
       recognizedText = value(.recognizedText, defaults.recognizedText)
+      qrCode = value(.qrCode, defaults.qrCode)
       commandRules = value(.commandRules, defaults.commandRules)
     }
 
@@ -123,10 +125,11 @@
         case "chooseFolder": copy.chooseFolder = text()
         case "chooseApp": copy.chooseApp = text()
         case "recognizedText": copy.recognizedText = value
+        case "qrCode": copy.qrCode = value
         default:
           throw QAError(
             "sim set knows keyboardLockRefuses, keyboardLayout, launchAtLogin, "
-              + "frontApp, frontTitle, frontURL, chooseFolder, chooseApp and recognizedText, not \(key)"
+              + "frontApp, frontTitle, frontURL, chooseFolder, chooseApp, recognizedText and qrCode, not \(key)"
           )
         }
       }

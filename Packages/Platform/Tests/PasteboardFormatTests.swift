@@ -126,6 +126,25 @@ struct PasteboardFormatTests {
     #expect(NSBitmapImageRep(data: tiff)?.pixelsWide == 2)
   }
 
+  /// What Vortex copies for the user, such as text it read off the screen, isn't its own write: the watcher reports it
+  /// as it reports a copy in another app, so Clipboard's history keeps it, with Vortex as its source.
+  @Test(.timeLimit(.minutes(1)))
+  func aCopyForTheUserIsReportedAsACopy() async {
+    pasteboard.clearContents()
+    pasteboard.setString("before", forType: .string)
+    let (copies, continuation) = AsyncStream.makeStream(of: PasteboardCopy.self)
+    let watcher = PasteboardWatcher(pasteboard: pasteboard) { continuation.yield($0) }
+    watcher.start()
+    defer { watcher.stop() }
+    try? await Task.sleep(for: .milliseconds(100))
+    PasteboardFormat.write(.text("Fix the pay button"), isConcealed: false, source: nil, to: pasteboard, isUserCopy: true)
+    #expect(!PasteboardFormat.isOwnWrite(pasteboard, changeCount: pasteboard.changeCount))
+    #expect(pasteboard.string(forType: PasteboardFormat.sourceType) == PasteboardFormat.ownBundleID)
+    var iterator = copies.makeAsyncIterator()
+    let copy = await iterator.next()
+    #expect(copy?.content == .text("Fix the pay button"))
+  }
+
   // Bounded, so a runner without a pasteboard server fails instead of hanging.
   @Test(.timeLimit(.minutes(1)))
   func theWatcherReportsNewCopiesOnly() async {
