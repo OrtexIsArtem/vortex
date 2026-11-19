@@ -249,8 +249,9 @@ struct HomeTargetsTests {
 
   // MARK: - The corner buttons
 
-  /// The pencil is a 44 pt target and the keyboard button 44 pt tall, each up to the capsule's edge where a widget may
-  /// lie behind it, and into the margin below and to the right of it.
+  /// The pencil is a 44 pt target and the keyboard button 44 pt tall, each up to the capsule's top and left edges,
+  /// where a widget may lie behind it, and past its bottom into the margin under the grid; the pencil past its right
+  /// edge too.
   @Test
   func theCornerButtonsAre44PtTallTargetsInsideTheCapsule() async throws {
     var state = HomeFeature.State()

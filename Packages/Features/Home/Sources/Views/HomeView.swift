@@ -202,8 +202,10 @@ private struct CornerButtons: View {
   let keyboardCleaning: (@MainActor () -> Void)?
   let edit: () -> Void
   /// The buttons' targets past their 36 pt circles, toward 44 pt: up to the capsule's top and left edges, as a widget
-  /// may lie behind it, half the 2 pt between them, and down into the margin under it, the pencil right into the
-  /// margin beside it too.
+  /// may lie behind it, half the 2 pt between them, and 4 pt past the capsule's bottom, into the margin under the
+  /// grid. The pencil's reaches 5 pt past the capsule's right edge, which lies 4 pt inside the grid's: over the last
+  /// 4 pt of a card in the bottom right cell, inside its 16 pt padding, outside the room its widget gets, then 1 pt
+  /// into the margin.
   static let keyboardOutset = EdgeInsets(top: 2, leading: 2, bottom: 6, trailing: 1)
   static let pencilOutset = EdgeInsets(top: 2, leading: 1, bottom: 6, trailing: 7)
 
