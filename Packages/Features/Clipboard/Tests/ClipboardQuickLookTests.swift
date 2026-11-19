@@ -104,6 +104,36 @@ extension ClipboardFeatureTests {
     #expect(text(in: file) == "https://uk.wikipedia.org/wiki/Київ?q=a%20b")
   }
 
+  /// The eye only shows Quick Look: of any kind, an item it shows isn't copied, so it doesn't go to the top or show
+  /// "Copied".
+  @Test
+  func theEyeNeverCopiesAnItem() async throws {
+    let text = item("SELECT 1", id: 1, copiedAt: now.value)
+    let link = ClipboardItem(
+      id: uuid(2), content: .link(URL(string: "https://example.com")!), source: Self.terminal, copiedAt: now.value - 1,
+      fingerprint: "link:2"
+    )
+    let image = ClipboardItem(
+      id: uuid(3), content: .image(fileName: "Image.png"), source: Self.terminal, copiedAt: now.value - 2, fingerprint: "image:3"
+    )
+    let files = ClipboardItem(
+      id: uuid(4), content: .files([URL(fileURLWithPath: "/tmp/a.ipa")]), source: Self.terminal, copiedAt: now.value - 3,
+      fingerprint: "files:4"
+    )
+    let store = quickLookStore([text, link, image, files])
+
+    // The oldest first: a copy would take each to the top.
+    await store.send(.quickLookTapped(files.id)) { $0.hasShownQuickLook = true }
+    for item in [image, link, text] {
+      await store.send(.quickLookTapped(item.id))
+    }
+    await store.finish()
+    #expect(quickLooked.value.count == 4)
+    #expect(written.value.isEmpty)
+    #expect(store.state.items.map(\.id) == [text, link, image, files].map(\.id))
+    #expect(store.state.justCopied == nil)
+  }
+
   @Test
   func theEyeOfTheSameItemAgainAsksForTheSameFileWhichClosesQuickLook() async throws {
     let short = item("SELECT 1", id: 1, copiedAt: now.value)

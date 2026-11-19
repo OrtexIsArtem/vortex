@@ -59,6 +59,10 @@ public final class DragSourceView: NSView, NSDraggingSource {
   var items: @MainActor () -> [DragItem] = { [] }
   var onClick: @MainActor (DragSourceClick) -> Void = { _ in }
   var onHover: @MainActor (Bool) -> Void = { _ in }
+  /// What `onHover` said last.
+  private var isHovered = false
+  /// A look at where the pointer is waits for the next turn of the run loop, after the layout that moved the view.
+  private var isHoverCheckScheduled = false
   private var mouseDown: NSEvent?
   /// The pressed item had nothing to drag (a hidden secret, a missing file), so the press stays a click.
   private var hasNothingToDrag = false
@@ -78,10 +82,62 @@ public final class DragSourceView: NSView, NSDraggingSource {
     super.updateTrackingAreas()
     trackingAreas.forEach(removeTrackingArea)
     addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    // AppKit tells a tracking area that moves away from a still pointer nothing, nor one that moves under it: a clipboard
+    // row that a copy took to the top would keep its hover, and the row that slid under the pointer would get none.
+    scheduleHoverCheck()
   }
 
-  override public func mouseEntered(with event: NSEvent) { onHover(true) }
-  override public func mouseExited(with event: NSEvent) { onHover(false) }
+  override public func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    // Shown under the pointer, or gone from under it: AppKit says neither.
+    scheduleHoverCheck()
+  }
+
+  override public func viewDidMoveToSuperview() {
+    super.viewDidMoveToSuperview()
+    // SwiftUI moves a row or a card by moving the view that hosts this one, which keeps its own frame: AppKit then
+    // tells this view nothing at all, not even `updateTrackingAreas`. The view goes, and the observing with it.
+    NotificationCenter.default.removeObserver(self, name: NSView.frameDidChangeNotification, object: nil)
+    guard let superview else { return }
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(hostMoved), name: NSView.frameDidChangeNotification, object: superview
+    )
+  }
+
+  @objc private func hostMoved(_ notification: Notification) {
+    scheduleHoverCheck()
+  }
+
+  // As AppKit sends them, each one: a row whose leaving went unheard (the window closed over it) hears the pointer
+  // come back.
+  override public func mouseEntered(with event: NSEvent) { reportHover(true) }
+  override public func mouseExited(with event: NSEvent) { reportHover(false) }
+
+  private func scheduleHoverCheck() {
+    guard !isHoverCheckScheduled else { return }
+    isHoverCheckScheduled = true
+    Task { @MainActor in
+      self.isHoverCheckScheduled = false
+      let isOver = self.isPointerOver
+      if isOver != self.isHovered { self.reportHover(isOver) }
+    }
+  }
+
+  /// Whether the pointer is over the part of the view that shows, in a window that takes the pointer. The visible rect
+  /// alone runs past the bounds of a view that doesn't clip to them, as views don't since macOS 14: over a whole list.
+  private var isPointerOver: Bool {
+    guard let window, window.isVisible, !window.ignoresMouseEvents, !isHiddenOrHasHiddenAncestor else { return false }
+    return isMousePoint(convert(window.mouseLocationOutsideOfEventStream, from: nil), in: bounds.intersection(visibleRect))
+  }
+
+  /// Reports the hover, then lays the window out at once, so what the hover shows over the view (a row's eye, a card's
+  /// buttons) is there for the next event. Otherwise SwiftUI draws it only once the events waiting are handled: a
+  /// click that waited behind the pointer's coming, as while the main thread was busy, would land on this view under it.
+  private func reportHover(_ isHovered: Bool) {
+    self.isHovered = isHovered
+    onHover(isHovered)
+    window?.contentView?.layoutSubtreeIfNeeded()
+  }
 
   override public func mouseDown(with event: NSEvent) {
     mouseDown = event

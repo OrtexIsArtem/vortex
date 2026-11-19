@@ -15,6 +15,7 @@ struct ClipboardCard: View {
   var onHover: @MainActor (Bool) -> Void = { _ in }
   let send: @MainActor (ClipboardFeature.Action) -> Void
   @State private var isHovered = false
+  @Environment(\.isWindowOpen) private var isWindowOpen
 
   /// The eye's target past its circle: 44 pt square, grown up to the card's edge, down and into the preview, never
   /// into the pin's target next to it.
@@ -69,6 +70,13 @@ struct ClipboardCard: View {
         CopiedBadge()
           .transition(.opacity)
       }
+    }
+    // A window that closes over the card tells it nothing: its buttons would still show when the window opens again,
+    // and Space would show it in Quick Look.
+    .onChange(of: isWindowOpen) { _, isOpen in
+      guard !isOpen, isHovered else { return }
+      isHovered = false
+      onHover(false)
     }
     .contextMenu { menu }
     .accessibilityElement(children: .ignore)

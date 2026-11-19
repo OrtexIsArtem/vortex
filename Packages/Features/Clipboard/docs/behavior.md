@@ -30,7 +30,8 @@ How long items stay, Clear with Undo, and search are in history.md.
 - A text over 4,096 bytes is held by its start; copied again, it goes whole.
 - It drags only once the pointer has come over its card or row, which reads its whole text; then it drags whole.
 - A hidden secret doesn't drag; once Show reveals it, it does.
-- Hovering a card shows Quick Look's eye, Pin and Delete; right click has Copy, Quick Look, Pin, Show in Finder (files) and Delete.
+- The card under the pointer shows Quick Look's eye, Pin and Delete, and none once the window closes; right click has Copy, Quick Look, Pin, Show in Finder (files) and Delete.
+- They and a Home row's eye do only what they say, never copy, even clicked as the pointer arrives; when a copy moves the cards or rows, they follow the pointer.
 - Quick Look shows an image's PNG, the files, or a text or a link whole, from a .txt in Vortex's temporary folder.
 - Space shows the card under the pointer in Quick Look and closes it again, unless the search field has the keyboard.
 - Quick Look closes when the tab or the window hides, and the .txt files go; while it shows, the window stays open.
@@ -44,7 +45,7 @@ How long items stay, Clear with Undo, and search are in history.md.
 - Pinned items past those 10 show only in the tab, even when Home has room for them.
 - A row shows a tiny picture for an image or an icon for any other kind, then the start of the item; secrets stay dots.
 - A click copies the item again and shows a check in place of the icon, or over the picture.
-- A row drags out; under the pointer Quick Look's eye shows at its end; right-click has Copy, Quick Look, Pin and Delete.
+- A row drags out; the one row under the pointer shows Quick Look's eye at its end, and none once the window closes; right-click has Copy, Quick Look, Pin and Delete.
 - Secrets never drag out of Home: dropped on the shelf, one would be saved to disk.
 - Dropping files, a PNG image, a link or text on it copies them: they join the history like any copy.
 - Files dropped together are copied together.
@@ -54,7 +55,6 @@ How long items stay, Clear with Undo, and search are in history.md.
 - Any other file, also a text or picture file from Finder, is copied as the file.
 - Of several images dropped together (shelf tiles), only the first is copied.
 - A drop before the history has been read (right after launch) is ignored.
-- While Paste from Other Apps reads `notGranted`, the pasteboard isn't read and nothing is recorded; watching starts again when it changes.
-- Unknown, granted and `notNeeded` read the pasteboard as always.
+- While Paste from Other Apps reads `notGranted`, the pasteboard isn't read and nothing is recorded, until it changes; unknown, granted and `notNeeded` read it as always.
 - macOS's `.default` pasteboard access counts as `notNeeded` (Platform's mapping, PermissionRules.swift): revisit this on macOS 27, which may start asking.
 - While Vortex is blocked (a required permission is off), copies are still recorded.

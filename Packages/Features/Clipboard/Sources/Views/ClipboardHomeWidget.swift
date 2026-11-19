@@ -8,6 +8,10 @@ import VortexPlatform
 struct ClipboardHomeWidget: View {
   let store: StoreOf<ClipboardFeature>
   @State private var isTargeted = false
+  /// The row under the pointer, the one row that shows its eye. A row the pointer comes to takes it from the one before,
+  /// whose leaving may go unheard, as when Quick Look's panel opens over it.
+  @State private var hoveredRow: ClipboardItem.ID?
+  @Environment(\.isWindowOpen) private var isWindowOpen
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -32,7 +36,15 @@ struct ClipboardHomeWidget: View {
                 item: item,
                 isUnavailable: store.unavailable.contains(item.id),
                 isJustCopied: store.justCopied == item.id,
-                wholeText: store.wholeText?.id == item.id ? store.wholeText?.text : nil
+                wholeText: store.wholeText?.id == item.id ? store.wholeText?.text : nil,
+                isHovered: hoveredRow == item.id,
+                onHover: { isOver in
+                  if isOver {
+                    hoveredRow = item.id
+                  } else if hoveredRow == item.id {
+                    hoveredRow = nil
+                  }
+                }
               ) { store.send($0, animation: .snappy(duration: 0.25)) }
             }
           }
@@ -61,6 +73,10 @@ struct ClipboardHomeWidget: View {
       store.send(.dropped(items))
     }
     .modifier(ClipboardVisibilityTracking(store: store))
+    // A window that closes over a row tells it nothing: its eye would still show when the window opens again.
+    .onChange(of: isWindowOpen) { _, isOpen in
+      if !isOpen { hoveredRow = nil }
+    }
   }
 }
 
@@ -72,8 +88,11 @@ private struct ClipboardRow: View {
   let isJustCopied: Bool
   /// The whole text of a long item, once read: without it a long text doesn't drag.
   let wholeText: String?
+  /// The row is the one under the pointer: its eye shows.
+  let isHovered: Bool
+  /// The pointer came over the row or left it.
+  let onHover: @MainActor (Bool) -> Void
   let send: @MainActor (ClipboardFeature.Action) -> Void
-  @State private var isHovered = false
 
   /// The column of the picture or the icon, as wide as a picture in every row, so all the text starts at one place.
   static let leadingWidth: CGFloat = 22
@@ -112,7 +131,7 @@ private struct ClipboardRow: View {
         items: { isUnavailable ? [] : item.dragItems(isRevealed: false, wholeText: wholeText) },
         onClick: { _ in send(.itemTapped(item.id)) },
         onHover: { isHovered in
-          self.isHovered = isHovered
+          onHover(isHovered)
           // A long text drags out whole: its whole text is read while the pointer is over it.
           if isHovered, item.isTruncated { send(.itemHovered(item.id)) }
         }

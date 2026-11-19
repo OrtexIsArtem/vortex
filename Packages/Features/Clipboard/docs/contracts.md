@@ -9,7 +9,7 @@
 ## Uses
 - VortexCore: `FeatureModule`, `@Dependency(\.database)`, `databaseIsOnDisk` with its own migrator (`clipboard.v1`, `clipboard.v2`), `DataFolder`, design system, `SettingsRow`, `PermissionRows`; `@SharedReader(.permissionStatuses)` (the row, and recording nothing while Paste from Other Apps reads `notGranted`) and `permissionPage.open`.
 - VortexPlatform permissions: `PermissionsClient.refresh` when the settings section appears, `SystemClient.relaunch` for "Restart Vortex".
-- VortexPlatform: `PasteboardClient` (copies and writing), `FileClient` (image files and their sizes, missing files, Show in Finder, the texts Quick Look shows), `QuickLookClient` (an item in Quick Look, which keeps the shell's window open while it shows), `TextRecognitionClient.recognizeForSearch` (the text on a new image, for search), `FileName` (the names search looks through), `AppsClient` and `AppIcon` (sources, ignored apps), `DragSourceArea` (dragging cards and rows out), `dropTarget` (drops on the Home widget), `FileThumbnail`, `FileIcon`.
+- VortexPlatform: `PasteboardClient` (copies and writing), `FileClient` (image files and their sizes, missing files, Show in Finder, the texts Quick Look shows), `QuickLookClient` (an item in Quick Look, which keeps the shell's window open while it shows), `TextRecognitionClient.recognizeForSearch` (the text on a new image, for search), `FileName` (the names search looks through), `AppsClient` and `AppIcon` (sources, ignored apps), `DragSourceArea` (dragging cards and rows out, and the hover that shows their buttons), `dropTarget` (drops on the Home widget), `FileThumbnail`, `FileIcon`.
 
 ## Not yet
 - "Make key" for Secrets; "Paste right away".
