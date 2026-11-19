@@ -66,7 +66,7 @@ struct HomeTargetsTests {
   }
 
   /// Home as the window shows it, in a panel of its own: the store only notes what the controls send.
-  func show(_ state: HomeFeature.State, width: CGFloat) -> Panel {
+  func show(_ state: HomeFeature.State, width: CGFloat) async throws -> Panel {
     let sent = sent
     let store = Store(initialState: state) {
       Reduce<HomeFeature.State, HomeFeature.Action> { _, action in
@@ -92,12 +92,12 @@ struct HomeTargetsTests {
     )
     panel.orderFrontRegardless()
     panel.makeKey()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+    try await Task.sleep(for: .milliseconds(300))
     return panel
   }
 
   /// The editor with the panel on `panel`, as wide as the large window's tab.
-  func showEditor(_ panel: HomeFeature.Panel, search: String = "", layout: HomeLayout? = nil) -> Panel {
+  func showEditor(_ panel: HomeFeature.Panel, search: String = "", layout: HomeLayout? = nil) async throws -> Panel {
     let layout = layout ?? self.layout
     var state = HomeFeature.State()
     state.$saved.withLock { $0 = layout }
@@ -106,7 +106,7 @@ struct HomeTargetsTests {
     state.draft = layout
     state.panel = panel
     state.search = search
-    return show(state, width: HomeView.gridWidth + HomeView.panelWidth)
+    return try await show(state, width: HomeView.gridWidth + HomeView.panelWidth)
   }
 
   /// A click at `point`, from the top left corner of Home: what it sent, by name.
@@ -130,18 +130,22 @@ struct HomeTargetsTests {
   }
 
   /// The targets in `area`, each found by clicks every 12 pt, less than any of them is wide, then measured to the point
-  /// along the lines through its middle.
-  func targets(in panel: Panel, _ area: CGRect) -> [String: Target] {
+  /// along the lines through its middle. The main actor is given back between rows, so other suites wait less.
+  func targets(in panel: Panel, _ area: CGRect) async -> [String: Target] {
     let step: CGFloat = 12
     var coarse: [String: [CGPoint]] = [:]
     for y in stride(from: area.minY + step / 2, to: area.maxY, by: step) {
+      // Another suite's window may have taken the keyboard meanwhile.
+      panel.makeKey()
       for x in stride(from: area.minX + step / 2, to: area.maxX, by: step) {
         let point = CGPoint(x: x, y: y)
         if let name = click(panel, at: point) { coarse[name, default: []].append(point) }
       }
+      await Task.yield()
     }
     var targets: [String: Target] = [:]
     for (name, points) in coarse {
+      panel.makeKey()
       let xs = points.map(\.x)
       let ys = points.map(\.y)
       let middle = CGPoint(x: (xs.min()! + xs.max()!) / 2, y: (ys.min()! + ys.max()!) / 2)
@@ -158,6 +162,7 @@ struct HomeTargetsTests {
         stride(from: frame.minX + 0.5, to: frame.maxX, by: step).map { CGPoint(x: $0, y: y) }
       }
       targets[name] = Target(frame: frame, isSolid: inside.allSatisfy { click(panel, at: $0) == name })
+      await Task.yield()
     }
     return targets
   }
@@ -187,11 +192,11 @@ struct HomeTargetsTests {
   /// room under them, and they share the gap between them. Side by side, the chips' targets meet halfway across their
   /// gaps. "‹ Widgets" is 44 pt tall too, clear of Cancel and Done.
   @Test
-  func aWidgetsChipsAndAddAreTargetsOf44Pt() throws {
-    let panel = showEditor(.feature("shelf"))
+  func aWidgetsChipsAndAddAreTargetsOf44Pt() async throws {
+    let panel = try await showEditor(.feature("shelf"))
     defer { panel.orderOut(nil) }
     let area = CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.panelWidth, height: 300)
-    let targets = targets(in: panel, area)
+    let targets = await targets(in: panel, area)
     let back = try #require(targets["backTapped"])
     let add = try #require(targets["add shelf.files"])
     let chips = try ["large", "medium", "wide"].map { try #require(targets["size shelf.files \($0)"]) }
@@ -211,12 +216,12 @@ struct HomeTargetsTests {
 
   /// Without room the card says so under the chips, and the chips' targets reach over its words all the same.
   @Test
-  func aWidgetWithoutRoomKeepsItsChips44PtTall() throws {
+  func aWidgetWithoutRoomKeepsItsChips44PtTall() async throws {
     // Clipboard's history in the middle columns: no place two cells wide is left for Shelf.
     let middle = HomeLayout(notchRow: "timer.timer", placed: [Placement(widget: "clipboard.history", size: .large, column: 1, row: 0)])
-    let panel = showEditor(.feature("shelf"), layout: middle)
+    let panel = try await showEditor(.feature("shelf"), layout: middle)
     defer { panel.orderOut(nil) }
-    let targets = targets(in: panel, CGRect(x: HomeView.gridWidth, y: 200, width: HomeView.panelWidth, height: 140))
+    let targets = await targets(in: panel, CGRect(x: HomeView.gridWidth, y: 200, width: HomeView.panelWidth, height: 140))
     for size in ["large", "medium", "wide"] {
       let chip = try #require(targets["size shelf.files \(size)"])
       #expect(chip.frame.height >= 44 && chip.isSolid, "\(size): \(chip.frame)")
@@ -226,11 +231,11 @@ struct HomeTargetsTests {
   /// "More widgets in Features" is a 44 pt tall target above the panel's bottom edge; the search field's clear button
   /// takes the field's trailing end and the room around it, up to Done's capsule and down to the list.
   @Test
-  func theLinkAndTheSearchClearButtonAreLargeTargets() throws {
-    let panel = showEditor(.features, search: "s")
+  func theLinkAndTheSearchClearButtonAreLargeTargets() async throws {
+    let panel = try await showEditor(.features, search: "s")
     defer { panel.orderOut(nil) }
-    let top = targets(in: panel, CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.panelWidth, height: 100))
-    let bottom = targets(in: panel, CGRect(x: HomeView.gridWidth, y: 370, width: HomeView.panelWidth, height: 70))
+    let top = await targets(in: panel, CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.panelWidth, height: 100))
+    let bottom = await targets(in: panel, CGRect(x: HomeView.gridWidth, y: 370, width: HomeView.panelWidth, height: 70))
     let clear = try #require(top["search "])
     let done = try #require(top["doneTapped"])
     let link = try #require(bottom["doneTapped+catalog"])
@@ -247,14 +252,14 @@ struct HomeTargetsTests {
   /// The pencil is a 44 pt target and the keyboard button 44 pt tall, each up to the capsule's edge where a widget may
   /// lie behind it, and into the margin below and to the right of it.
   @Test
-  func theCornerButtonsAre44PtTallTargetsInsideTheCapsule() throws {
+  func theCornerButtonsAre44PtTallTargetsInsideTheCapsule() async throws {
     var state = HomeFeature.State()
     state.$saved.withLock { $0 = layout }
     state.widgets = infos
-    let panel = show(state, width: HomeView.gridWidth)
+    let panel = try await show(state, width: HomeView.gridWidth)
     defer { panel.orderOut(nil) }
     let height = WindowSize.regular.size.height
-    let targets = targets(in: panel, CGRect(x: HomeView.gridWidth - 120, y: height - 70, width: 120, height: 70))
+    let targets = await targets(in: panel, CGRect(x: HomeView.gridWidth - 120, y: height - 70, width: 120, height: 70))
     let pencil = try #require(targets["editTapped"])
     let keyboard = try #require(targets["keyboard"])
     // The capsule: two 36 pt buttons 2 pt apart, in 2 pt of capsule, 40 pt tall, 12 pt from Home's corner.

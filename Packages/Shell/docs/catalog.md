@@ -21,7 +21,7 @@
 - A card opens the feature's page; Esc on a page goes back to the list, on the list it closes the window.
 
 ## A feature's page
-- The looping preview without sound, paused while the window is closed (its still with Reduce Motion, its symbol without either); the details, the permissions it needs, what it keeps and who made it.
+- The looping preview without sound, paused while the window is closed (its still with Reduce Motion, read off the main thread with the symbol until it's there; the symbol without either); the details, the permissions it needs, what it keeps and who made it.
 - Not added: Add. Added: Open, "Add to Home" while none of the feature's widgets is on Home ("✓ On Home" once one is, neither without widgets), Settings (the feature's own page in Settings › Features, hidden while it doesn't run) and Remove. Paused: "Temporarily Unavailable" with the maintainer's reason. Stopped: Try Again and Remove. Waiting in safe mode: Start.
 - Add saves at once, starts the feature on a trial and makes its tab the one the window opens on next; the window stays on the page.
 - "Add to Home" that finds no room keeps the button and shows "No room on Home" and "Remove a widget or choose a smaller size in Home's editor." under the buttons, until the page is left or a widget of the feature gets on Home.

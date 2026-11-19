@@ -17,7 +17,7 @@ struct FeaturePageView: View {
 
       HStack(alignment: .top, spacing: 28) {
         FeaturePreviewView(feature: feature)
-          .frame(width: 400, height: 250)
+          .frame(width: FeaturePreviewView.size.width, height: FeaturePreviewView.size.height)
         ScrollViewReader { proxy in
           ScrollView {
             details(state)
@@ -334,7 +334,10 @@ private struct DimmedWhilePressed: ButtonStyle {
 
 /// The feature's looping preview, without sound, paused while the window is closed; its still with Reduce Motion, and
 /// its symbol when it has neither.
-private struct FeaturePreviewView: View {
+struct FeaturePreviewView: View {
+  /// The size the page shows it at.
+  static let size = CGSize(width: 400, height: 250)
+
   let feature: FeatureDescriptor
   @Environment(\.isWindowOpen) private var isWindowOpen
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -344,16 +347,22 @@ private struct FeaturePreviewView: View {
       RoundedRectangle(cornerRadius: 16, style: .continuous).fill(VortexColor.card)
       if let video = feature.preview?.video, !reduceMotion {
         LoopingVideo(url: video, isPlaying: isWindowOpen)
-      } else if let still = feature.preview?.still, let image = NSImage(contentsOf: still) {
-        Image(nsImage: image).resizable().scaledToFill()
+      } else if let still = feature.preview?.still {
+        // Read and scaled off the main thread, at the size it shows at; the symbol shows until it is there, and for a
+        // file that can't be read.
+        FileThumbnail(url: still, size: Self.size) { symbol }
       } else {
-        Image(systemName: feature.symbol)
-          .font(.system(size: 44))
-          .foregroundStyle(VortexColor.tertiaryText)
+        symbol
       }
     }
     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     .accessibilityHidden(true)
+  }
+
+  private var symbol: some View {
+    Image(systemName: feature.symbol)
+      .font(.system(size: 44))
+      .foregroundStyle(VortexColor.tertiaryText)
   }
 }
 
