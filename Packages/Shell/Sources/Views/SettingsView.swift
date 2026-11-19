@@ -334,7 +334,8 @@ extension ShellFeature.SettingsSection {
 extension AppTheme {
   var title: Text {
     switch self {
-    case .system: Text("System", bundle: .module)
+    // A key of its own, apart from the language's "System": Ukrainian agrees it with «тема», «Системна» as «Світла».
+    case .system: Text(String(localized: "System (theme)", defaultValue: "System", bundle: .module, comment: "Theme: follows macOS's light or dark appearance"))
     case .light: Text("Light", bundle: .module)
     case .dark: Text("Dark", bundle: .module)
     }

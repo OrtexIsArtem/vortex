@@ -1211,12 +1211,23 @@
       }
     },
     "System" : {
-      "comment" : "Follow the system language or theme",
+      "comment" : "Language: follows the system's language",
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Як у системі"
+          }
+        }
+      }
+    },
+    "System (theme)" : {
+      "comment" : "Theme: follows macOS's light or dark appearance",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Системна"
           }
         }
       }
