@@ -29,7 +29,7 @@
 - Once added, a feature's permissions show as on its settings page: one that is off with the yellow mark, its tooltip and "Turn on"; one granted for the next launch with "Works after restart" and "Restart Vortex".
 - Remove saves at once, stops the feature, leaves its tab and shows "<Name> removed · Undo" for 5 s; a permission page only it asked for closes, the blocking page stays.
 - Files given to Vortex while no running feature takes them open the page of the one that would, with "Add <Name> to keep files"; once it runs it gets them (until Vortex quits).
-- A feature not added that keeps data (rows in the database, its folder or its settings file) shows "Erase Data…", with the size of its folder and settings file when there is one.
+- A feature not added that keeps data (rows in the database, its folder or its settings file) shows "Erase Data…", with the size of its folder and settings file when there is one; one that says it keeps nothing (no `keeps`, folder or `eraseNote`), as Screen Text, never does, not even while its Undo shows.
 
 ## Erase Data
 - It asks first, in a layer over the window: what the feature keeps, its own note (`eraseNote`), and that Vortex restarts; the window stays open meanwhile and Esc cancels.

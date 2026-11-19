@@ -386,6 +386,47 @@ struct CatalogTests {
     #expect(shell.dismissals.value == 0)
   }
 
+  /// A feature that keeps nothing (no `keeps`, no folder), as Screen Text, never offers Erase Data or a size: not while
+  /// its Undo shows, not after, whatever a size read says, and Erase does nothing. One that keeps something offers it
+  /// from Remove on, its size once read.
+  @Test
+  func aFeatureThatKeepsNothingNeverOffersEraseData() async {
+    let store = shell.makeStore(features: [.timer, .shelf, .screenText]) {
+      $0.addedFeatures = ["timer", "shelf", "screentext"]
+      $0.seenFeatures = ["timer", "shelf", "screentext"]
+    }
+    await shell.openByHover(store)
+    await store.send(.tabSelected(.catalogPage("screentext"))) {
+      $0.selectedTab = .catalogPage("screentext")
+      $0.openReason = .click
+    }
+    await store.send(.featureRemoved("screentext")) {
+      $0.settings.addedFeatures = ["timer", "shelf"]
+      $0.removedForUndo = "screentext"
+    }
+    #expect(store.state.pageState("screentext") == .available)
+    await store.send(.eraseTapped("screentext"))
+    await store.send(.dataSizeLoaded("screentext", 0)) { $0.dataSizes["screentext"] = 0 }
+    #expect(store.state.pageState("screentext") == .available)
+    await shell.clock.advance(by: .seconds(5))
+    await store.receive(\.undoExpired) { $0.removedForUndo = nil }
+    #expect(store.state.pageState("screentext") == .available)
+    await store.send(.eraseTapped("screentext"))
+
+    await store.send(.featureRemoved("shelf")) {
+      $0.settings.addedFeatures = ["timer"]
+      $0.removedForUndo = "shelf"
+    }
+    #expect(store.state.pageState("shelf") == .removed(dataBytes: nil))
+    await store.send(.dataSizeLoaded("shelf", 2_048)) { $0.dataSizes["shelf"] = 2_048 }
+    #expect(store.state.pageState("shelf") == .removed(dataBytes: 2_048))
+    await shell.clock.advance(by: .seconds(5))
+    await store.receive(\.undoExpired) { $0.removedForUndo = nil }
+    #expect(store.state.pageState("shelf") == .removed(dataBytes: 2_048))
+    await store.send(.eraseTapped("shelf")) { $0.eraseConfirmation = "shelf" }
+    await store.send(.eraseCancelled) { $0.eraseConfirmation = nil }
+  }
+
   /// At launch each pending erase leaves the list, saved at once, before it runs, so a crash in it can't repeat; then
   /// it runs, and only then do features start. A feature added again meanwhile isn't erased.
   @Test

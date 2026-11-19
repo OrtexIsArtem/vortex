@@ -26,3 +26,11 @@ enum EraseTargets {
     return name.unicodeScalars.allSatisfy(allowed.contains)
   }
 }
+
+extension FeatureDescriptor {
+  /// Whether the feature says it keeps anything: what (`keeps`), a folder or a note for erasing it. One that says none,
+  /// as Screen Text, never offers Erase Data, not even while its Undo shows.
+  var keepsData: Bool {
+    keeps != nil || dataFolder != nil || eraseNote != nil
+  }
+}

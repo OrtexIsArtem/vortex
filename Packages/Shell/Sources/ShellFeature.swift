@@ -338,6 +338,8 @@ struct ShellFeature {
       guard let feature = features.first(where: { $0.id == id }), !feature.isBuiltIn else { return nil }
       if let reason = feature.suspension { return .paused(reason) }
       guard isAdded(feature) else {
+        // One that keeps nothing has nothing to erase: no Erase Data and no size, while its Undo shows or after.
+        guard feature.keepsData else { return .available }
         if let bytes = dataSizes[id] { return .removed(dataBytes: bytes) }
         return removedForUndo == id ? .removed(dataBytes: nil) : .available
       }
@@ -907,8 +909,9 @@ struct ShellFeature {
           return .none
 
         case let .eraseTapped(id):
-          // Only a feature that isn't added has data to erase from its page.
-          guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, !state.isAdded(feature)
+          // Only a feature that isn't added and keeps something has data to erase from its page.
+          guard let feature = state.features.first(where: { $0.id == id }), !feature.isBuiltIn, !state.isAdded(feature),
+                feature.keepsData
           else { return .none }
           state.eraseConfirmation = id
           return .none

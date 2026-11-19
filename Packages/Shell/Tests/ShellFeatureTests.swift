@@ -9,12 +9,22 @@ import VortexPlatform
 
 extension FeatureDescriptor {
   static let home = FeatureDescriptor(id: "home", title: "Home", symbol: "square.grid.2x2", isBuiltIn: true)
-  static let timer = FeatureDescriptor(id: "timer", title: "Timer", symbol: "timer", isRecommended: true)
-  static let shelf = FeatureDescriptor(
-    id: "shelf", title: "Shelf", symbol: "tray", acceptsFileDrops: true, isRecommended: true
+  // What each keeps, as the real ones say: a feature that keeps nothing never offers Erase Data.
+  static let timer = FeatureDescriptor(
+    id: "timer", title: "Timer", symbol: "timer", isRecommended: true,
+    keeps: "The running timer and its settings.", dataFolder: "Timer"
   )
-  static let tasks = FeatureDescriptor(id: "tasks", title: "Tasks", symbol: "checkmark.square", isRecommended: true)
-  static let secrets = FeatureDescriptor(id: "secrets", title: "Keys", symbol: "key.horizontal")
+  static let shelf = FeatureDescriptor(
+    id: "shelf", title: "Shelf", symbol: "tray", acceptsFileDrops: true, isRecommended: true,
+    keeps: "Copies of the files on the shelf.", dataFolder: "Shelf"
+  )
+  static let tasks = FeatureDescriptor(
+    id: "tasks", title: "Tasks", symbol: "checkmark.square", isRecommended: true,
+    keeps: "Tasks with their screenshots and text.", dataFolder: "Tasks"
+  )
+  static let secrets = FeatureDescriptor(
+    id: "secrets", title: "Keys", symbol: "key.horizontal", keeps: "Key names and settings; the values are in your keychain."
+  )
 }
 
 @MainActor
