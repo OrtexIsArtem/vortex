@@ -23,8 +23,8 @@ public struct TextRecognitionClient: Sendable {
   /// isn't an image. Runs in the background, and stops when its task is cancelled (`SearchRead`).
   public var recognizeForSearch: @Sendable (_ imageData: Data) async throws -> String
   /// Loads what a frame's read needs, so the first read after a launch doesn't wait for Vision to load it: a tiny read
-  /// of a word with the same requests (a QR code, then text as written and corrected), whose result is dropped. Called
-  /// as a capture begins, while the user frames; nothing keeps Vision warm otherwise. Runs in the background.
+  /// of two words with the same requests (a QR code, then text as written and corrected), whose result is dropped.
+  /// Called as a capture begins, while the user frames; nothing keeps Vision warm otherwise. Runs in the background.
   public var warmUp: @Sendable () async -> Void
 }
 
