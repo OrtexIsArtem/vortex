@@ -68,6 +68,32 @@ struct WindowCoverShellTests {
     #expect(shell.dismissals.value == 1)
   }
 
+  /// A cover never outlives its utility: one that stops, here removed, with its cover still up loses it, and the window,
+  /// which nothing else could close, closes with it; the keys go back. The utility here never takes its cover down: its
+  /// stop (`setEnabled(false)`) does nothing. Another utility stopping leaves the cover as it is.
+  @Test
+  func aCoverGoesWithItsUtility() async {
+    let store = shell.makeStore(features: [.home, .timer, .screenText, .cleaning]) {
+      $0.addedFeatures = ["home", "timer", "screentext", "keyboard"]
+    }
+    store.dependencies.windowClient.holdKeyboard = { [holds] isHeld in holds.withValue { $0.append(isHeld) } }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+    await shell.openByHover(store)
+    await cover(Self.lockScreen, store)
+    await store.send(.featureRemoved("screentext"))
+    #expect(store.state.windowCover == Self.lockScreen && store.state.isOpen)
+    await store.send(.featureRemoved("keyboard"))
+    #expect(store.state.windowCover == nil)
+    #expect(!store.state.isOpen)
+    await store.finish()
+    #expect(holds.value == [true, false])
+    // With nothing over it, Esc, the notch and the shortcut answer again.
+    await store.send(.openHotkeyPressed)
+    #expect(store.state.isOpen)
+    await store.send(.window(.escapePressed))
+    #expect(!store.state.isOpen)
+  }
+
   /// A key that got past the lock and went down in the held window goes to the lock's presses, as the lock's own.
   @Test
   func aKeyThatReachesTheHeldWindowGoesToTheLock() async {

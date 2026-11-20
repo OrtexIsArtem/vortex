@@ -7,7 +7,9 @@ import SwiftUI
 /// - the window stays open: the pointer leaving, a click outside, Esc, the notch, the menu bar icon and the shortcuts
 ///   close nothing, an action that needs the window closed doesn't run, and new displays move the window there;
 /// - a permission that goes blocks Vortex only once the cover is down;
-/// - when the cover goes, the window closes with it.
+/// - when the cover goes, the window closes with it;
+/// - a utility that stops (turned off, removed, paused) with its cover still up loses it: the shell takes it down, and
+///   the window closes. A crash takes it too, as the cover lives in memory.
 ///
 /// A utility whose action puts up a cover asks for the window open (`UtilityAction.WindowNeed.open`): the shell opens it
 /// first, and opens it too for a cover that comes while it is closed.
@@ -26,8 +28,8 @@ public struct WindowCover: Equatable, Sendable {
 }
 
 extension SharedReaderKey where Self == InMemoryKey<WindowCover?>.Default {
-  /// The cover over the window now; nil while none shows. Only the utility whose cover it is writes it: as its work
-  /// starts, and back to nil as it ends, however it ends.
+  /// The cover over the window now; nil while none shows. The utility whose cover it is writes it: as its work starts,
+  /// and back to nil as it ends, however it ends. The shell writes nil only for a utility that stopped with it up.
   public static var windowCover: Self {
     Self[.inMemory("windowCover"), default: nil]
   }

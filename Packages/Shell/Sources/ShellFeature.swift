@@ -54,8 +54,9 @@ struct ShellFeature {
     /// Something of Vortex's is in use outside the window (a drag, Quick Look, the folder picker); it stays open meanwhile.
     var isHeldOpen = false
     /// The cover a utility shows over the window now (`WindowCover`), as keyboard cleaning's lock screen: the window
-    /// stays open under it. Only the utility writes it; the shell reads it as it is, whenever it decides.
-    @SharedReader(.windowCover) var windowCover
+    /// stays open under it. The utility puts it up and takes it down; the shell reads it as it is, whenever it decides,
+    /// and writes it only to take down the cover of a utility that stopped (`syncRunning`).
+    @Shared(.windowCover) var windowCover
     /// The cover the shell last heard of (`windowCoverChanged`): whether it held the keyboard, for what changes as it goes.
     var shownCover: WindowCover?
     /// False while a display without a notch is connected; the menu bar icon is the way in there.
@@ -655,27 +656,7 @@ struct ShellFeature {
           return .none
 
         case let .windowCoverChanged(cover):
-          let old = state.shownCover
-          guard cover != old else { return .none }
-          state.shownCover = cover
-          var effects: [Effect<Action>] = []
-          let wasHeld = old?.holdsKeyboard == true
-          let isHeld = cover?.holdsKeyboard == true
-          if wasHeld != isHeld {
-            // Vortex in front taking every key, or the keys back to the app that was in front.
-            effects.append(.run { _ in await window.holdKeyboard(isHeld) })
-          }
-          guard cover == nil else {
-            // A cover never shows over nothing: one that comes while the window is closed opens it, as an action that
-            // needs the window open does.
-            if !state.isOpen { effects.append(open(.hotkey, &state)) }
-            return .merge(effects)
-          }
-          // The cover went, however it ended: the window closes with it, and a required permission that went meanwhile
-          // blocks Vortex only now.
-          effects.append(close(&state))
-          if state.isBlocked { effects.append(.send(.onboarding(.blocked))) }
-          return .merge(effects)
+          return show(cover, &state)
 
         case let .onboarding(.featureToggled(id)):
           // Added or removed at once, without a trial or a page: before the user's choice nothing runs anyway, and the
@@ -1200,9 +1181,34 @@ struct ShellFeature {
     return .none
   }
 
+  /// Acts on the cover the window shows now, `cover`, after the one it showed before (`shownCover`).
+  private func show(_ cover: WindowCover?, _ state: inout State) -> Effect<Action> {
+    let old = state.shownCover
+    guard cover != old else { return .none }
+    state.shownCover = cover
+    var effects: [Effect<Action>] = []
+    let wasHeld = old?.holdsKeyboard == true
+    let isHeld = cover?.holdsKeyboard == true
+    if wasHeld != isHeld {
+      // Vortex in front taking every key, or the keys back to the app that was in front.
+      effects.append(.run { _ in await window.holdKeyboard(isHeld) })
+    }
+    guard cover == nil else {
+      // A cover never shows over nothing: one that comes while the window is closed opens it, as an action that needs
+      // the window open does.
+      if !state.isOpen { effects.append(open(.hotkey, &state)) }
+      return .merge(effects)
+    }
+    // The cover went, however it ended: the window closes with it, and a required permission that went meanwhile blocks
+    // Vortex only now.
+    effects.append(close(&state))
+    if state.isBlocked { effects.append(.send(.onboarding(.blocked))) }
+    return .merge(effects)
+  }
+
   /// However the features that run changed (added, removed, chosen, stopped after a crash): each one that stopped runs
-  /// nothing anymore, each new one starts, and the sidebar leaves a tab that went, as Settings › Features leaves its
-  /// page.
+  /// nothing anymore, and takes down its cover if it left one up; each new one starts, and the sidebar leaves a tab that
+  /// went, as Settings › Features leaves its page.
   private func syncRunning(
     from old: [FeatureDescriptor],
     to new: [FeatureDescriptor],
@@ -1213,6 +1219,13 @@ struct ShellFeature {
     let stopped = oldIDs.filter { !newIDs.contains($0) }
     let started = newIDs.filter { !oldIDs.contains($0) }
     guard !stopped.isEmpty || !started.isEmpty else { return .none }
+    // A cover never outlives its utility, which may never take it down itself: it goes here, at once, and the window and
+    // the keyboard with it, as when the utility takes it down. A crash takes it too, as it lives in memory.
+    var droppedCover: Effect<Action> = .none
+    if let cover = state.windowCover, stopped.contains(cover.feature) {
+      state.$windowCover.withLock { $0 = nil }
+      droppedCover = show(nil, &state)
+    }
     if !state.isAvailable(state.selectedTab) {
       state.selectedTab = state.restoredTab
     }
@@ -1229,6 +1242,7 @@ struct ShellFeature {
     let cancellations: [Effect<Action>] = stopped.map { .cancel(id: CancelID.tabHotkey($0)) }
     let startedTabs = new.filter { started.contains($0.id) && $0.hasTab }.map(\.id)
     return .merge(
+      droppedCover,
       .merge(cancellations),
       .merge(startedTabs.map(listenForTabHotkey)),
       .run { [waitingFiles] _ in

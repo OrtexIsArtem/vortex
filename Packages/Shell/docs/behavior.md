@@ -34,7 +34,7 @@
 ## A utility's cover
 - While a utility's cover shows (`WindowCover`, keyboard cleaning's lock screen), nothing closes the window: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut; new displays move it there, and a cover that comes while it is closed opens it.
 - With `holdsKeyboard`, Vortex is in front with the keyboard and drops every key that reaches it, handing it to the keyboard lock's presses; the app that was in front gets the front and the keys back as the cover goes.
-- When the cover goes, however it ended, the window closes; a required permission that went meanwhile blocks Vortex then.
+- When the cover goes, however it ended, the window closes; a required permission that went meanwhile blocks Vortex then. A utility that stops (turned off, removed, paused) takes its cover with it, even one it left up.
 
 ## Sidebar, features and permissions
 - The sidebar shows running features with a tab in the user's order; the catalog and Settings stay at the bottom, and the feature icons scroll when there are more than fit.
