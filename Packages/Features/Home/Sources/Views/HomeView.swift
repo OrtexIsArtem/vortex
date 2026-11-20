@@ -155,8 +155,8 @@ private struct GridArea: View {
 
   var body: some View {
     let visible = store.visible
-    if visible.isEmpty, store.notchRowWidget == nil, !store.isEditing {
-      EmptyHome { store.send(.editTapped) }
+    if let empty = store.emptyGrid {
+      EmptyHome(empty: empty) { store.send(.editTapped) }
     } else {
       let arranged = arrangement(visible)
       ZStack(alignment: .topLeading) {
@@ -235,15 +235,22 @@ private struct GridArea: View {
   }
 }
 
-/// Nothing on Home: widgets go there only from the editor, so it says so and opens it.
+/// Nothing on the grid: widgets go there only from the editor, so it says what is empty, Home or, under a widget in the
+/// notch row, the grid, and opens the editor.
 private struct EmptyHome: View {
+  let empty: HomeFeature.State.EmptyGrid
   let edit: () -> Void
 
   var body: some View {
     VStack(spacing: 12) {
-      Text("No widgets on Home", bundle: .module)
-        .font(.system(size: 12.5))
-        .foregroundStyle(VortexColor.tertiaryText)
+      Group {
+        switch empty {
+        case .home: Text("No widgets on Home", bundle: .module)
+        case .grid: Text("No widgets on Home's grid", bundle: .module)
+        }
+      }
+      .font(.system(size: 12.5))
+      .foregroundStyle(VortexColor.tertiaryText)
       Button(action: edit) {
         Text("Edit Home", bundle: .module)
       }

@@ -46,6 +46,22 @@ struct HomeFeature: Sendable {
       layout?.notchRowWidget(available)
     }
 
+    /// What an empty grid says.
+    enum EmptyGrid: Equatable, Sendable {
+      /// Nothing on Home at all.
+      case home
+      /// A widget in the notch row, none on the grid.
+      case grid
+    }
+
+    /// What the grid says while it holds no widget, outside the editor, its Edit Home button under the words: that
+    /// nothing is on Home, or, with a widget in the notch row, that nothing is on the grid. Nil while a widget is on the
+    /// grid, and in the editor, whose free cells show.
+    var emptyGrid: EmptyGrid? {
+      guard visible.isEmpty, !isEditing else { return nil }
+      return notchRowWidget == nil ? .home : .grid
+    }
+
     /// The widgets that show on Home now: on the grid or in the row next to the notch.
     var shownWidgets: Set<String> {
       Set(visible.map(\.widget) + [notchRowWidget].compactMap { $0 })

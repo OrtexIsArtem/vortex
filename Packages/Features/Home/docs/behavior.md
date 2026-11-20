@@ -5,7 +5,7 @@
 - On a notch wider than 186 pt the window is wider: the row spans it, and the grid keeps its size in the middle, the extra room equal margins at its sides.
 - A widget takes Small 1×1, Medium 2×1, Wide 4×1, Large 2×2 or Full 4×2 cells, or the notch row; its view gets its size from `homeWidgetSize`.
 - Widgets never overlap and stay inside the grid; the notch row holds one widget, or the title "Home".
-- With no widget on Home it says "No widgets on Home", with an Edit Home button.
+- With no widget on the grid, outside the editor, the grid says so in its middle, with an Edit Home button: "No widgets on Home", or "No widgets on Home's grid" while a widget is in the notch row.
 
 ## The first layout
 - Home lays itself out once the running features offer a widget: the first notch row widget in sidebar order goes to the row; each other widget, in sidebar order, at its first size that fits, in the first free place, left to right, then top to bottom; one that fits nowhere stays off.
@@ -19,7 +19,7 @@
 - Home follows the widgets the shell tells it whether its tab shows or not; at launch it changes nothing until the shell first tells them.
 
 ## The editor
-- The pencil (the utilities strip's last button, or the notch row's button itself while no utility runs), Home's right-click menu and the empty Home's button open the editor.
+- The pencil (the utilities strip's last button, or the notch row's button itself while no utility runs), Home's right-click menu and the empty grid's button open the editor.
 - The editor asks for the large window with the focus: the window grows right by the panel's 200 pt, to 880 on most notches, and the sidebar dims and waits.
 - In the editor widgets don't answer the pointer, and free cells show dashed.
 - Under the pointer, or with the keyboard's focus (Tab), a widget has a 1 pt ring and "−" at its top left; "−" or Delete removes it.

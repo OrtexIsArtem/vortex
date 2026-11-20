@@ -164,6 +164,31 @@ struct HomeFeatureTests {
     #expect(store.state.notchRowWidget == "timer.timer")
   }
 
+  /// A grid with no widget says so, with its Edit Home button, whether or not the notch row holds one: what it says is
+  /// true, nothing on Home, or, with a widget in the row, nothing on the grid. A widget on the grid, or the editor,
+  /// takes its place.
+  @Test
+  func anEmptyGridSaysWhatIsEmpty() {
+    var state = HomeFeature.State()
+    state.widgets = [timer, clipboard]
+    state.$saved.withLock { $0 = HomeLayout(notchRow: nil, placed: []) }
+    #expect(state.emptyGrid == .home)
+    state.$saved.withLock { $0 = HomeLayout(notchRow: "timer.timer", placed: []) }
+    #expect(state.emptyGrid == .grid)
+    // The row's widget away with its feature: nothing on Home shows.
+    state.widgets = [clipboard]
+    #expect(state.emptyGrid == .home)
+    state.widgets = [timer, clipboard]
+    state.$saved.withLock {
+      $0 = HomeLayout(notchRow: "timer.timer", placed: [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)])
+    }
+    #expect(state.emptyGrid == nil)
+    state.$saved.withLock { $0 = HomeLayout(notchRow: "timer.timer", placed: []) }
+    state.isEditing = true
+    state.draft = state.saved
+    #expect(state.emptyGrid == nil)
+  }
+
   /// A feature added later doesn't put its widget on Home by itself.
   @Test
   func aFeatureAddedLaterDoesntGoOnHomeByItself() async {

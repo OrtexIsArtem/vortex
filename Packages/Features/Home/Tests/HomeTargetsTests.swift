@@ -389,6 +389,22 @@ struct HomeTargetsTests {
     #expect(targets.isEmpty, "\(targets.keys.sorted())")
   }
 
+  /// With the timer in the notch row and nothing on the grid, the grid still has its Edit Home button in its middle,
+  /// as an empty Home does: something on the grid starts the editor.
+  @Test
+  func anEmptyGridUnderARowWidgetKeepsItsEditHomeButton() async throws {
+    var state = HomeFeature.State()
+    state.$saved.withLock { $0 = HomeLayout(notchRow: "timer.timer", placed: []) }
+    state.widgets = infos
+    let panel = try await show(state, width: HomeView.gridWidth, dock: dock(isOpen: false))
+    defer { panel.orderOut(nil) }
+    let grid = CGRect(x: 0, y: VortexMetrics.headerHeight, width: HomeView.gridWidth, height: 300)
+    let targets = await targets(in: panel, grid)
+    #expect(targets.keys.sorted() == ["editTapped"])
+    let edit = try #require(targets["editTapped"])
+    #expect(edit.frame.height >= 30 && edit.frame.midY > VortexMetrics.headerHeight + 100, "Edit Home: \(edit.frame)")
+  }
+
   /// With no widget on Home, its own Edit Home button stays in the middle of the grid, a quiet capsule.
   @Test
   func anEmptyHomeKeepsItsEditHomeButton() async throws {

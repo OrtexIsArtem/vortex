@@ -195,6 +195,17 @@
         }
       }
     },
+    "No widgets on Home's grid" : {
+      "comment" : "The empty grid under a widget in the notch row, above its Edit Home button.",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На сітці головної немає віджетів"
+          }
+        }
+      }
+    },
     "Nothing found" : {
       "localizations" : {
         "uk" : {
