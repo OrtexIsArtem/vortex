@@ -395,14 +395,26 @@ func lines(of pieces: [ReadPiece]) -> [String] {
   }
 }
 
-/// Two reads from neighbouring tiles whose stretches overlap on a row, `a` starting first, as one: the one that holds
-/// the other's stretch, or the two stitched where they agree (`stitched`).
+/// Two reads from neighbouring tiles whose stretches overlap on a row, `a` starting first, as one: of two reads of the
+/// same stretch, the one that parts more words (`wordGaps`), as Vision's slip in small text is to run two together, `a`
+/// when neither does; else the one that holds the other's stretch, or the two stitched where they agree (`stitched`).
 func merged(_ a: ReadPiece, _ b: ReadPiece) -> ReadPiece {
   // About 7 px of a whole screen's width: reads of one stretch end a few pixels apart.
   let slack: CGFloat = 0.002
+  if abs(a.box.minX - b.box.minX) <= slack, abs(a.box.maxX - b.box.maxX) <= slack, wordGaps(b.text) > wordGaps(a.text) {
+    return ReadPiece(text: b.text, box: a.box.union(b.box), tile: b.tile)
+  }
   if b.box.maxX <= a.box.maxX + slack { return ReadPiece(text: a.text, box: a.box.union(b.box), tile: a.tile) }
   if a.box.minX >= b.box.minX - slack { return ReadPiece(text: b.text, box: a.box.union(b.box), tile: b.tile) }
   return ReadPiece(text: stitched(a, b), box: a.box.union(b.box), tile: b.tile)
+}
+
+/// How many spaces a text has between two letters: the gaps between words that Vision may miss in small text.
+func wordGaps(_ text: String) -> Int {
+  let characters = Array(text)
+  return characters.indices.dropFirst().dropLast().filter { index in
+    characters[index] == " " && characters[index - 1].isLetter && characters[index + 1].isLetter
+  }.count
 }
 
 /// A line two tiles cut, `a` the left part and `b` the right, each read up to its tile's edge, where letters may be cut

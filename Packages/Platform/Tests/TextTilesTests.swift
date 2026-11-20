@@ -61,6 +61,18 @@ struct TextTilesTests {
     #expect(lines(of: [piece("Next line", 0.1, 0.3, tile: 0), piece("Next line", 0.1, 0.3, tile: 3)]) == ["Next line"])
   }
 
+  /// The same stretch read whole by two tiles comes as the read that parts more words, as Vision's slip in small text is
+  /// to run two together; a read that parts no more keeps the first.
+  @Test
+  func ofTwoReadsOfOneStretchTheOneThatPartsMoreWordsStays() {
+    let glued = piece("Line 35- The quick brownfox jumps overthe lazy dog", 0.023, 0.23, tile: 3)
+    let parted = piece("Line 35-The quick brown fox jumps over the lazy dog", 0.0234, 0.23, tile: 0)
+    #expect(lines(of: [glued, parted]) == ["Line 35-The quick brown fox jumps over the lazy dog"])
+    #expect(lines(of: [parted, glued]) == ["Line 35-The quick brown fox jumps over the lazy dog"])
+    let other = piece("Line 35 - The quick brown fox", 0.023, 0.23, tile: 3)
+    #expect(lines(of: [other, piece("Line 35 — The quick brown fox", 0.023, 0.23, tile: 0)]) == ["Line 35 - The quick brown fox"])
+  }
+
   /// A line a tile's edge cuts: each tile reads its part, cut letters and all, and the two are stitched where they
   /// agree, the cut letters left out.
   @Test
