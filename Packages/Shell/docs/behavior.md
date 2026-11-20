@@ -9,7 +9,7 @@
 - Clicking the notch of a window that opened by hover keeps it open, as if the click had opened it.
 - The menu bar icon and the "Open Vortex" shortcut open and close the window.
 - A feature's shortcut opens the window on its tab, or switches to it; pressed again on that tab, it closes the window.
-- A utility action's shortcut runs it as its button in the dock does: the window first as the action needs it (closed: an open window closes, then it runs; open; or as it is), and nothing while a utility's cover or the erase question holds the window open.
+- A utility action's shortcut runs it as its button in the dock does: the window first as the action needs it (closed: an open window closes, then it runs; open; or as it is), and nothing while a utility's cover or the erase question holds the window open. While the action's permission reads `notGranted`, its page opens instead and the window doesn't open first; an open one closes.
 - Dragging files, images, links or text to the notch opens the window on the first running feature that accepts files; with no such feature nothing happens.
 - The window grows out of the notch of the screen with the pointer, flush with the top of the screen and without a shadow; on a screen without a notch it opens under the menu bar icon, with a shadow.
 - The window opens on the Space in front, full-screen apps' Spaces included. When macOS keeps it on another full-screen Space, a new window takes its content and opens here.

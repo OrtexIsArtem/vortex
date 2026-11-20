@@ -832,6 +832,16 @@ struct ShellFeature {
           guard let action = state.utilityActions.first(where: { $0.id == id }) else { return .none }
           // Chosen in the dock or by its shortcut, the strip goes first.
           state.isDockOpen = false
+          if let permission = action.permission, state.permissionStatuses[permission] == .notGranted {
+            // It can't work without its permission: that permission's page opens at once instead, as the warning on its
+            // button says, and the window doesn't open for it first, so nothing flashes; an open one closes for the
+            // page, as for any page. Under a utility's cover, which holds the window and the keyboard, nothing opens.
+            guard state.windowCover == nil else { return .none }
+            return .merge(
+              state.isOpen ? close(&state) : .none,
+              .send(.onboarding(.pageRequested(permission, .request)))
+            )
+          }
           let perform = Effect<Action>.run { _ in await features.performUtilityAction(action.feature, id) }
           switch action.window {
           case .unchanged:

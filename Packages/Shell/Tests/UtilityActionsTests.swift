@@ -127,6 +127,64 @@ struct UtilityActionsTests {
     #expect(log.value == ["perform keyboard.lock", "perform timer.toggle"])
   }
 
+  /// An action whose permission reads `notGranted` can't work: its click or its shortcut opens that permission's page at
+  /// once instead, and the action doesn't run. The window doesn't open for it first, so nothing flashes on the screen;
+  /// an open one closes for the page, as for any page. So for every utility, whatever its action needs of the window.
+  /// Before the first read, and once macOS granted it, even for after a restart, the action runs and its feature
+  /// decides. Under a utility's cover it neither runs nor opens a page.
+  @Test
+  func anActionWithoutItsPermissionOpensItsPageInstead() async {
+    let lock = UtilityActionInfo(id: "keyboard.lock", feature: "keyboard", window: .open, permission: .accessibility)
+    let copy = UtilityActionInfo(id: "screentext.copy", feature: "screentext", window: .closed, permission: .screenRecording)
+    let store = makeStore()
+    store.exhaustivity = .off(showSkippedAssertions: false)
+    store.dependencies.onboardingWindow.present = { _, _ in }
+    store.dependencies.onboardingWindow.hide = { _ in }
+    store.dependencies.onboardingProgress.save = { _ in }
+    store.dependencies.permissionsClient.setFrequentChecks = { _ in }
+    await store.send(.binding(.set(\.utilityActions, [lock, copy])))
+    store.state.$permissionStatuses.withLock { $0 = [.accessibility: .notGranted, .screenRecording: .notGranted] }
+
+    // The window closed, as keyboard cleaning's shortcut finds it: it stays closed, and Accessibility's page opens.
+    await store.send(.utilityActionPressed("keyboard.lock"))
+    await store.receive(\.onboarding.pageRequested)
+    #expect(!store.state.isOpen)
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .accessibility, kind: .request), .window))
+    #expect(log.value.isEmpty)
+
+    // The window open, as the dock's button finds it: it closes, and Screen Recording's page opens.
+    await store.send(.window(.notchClicked(feature: nil)))
+    log.setValue([])
+    await store.send(.utilityActionPressed("screentext.copy"))
+    await store.receive(\.onboarding.pageRequested)
+    #expect(!store.state.isOpen)
+    #expect(store.state.onboarding.presentation == .single(.init(permission: .screenRecording, kind: .request), .window))
+    #expect(log.value == ["dismiss"])
+
+    // Granted for after a restart, or not read yet: the action runs as usual, and its feature decides.
+    store.state.$permissionStatuses.withLock { $0 = [.accessibility: .grantedAfterRestart] }
+    log.setValue([])
+    await store.send(.utilityActionPressed("keyboard.lock"))
+    await store.send(.utilityActionPressed("screentext.copy"))
+    await store.finish()
+    #expect(log.value == ["present hotkey", "perform keyboard.lock", "dismiss", "perform screentext.copy"])
+
+    // Under a utility's cover, as keyboard cleaning's lock screen: nothing runs and no page opens.
+    await store.send(.window(.notchClicked(feature: nil)))
+    @Shared(.windowCover) var cover
+    $cover.withLock { $0 = WindowCover(feature: "keyboard", holdsKeyboard: true) }
+    store.state.$permissionStatuses.withLock { $0 = [.accessibility: .notGranted, .screenRecording: .notGranted] }
+    await store.send(.onboarding(.closeTapped))
+    log.setValue([])
+    await store.send(.utilityActionPressed("keyboard.lock"))
+    await store.send(.utilityActionPressed("screentext.copy"))
+    await store.finish()
+    #expect(log.value.isEmpty)
+    #expect(store.state.onboarding.presentation == .hidden)
+    #expect(store.state.isOpen)
+    $cover.withLock { $0 = nil }
+  }
+
   /// While the window must stay open (the erase question, a utility's cover as keyboard cleaning's lock screen), an
   /// action that needs it closed doesn't run; neither does one of a feature that doesn't run.
   @Test

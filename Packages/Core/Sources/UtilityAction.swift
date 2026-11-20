@@ -26,7 +26,8 @@ public struct UtilityAction: Identifiable {
   public let help: LocalizedStringResource
   public let window: WindowNeed
   /// The macOS permission the action needs, if any: where the shell places the button, it marks it while that
-  /// permission reads `notGranted`, as a sidebar icon's yellow dot.
+  /// permission reads `notGranted`, as a sidebar icon's yellow dot. Meanwhile a click or the shortcut opens that
+  /// permission's page instead of running the action, without opening the window first.
   public let permission: Permission?
   /// The name of the feature's own shortcut that runs the action (its `Hotkey`), which the feature records on its
   /// settings page; nil without one. The shell listens for it while the feature runs and runs the action as a click
@@ -87,7 +88,7 @@ public struct UtilityActionInfo: Equatable, Sendable {
   public var id: String
   public var feature: FeatureID
   public var window: UtilityAction.WindowNeed
-  /// The permission its button's warning names while it reads `notGranted`.
+  /// The permission its button's warning names while it reads `notGranted`, and whose page opens then instead.
   public var permission: Permission?
   public var shortcut: String?
 
