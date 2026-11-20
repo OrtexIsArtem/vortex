@@ -71,10 +71,23 @@ let searchedPixels = 4_096
 
 struct NotAnImage: Error {}
 
-/// Runs a reading on the utility queue, off the caller's thread.
+/// How many readings run at once (`inBackground`). Vision holds a thread for each reading while it waits for work of its
+/// own on other threads: 32 at once, as tests running side by side make, left no thread for that work, and none ended.
+let readingsAtOnce = 2
+
+/// Where readings run: `readingsAtOnce` at a time, in the background; the rest wait their turn without holding a thread.
+private let readings: OperationQueue = {
+  let queue = OperationQueue()
+  queue.name = "Vortex text recognition"
+  queue.maxConcurrentOperationCount = readingsAtOnce
+  queue.qualityOfService = .utility
+  return queue
+}()
+
+/// Runs a reading in the background, off the caller's thread, `readingsAtOnce` at a time.
 private func inBackground<Result: Sendable>(_ reading: @escaping @Sendable () throws -> Result) async throws -> Result {
   try await withCheckedThrowingContinuation { continuation in
-    DispatchQueue.global(qos: .utility).async {
+    readings.addOperation {
       continuation.resume(with: Swift.Result(catching: reading))
     }
   }

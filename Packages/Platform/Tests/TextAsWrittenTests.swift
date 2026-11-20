@@ -40,6 +40,25 @@ struct TextAsWrittenTests {
     await TextRecognitionClient.liveValue.warmUp()
   }
 
+  /// Many reads at once all end. Vision holds a thread for each read while it waits for work of its own on other
+  /// threads: 32 reads at once, as tests running side by side make, once left no thread for that work, and none ended.
+  @Test(.timeLimit(.minutes(1)))
+  func manyReadsAtOnceAllEnd() async throws {
+    let chat = try Fixture.image("chat"), code = try Fixture.image("code")
+    let reads = try await withThrowingTaskGroup(of: String.self) { group in
+      for index in 0..<32 {
+        group.addTask {
+          index.isMultiple(of: 2)
+            ? try await TextRecognitionClient.liveValue.recognize(chat)
+            : try await TextRecognitionClient.liveValue.recognizeAsWritten(code)
+        }
+      }
+      return try await group.reduce(into: [String]()) { $0.append($1) }
+    }
+    #expect(reads.count == 32)
+    #expect(reads.allSatisfy { !$0.isEmpty })
+  }
+
   /// Spaces come only between two letters, where the two reads agree on the letters on either side.
   @Test
   func onlyTheSpacesBetweenLettersComeFromTheCorrectedRead() {
