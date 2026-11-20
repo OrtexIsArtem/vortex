@@ -20,7 +20,7 @@
 - No code: the lines of text, top to bottom, joined by line breaks; a line's pieces on one row (a message and its time, a line number and its line) joined by a space; blank lines and spaces around them go. "Copied · 2 lines" counts these lines, plurals in en and uk.
 - Nothing found: "No text found", and the pasteboard stays as it was.
 - The copy is the user's own: Clipboard keeps it by its rules, named after the app that was in front when the screen froze; a copy over an app Clipboard ignores isn't kept, but is still on the pasteboard.
-- Text and codes are read on this Mac by Apple Vision (English, Ukrainian, Russian), off the main thread.
+- Text and codes are read on this Mac by Apple Vision (English, Ukrainian, Russian), off the main thread, ahead of other features' reads waiting in the background, as Tasks' and Clipboard's.
 - Text is read without language correction, which would make `Main.swift:42` into `Main.swift: 42`; what Vision itself misreads in small text stays as it read it.
 - Words keep their spaces: a second read, with correction, gives the spaces between two lowercase letters that the first lost in small text ("brownfox"), and nothing else, so a camelCase word (`querySelector`) stays whole.
 - As the screen freezes, Vision warms up with a tiny read in the background while the frame is drawn, so the first read after a launch waits less; nothing keeps it warm otherwise.
@@ -36,6 +36,7 @@
 
 ## Esc
 - Esc cancels at every step: before the drag, during it, and while the frame is read; nothing is copied or said.
+- Esc while the frame is read stops Vision too, so the next capture's read doesn't wait for it.
 - The mouse let go after Esc reads nothing.
 
 ## Permissions

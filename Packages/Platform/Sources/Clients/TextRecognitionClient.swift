@@ -7,48 +7,49 @@ import Vision
 /// Text on images, recognized on this Mac by Apple Vision, offline: Ukrainian, Russian and English. And QR codes.
 @DependencyClient
 public struct TextRecognitionClient: Sendable {
-  /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background.
+  /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background, waiting its turn
+  /// behind a reading the user waits for (`ReadingQueue`), and stops when its task is cancelled.
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
   /// The same, read as written: without Vision's language correction, which puts a space after the colon in
   /// `Main.swift:42`, so code, paths and times come as they show; with the spaces between words that a second read,
   /// with correction, finds between two lowercase letters (`spaced`), as Vision alone drops some in small text, and
-  /// never one inside a camelCase word. Both reads take about 3.5 times as long as one. Runs in the background.
+  /// never one inside a camelCase word. Both reads take about 3.5 times as long as one. Runs in the background, as a
+  /// reading the user waits for, which takes the next free turn before the ones in the background (`ReadingQueue`), and
+  /// stops when its task is cancelled.
   public var recognizeAsWritten: @Sendable (_ image: ScreenImage) async throws -> String
   /// What a QR code in the image holds, as text: a link, or anything else it spells; nil when there is none, or none
-  /// that holds text. Of several, the largest. Apple Vision's barcode detection, QR codes only. Runs in the background.
+  /// that holds text. Of several, the largest. Apple Vision's barcode detection, QR codes only. Runs in the background,
+  /// as a reading the user waits for, and stops when its task is cancelled.
   public var readQRCode: @Sendable (_ image: ScreenImage) async throws -> String?
   /// The same from an image's data (a PNG file's), for search: read without language correction, which costs twice as
   /// much and finds nothing more, from the image scaled down to at most `searchedPixels` on its longer side; an image
   /// that shows through over white, then over black (`backgrounds`), a line read in both once. Throws for data that
-  /// isn't an image. Runs in the background, and stops when its task is cancelled (`SearchRead`).
+  /// isn't an image. Runs in the background, waiting its turn behind a reading the user waits for, and stops when its
+  /// task is cancelled (`VisionRead`).
   public var recognizeForSearch: @Sendable (_ imageData: Data) async throws -> String
   /// Loads what a frame's read needs, so the first read after a launch doesn't wait for Vision to load it: a tiny read
   /// of two words with the same requests (a QR code, then text as written and corrected), whose result is dropped.
-  /// Called as a capture begins, while the user frames; nothing keeps Vision warm otherwise. Runs in the background.
+  /// Called as a capture begins, while the user frames; nothing keeps Vision warm otherwise. Runs in the background, as a
+  /// reading the user waits for.
   public var warmUp: @Sendable () async -> Void
 }
 
 extension TextRecognitionClient: DependencyKey {
   public static let liveValue = TextRecognitionClient(
     recognize: { image in
-      try await inBackground { try text(in: image.cgImage, reading: .corrected) }
+      try await readings.run(.background) { read in try text(in: image.cgImage, reading: .corrected, by: read) }
     },
     recognizeAsWritten: { image in
-      try await inBackground { try text(in: image.cgImage, reading: .asWritten) }
+      try await readings.run(.interactive) { read in try text(in: image.cgImage, reading: .asWritten, by: read) }
     },
     readQRCode: { image in
-      try await inBackground { try qrPayload(in: image.cgImage) }
+      try await readings.run(.interactive) { read in try qrPayload(in: image.cgImage, by: read) }
     },
     recognizeForSearch: { imageData in
-      let read = SearchRead()
-      return try await withTaskCancellationHandler {
-        try await inBackground { try read.text(of: imageData) }
-      } onCancel: {
-        read.giveUp()
-      }
+      try await readings.run(.background) { read in try searchText(of: imageData, by: read) }
     },
     warmUp: {
-      _ = try? await inBackground { try warmUpRead() }
+      _ = try? await readings.run(.interactive) { read in try warmUpRead(by: read) }
     }
   )
 
@@ -71,32 +72,147 @@ let searchedPixels = 4_096
 
 struct NotAnImage: Error {}
 
-/// How many readings run at once (`inBackground`). Vision holds a thread for each reading while it waits for work of its
-/// own on other threads: 32 at once, as tests running side by side make, left no thread for that work, and none ended.
+// MARK: - Taking turns
+
+/// How many readings run at once (`readings`). Vision holds a thread for each reading while it waits for work of its own
+/// on other threads: 32 at once, as tests running side by side make, left no thread for that work, and none ended.
 let readingsAtOnce = 2
 
-/// Where readings run: `readingsAtOnce` at a time, in the background; the rest wait their turn without holding a thread.
-private let readings: OperationQueue = {
-  let queue = OperationQueue()
-  queue.name = "Vortex text recognition"
-  queue.maxConcurrentOperationCount = readingsAtOnce
-  queue.qualityOfService = .utility
-  return queue
-}()
+/// Where this Mac's readings take their turns.
+let readings = ReadingQueue(width: readingsAtOnce)
 
-/// Runs a reading in the background, off the caller's thread, `readingsAtOnce` at a time.
-private func inBackground<Result: Sendable>(_ reading: @escaping @Sendable () throws -> Result) async throws -> Result {
-  try await withCheckedThrowingContinuation { continuation in
-    readings.addOperation {
-      continuation.resume(with: Swift.Result(catching: reading))
+/// How soon a reading should run: one the user waits for, as Screen Text's, or one in the background, as Tasks' and
+/// Clipboard's.
+enum Urgency: Sendable {
+  case interactive
+  case background
+}
+
+/// Where readings take turns: `width` at a time, off the caller's thread. One the user waits for takes the next free turn
+/// before any waiting in the background, and runs at a higher quality of service. A reading waiting for its turn holds
+/// no thread; one whose task is cancelled ends at once with `CancellationError` and frees its turn (`VisionRead`).
+final class ReadingQueue: Sendable {
+  private let queue: OperationQueue
+
+  init(width: Int) {
+    queue = OperationQueue()
+    queue.name = "Vortex text recognition"
+    queue.maxConcurrentOperationCount = width
+  }
+
+  /// How many readings run or wait.
+  var count: Int { queue.operationCount }
+
+  /// `work` in its turn, with the `VisionRead` that its task's cancellation gives up.
+  func run<Result: Sendable>(
+    _ urgency: Urgency, _ work: @escaping @Sendable (VisionRead) throws -> Result
+  ) async throws -> Result {
+    let read = VisionRead()
+    return try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { continuation in
+        let ending = Ending(continuation)
+        let operation = BlockOperation {
+          ending.resume(with: Swift.Result {
+            try read.check()
+            return try work(read)
+          })
+        }
+        operation.queuePriority = urgency == .interactive ? .veryHigh : .normal
+        operation.qualityOfService = urgency == .interactive ? .userInitiated : .utility
+        // Given up: the task goes on at once; the work, if it runs, stops when it next looks. The operation holds the
+        // reading, so the reading holds it weakly, and neither outlives its turn with the picture it reads.
+        read.whenGivenUp { [weak operation] in
+          operation?.cancel()
+          ending.resume(with: .failure(CancellationError()))
+        }
+        queue.addOperation(operation)
+      }
+    } onCancel: {
+      read.giveUp()
     }
   }
 }
 
+/// A continuation resumed once, by whichever comes first: the reading's end, or its giving up.
+private final class Ending<Result: Sendable>: @unchecked Sendable {
+  private let lock = NSLock()
+  private var continuation: CheckedContinuation<Result, Error>?
+
+  init(_ continuation: CheckedContinuation<Result, Error>) {
+    self.continuation = continuation
+  }
+
+  func resume(with result: Swift.Result<Result, Error>) {
+    let continuation = lock.withLock {
+      defer { self.continuation = nil }
+      return self.continuation
+    }
+    continuation?.resume(with: result)
+  }
+}
+
+/// One reading's requests to Vision, which its task's cancellation gives up (`giveUp`): before Vision starts, nothing
+/// is read; while Vision reads, its requests are cancelled, so it stops within a moment, and the reading stops before
+/// its next picture (`check`); the moment before Vision starts, which then reads to the end, what it read is dropped.
+/// Either way the reading ends in `CancellationError`.
+final class VisionRead: @unchecked Sendable {
+  private let lock = NSLock()
+  private var isGivenUp = false
+  private var requests: [VNRequest] = []
+  private var onGiveUp: [@Sendable () -> Void] = []
+
+  /// Whether the reading was given up.
+  var wasGivenUp: Bool { lock.withLock { isGivenUp } }
+
+  func giveUp() {
+    let actions = lock.withLock { () -> [@Sendable () -> Void] in
+      guard !isGivenUp else { return [] }
+      isGivenUp = true
+      requests.forEach { $0.cancel() }
+      defer { onGiveUp = [] }
+      return onGiveUp
+    }
+    actions.forEach { $0() }
+  }
+
+  /// Runs `action` once the reading is given up, at once if it already was.
+  func whenGivenUp(_ action: @escaping @Sendable () -> Void) {
+    let isGivenUp = lock.withLock {
+      if !self.isGivenUp { onGiveUp.append(action) }
+      return self.isGivenUp
+    }
+    if isGivenUp { action() }
+  }
+
+  /// Throws `CancellationError` once the reading is given up: looked at before each picture.
+  func check() throws {
+    if wasGivenUp { throw CancellationError() }
+  }
+
+  /// Vision's `requests` on `image`, unless the reading is given up.
+  func perform(_ requests: [VNRequest], on image: CGImage) throws {
+    try lock.withLock {
+      if isGivenUp { throw CancellationError() }
+      self.requests = requests
+    }
+    defer { lock.withLock { self.requests = [] } }
+    do {
+      try VNImageRequestHandler(cgImage: image, options: [:]).perform(requests)
+    } catch {
+      // A request cancelled throws Vision's own error.
+      throw wasGivenUp ? CancellationError() : error
+    }
+    // Vision ignores a cancel that comes before it starts.
+    try check()
+  }
+}
+
+// MARK: - Reading
+
 /// Vision's accurate reading of an image, in tiles it keeps at full resolution (`readPieces`): its lines (`lines(of:)`),
 /// joined by "\n"; empty when there is no text.
-private func text(in image: CGImage, reading: TextReading) throws -> String {
-  lines(of: try readPieces(in: image, reading: reading)).joined(separator: "\n")
+private func text(in image: CGImage, reading: TextReading, by read: VisionRead) throws -> String {
+  lines(of: try readPieces(in: image, reading: reading, by: read)).joined(separator: "\n")
 }
 
 /// How text is read: with Vision's language correction, or as written, with the spaces between words a corrected read
@@ -107,9 +223,9 @@ enum TextReading {
 }
 
 /// What the largest QR code in the image holds as text; nil without one. A code that holds only bytes has no text.
-private func qrPayload(in image: CGImage) throws -> String? {
+private func qrPayload(in image: CGImage, by read: VisionRead) throws -> String? {
   let request = qrRequest()
-  try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+  try read.perform([request], on: image)
   let codes = (request.results ?? []).compactMap { code -> (payload: String, area: CGFloat)? in
     guard let payload = code.payloadStringValue, !payload.isEmpty else { return nil }
     return (payload, code.boundingBox.width * code.boundingBox.height)
@@ -125,11 +241,9 @@ private func qrRequest() -> VNDetectBarcodesRequest {
 }
 
 /// The warm-up: the requests a frame's read makes, on `warmUpPicture`, the result dropped.
-private func warmUpRead() throws {
+private func warmUpRead(by read: VisionRead) throws {
   guard let picture = warmUpPicture() else { return }
-  try VNImageRequestHandler(cgImage: picture, options: [:]).perform([
-    qrRequest(), textRequest(correctsLanguage: false), textRequest(correctsLanguage: true),
-  ])
+  try read.perform([qrRequest(), textRequest(correctsLanguage: false), textRequest(correctsLanguage: true)], on: picture)
 }
 
 /// A word in Latin and one in Cyrillic letters, black on white, 240 × 56 px: text for the warm-up to read, so Vision
@@ -163,58 +277,21 @@ private func textRequest(correctsLanguage: Bool) -> VNRecognizeTextRequest {
   return request
 }
 
-/// One read for search, which its caller may give up, as Clipboard does when it stops: given up before Vision starts,
-/// the image is neither decoded nor read; given up while Vision reads, Vision stops; given up the moment before Vision
-/// starts, which then reads to the end, what it read is dropped. Either way the read ends in `CancellationError`.
-/// Vision itself reads one request at a time, so a read given up and not stopped would hold up the next one and keep
-/// its image in memory until it ended.
-private final class SearchRead: @unchecked Sendable {
-  private let lock = NSLock()
-  private var isGivenUp = false
-  private var request: VNRecognizeTextRequest?
-
-  func giveUp() {
-    lock.withLock {
-      isGivenUp = true
-      request?.cancel()
-    }
-  }
-
-  /// The image read over each of its `backgrounds`, one after the other: the lines of the first read, then those of
-  /// the next one that the first didn't read, so a line read over both, as one on an opaque part is, comes once.
-  func text(of imageData: Data) throws -> String {
-    try checkGivenUp()
-    let image = try searchedImage(imageData)
-    var lines: [String] = []
-    for background in backgrounds(for: image) {
-      try checkGivenUp()
-      let known = Set(lines)
-      lines += try read(drawn(image, over: background)).filter { !known.contains($0) }
-    }
-    return lines.joined(separator: "\n")
-  }
-
-  /// Vision's lines of one image (`readingLines`).
-  private func read(_ image: CGImage) throws -> [String] {
+/// The text of an image's data, for search (`recognizeForSearch`): the image read over each of its `backgrounds`, one
+/// after the other, the lines of the first read, then those of the next one that the first didn't read, so a line read
+/// over both, as one on an opaque part is, comes once. Given up before Vision starts, the image is neither decoded nor
+/// read (`VisionRead`).
+private func searchText(of imageData: Data, by read: VisionRead) throws -> String {
+  try read.check()
+  let image = try searchedImage(imageData)
+  var lines: [String] = []
+  for background in backgrounds(for: image) {
+    let known = Set(lines)
     let request = textRequest(correctsLanguage: false)
-    try lock.withLock {
-      if isGivenUp { throw CancellationError() }
-      self.request = request
-    }
-    do {
-      try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
-    } catch {
-      // A request cancelled throws Vision's own error.
-      throw lock.withLock { isGivenUp } ? CancellationError() : error
-    }
-    // Vision ignores a cancel that comes before it starts.
-    try checkGivenUp()
-    return readingLines(request.results ?? [])
+    try read.perform([request], on: drawn(image, over: background))
+    lines += readingLines(request.results ?? []).filter { !known.contains($0) }
   }
-
-  private func checkGivenUp() throws {
-    if lock.withLock({ isGivenUp }) { throw CancellationError() }
-  }
+  return lines.joined(separator: "\n")
 }
 
 /// An image's data decoded for search: a longer side over `searchedPixels` scaled down to it, a smaller image as it is,
@@ -324,13 +401,13 @@ struct ReadPiece: Equatable {
 
 /// The picture's pieces of text, read tile by tile at full resolution (`tiles`), each piece once whole: one a tile's
 /// inner top or bottom edge cuts is left out (`isWhole`).
-func readPieces(in image: CGImage, reading: TextReading) throws -> [ReadPiece] {
+func readPieces(in image: CGImage, reading: TextReading, by read: VisionRead) throws -> [ReadPiece] {
   let width = CGFloat(image.width), height = CGFloat(image.height)
   var pieces: [ReadPiece] = []
   for (index, tile) in tiles(width: image.width, height: image.height).enumerated() {
     let isWholePicture = tile.size == CGSize(width: width, height: height)
     guard let part = isWholePicture ? image : image.cropping(to: tile) else { continue }
-    for (text, box) in try texts(in: part, reading: reading) {
+    for (text, box) in try texts(in: part, reading: reading, by: read) {
       let top = tile.minY + (1 - box.maxY) * tile.height
       let bottom = tile.minY + (1 - box.minY) * tile.height
       guard isWhole(top: top, bottom: bottom, in: tile, pictureHeight: height) else { continue }
@@ -349,7 +426,7 @@ func readPieces(in image: CGImage, reading: TextReading) throws -> [ReadPiece] {
 /// The pieces of text Vision reads in one picture, with their boxes in Vision's coordinates. As written, a piece takes
 /// the spaces between letters from the corrected read of the same place (`spaced`): the corrected piece that covers
 /// most of it, where the two share more than half of the larger one.
-private func texts(in image: CGImage, reading: TextReading) throws -> [(text: String, box: CGRect)] {
+private func texts(in image: CGImage, reading: TextReading, by read: VisionRead) throws -> [(text: String, box: CGRect)] {
   func pieces(_ request: VNRecognizeTextRequest) -> [(text: String, box: CGRect)] {
     (request.results ?? []).compactMap { observation in
       guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { return nil }
@@ -358,11 +435,11 @@ private func texts(in image: CGImage, reading: TextReading) throws -> [(text: St
   }
   let corrected = textRequest(correctsLanguage: true)
   guard reading == .asWritten else {
-    try VNImageRequestHandler(cgImage: image, options: [:]).perform([corrected])
+    try read.perform([corrected], on: image)
     return pieces(corrected)
   }
   let written = textRequest(correctsLanguage: false)
-  try VNImageRequestHandler(cgImage: image, options: [:]).perform([written, corrected])
+  try read.perform([written, corrected], on: image)
   let correctedPieces = pieces(corrected)
   /// The share of the larger box that the two boxes have in common.
   func shared(_ a: CGRect, _ b: CGRect) -> CGFloat {
