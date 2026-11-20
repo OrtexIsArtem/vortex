@@ -59,9 +59,9 @@ struct TextAsWrittenTests {
     #expect(reads.allSatisfy { !$0.isEmpty })
   }
 
-  /// Spaces come only between two letters, where the two reads agree on the letters on either side.
+  /// Spaces come only between two lowercase letters, where the two reads agree on the letters on either side.
   @Test
-  func onlyTheSpacesBetweenLettersComeFromTheCorrectedRead() {
+  func onlyTheSpacesBetweenLowercaseLettersComeFromTheCorrectedRead() {
     #expect(spaced("brownfox jumps overthe lazy", as: "brown fox jumps over the lazy") == "brown fox jumps over the lazy")
     #expect(spaced("(Main.swift:42)", as: "(Main.swift: 42)") == "(Main.swift:42)")
     #expect(spaced("Line 01- The", as: "Line 01 - The") == "Line 01- The")
@@ -69,5 +69,31 @@ struct TextAsWrittenTests {
     // A letter one read got wrong elsewhere doesn't keep the spaces from coming.
     #expect(spaced("Line 14-he quickbrown", as: "Line 14 - The quick brown") == "Line 14-he quick brown")
     #expect(spaced("", as: "a b") == "")
+  }
+
+  /// Code keeps its words whole: language correction parts camelCase, and a space it puts where a lowercase letter
+  /// meets a capital, or between two capitals, never comes in.
+  @Test
+  func camelCaseWordsStayWhole() {
+    #expect(
+      spaced("getElementById querySelector addEventListener", as: "get Element By Id query Selector add Event Listener")
+        == "getElementById querySelector addEventListener"
+    )
+    #expect(spaced("LastName FirstName", as: "LastName First Name") == "LastName FirstName")
+    #expect(spaced("let userName = firstName", as: "let user Name = first Name") == "let userName = firstName")
+    #expect(spaced("JSONDecoder NSTextView", as: "JSON Decoder NS Text View") == "JSONDecoder NSTextView")
+  }
+
+  /// Identifiers in the system font at 11, 12 and 13 pt, where Vision's correction parts `querySelector`: read as
+  /// written, each stays one word.
+  @Test
+  func identifiersInSmallTextStayWhole() async throws {
+    for size in [22.0, 24.0, 26.0] {
+      let lines = ["getElementById querySelector addEventListener", "LastName FirstName"]
+      let picture = TextTilesTests.picture(lines, width: 2_400, height: Int(size * 5), size: size, pitch: size * 1.6)
+      let text = try await TextRecognitionClient.liveValue.recognizeAsWritten(picture)
+      #expect(text.contains("querySelector") && text.contains("LastName FirstName"), "\(size / 2) pt: \(text)")
+      #expect(text.split(separator: "\n").map { $0.split(separator: " ").count } == [3, 2], "\(size / 2) pt: \(text)")
+    }
   }
 }

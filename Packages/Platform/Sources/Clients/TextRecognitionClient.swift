@@ -11,8 +11,8 @@ public struct TextRecognitionClient: Sendable {
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
   /// The same, read as written: without Vision's language correction, which puts a space after the colon in
   /// `Main.swift:42`, so code, paths and times come as they show; with the spaces between words that a second read,
-  /// with correction, finds between two letters (`spaced`), as Vision alone drops some in small text. Both reads take
-  /// about 3.5 times as long as one. Runs in the background.
+  /// with correction, finds between two lowercase letters (`spaced`), as Vision alone drops some in small text, and
+  /// never one inside a camelCase word. Both reads take about 3.5 times as long as one. Runs in the background.
   public var recognizeAsWritten: @Sendable (_ image: ScreenImage) async throws -> String
   /// What a QR code in the image holds, as text: a link, or anything else it spells; nil when there is none, or none
   /// that holds text. Of several, the largest. Apple Vision's barcode detection, QR codes only. Runs in the background.
@@ -409,12 +409,19 @@ func merged(_ a: ReadPiece, _ b: ReadPiece) -> ReadPiece {
   return ReadPiece(text: stitched(a, b), box: a.box.union(b.box), tile: b.tile)
 }
 
-/// How many spaces a text has between two letters: the gaps between words that Vision may miss in small text.
+/// How many spaces a text has between two lowercase letters (`isLowercaseLetter`): the gaps between words that Vision
+/// may miss in small text.
 func wordGaps(_ text: String) -> Int {
   let characters = Array(text)
   return characters.indices.dropFirst().dropLast().filter { index in
-    characters[index] == " " && characters[index - 1].isLetter && characters[index + 1].isLetter
+    characters[index] == " " && characters[index - 1].isLowercaseLetter && characters[index + 1].isLowercaseLetter
   }.count
+}
+
+extension Character {
+  /// A lowercase letter, in any script: the only letters a space from a corrected read may come between, as one where a
+  /// lowercase letter meets a capital, or between two capitals, parts a word of code (`query Selector`, `URL Session`).
+  var isLowercaseLetter: Bool { isLetter && isLowercase }
 }
 
 /// A line two tiles cut, `a` the left part and `b` the right, each read up to its tile's edge, where letters may be cut
@@ -457,20 +464,23 @@ func stitched(_ a: ReadPiece, _ b: ReadPiece) -> String {
 // MARK: - Reading as written
 
 /// A piece read as written, `written`, with a space wherever the corrected read of it, `corrected`, has one between two
-/// letters and `written` doesn't: read as written, Vision drops a space between words in small text ("overthe"), and
-/// read with correction, it adds one after a colon in code ("Main.swift: 42"). Every character of `written` stays, its
-/// spaces too; a space comes only between two of its characters that match two neighbours of `corrected`, so a letter
-/// either read got wrong elsewhere ("14-he" for "14 - The") doesn't keep the rest of the piece from its spaces.
+/// lowercase letters and `written` doesn't: read as written, Vision drops a space between words in small text
+/// ("overthe"), and read with correction, it adds one after a colon in code ("Main.swift: 42") and parts camelCase
+/// ("query Selector"), so a space where a lowercase letter meets a capital, or between two capitals, never comes. Every
+/// character of `written` stays, its spaces too; a space comes only between two of its characters that match two
+/// neighbours of `corrected`, so a letter either read got wrong elsewhere ("14-he" for "14 - The") doesn't keep the rest
+/// of the piece from its spaces.
 func spaced(_ written: String, as corrected: String) -> String {
   let writtenCharacters = written.filter { $0 != " " }.map(\.self)
-  // The corrected read's characters other than spaces, each with whether a space between two letters comes before it.
+  // The corrected read's characters other than spaces, each with whether a space between two lowercase letters comes
+  // before it.
   var correctedCharacters: [Character] = [], spaceBefore: [Bool] = [], afterSpace = false
   for character in corrected {
     if character == " " {
       afterSpace = true
       continue
     }
-    spaceBefore.append(afterSpace && correctedCharacters.last?.isLetter == true && character.isLetter)
+    spaceBefore.append(afterSpace && correctedCharacters.last?.isLowercaseLetter == true && character.isLowercaseLetter)
     correctedCharacters.append(character)
     afterSpace = false
   }
