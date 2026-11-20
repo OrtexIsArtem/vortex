@@ -25,6 +25,12 @@ struct ReadingQueueTests {
     try #require(await waitFor { queue.count == count }, "the queue holds \(queue.count) readings, not \(count)")
   }
 
+  /// Waits until the reading `name` has begun its work, in its turn, as its block notes in `started`. A reading the queue
+  /// holds may still wait for its turn, so `count` can't tell: one given up then never starts, and lends no turn.
+  func waitUntilStarted(_ name: String, in started: LockIsolated<[String]>) async throws {
+    try #require(await waitFor { started.value.contains(name) }, "\(name) never started")
+  }
+
   /// Waits until `condition` holds, at most `patience`: whether it came.
   func waitFor(_ condition: () -> Bool) async -> Bool {
     let deadline = Date.now.addingTimeInterval(Self.patience)
@@ -42,7 +48,7 @@ struct ReadingQueueTests {
     let door = Door()
     let started = LockIsolated<[String]>([])
     let first = Task { try await queue.run(.background) { _ in started.withValue { $0.append("first") }; door.wait(); return "first" } }
-    try await waitUntil(queue, holds: 1)
+    try await waitUntilStarted("first", in: started)
     let second = Task { try await queue.run(.background) { _ in started.withValue { $0.append("second") }; return "second" } }
     try await waitUntil(queue, holds: 2)
     second.cancel()
@@ -63,6 +69,7 @@ struct ReadingQueueTests {
     let events = LockIsolated<[String]>([])
     let first = Task {
       try await queue.run(.background) { read in
+        events.withValue { $0.append("first reads") }
         // Vision's read, stopped by its cancelled requests, looks once given up: here when the test opens the door.
         while !read.wasGivenUp { usleep(1_000) }
         looking.wait()
@@ -71,7 +78,8 @@ struct ReadingQueueTests {
         return "first"
       }
     }
-    try await waitUntil(queue, holds: 1)
+    // Given up while it reads, not while it waits for its turn.
+    try await waitUntilStarted("first reads", in: events)
     let next = Task {
       try await queue.run(.background) { _ in
         events.withValue { $0.append("next reads") }
@@ -88,7 +96,7 @@ struct ReadingQueueTests {
     looking.open()
     #expect(try await next.value == "next")
     try await waitUntil(queue, holds: 0)
-    #expect(events.value == ["next reads", "first's work ends"])
+    #expect(events.value == ["first reads", "next reads", "first's work ends"])
     // The turn lent came back as that work ended.
     #expect(queue.turns == 1)
   }
@@ -109,7 +117,8 @@ struct ReadingQueueTests {
       }
     }
     let holding = reading("holding", .background, waits: true)
-    try await waitUntil(queue, holds: 1)
+    // It holds the turn before the others come: queued alone, it could still wait, and the interactive one go first.
+    try await waitUntilStarted("holding", in: order)
     let background = reading("background", .background)
     try await waitUntil(queue, holds: 2)
     let interactive = reading("interactive", .interactive)
