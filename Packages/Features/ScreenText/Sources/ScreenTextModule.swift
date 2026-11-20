@@ -12,7 +12,7 @@ public enum ScreenTextModule: FeatureModule {
   public static let symbol = "text.viewfinder"
   public static let hasTab = false
   public static let summary = LocalizedStringResource("Copy text you can't select, right off the screen", bundle: .atURL(Bundle.module.bundleURL))
-  public static let details = LocalizedStringResource("Press your shortcut and frame the text on the frozen screen: a screenshot in a chat, a video frame, an error. It's on the clipboard at once, and a QR code in the frame is copied as its link or text. Read on this Mac, in English, Ukrainian and Russian.", bundle: .atURL(Bundle.module.bundleURL))
+  public static let details = LocalizedStringResource("Start it from your utilities on Home or a shortcut you set, then frame the text on the frozen screen: a screenshot in a chat, a video frame, an error. It's copied at once, a QR code as its link or text. Read on this Mac, in English, Ukrainian and Russian.", bundle: .atURL(Bundle.module.bundleURL))
   public static let author = "@OrtexIsArtem"
   /// The files in Resources/Catalog/, which the build copies to the top of the bundle, without the folder.
   public static let preview: FeaturePreview? = FeaturePreview(

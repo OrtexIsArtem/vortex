@@ -153,17 +153,6 @@
         }
       }
     },
-    "Press your shortcut and frame the text on the frozen screen: a screenshot in a chat, a video frame, an error. It's on the clipboard at once, and a QR code in the frame is copied as its link or text. Read on this Mac, in English, Ukrainian and Russian." : {
-      "comment" : "The feature's page in the catalog",
-      "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Натисніть своє клавіатурне скорочення й обведіть текст на замороженому екрані: знімок у чаті, кадр відео, помилку. Він одразу в буфері обміну, а QR-код у рамці копіюється як посилання чи текст. Розпізнається на цьому Mac — англійською, українською й російською."
-          }
-        }
-      }
-    },
     "QR code" : {
       "comment" : "The notch, right of the cutout: Copied · QR code",
       "localizations" : {
@@ -204,6 +193,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Текст з екрана"
+          }
+        }
+      }
+    },
+    "Start it from your utilities on Home or a shortcut you set, then frame the text on the frozen screen: a screenshot in a chat, a video frame, an error. It's copied at once, a QR code as its link or text. Read on this Mac, in English, Ukrainian and Russian." : {
+      "comment" : "The feature's page in the catalog",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустіть її з утиліт на головній або своїм клавіатурним скороченням і обведіть текст на замороженому екрані: знімок у чаті, кадр відео, помилку. Він одразу скопійований, QR-код — як посилання чи текст. Розпізнається на цьому Mac — англійською, українською й російською."
           }
         }
       }
