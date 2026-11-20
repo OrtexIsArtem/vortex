@@ -9,7 +9,9 @@ public struct TextRecognitionClient: Sendable {
   /// The lines of text, top to bottom, one per line; empty when there is none. Runs in the background.
   public var recognize: @Sendable (_ image: ScreenImage) async throws -> String
   /// The same, read as written: without Vision's language correction, which puts a space after the colon in
-  /// `Main.swift:42`, so code, paths and times come as they show. Runs in the background.
+  /// `Main.swift:42`, so code, paths and times come as they show; with the spaces between words that a second read,
+  /// with correction, finds between two letters (`spaced`), as Vision alone drops some in small text. Both reads take
+  /// about 3.5 times as long as one. Runs in the background.
   public var recognizeAsWritten: @Sendable (_ image: ScreenImage) async throws -> String
   /// What a QR code in the image holds, as text: a link, or anything else it spells; nil when there is none, or none
   /// that holds text. Of several, the largest. Apple Vision's barcode detection, QR codes only. Runs in the background.
@@ -24,10 +26,10 @@ public struct TextRecognitionClient: Sendable {
 extension TextRecognitionClient: DependencyKey {
   public static let liveValue = TextRecognitionClient(
     recognize: { image in
-      try await inBackground { try text(in: image.cgImage, correctsLanguage: true) }
+      try await inBackground { try text(in: image.cgImage, reading: .corrected) }
     },
     recognizeAsWritten: { image in
-      try await inBackground { try text(in: image.cgImage, correctsLanguage: false) }
+      try await inBackground { try text(in: image.cgImage, reading: .asWritten) }
     },
     readQRCode: { image in
       try await inBackground { try qrPayload(in: image.cgImage) }
@@ -72,8 +74,15 @@ private func inBackground<Result: Sendable>(_ reading: @escaping @Sendable () th
 
 /// Vision's accurate reading of an image, in tiles it keeps at full resolution (`readPieces`): its lines (`lines(of:)`),
 /// joined by "\n"; empty when there is no text.
-private func text(in image: CGImage, correctsLanguage: Bool) throws -> String {
-  lines(of: try readPieces(in: image, correctsLanguage: correctsLanguage)).joined(separator: "\n")
+private func text(in image: CGImage, reading: TextReading) throws -> String {
+  lines(of: try readPieces(in: image, reading: reading)).joined(separator: "\n")
+}
+
+/// How text is read: with Vision's language correction, or as written, with the spaces between words a corrected read
+/// finds (`spaced`), which takes both reads, about three and a half times as long.
+enum TextReading {
+  case corrected
+  case asWritten
 }
 
 /// What the largest QR code in the image holds as text; nil without one. A code that holds only bytes has no text.
@@ -258,17 +267,13 @@ struct ReadPiece: Equatable {
 
 /// The picture's pieces of text, read tile by tile at full resolution (`tiles`), each piece once whole: one a tile's
 /// inner top or bottom edge cuts is left out (`isWhole`).
-func readPieces(in image: CGImage, correctsLanguage: Bool) throws -> [ReadPiece] {
+func readPieces(in image: CGImage, reading: TextReading) throws -> [ReadPiece] {
   let width = CGFloat(image.width), height = CGFloat(image.height)
   var pieces: [ReadPiece] = []
   for (index, tile) in tiles(width: image.width, height: image.height).enumerated() {
     let isWholePicture = tile.size == CGSize(width: width, height: height)
     guard let part = isWholePicture ? image : image.cropping(to: tile) else { continue }
-    let request = textRequest(correctsLanguage: correctsLanguage)
-    try VNImageRequestHandler(cgImage: part, options: [:]).perform([request])
-    for observation in request.results ?? [] {
-      guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { continue }
-      let box = observation.boundingBox
+    for (text, box) in try texts(in: part, reading: reading) {
       let top = tile.minY + (1 - box.maxY) * tile.height
       let bottom = tile.minY + (1 - box.minY) * tile.height
       guard isWhole(top: top, bottom: bottom, in: tile, pictureHeight: height) else { continue }
@@ -282,6 +287,38 @@ func readPieces(in image: CGImage, correctsLanguage: Bool) throws -> [ReadPiece]
     }
   }
   return pieces
+}
+
+/// The pieces of text Vision reads in one picture, with their boxes in Vision's coordinates. As written, a piece takes
+/// the spaces between letters from the corrected read of the same place (`spaced`): the corrected piece that covers
+/// most of it, where the two share more than half of the larger one.
+private func texts(in image: CGImage, reading: TextReading) throws -> [(text: String, box: CGRect)] {
+  func pieces(_ request: VNRecognizeTextRequest) -> [(text: String, box: CGRect)] {
+    (request.results ?? []).compactMap { observation in
+      guard let text = observation.topCandidates(1).first?.string, !text.isEmpty else { return nil }
+      return (text, observation.boundingBox)
+    }
+  }
+  let corrected = textRequest(correctsLanguage: true)
+  guard reading == .asWritten else {
+    try VNImageRequestHandler(cgImage: image, options: [:]).perform([corrected])
+    return pieces(corrected)
+  }
+  let written = textRequest(correctsLanguage: false)
+  try VNImageRequestHandler(cgImage: image, options: [:]).perform([written, corrected])
+  let correctedPieces = pieces(corrected)
+  /// The share of the larger box that the two boxes have in common.
+  func shared(_ a: CGRect, _ b: CGRect) -> CGFloat {
+    let common = a.intersection(b)
+    guard !common.isNull else { return 0 }
+    return common.width * common.height / max(a.width * a.height, b.width * b.height, .leastNonzeroMagnitude)
+  }
+  return pieces(written).map { piece in
+    guard let match = correctedPieces.max(by: { shared($0.box, piece.box) < shared($1.box, piece.box) }),
+          shared(match.box, piece.box) > 0.5
+    else { return piece }
+    return (spaced(piece.text, as: match.text), piece.box)
+  }
 }
 
 /// The lines the pieces make (`readingRows`), the pieces of a row joined by a space, left to right; a stretch two tiles
@@ -346,6 +383,66 @@ func stitched(_ a: ReadPiece, _ b: ReadPiece) -> String {
   let leftKeep = characters(of: left, in: a.box, from: a.box.minX, to: middle)
   let rightDrop = characters(of: right, in: b.box, from: b.box.minX, to: middle)
   return String(left.prefix(leftKeep)) + String(right.dropFirst(rightDrop))
+}
+
+// MARK: - Reading as written
+
+/// A piece read as written, `written`, with a space wherever the corrected read of it, `corrected`, has one between two
+/// letters and `written` doesn't: read as written, Vision drops a space between words in small text ("overthe"), and
+/// read with correction, it adds one after a colon in code ("Main.swift: 42"). Every character of `written` stays, its
+/// spaces too; a space comes only between two of its characters that match two neighbours of `corrected`, so a letter
+/// either read got wrong elsewhere ("14-he" for "14 - The") doesn't keep the rest of the piece from its spaces.
+func spaced(_ written: String, as corrected: String) -> String {
+  let writtenCharacters = written.filter { $0 != " " }.map(\.self)
+  // The corrected read's characters other than spaces, each with whether a space between two letters comes before it.
+  var correctedCharacters: [Character] = [], spaceBefore: [Bool] = [], afterSpace = false
+  for character in corrected {
+    if character == " " {
+      afterSpace = true
+      continue
+    }
+    spaceBefore.append(afterSpace && correctedCharacters.last?.isLetter == true && character.isLetter)
+    correctedCharacters.append(character)
+    afterSpace = false
+  }
+  // The longest run the two have in common, character by character, in order: `common[i][j]` for the characters from
+  // `i` and from `j` on.
+  let count = writtenCharacters.count, correctedCount = correctedCharacters.count
+  var common = [[Int]](repeating: [Int](repeating: 0, count: correctedCount + 1), count: count + 1)
+  for i in stride(from: count - 1, through: 0, by: -1) {
+    for j in stride(from: correctedCount - 1, through: 0, by: -1) {
+      common[i][j] = writtenCharacters[i] == correctedCharacters[j]
+        ? common[i + 1][j + 1] + 1 : max(common[i + 1][j], common[i][j + 1])
+    }
+  }
+  var matches: [(written: Int, corrected: Int)] = []
+  var i = 0, j = 0
+  while i < count, j < correctedCount {
+    if writtenCharacters[i] == correctedCharacters[j] {
+      matches.append((i, j))
+      i += 1
+      j += 1
+    } else if common[i + 1][j] >= common[i][j + 1] {
+      i += 1
+    } else {
+      j += 1
+    }
+  }
+  var spaceBeforeWritten: Set<Int> = []
+  for (previous, next) in zip(matches, matches.dropFirst())
+  where next.written == previous.written + 1 && next.corrected == previous.corrected + 1 && spaceBefore[next.corrected] {
+    spaceBeforeWritten.insert(next.written)
+  }
+  guard !spaceBeforeWritten.isEmpty else { return written }
+  var result = "", index = 0
+  for character in written {
+    if character != " " {
+      if spaceBeforeWritten.contains(index), result.last != " " { result.append(" ") }
+      index += 1
+    }
+    result.append(character)
+  }
+  return result
 }
 
 /// The lines Vision read, top to bottom: the pieces of a row (a message and its time, a line number and its line, a
