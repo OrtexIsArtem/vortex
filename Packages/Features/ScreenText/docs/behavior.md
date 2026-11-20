@@ -23,6 +23,7 @@
 - Text and codes are read on this Mac by Apple Vision (English, Ukrainian, Russian), off the main thread.
 - Text is read as written, without language correction: `Main.swift:42` is copied as it shows, never as `Main.swift: 42`.
 - Words keep their spaces: a second read, with correction, gives the spaces between two letters that the first lost in small text, and nothing else.
+- As the screen freezes, Vision warms up with a tiny read in the background while the frame is drawn, so the first read after a launch waits less; nothing keeps it warm otherwise.
 - A frame over 1,600 px either way is read in overlapping tiles at full resolution, so small text in a frame as wide as the screen is read whole, each line once.
 
 ## The notch's message

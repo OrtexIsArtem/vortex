@@ -191,7 +191,8 @@ public struct ScreenTextFeature: Sendable {
       case let .captureTaken(screenshot, front):
         guard state.isEnabled, state.phase == .starting else { return .none }
         state.phase = .framing(Capture(id: uuid(), screenshot: screenshot, frontApp: front))
-        return .none
+        // Vision loads while the user frames, so the first read after a launch waits less; nothing warms it otherwise.
+        return .run { _ in await recognition.warmUp() }
 
       case .captureFailed:
         if state.phase == .starting { state.phase = .idle }

@@ -413,8 +413,9 @@
 
   extension TextRecognitionClient {
     /// Every image says `recognizedText` and holds the QR code `qrCode` (empty: none). With `live` either is read in the
-    /// image itself with Apple Vision, as plain Vortex reads it, so a run can go end to end on images it renders itself.
-    /// A picture's read takes `readDelay` first, and stops when cancelled. Only sizes are logged, never the text.
+    /// image itself with Apple Vision, as plain Vortex reads it, so a run can go end to end on images it renders itself,
+    /// and the warm-up warms Vision up. A picture's read takes `readDelay` first, and stops when cancelled. Only sizes
+    /// are logged, never the text.
     static let qa: TextRecognitionClient = {
       let live = TextRecognitionClient.liveValue
       @Sendable func wait() async throws {
@@ -445,6 +446,12 @@
         QALog.record("textRecognition", "recognizeForSearch", ["bytes": "\(imageData.count)"])
         let text = simulation.recognizedText
         return text == "live" ? try await live.recognizeForSearch(imageData) : text
+      }
+      // Logged as it starts and ends, so a run can time it; with `live` reads, Vision is warmed up for real.
+      client.warmUp = {
+        QALog.record("textRecognition", "warmUp")
+        if simulation.recognizedText == "live" || simulation.qrCode == "live" { await live.warmUp() }
+        QALog.record("textRecognition", "warmedUp")
       }
       return client
     }()

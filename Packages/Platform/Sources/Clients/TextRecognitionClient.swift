@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import CoreText
 import Foundation
 import ImageIO
 import Vision
@@ -21,6 +22,10 @@ public struct TextRecognitionClient: Sendable {
   /// that shows through over white, then over black (`backgrounds`), a line read in both once. Throws for data that
   /// isn't an image. Runs in the background, and stops when its task is cancelled (`SearchRead`).
   public var recognizeForSearch: @Sendable (_ imageData: Data) async throws -> String
+  /// Loads what a frame's read needs, so the first read after a launch doesn't wait for Vision to load it: a tiny read
+  /// of a word with the same requests (a QR code, then text as written and corrected), whose result is dropped. Called
+  /// as a capture begins, while the user frames; nothing keeps Vision warm otherwise. Runs in the background.
+  public var warmUp: @Sendable () async -> Void
 }
 
 extension TextRecognitionClient: DependencyKey {
@@ -41,6 +46,9 @@ extension TextRecognitionClient: DependencyKey {
       } onCancel: {
         read.giveUp()
       }
+    },
+    warmUp: {
+      _ = try? await inBackground { try warmUpRead() }
     }
   )
 
@@ -87,14 +95,50 @@ enum TextReading {
 
 /// What the largest QR code in the image holds as text; nil without one. A code that holds only bytes has no text.
 private func qrPayload(in image: CGImage) throws -> String? {
-  let request = VNDetectBarcodesRequest()
-  request.symbologies = [.qr]
+  let request = qrRequest()
   try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
   let codes = (request.results ?? []).compactMap { code -> (payload: String, area: CGFloat)? in
     guard let payload = code.payloadStringValue, !payload.isEmpty else { return nil }
     return (payload, code.boundingBox.width * code.boundingBox.height)
   }
   return codes.max { $0.area < $1.area }?.payload
+}
+
+/// Vision's barcode detection, QR codes only.
+private func qrRequest() -> VNDetectBarcodesRequest {
+  let request = VNDetectBarcodesRequest()
+  request.symbologies = [.qr]
+  return request
+}
+
+/// The warm-up: the requests a frame's read makes, on `warmUpPicture`, the result dropped.
+private func warmUpRead() throws {
+  guard let picture = warmUpPicture() else { return }
+  try VNImageRequestHandler(cgImage: picture, options: [:]).perform([
+    qrRequest(), textRequest(correctsLanguage: false), textRequest(correctsLanguage: true),
+  ])
+}
+
+/// A word in Latin and one in Cyrillic letters, black on white, 240 × 56 px: text for the warm-up to read, so Vision
+/// loads what reads it and not only what finds it.
+func warmUpPicture() -> CGImage? {
+  let width = 240, height = 56
+  guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+        let context = CGContext(
+          data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ),
+        let font = CTFontCreateUIFontForLanguage(.system, 26, nil)
+  else { return nil }
+  context.setFillColor(CGColor(gray: 1, alpha: 1))
+  context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+  let attributes: [NSAttributedString.Key: Any] = [
+    NSAttributedString.Key(kCTFontAttributeName as String): font,
+    NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0, alpha: 1),
+  ]
+  context.textPosition = CGPoint(x: 12, y: 18)
+  CTLineDraw(CTLineCreateWithAttributedString(NSAttributedString(string: "Vortex Текст", attributes: attributes)), context)
+  return context.makeImage()
 }
 
 /// Vision's accurate reading, in `recognitionLanguages`.

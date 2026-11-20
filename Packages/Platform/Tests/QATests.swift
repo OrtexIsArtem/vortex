@@ -512,6 +512,9 @@ struct QAClientsTests {
     QASimulation.update { $0.recognizedText = "live" }
     #expect(try await recognition.recognize(picture).lowercased().contains("release notes"))
     #expect(try await recognition.recognizeAsWritten(picture).lowercased().contains("release notes"))
+    // The warm-up is logged as it starts and ends.
+    await recognition.warmUp()
+    #expect(QALog.events.value.suffix(2).map(\.event) == ["warmUp", "warmedUp"])
   }
 
   /// No QR code by default; the simulated payload on any picture; with `live` what Apple Vision finds in the picture.

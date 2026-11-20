@@ -30,6 +30,16 @@ struct TextAsWrittenTests {
     #expect(wordForWord.count >= numbered.count - 2, "\(numbered.filter { !wordForWord.contains($0) })")
   }
 
+  /// The warm-up's picture holds words Vision reads, so the warm-up loads what reads text, not only what finds it; and it
+  /// ends without throwing.
+  @Test
+  func theWarmUpReadsWords() async throws {
+    let picture = try #require(warmUpPicture())
+    let text = try await TextRecognitionClient.liveValue.recognizeAsWritten(ScreenImage(cgImage: picture, scale: 2))
+    #expect(text.contains("Vortex"), "\(text)")
+    await TextRecognitionClient.liveValue.warmUp()
+  }
+
   /// Spaces come only between two letters, where the two reads agree on the letters on either side.
   @Test
   func onlyTheSpacesBetweenLettersComeFromTheCorrectedRead() {

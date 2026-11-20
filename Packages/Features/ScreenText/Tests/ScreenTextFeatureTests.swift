@@ -39,6 +39,8 @@ struct ScreenTextFeatureTests {
   let qrCode = LockIsolated<String?>(nil)
   let refreshes = LockIsolated(0)
   let relaunches = LockIsolated(0)
+  /// How many times Vision was warmed up.
+  let warmUps = LockIsolated(0)
   /// macOS as the tests set it: Screen Recording granted unless a test says otherwise.
   let simulated: SimulatedPermissions = {
     let simulated = SimulatedPermissions()
@@ -73,6 +75,7 @@ struct ScreenTextFeatureTests {
       }
       // Read as written: language correction would put a space after the colon in `Main.swift:42`.
       $0.textRecognitionClient.recognizeAsWritten = { [recognized] _ in recognized.value }
+      $0.textRecognitionClient.warmUp = { [warmUps] in warmUps.withValue { $0 += 1 } }
       $0.pasteboardClient.copy = { [copies] content, isConcealed, source in
         copies.withValue { $0.append(Copied(content: content, isConcealed: isConcealed, sourceApp: source)) }
       }
@@ -116,6 +119,19 @@ struct ScreenTextFeatureTests {
   }
 
   // MARK: - What is copied
+
+  /// The screen freezing warms Vision up, once, while the user frames, so the first read after a launch waits less for
+  /// Vision to load; nothing else warms it, before the capture or after the read.
+  @Test
+  func freezingTheScreenWarmsTheReaderUpOnce() async {
+    let store = makeStore()
+    await store.send(.start)
+    #expect(warmUps.value == 0)
+    await freeze(store)
+    await frame(store)
+    #expect(warmUps.value == 1)
+    #expect(copies.value.count == 1)
+  }
 
   @Test
   func aFrameOfTextIsCopiedLineByLineFromTheAppInFrontAndTheNotchCountsTheLines() async {
