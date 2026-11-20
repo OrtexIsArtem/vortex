@@ -302,12 +302,13 @@ private struct PanelWidget: View {
 struct WidgetThumbnail: View {
   let widget: HomeWidget
   let size: HomeWidgetSize?
+  @Environment(\.notchCutout) private var cutout
   /// The widest and tallest a preview gets in the panel.
   private static let box = CGSize(width: 154, height: 96)
 
   var body: some View {
-    // The notch row is as wide as Home's column, the grid and its sides.
-    let real = size?.points ?? CGSize(width: HomeView.gridWidth, height: VortexMetrics.headerHeight)
+    // The notch row is as wide as Home's column, the grid and its sides, wider on a wide notch.
+    let real = size?.points ?? CGSize(width: HomeView.width(notchWidth: cutout?.width), height: VortexMetrics.headerHeight)
     let scale = min(Self.box.width / real.width, Self.box.height / real.height)
     Group {
       if let size {

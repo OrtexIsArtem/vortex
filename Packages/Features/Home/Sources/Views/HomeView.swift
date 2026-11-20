@@ -4,7 +4,8 @@ import VortexCore
 
 /// Home: a widget in the row next to the notch, with the utilities button at the row's right end, and the others as
 /// cards on the 4×2 grid under it. In the editor Home stays where it is, and the window grows to the right for the panel
-/// of widgets; so it does by a narrow strip for the utilities dock.
+/// of widgets; so it does by a narrow strip for the utilities dock. On a wide notch the window is wider: the row spans
+/// it, and the grid keeps its size in the middle, the extra room equal margins at its sides.
 struct HomeView: View {
   let store: StoreOf<HomeFeature>
   @Environment(\.homeWidgets) private var widgets
@@ -12,12 +13,20 @@ struct HomeView: View {
   @Environment(\.isWindowOpen) private var isWindowOpen
   @Environment(\.windowRequest) private var windowRequest
   @Environment(\.showCatalog) private var showCatalog
+  @Environment(\.notchCutout) private var cutout
 
-  /// The grid fills the regular window's tab; the panel takes what the large window adds, the dock's strip what its
-  /// window adds.
+  /// The grid fills the regular window's tab, up to a 186 pt notch; the panel takes what the large window adds, the
+  /// dock's strip what its window adds, on every notch.
   static let gridWidth = HomeGrid.frame(column: 0, row: 0, size: .full).maxX + HomeGrid.sideInset
   static let panelWidth = WindowSize.large.size.width - WindowSize.regular.size.width
   static let dockWidth = WindowSize.dock.size.width - WindowSize.regular.size.width
+
+  /// Home's own column, the regular window's tab on a display whose notch is `notchWidth` points wide: the grid's
+  /// width, or more on a wide notch (`VortexMetrics.regularWidth(notchWidth:)`), 678 pt on a 240 pt one. The notch row
+  /// spans it; the grid stays in its middle.
+  static func width(notchWidth: CGFloat?) -> CGFloat {
+    WindowSize.regular.size(notchWidth: notchWidth).width - VortexMetrics.sidebarWidth
+  }
   /// What the editor asks of the window: the large one, with the focus.
   static let editorWindow = WindowRequest(size: .large, isFocused: true)
 
@@ -28,8 +37,12 @@ struct HomeView: View {
       VStack(spacing: 0) {
         NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] }, byID: byID, dock: dock)
         GridArea(store: store, byID: byID)
+          // On a wide notch the grid keeps its size in the column's middle: the extra room is equal margins.
+          .frame(width: Self.gridWidth)
+          .frame(maxWidth: .infinity)
       }
-      .frame(width: Self.gridWidth)
+      // As wide as the regular window's tab, the panel or the strip past it.
+      .frame(width: Self.width(notchWidth: cutout?.width))
       .contextMenu {
         if !store.isEditing {
           Button {

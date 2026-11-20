@@ -69,6 +69,23 @@ struct ScreenGeometryTests {
     #expect(wide.minX == under.minX && wide.width == 880 && wide.maxY == under.maxY)
   }
 
+  /// On a wide notch, as a 14" MacBook Pro's at More Space, the regular window is wider by as much on both sides: the
+  /// notch stays in its middle. The large window and the dock's keep its left edge and grow right, as on any notch.
+  @Test
+  func aWideNotchWidensTheWindowOnBothSides() {
+    let screen = CGRect(x: 0, y: 0, width: 1800, height: 1169)
+    let notch = CGRect(x: 790, y: 1137, width: 220, height: 32)
+    func frame(_ size: WindowSize) -> CGRect {
+      ScreenGeometry.notchWindowFrame(notch: notch, screenFrame: screen, visibleFrame: screen, size: size, shoulder: 10)
+    }
+    #expect(frame(.regular).width == 714 + 20 && frame(.regular).midX == notch.midX)
+    #expect(frame(.large).minX == frame(.regular).minX && frame(.large).width == 914 + 20)
+    #expect(frame(.dock).minX == frame(.regular).minX && frame(.dock).width == 770 + 20)
+    // (714 − 220) / 2 on either side of the notch.
+    let cutout = ScreenGeometry.notchCutout(notch: notch, windowFrame: frame(.regular), shoulder: 10)
+    #expect(cutout.minX == 247)
+  }
+
   /// Where there's no room to grow right, the large window moves left just enough to stay on screen.
   @Test
   func aLargeWindowStaysOnScreen() {

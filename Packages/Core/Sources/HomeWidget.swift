@@ -1,8 +1,8 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// The sizes a widget takes on Home's grid of 4×2 cells. The window by the notch is 680×440 on every Mac, so the sizes
-/// are exact points, as for widgets on an iPhone.
+/// The sizes a widget takes on Home's grid of 4×2 cells. The grid is the same on every Mac, a wider window on a wide
+/// notch leaving margins at its sides, so the sizes are exact points, as for widgets on an iPhone.
 public enum HomeWidgetSize: String, CaseIterable, Codable, Sendable {
   /// 1×1, 143×182.
   case small

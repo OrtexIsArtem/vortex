@@ -18,8 +18,8 @@ enum ScreenGeometry {
   }
 
   /// The window hanging from the notch, its top edge at the top of the screen, wide enough for the concave shoulders
-  /// on both sides. The regular window is centered on the notch; the large one keeps its left edge and grows right,
-  /// moving left only as far as the visible area needs.
+  /// on both sides, at its size for this notch's width (wider on a wide notch). The regular window is centered on the
+  /// notch; the large one keeps its left edge and grows right, moving left only as far as the visible area needs.
   static func notchWindowFrame(
     notch: CGRect,
     screenFrame: CGRect,
@@ -27,8 +27,8 @@ enum ScreenGeometry {
     size: WindowSize,
     shoulder: CGFloat
   ) -> CGRect {
-    let regularX = notch.midX - (WindowSize.regular.size.width + shoulder * 2) / 2
-    let content = size.size
+    let regularX = notch.midX - (WindowSize.regular.size(notchWidth: notch.width).width + shoulder * 2) / 2
+    let content = size.size(notchWidth: notch.width)
     let width = content.width + shoulder * 2
     let x = size == .regular ? regularX : max(min(regularX, visibleFrame.maxX - width), visibleFrame.minX)
     return CGRect(x: x, y: screenFrame.maxY - content.height, width: width, height: content.height)

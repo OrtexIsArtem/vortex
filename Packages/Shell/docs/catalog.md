@@ -40,7 +40,7 @@
 - A crash during an erase doesn't repeat: the list was emptied first.
 
 ## Window sizes
-- The regular window is 680×440; the catalog, its pages and a feature's tab that asks for it (`windowRequest`, as Home's editor) use the large one, 880×440; Home with the utilities dock out, the dock's, 736×440 (behavior.md).
+- The regular window is 680×440; the catalog, its pages and a feature's tab that asks for it (`windowRequest`, as Home's editor) use the large one, 880×440; Home with the utilities dock out, the dock's, 736×440 (behavior.md); on a notch wider than 186 pt all three are wider by as much as the regular one.
 - A tab that asks for the focus dims the sidebar to 35 % and makes the other tabs and their shortcuts wait; asking for the regular window gives it back, and closing the window forgets every request.
 - The large window keeps the regular one's left edge, so the sidebar stays put, and grows right; it moves left only as far as the screen's visible area needs.
 - The content takes a new size at once; the outline follows with the opening's spring, or at once with Reduce Motion.

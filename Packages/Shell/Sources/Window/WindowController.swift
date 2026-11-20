@@ -133,6 +133,8 @@ final class WindowController: NSObject {
   private(set) var qaHasEventsSubscriber = false
   /// QA: called once the shell listens for events.
   var qaOnEventsSubscribed: (() -> Void)?
+  /// QA: the width the run pretends the notch has (`screens notch=`); nil for this Mac's, or a MacBook Pro's.
+  var qaNotchWidth: CGFloat?
 
   override private init() {
     #if DEBUG
@@ -224,7 +226,7 @@ final class WindowController: NSObject {
 
     if !shown.isVisible { presentation.isExpanded = false }
     presentation.notch = placement.notch
-    withoutAnimation { presentation.shownWidth = presentation.size.size.width }
+    withoutAnimation { presentation.shownWidth = presentation.contentSize.width }
     shownScreen = placement.screen
     lastResize = nil
     let panel = orderFrontOnActiveSpace(shown, frame: placement.frame)
@@ -275,14 +277,15 @@ final class WindowController: NSObject {
 
   /// Grows or shrinks the open window, keeping its left edge where the screen allows: the content takes its new size at
   /// once, and the window's outline follows with the opening's spring, or at once with Reduce Motion. A closed window
-  /// takes the size at its next open.
+  /// takes the size at its next open. Sizes are in points on the notch the window grows out of.
   func setSize(_ size: WindowSize) {
     guard size != presentation.size else { return }
-    let grows = size.size.width > presentation.size.size.width
+    let width = size.size(notchWidth: presentation.notch?.width).width
+    let grows = width > presentation.contentSize.width
     guard let panel = mainPanel, panel.isVisible else {
       withoutAnimation {
         presentation.size = size
-        presentation.shownWidth = size.size.width
+        presentation.shownWidth = width
       }
       return
     }
@@ -311,11 +314,11 @@ final class WindowController: NSObject {
       panel.contentView?.updateTrackingAreas()
     }
     if isOffscreenQA || reduceMotion {
-      withoutAnimation { presentation.shownWidth = size.size.width }
+      withoutAnimation { presentation.shownWidth = width }
       finish()
     } else {
       withAnimation(openAnimation) {
-        presentation.shownWidth = size.size.width
+        presentation.shownWidth = width
       } completion: {
         finish()
       }
@@ -390,7 +393,7 @@ final class WindowController: NSObject {
     panel.ignoresMouseEvents = isQAVisible
     // Lay the content out once while hidden, so opening only has to animate it.
     let shoulder = presentation.notch == nil ? 0 : VortexMetrics.shoulder
-    let size = presentation.size.size
+    let size = presentation.contentSize
     panel.setFrame(CGRect(x: 0, y: 0, width: size.width + shoulder * 2, height: size.height), display: false)
     root.layoutSubtreeIfNeeded()
     return panel
@@ -466,15 +469,16 @@ final class WindowController: NSObject {
       case .hover, .click, .fileDrag: screens.contains(.notch) ? .notch : screens.first
       case .hotkey, .menuBarIcon: screens.first
       }
-      let size = (size ?? presentation.size).size
+      let size = size ?? presentation.size
       if screen == .notch {
-        let frame = CGRect(x: 0, y: 0, width: size.width + VortexMetrics.shoulder * 2, height: size.height)
-        // The notch stays where it is over the regular window, which the large one keeps the left edge of.
-        let notch = QA.notchSize
-        let x = (WindowSize.regular.size.width - notch.width) / 2
+        let notch = qaNotchSize
+        let content = size.size(notchWidth: notch.width)
+        let frame = CGRect(x: 0, y: 0, width: content.width + VortexMetrics.shoulder * 2, height: content.height)
+        // The notch stays in the middle of the regular window, which the large one keeps the left edge of.
+        let x = (WindowSize.regular.size(notchWidth: notch.width).width - notch.width) / 2
         return Placement(frame: QA.offscreen(frame), notch: CGRect(x: x, y: 0, width: notch.width, height: notch.height))
       }
-      return Placement(frame: QA.offscreen(CGRect(origin: .zero, size: size)), notch: nil)
+      return Placement(frame: QA.offscreen(CGRect(origin: .zero, size: size.size)), notch: nil)
     #else
       return Placement(frame: .zero, notch: nil)
     #endif
@@ -484,7 +488,7 @@ final class WindowController: NSObject {
   /// user types in even while Vortex is not in front.
   private func presentOffscreen(_ panel: VortexPanel, _ placement: Placement) {
     presentation.notch = placement.notch
-    withoutAnimation { presentation.shownWidth = presentation.size.size.width }
+    withoutAnimation { presentation.shownWidth = presentation.contentSize.width }
     panel.hasShadow = false
     panel.setFrame(placement.frame, display: true)
     panel.orderFrontRegardless()
@@ -782,11 +786,19 @@ final class WindowController: NSObject {
     var qaPanel: NSWindow? { mainPanel }
     var qaMenu: NSMenu? { menuBarMenu }
 
+    /// The notch on a display the run pretends has one: this Mac's, or a MacBook Pro's, as wide as `screens notch=` says.
+    var qaNotchSize: CGSize {
+      CGSize(width: qaNotchWidth ?? QA.notchSize.width, height: QA.notchSize.height)
+    }
+
+    /// The window's content as it is laid out now, in points: wider on a wide notch.
+    var qaContentSize: CGSize { presentation.contentSize }
+
     /// The closed notch with the ears the run's indicators make now, at the notch size the run pretends, in a window
     /// of its own that is never ordered in: a QA run draws no ears, so `snapshot window=ears` draws them here.
     func qaEarsWindow() -> NSWindow {
       let model = EarsModel()
-      model.notchSize = QA.notchSize
+      model.notchSize = qaNotchSize
       model.ears = currentEars
       model.earWidth = EarsMetrics.earWidth(for: currentEars)
       let shoulder = model.earWidth > 0 ? VortexMetrics.shoulder : 0

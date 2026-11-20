@@ -18,6 +18,9 @@ final class WindowPresentationModel {
   @ObservationIgnored var onNotchTapped: () -> Void = {}
 
   nonisolated init() {}
+
+  /// `size` in points on the notch the window grows out of, wider on a wide one; without a notch, the plain size.
+  var contentSize: CGSize { size.size(notchWidth: notch?.width) }
 }
 
 /// The window around the shell's content: morphs out of the notch, or drops under the menu bar icon.
@@ -27,7 +30,7 @@ struct WindowChromeView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    let size = model.size.size
+    let size = model.contentSize
     let notch = model.notch
     let isExpanded = model.isExpanded
     let shoulder = notch == nil ? 0 : VortexMetrics.shoulder

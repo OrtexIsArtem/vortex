@@ -20,9 +20,18 @@
       QA.register(command: "tab") { arguments in try selectTab(arguments, store: store) }
       QA.register(command: "screens") { arguments in
         guard let text = arguments["set"], let screens = QALaunch.screens(text) else {
-          throw QAError("screens takes set=notch, set=plain or set=notch+plain")
+          throw QAError("screens takes set=notch, set=plain or set=notch+plain, and notch=<points> for the notch's width")
+        }
+        // The notch's width, as a wider notch at another scale has it; without, this Mac's or a MacBook Pro's.
+        var notchWidth: CGFloat?
+        if let value = arguments["notch"] {
+          guard let width = Double(value), (100...400).contains(width) else {
+            throw QAError("notch takes the notch's width in points, 100 to 400")
+          }
+          notchWidth = width
         }
         QA.screens = screens
+        window.qaNotchWidth = notchWidth
         window.qaScreensChanged()
       }
       QA.register(command: "catalog") { arguments in try catalog(arguments, store: store) }
@@ -371,6 +380,11 @@
       /// null without one. Keyboard cleaning's own state is its `keyboard` section.
       var cover: String?
       var screens: [String]
+      /// The notch's width on a display the run pretends has one, in points (`screens notch=`).
+      var notchWidth: CGFloat
+      /// The window's content as it is laid out, "<width>×<height>" in points, its shoulders not counted: wider on a
+      /// wide notch.
+      var windowSize: String
       var everyScreenHasNotch: Bool
       /// Whether the menu bar icon would show; QA puts none in the menu bar.
       var menuBarIcon: Bool
@@ -399,6 +413,9 @@
         fileFeature = state.fileFeature?.id
         cover = state.windowCover.map { $0.feature + ($0.holdsKeyboard ? " holdsKeyboard" : "") }
         screens = QA.screens.map(\.rawValue)
+        notchWidth = window.qaNotchSize.width
+        let size = window.qaContentSize
+        windowSize = "\(Int(size.width))×\(Int(size.height))"
         everyScreenHasNotch = state.everyScreenHasNotch
         menuBarIcon = window.qaIsMenuBarIconShown
         self.ears = ["left": ears.leftFeature, "right": ears.rightFeature].compactMapValues(\.self)
@@ -413,7 +430,7 @@
 
       private enum CodingKeys: String, CodingKey {
         case isOpen, openReason, selectedTab, settingsSection, settingsFeature, sidebar, utilityActions, fileFeature, cover
-        case screens, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
+        case screens, notchWidth, windowSize, everyScreenHasNotch, menuBarIcon, ears, hoveredEar, pointerInWindow, heldOpen
         case launchAtLogin, language, needsRestartForLanguage, settings
       }
 
@@ -430,6 +447,8 @@
         try container.encode(fileFeature, forKey: .fileFeature)
         try container.encode(cover, forKey: .cover)
         try container.encode(screens, forKey: .screens)
+        try container.encode(notchWidth, forKey: .notchWidth)
+        try container.encode(windowSize, forKey: .windowSize)
         try container.encode(everyScreenHasNotch, forKey: .everyScreenHasNotch)
         try container.encode(menuBarIcon, forKey: .menuBarIcon)
         try container.encode(ears, forKey: .ears)

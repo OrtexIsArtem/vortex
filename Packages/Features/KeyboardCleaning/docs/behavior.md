@@ -14,7 +14,7 @@
 - If Vortex quits or crashes, the keys come back.
 
 ## The window
-- During the lock the lock screen covers the whole window (`WindowCover`): the drawn keyboard on top, "Keyboard cleaning mode" and "All keys are locked" bottom left, "Turn the keyboard back on" bottom right.
+- During the lock the lock screen covers the whole window (`WindowCover`): the drawn keyboard on top, "Keyboard cleaning mode" and "All keys are locked" bottom left, "Turn the keyboard back on" bottom right. A wider window, on a wide notch, keeps them at the regular window's width, in its middle.
 - Nothing closes the window during the lock: not the pointer leaving, a click outside, Esc, the notch, the menu bar icon or a shortcut.
 - New displays move the window there.
 - Vortex comes to the front with the lock and drops any key that still reaches it; the key still washes its place on the drawing.

@@ -11,7 +11,8 @@ struct KeyboardCleaningView: View {
   let store: StoreOf<KeyboardCleaningFeature>
   @Environment(\.notchCutout) private var notchCutout
 
-  /// Around the board and the bottom row; the board is as wide as the window allows.
+  /// Around the board and the bottom row; the board is as wide as the regular window allows. A wider window, on a wide
+  /// notch, keeps them at that width in its middle, under the notch, the extra room equal margins.
   static let margin: CGFloat = 28
   private static let metrics = KeyboardBoard.Metrics(width: VortexMetrics.windowSize.width - 2 * margin)
   /// Laid out once: ISO's for an ISO keyboard, ANSI's for the others.
@@ -48,6 +49,8 @@ struct KeyboardCleaningView: View {
         .buttonStyle(PrimaryCapsuleButtonStyle(height: 44, fontSize: 14))
       }
     }
+    // The bottom row as wide as the board, both in the middle of a wider window.
+    .frame(width: Self.metrics.width)
     .padding(.horizontal, Self.margin)
     // Centered in what the notch leaves, so nothing sits under it.
     .padding(.top, notchCutout?.maxY ?? 0)

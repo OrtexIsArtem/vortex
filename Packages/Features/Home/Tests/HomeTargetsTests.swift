@@ -80,8 +80,12 @@ struct HomeTargetsTests {
     )
   }
 
-  /// Home as the window shows it, in a panel of its own: the store only notes what the controls send.
-  func show(_ state: HomeFeature.State, width: CGFloat, dock: UtilitiesDock? = nil) async throws -> Panel {
+  /// Home as the window shows it, in a panel of its own: the store only notes what the controls send. Without a
+  /// `cutout`, as under the menu bar icon, the window is the regular 680 pt. `widgets` stand in for the usual ones.
+  func show(
+    _ state: HomeFeature.State, width: CGFloat, dock: UtilitiesDock? = nil, cutout: CGRect? = nil,
+    widgets: [HomeWidget]? = nil
+  ) async throws -> Panel {
     let sent = sent
     let store = Store(initialState: state) {
       Reduce<HomeFeature.State, HomeFeature.Action> { _, action in
@@ -98,11 +102,12 @@ struct HomeTargetsTests {
     )
     panel.contentView = NSHostingView(
       rootView: HomeView(store: store)
-        .environment(\.homeWidgets, widgets)
+        .environment(\.homeWidgets, widgets ?? self.widgets)
         .environment(\.isWindowOpen, true)
         .environment(\.windowRequest) { _ in }
         .environment(\.showCatalog) { sent.names.append("catalog") }
         .environment(\.utilitiesDock, dock)
+        .environment(\.notchCutout, cutout)
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     )
     panel.orderFrontRegardless()
@@ -111,8 +116,11 @@ struct HomeTargetsTests {
     return panel
   }
 
-  /// The editor with the panel on `panel`, as wide as the large window's tab.
-  func showEditor(_ panel: HomeFeature.Panel, search: String = "", layout: HomeLayout? = nil) async throws -> Panel {
+  /// The editor with the panel on `panel`, as wide as the large window's tab: on a notch whose `cutout` widens the
+  /// window, wider by as much.
+  func showEditor(
+    _ panel: HomeFeature.Panel, search: String = "", layout: HomeLayout? = nil, cutout: CGRect? = nil
+  ) async throws -> Panel {
     let layout = layout ?? self.layout
     var state = HomeFeature.State()
     state.$saved.withLock { $0 = layout }
@@ -121,7 +129,8 @@ struct HomeTargetsTests {
     state.draft = layout
     state.panel = panel
     state.search = search
-    return try await show(state, width: HomeView.gridWidth + HomeView.panelWidth)
+    let width = WindowSize.large.size(notchWidth: cutout?.width).width - VortexMetrics.sidebarWidth
+    return try await show(state, width: width, cutout: cutout)
   }
 
   /// A click at `point`, from the top left corner of Home: what it sent, by name.
@@ -314,6 +323,57 @@ struct HomeTargetsTests {
     #expect(lock.frame.minY >= 0 && lock.frame.maxY <= VortexMetrics.headerHeight)
     #expect(click(panel, at: CGPoint(x: 200, y: 200)) == "dock close")
     #expect(click(panel, at: CGPoint(x: HomeView.gridWidth - 22, y: 26)) == "dock close")
+  }
+
+  // MARK: - A wide notch
+
+  /// On a wide notch the window is wider, and Home with it: the notch row spans the tab, the utilities button still at
+  /// its right end; the grid keeps its size in the middle, the extra room as equal margins at its sides, so what sits in
+  /// the grid moves right by one of them. In the editor the panel starts where the regular window ends.
+  @Test
+  func onAWideNotchTheGridKeepsItsSizeInTheMiddle() async throws {
+    let notch: CGFloat = 240
+    let window = WindowSize.regular.size(notchWidth: notch).width
+    let width = HomeView.width(notchWidth: notch)
+    let margin = (width - HomeView.gridWidth) / 2
+    #expect(width == window - VortexMetrics.sidebarWidth && margin == 27)
+    let cutout = CGRect(x: (window - notch) / 2 - VortexMetrics.sidebarWidth, y: 0, width: notch, height: 32)
+
+    let home = try await show(home, width: width, dock: dock(isOpen: false), cutout: cutout)
+    let row = await targets(in: home, CGRect(x: width - 60, y: 0, width: 60, height: VortexMetrics.headerHeight))
+    home.orderOut(nil)
+    let button = try #require(row["dock toggle"], "\(row.keys.sorted())")
+    #expect(button.frame.minX >= width - UtilitiesButton.slot && button.frame.maxX <= width, "\(button.frame)")
+
+    // Clipboard's card, 2×2 at the grid's left, its face a button here, without a notch and on this one.
+    let sent = sent
+    let card = HomeWidget(
+      id: "clipboard.history", feature: "clipboard", title: "History", place: .grid([.large, .medium]),
+      view: Button { sent.names.append("card") } label: { Color.gray.contentShape(Rectangle()) }.buttonStyle(.plain)
+    )
+    func cardFace(_ cutout: CGRect?) async throws -> CGRect {
+      let width = HomeView.width(notchWidth: cutout?.width)
+      let widgets = self.widgets.map { $0.id == card.id ? card : $0 }
+      let panel = try await show(self.home, width: width, dock: dock(isOpen: false), cutout: cutout, widgets: widgets)
+      defer { panel.orderOut(nil) }
+      let targets = await targets(in: panel, CGRect(x: 0, y: VortexMetrics.headerHeight, width: width / 2, height: 60))
+      return try #require(targets["card"], "\(targets.keys.sorted())").frame
+    }
+    let plain = try await cardFace(nil)
+    let wide = try await cardFace(cutout)
+    #expect(wide.minX - plain.minX == margin && wide.size == plain.size, "without a notch \(plain), on \(notch) pt \(wide)")
+
+    // The editor's Done, at the top of its panel.
+    func done(_ cutout: CGRect?) async throws -> CGRect {
+      let editor = try await showEditor(.features, cutout: cutout)
+      defer { editor.orderOut(nil) }
+      let regular = HomeView.width(notchWidth: cutout?.width)
+      let targets = await targets(in: editor, CGRect(x: regular, y: 0, width: HomeView.panelWidth, height: 60))
+      return try #require(targets["doneTapped"], "\(targets.keys.sorted())").frame
+    }
+    let plainDone = try await done(nil)
+    let wideDone = try await done(cutout)
+    #expect(wideDone.minX - plainDone.minX == width - HomeView.gridWidth, "Done: \(plainDone), \(wideDone)")
   }
 
   // MARK: - No capsule
