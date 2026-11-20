@@ -42,7 +42,9 @@ struct TextAsWrittenTests {
 
   /// Many reads at once all end. Vision holds a thread for each read while it waits for work of its own on other
   /// threads: 32 reads at once, as tests running side by side make, once left no thread for that work, and none ended.
-  @Test(.timeLimit(.minutes(1)))
+  /// The limit only stops a hang: in a run of every suite at once the reads wait their turns behind the other suites'
+  /// for close to a minute.
+  @Test(.timeLimit(.minutes(3)))
   func manyReadsAtOnceAllEnd() async throws {
     let chat = try Fixture.image("chat"), code = try Fixture.image("code")
     let reads = try await withThrowingTaskGroup(of: String.self) { group in

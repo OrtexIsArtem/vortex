@@ -90,18 +90,26 @@ enum Urgency: Sendable {
 
 /// Where readings take turns: `width` at a time, off the caller's thread. One the user waits for takes the next free turn
 /// before any waiting in the background, and runs at a higher quality of service. A reading waiting for its turn holds
-/// no thread; one whose task is cancelled ends at once with `CancellationError` and frees its turn (`VisionRead`).
+/// no thread; one whose task is cancelled ends at once with `CancellationError` and frees its turn (`VisionRead`): given
+/// up while its work runs, it lends the turn to the next reading until that work, which stops when it next looks, ends.
 final class ReadingQueue: Sendable {
   private let queue: OperationQueue
+  private let width: Int
+  /// Turns lent by readings given up while their work still runs.
+  private let lent = LockIsolated(0)
 
   init(width: Int) {
+    self.width = width
     queue = OperationQueue()
     queue.name = "Vortex text recognition"
     queue.maxConcurrentOperationCount = width
   }
 
-  /// How many readings run or wait.
+  /// How many readings run or wait, a reading given up counted until its work ends.
   var count: Int { queue.operationCount }
+
+  /// How many readings may run at once now: `width`, and one more for each reading given up whose work still runs.
+  var turns: Int { queue.maxConcurrentOperationCount }
 
   /// `work` in its turn, with the `VisionRead` that its task's cancellation gives up.
   func run<Result: Sendable>(
@@ -111,24 +119,36 @@ final class ReadingQueue: Sendable {
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
         let ending = Ending(continuation)
-        let operation = BlockOperation {
+        let operation = BlockOperation { [self] in
+          read.beginWork()
           ending.resume(with: Swift.Result {
             try read.check()
             return try work(read)
           })
+          read.endWork { lend(-1) }
         }
         operation.queuePriority = urgency == .interactive ? .veryHigh : .normal
         operation.qualityOfService = urgency == .interactive ? .userInitiated : .utility
-        // Given up: the task goes on at once; the work, if it runs, stops when it next looks. The operation holds the
-        // reading, so the reading holds it weakly, and neither outlives its turn with the picture it reads.
-        read.whenGivenUp { [weak operation] in
+        // Given up: the work, if it runs, stops when it next looks, its turn going to the next reading meanwhile, and the
+        // task goes on at once. The operation holds the reading, so the reading holds it weakly, and neither outlives its
+        // turn with the picture it reads.
+        read.whenGivenUp { [weak operation, weak self] in
           operation?.cancel()
+          read.lendTurn { self?.lend(1) }
           ending.resume(with: .failure(CancellationError()))
         }
         queue.addOperation(operation)
       }
     } onCancel: {
       read.giveUp()
+    }
+  }
+
+  /// Lends a turn, or takes one back.
+  private func lend(_ change: Int) {
+    lent.withValue { lent in
+      lent += change
+      queue.maxConcurrentOperationCount = width + lent
     }
   }
 }
@@ -160,9 +180,39 @@ final class VisionRead: @unchecked Sendable {
   private var isGivenUp = false
   private var requests: [VNRequest] = []
   private var onGiveUp: [@Sendable () -> Void] = []
+  /// Whether its work runs in its turn, and whether the turn was lent to the next reading, the reading given up meanwhile.
+  private var isWorking = false
+  private var hasLentTurn = false
+
+  /// Its work begins, in its turn (`ReadingQueue`).
+  func beginWork() {
+    lock.withLock { isWorking = true }
+  }
+
+  /// Its work ended: a turn lent meanwhile comes back (`takeBack`).
+  func endWork(takeBack: () -> Void) {
+    lock.withLock {
+      if hasLentTurn { takeBack() }
+      isWorking = false
+      hasLentTurn = false
+    }
+  }
+
+  /// Given up while its work runs: its turn goes to the next reading (`lend`) until the work ends. Under the reading's
+  /// lock, as `endWork`, so a turn comes back only after it was lent.
+  func lendTurn(_ lend: () -> Void) {
+    lock.withLock {
+      guard isWorking, !hasLentTurn else { return }
+      hasLentTurn = true
+      lend()
+    }
+  }
 
   /// Whether the reading was given up.
   var wasGivenUp: Bool { lock.withLock { isGivenUp } }
+
+  /// Whether Vision reads for it now: its requests are out (`perform`).
+  var isReading: Bool { lock.withLock { !requests.isEmpty } }
 
   func giveUp() {
     let actions = lock.withLock { () -> [@Sendable () -> Void] in
