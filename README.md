@@ -11,7 +11,10 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 - **Shelf**: put files aside and drag them out later, into any app. Unpinned files clear after a day.
 - **Tasks**: press «+» in the Tasks tab, or a shortcut you set, to freeze the screen. Frame an area and press Return. You get a task with the screenshot, its recognized text and the page address from your browser.
 - **Keys for Claude**: keep database URLs, API tokens and passwords in the macOS keychain. Claude Code runs commands with `{{key}}` placeholders through a local MCP server and never sees a value. Vortex asks you once per key per session.
-- **Keyboard cleaning**: lock every key while you wipe the keyboard. It's a utility: its button waits behind the utilities button at the end of Home's top row.
+- **Keyboard cleaning**: lock every key while you wipe the keyboard.
+- **Screen Text**: copy text you can't select, right off the screen: a screenshot in a chat, a video frame, an error. Frame it on the frozen screen, and it's on the clipboard; the notch says how many lines. A QR code gives its link or text.
+
+Keyboard cleaning and Screen Text are utilities, tools that do one thing. Their buttons wait behind the utilities button at the end of Home's top row, and each can have its own shortcut. Turn off the ones you don't need in **Features**.
 
 <table>
   <tr>
@@ -56,7 +59,7 @@ On first launch, Vortex walks you through the permissions it can use. Every one 
 | --- | --- |
 | Notifications | the timer's end, and Claude's key requests while the window is closed |
 | Accessibility | keyboard cleaning |
-| Screen Recording | tasks from the screen |
+| Screen Recording | tasks from the screen, and Screen Text |
 | Automation, per browser | a task's page address; macOS asks the first time |
 | Paste from Other Apps | clipboard history, only on macOS versions that ask |
 
