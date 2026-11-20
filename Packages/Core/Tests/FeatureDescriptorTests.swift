@@ -37,16 +37,15 @@ private enum PlainModule: FeatureModule {
 }
 
 /// A utility: one clear action, offered by Home's utilities button, its settings and the notch, so it makes no tab at
-/// all.
+/// all. Its type says so; it declares no kind.
 @MainActor
-private enum UtilityModule: FeatureModule {
+private enum SampleUtility: UtilityModule {
   static let id: FeatureID = "utility"
   static let title: LocalizedStringResource = "Utility"
   static let symbol = "text.viewfinder"
   static let summary: LocalizedStringResource = "Utility"
   static let details: LocalizedStringResource = "Utility"
   static let author = "@someone"
-  static let kind = FeatureKind.utility
 }
 
 @MainActor
@@ -65,14 +64,17 @@ struct FeatureDescriptorTests {
     #expect(d.suspension == nil && d.keeps == nil && d.dataFolder == nil && d.preview == nil)
   }
 
-  /// A module is a feature unless it says it is a utility, and its kind alone says whether it has a tab: a feature has
-  /// one, a utility none. The shell reads both from the descriptor, making no view.
+  /// The type is the kind: a `FeatureModule` is a feature, which must make its tab, and a `UtilityModule` a utility,
+  /// which makes none. Its kind alone says whether it has a tab, and the shell reads both from the descriptor.
   @Test
-  func aModuleIsAFeatureWithATabUnlessItIsAUtility() {
+  func theTypeIsTheKind() {
     #expect(PlainModule.kind == .feature && PlainModule.descriptor.kind == .feature)
     #expect(PlainModule.descriptor.hasTab && SampleModule.descriptor.hasTab)
-    #expect(UtilityModule.descriptor.kind == .utility)
-    #expect(!UtilityModule.descriptor.hasTab)
+    #expect(SampleUtility.kind == .utility && SampleUtility.descriptor.kind == .utility)
+    #expect(!SampleUtility.descriptor.hasTab)
+    // Through the protocol, as the shell and the registry see a module.
+    let modules: [any FeatureModule.Type] = [PlainModule.self, SampleUtility.self]
+    #expect(modules.map { $0.kind } == [.feature, .utility])
     #expect(FeatureDescriptor(id: "plain", title: "Plain", symbol: "circle").kind == .feature)
     #expect(!FeatureDescriptor(id: "tool", title: "Tool", symbol: "wrench", kind: .utility).hasTab)
     #expect(FeatureKind.feature.hasTab && !FeatureKind.utility.hasTab)

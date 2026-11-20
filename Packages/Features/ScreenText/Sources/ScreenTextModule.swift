@@ -6,11 +6,10 @@ import VortexPlatform
 /// Entry point the app shell reads; registered in Features/Registry. A utility, without a tab: its whole look is the
 /// frame on the frozen screen, the notch's message and its settings.
 @MainActor
-public enum ScreenTextModule: FeatureModule {
+public enum ScreenTextModule: UtilityModule {
   public static let id: FeatureID = ScreenTextFeature.id
   public static let title = LocalizedStringResource("Screen Text", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "text.viewfinder"
-  public static let kind = FeatureKind.utility
   public static let summary = LocalizedStringResource("Copy text you can't select, right off the screen", bundle: .atURL(Bundle.module.bundleURL))
   public static let details = LocalizedStringResource("Start it from your utilities on Home or a shortcut you set, then frame the text on the frozen screen: a screenshot in a chat, a video frame, an error. It's copied at once, a QR code as its link or text. Read on this Mac, in English, Ukrainian and Russian.", bundle: .atURL(Bundle.module.bundleURL))
   public static let author = "@OrtexIsArtem"

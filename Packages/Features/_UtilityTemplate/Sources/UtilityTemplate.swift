@@ -14,11 +14,10 @@ extension Hotkey {
 /// A utility does one clear thing and has no tab: its button is in Home's utilities dock, and the shell runs it there
 /// and from its shortcut, after making the window what its action needs. This one says hello in the closed notch.
 @MainActor
-public enum UtilityTemplateModule: FeatureModule {
+public enum UtilityTemplateModule: UtilityModule {
   public static let id: FeatureID = UtilityTemplateFeature.id
   public static let title = LocalizedStringResource("Utility Template", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "hand.wave"
-  public static let kind = FeatureKind.utility
   public static let summary = LocalizedStringResource("A starting point for a new utility", bundle: .atURL(Bundle.module.bundleURL))
   public static let details = LocalizedStringResource("Copy this folder to start a utility of your own: one clear action, with a button in Home's utilities dock and a shortcut.", bundle: .atURL(Bundle.module.bundleURL))
   public static let author = "@OrtexIsArtem"

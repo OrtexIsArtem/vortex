@@ -1,7 +1,7 @@
 # Contracts
 
 ## Provides
-- `KeyboardCleaningModule`: id `keyboard`, a utility (`kind` `.utility`, no tab), recommended; settings; `setEnabled(false)` ends a lock under way.
+- `KeyboardCleaningModule`: id `keyboard`, a utility (`UtilityModule`, no tab), recommended; settings; `setEnabled(false)` ends a lock under way.
 - The catalog's description: one line, details, author; keeps nothing; media in Resources/Catalog: a still of the lock screen and a 2 s clip of it, temporary, until the rig records the lock at work.
 - One utility action, `keyboard.lock` ("Lock Keyboard", help "Lock the keyboard for cleaning", `keyboard`): window `.open`, permission Accessibility, shortcut `lockKeyboard`; it sends `startTapped`.
 - Its cover, `makeWindowCover()`: the lock screen. It puts `WindowCover(feature: "keyboard", holdsKeyboard: true)` in `@Shared(.windowCover)` as the lock starts and takes it down as the lock ends, however it ends.

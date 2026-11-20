@@ -4,9 +4,10 @@ import SwiftUI
 public typealias FeatureID = String
 
 /// What a module is to the user: a feature, with a tab of its own, or a utility, which does one clear thing and has no
-/// tab. The one source of whether a module has a tab (`hasTab`).
+/// tab. The module's type says which (`FeatureModule` or `UtilityModule`), and the kind is the one source of whether it
+/// has a tab (`hasTab`).
 public enum FeatureKind: String, Sendable, Equatable, CaseIterable {
-  /// A tab in the sidebar, which a module has unless it says it is a utility.
+  /// A tab in the sidebar: a plain `FeatureModule`, which must make it.
   case feature
   /// One clear action and no tab: it shows itself through its utility actions (`FeatureModule.makeUtilityActions()`),
   /// which Home's utilities button offers, its own shortcut, its settings and the notch. The catalog and Settings ›
@@ -35,13 +36,8 @@ public protocol FeatureModule {
   /// drop doesn't reach Vortex) or opened with Vortex (`vortex shelf add`) arrive in `receiveFiles(_:)`. The first
   /// enabled feature that accepts files gets them.
   static var acceptsFileDrops: Bool { get }
-  /// A feature, with a tab in the sidebar, unless it says it is a utility, which has none (`FeatureKind`). A utility
-  /// shows itself only through what it offers elsewhere: its utility actions (`makeUtilityActions()`) on Home's
-  /// utilities button and from their shortcuts, its settings, the notch. The shell gives it no sidebar icon, no Open on
-  /// its catalog page and no shortcut that opens a tab, and never calls `makeTab()`.
-  static var kind: FeatureKind { get }
   /// Content of the feature's sidebar tab. It stays mounted while the window is closed, so work that should
-  /// run only while it is visible goes into `.task(id: isWindowOpen)`. A utility (`kind`) leaves it out.
+  /// run only while it is visible goes into `.task(id: isWindowOpen)`. A utility (`UtilityModule`) has none.
   static func makeTab() -> AnyView
   /// The feature's own section in Settings › Features, if it has settings.
   static func makeSettings() -> AnyView?
@@ -97,10 +93,13 @@ public protocol FeatureModule {
 }
 
 extension FeatureModule {
+  /// A feature, with a tab in the sidebar, unless its type is a `UtilityModule`, which has none. Taken from the type, so
+  /// no module can say otherwise; the shell reads it from the descriptor.
+  public static var kind: FeatureKind {
+    self is any UtilityModule.Type ? .utility : .feature
+  }
+
   public static var acceptsFileDrops: Bool { false }
-  public static var kind: FeatureKind { .feature }
-  /// Only a utility goes without its own: the shell never asks it for one.
-  public static func makeTab() -> AnyView { AnyView(EmptyView()) }
   public static func makeSettings() -> AnyView? { nil }
   public static func makeHomeWidgets() -> [HomeWidget] { [] }
   public static func makeUtilityActions() -> [UtilityAction] { [] }
@@ -143,6 +142,18 @@ extension FeatureModule {
       preview: preview
     )
   }
+}
+
+/// A utility: a module that does one clear thing and has no tab (`FeatureKind.utility`). It shows itself only through
+/// what it offers elsewhere: its utility actions (`makeUtilityActions()`) on Home's utilities button and from their
+/// shortcuts, its settings, its cover over the window, the notch. The shell gives it no sidebar icon, no Open on its
+/// catalog page and no shortcut that opens a tab, and never calls `makeTab()`, which a utility doesn't write.
+@MainActor
+public protocol UtilityModule: FeatureModule {}
+
+extension UtilityModule {
+  /// A utility has no tab: the shell never asks it for one.
+  public static func makeTab() -> AnyView { AnyView(EmptyView()) }
 }
 
 /// Plain description of a feature, safe to keep in reducer state.

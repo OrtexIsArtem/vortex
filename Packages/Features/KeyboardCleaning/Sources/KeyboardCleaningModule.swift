@@ -6,11 +6,10 @@ import VortexPlatform
 /// Entry point the app shell reads; registered in Features/Registry. A utility: its whole look is the lock screen over
 /// the window, its button in Home's utilities dock and its settings.
 @MainActor
-public enum KeyboardCleaningModule: FeatureModule {
+public enum KeyboardCleaningModule: UtilityModule {
   public static let id: FeatureID = KeyboardCleaningFeature.id
   public static let title = LocalizedStringResource("Keyboard Cleaning", bundle: .atURL(Bundle.module.bundleURL))
   public static let symbol = "keyboard"
-  public static let kind = FeatureKind.utility
   public static let summary = LocalizedStringResource("Lock every key while you wipe the keyboard", bundle: .atURL(Bundle.module.bundleURL))
   public static let details = LocalizedStringResource("Every key on your Mac stops working while you clean: letters, Esc, the function row, brightness and sound. The keyboard is drawn on the screen, and each key you wipe looks cleaner. One click turns it back on.", bundle: .atURL(Bundle.module.bundleURL))
   public static let author = "@OrtexIsArtem"

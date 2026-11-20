@@ -6,14 +6,13 @@ import Testing
 
 /// A utility that covers the window while it works, as keyboard cleaning does with its lock screen.
 @MainActor
-private enum CoveringModule: FeatureModule {
+private enum CoveringModule: UtilityModule {
   static let id: FeatureID = "covering"
   static let title: LocalizedStringResource = "Covering"
   static let symbol = "rectangle.fill"
   static let summary: LocalizedStringResource = "Covering"
   static let details: LocalizedStringResource = "Covering"
   static let author = "@someone"
-  static let kind = FeatureKind.utility
 
   static func makeWindowCover() -> AnyView? { AnyView(Color.black) }
 }
@@ -27,6 +26,8 @@ private enum PlainModule: FeatureModule {
   static let summary: LocalizedStringResource = "Plain"
   static let details: LocalizedStringResource = "Plain"
   static let author = "@someone"
+
+  static func makeTab() -> AnyView { AnyView(EmptyView()) }
 }
 
 /// The window cover: a utility's screen over the whole window while it works, which the utility puts up and takes down
