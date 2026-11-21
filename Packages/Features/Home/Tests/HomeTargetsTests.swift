@@ -119,7 +119,8 @@ struct HomeTargetsTests {
   /// The editor with the panel on `panel`, as wide as the large window's tab: on a notch whose `cutout` widens the
   /// window, wider by as much.
   func showEditor(
-    _ panel: HomeFeature.Panel, search: String = "", layout: HomeLayout? = nil, cutout: CGRect? = nil
+    _ panel: HomeFeature.Panel, search: String = "", layout: HomeLayout? = nil, cutout: CGRect? = nil,
+    dock: UtilitiesDock? = nil
   ) async throws -> Panel {
     let layout = layout ?? self.layout
     var state = HomeFeature.State()
@@ -130,7 +131,7 @@ struct HomeTargetsTests {
     state.panel = panel
     state.search = search
     let width = WindowSize.large.size(notchWidth: cutout?.width).width - VortexMetrics.sidebarWidth
-    return try await show(state, width: width, cutout: cutout)
+    return try await show(state, width: width, dock: dock, cutout: cutout)
   }
 
   /// A click at `point`, from the top left corner of Home: what it sent, by name.
@@ -323,6 +324,67 @@ struct HomeTargetsTests {
     #expect(lock.frame.minY >= 0 && lock.frame.maxY <= VortexMetrics.headerHeight)
     #expect(click(panel, at: CGPoint(x: 200, y: 200)) == "dock close")
     #expect(click(panel, at: CGPoint(x: HomeView.gridWidth - 22, y: 26)) == "dock close")
+  }
+
+  // MARK: - The button moved
+
+  /// Over the middle of Clipboard's 2×2 card at the grid's left: (157, 240) from the top left of Home's column.
+  let overClipboard = CGPoint(x: 157 - 312, y: 240)
+
+  /// Moved over a widget, the button takes the clicks of its 44 pt target there, and right past it the widget's control
+  /// gets its own: Clipboard's card, its face a button here.
+  @Test
+  func theMovedButtonTakesItsTargetsClicksAndTheWidgetTheRest() async throws {
+    let sent = sent
+    let card = HomeWidget(
+      id: "clipboard.history", feature: "clipboard", title: "History", place: .grid([.large, .medium]),
+      view: Button { sent.names.append("card") } label: { Color.gray.contentShape(Rectangle()) }.buttonStyle(.plain)
+    )
+    let state = home
+    state.$saved.withLock { $0?.button = overClipboard }
+    let widgets = self.widgets.map { $0.id == card.id ? card : $0 }
+    let panel = try await show(state, width: HomeView.gridWidth, dock: dock(isOpen: false), widgets: widgets)
+    defer { panel.orderOut(nil) }
+    let targets = await targets(in: panel, CGRect(x: 107, y: 190, width: 100, height: 100))
+    let button = try #require(targets["dock toggle"], "\(targets.keys.sorted())")
+    #expect(button.frame.width >= 44 && button.frame.height >= 44 && button.isSolid, "\(button.frame)")
+    #expect(abs(button.frame.midX - 157) <= 1 && abs(button.frame.midY - 240) <= 1, "\(button.frame)")
+    for point in [CGPoint(x: 133, y: 240), CGPoint(x: 181, y: 240), CGPoint(x: 157, y: 216), CGPoint(x: 157, y: 264)] {
+      #expect(click(panel, at: point) == "card", "\(point)")
+    }
+  }
+
+  /// In the editor a click on the button opens nothing, the pencil or the utilities, in its slot or moved.
+  @Test
+  func inTheEditorAClickOnTheButtonOpensNothing() async throws {
+    for place in [nil, overClipboard] {
+      var layout = self.layout
+      layout.button = place
+      let center = HomeLayout.buttonCenter(place, notch: nil)
+      for utilities in [nil, dock(isOpen: false)] {
+        let panel = try await showEditor(.features, layout: layout, dock: utilities)
+        defer { panel.orderOut(nil) }
+        #expect(click(panel, at: center) == nil, "\(center)")
+      }
+    }
+  }
+
+  /// The strip's first button lines up with the moved button; near Home's bottom the column moves up only as far as it
+  /// needs to stay inside the window.
+  @Test
+  func theStripLinesUpWithTheMovedButton() async throws {
+    for (y, top) in [(CGFloat(200), CGFloat(178)), (418, 440 - 3 * 44 - 13)] {
+      let state = home
+      state.$saved.withLock { $0?.button = CGPoint(x: overClipboard.x, y: y) }
+      let panel = try await show(state, width: HomeView.gridWidth + HomeView.dockWidth, dock: dock(isOpen: true))
+      defer { panel.orderOut(nil) }
+      let strip = CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.dockWidth, height: 440)
+      let targets = await targets(in: panel, strip)
+      let lock = try #require(targets["run keyboard.lock"])
+      let pencil = try #require(targets["editTapped"])
+      #expect(lock.frame.minY == top, "\(y): \(lock.frame)")
+      #expect(pencil.frame.maxY <= 440, "\(y): \(pencil.frame)")
+    }
   }
 
   // MARK: - A wide notch

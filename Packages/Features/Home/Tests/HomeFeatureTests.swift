@@ -361,6 +361,7 @@ struct HomeFeatureTests {
     await store.send(.addTapped("clipboard.pinned"))
     await store.send(.sizeTapped("clipboard.history", .medium))
     await store.send(.dropped("shelf.files", column: 2, row: 1))
+    await store.send(.buttonDropped(CGPoint(x: 200, y: 150)))
   }
 
   /// Hovering a widget in the panel puts its copy where it would go: its chosen size in the first place it fits.
@@ -492,8 +493,8 @@ struct HomeFeatureTests {
 
   // MARK: - What Done keeps, and every other way out
 
-  /// The editor's four kinds of edit, each changing only its draft: Clipboard dragged onto Shelf, Shelf removed,
-  /// Clipboard made medium, and Clipboard's pinned widget added at medium.
+  /// The editor's five kinds of edit, each changing only its draft: Clipboard dragged onto Shelf, Shelf removed,
+  /// Clipboard made medium, Clipboard's pinned widget added at medium, and the utilities button dropped over Clipboard.
   func edit(_ store: TestStoreOf<HomeFeature>) async {
     await store.send(.dropped("clipboard.history", column: 2, row: 0)) {
       $0.draft?.placed[0].column = 2
@@ -511,9 +512,13 @@ struct HomeFeatureTests {
     await store.send(.addTapped("clipboard.pinned")) {
       $0.draft?.placed.append(Placement(widget: "clipboard.pinned", size: .medium, column: 0, row: 0))
     }
+    await store.send(.buttonDropped(CGPoint(x: 460, y: 150))) {
+      $0.draft?.button = CGPoint(x: 148, y: 150)
+    }
   }
 
-  /// Cancel puts Home back as it was when the editor opened: a drop, a remove, a size and an Add all go.
+  /// Cancel puts Home back as it was when the editor opened: a drop, a remove, a size, an Add and the button's place
+  /// all go.
   @Test
   func cancelPutsHomeBack() async {
     await editsGo(by: .cancelTapped)
@@ -540,6 +545,7 @@ struct HomeFeatureTests {
     #expect(store.state.saved == saved)
     #expect(store.state.visible == shown)
     #expect(store.state.notchRowWidget == "timer.timer")
+    #expect(store.state.layout?.button == nil)
   }
 
   /// Nothing the editor changes reaches home.json before Done; Done writes it once, and not at all when nothing
@@ -588,6 +594,97 @@ struct HomeFeatureTests {
       #expect(file.writes.value == writes + 1)
       #expect(file.layout == draft)
     }
+  }
+
+  // MARK: - The utilities button
+
+  /// A drop puts the utilities button's place in the draft where the layout's rules settle it: inside Home's column,
+  /// clear of the notch Home's view last showed, or back in its slot near it. What is saved doesn't change.
+  @Test
+  func aDroppedButtonGoesInTheDraft() async {
+    let store = await editingStore()
+    let saved = store.state.saved
+    await store.send(.buttonDropped(CGPoint(x: 200, y: 150))) {
+      $0.draft?.button = CGPoint(x: -112, y: 150)
+    }
+    await store.send(.buttonDropped(CGPoint(x: 200, y: 600))) {
+      $0.draft?.button = CGPoint(x: -112, y: 418)
+    }
+    let notch = CGRect(x: 191, y: 0, width: 186, height: 32)
+    await store.send(.notchChanged(notch)) { $0.notch = notch }
+    await store.send(.buttonDropped(CGPoint(x: 284, y: 10))) {
+      $0.draft?.button = CGPoint(x: -28, y: 54)
+    }
+    await store.send(.buttonDropped(CGPoint(x: 595, y: 30))) {
+      $0.draft?.button = nil
+    }
+    #expect(store.state.saved == saved)
+  }
+
+  /// Done keeps the button's place, its only edit, in one write; Done with nothing changed writes nothing.
+  @Test
+  func doneKeepsTheButtonsPlaceInOneWrite() async throws {
+    let file = HomeFile()
+    try await withDependencies { $0.defaultFileStorage = file.storage } operation: {
+      let store = await editingStore()
+      let writes = file.writes.value
+      await store.send(.buttonDropped(CGPoint(x: 200, y: 150))) {
+        $0.draft?.button = CGPoint(x: -112, y: 150)
+      }
+      #expect(file.writes.value == writes)
+      // Not exhaustive for Done alone: an expectation's `$saved.withLock` writes home.json itself.
+      store.exhaustivity = .off
+      await store.send(.doneTapped)
+      store.exhaustivity = .on
+      #expect(file.writes.value == writes + 1)
+      let kept = try #require(file.layout)
+      #expect(kept.button == CGPoint(x: -112, y: 150) && store.state.saved == kept)
+      await store.send(.editTapped) {
+        $0.isEditing = true
+        $0.draft = kept
+      }
+      await store.send(.doneTapped) {
+        $0.isEditing = false
+        $0.draft = nil
+      }
+      #expect(file.writes.value == writes + 1)
+    }
+  }
+
+  /// The button can't be removed: focused, it has no Delete of its own, so the editor's Delete only ever sends a
+  /// widget's removal, and removing the widget it covers, and every other one, leaves its place.
+  @Test
+  func deleteRemovesWidgetsButNeverTheButton() async {
+    let store = await editingStore()
+    await store.send(.buttonDropped(CGPoint(x: 157, y: 240))) {
+      $0.draft?.button = CGPoint(x: -155, y: 240)
+    }
+    await store.send(.removeTapped("clipboard.history")) { $0.draft?.placed.remove(at: 0) }
+    await store.send(.removeTapped("shelf.files")) { $0.draft?.placed = [] }
+    await store.send(.removeTapped("timer.timer")) { $0.draft?.notchRow = nil }
+    #expect(store.state.draft?.button == CGPoint(x: -155, y: 240))
+  }
+
+  /// Widgets' drops and pushes ignore the button: over Clipboard's cells it neither keeps Shelf from swapping places
+  /// with Clipboard nor moves.
+  @Test
+  func widgetsDropsAndPushesIgnoreTheButton() async {
+    let store = await editingStore(saved: HomeLayout(
+      notchRow: "timer.timer",
+      placed: [
+        Placement(widget: "shelf.files", size: .medium, column: 0, row: 0),
+        Placement(widget: "clipboard.history", size: .large, column: 2, row: 0),
+      ],
+      button: CGPoint(x: 157, y: 240)
+    ))
+    await store.send(.dropped("shelf.files", column: 2, row: 0)) {
+      $0.draft?.placed[0].column = 2
+      $0.draft?.placed[1].column = 0
+    }
+    await store.send(.dropped("shelf.files", column: 2, row: 1)) {
+      $0.draft?.placed[0].row = 1
+    }
+    #expect(store.state.draft?.button == CGPoint(x: 157, y: 240))
   }
 
   /// A feature that goes while the editor is open takes its widget away from what is saved and from the draft alike,

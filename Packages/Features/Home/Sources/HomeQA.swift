@@ -1,5 +1,6 @@
 #if DEBUG
   import ComposableArchitecture
+  import CoreGraphics
   import VortexCore
   import VortexPlatform
 
@@ -14,7 +15,9 @@
     /// - `resize id=<widget> size=small|medium|wide|large|full`: a size in the widget's switcher;
     /// - `add id=<widget> [size=]`: Add, after choosing the size;
     /// - `remove id=<widget>`: its "−";
-    /// - `move id=<widget> column=<0-3> row=<0-1>`: a drag that lands its top left corner on that cell.
+    /// - `move id=<widget> column=<0-3> row=<0-1>`: a drag that lands its top left corner on that cell;
+    /// - `button x=<points> y=<points>`: a drag that drops the utilities button with its center there, from the top
+    ///   left of Home's column as a snapshot shows it; `button slot`, one that drops it on its slot.
     /// The state section `home` tells the layout, the editor's draft, what shows, the editor and the copy (`QAState`).
     static func registerQACommands() {
       guard QA.isActive, !isRegistered else { return }
@@ -22,7 +25,7 @@
       QA.registerState(section: "home") { QAState(store.state) }
       QA.register(command: "home") { arguments in
         guard QA.isShowing(.tab(id)) else { throw QAError("Home's commands work while the open window shows Home") }
-        for action in try qaActions(arguments) {
+        for action in try qaActions(arguments, notch: store.state.notch) {
           store.send(action)
         }
       }
@@ -34,8 +37,14 @@
       var notchRow: String?
       /// Every place in home.json, in its order.
       var placed: [String]
+      /// The utilities button's place in home.json: [x, y] of its center, from the middle of Home's column and from its
+      /// top; nil in its slot.
+      var button: CGPoint?
       /// The editor's draft, which only Done keeps in home.json; nil outside the editor.
       var draft: Layout?
+      /// Where the button's center shows now, at the draft's place in the editor: [x, y] from the top left of Home's
+      /// column.
+      var buttonShows: CGPoint
       /// The widgets on the grid now: the draft's in the editor.
       var visible: [String]
       /// The running features' widgets, as the shell told them.
@@ -53,10 +62,11 @@
       /// The features whose request found no room, as their pages say.
       var noRoomOnHome: [String]
 
-      /// A layout as plain words: its notch row, and its places in their order.
+      /// A layout as plain words: its notch row, its places in their order, and the utilities button's place.
       struct Layout: Encodable, Equatable {
         var notchRow: String?
         var placed: [String]
+        var button: CGPoint?
       }
 
       init(_ state: HomeFeature.State) {
@@ -66,9 +76,13 @@
         }
         notchRow = state.saved?.notchRow
         placed = (state.saved?.placed ?? []).map(words)
+        button = state.saved?.button
         draft = state.isEditing
-          ? Layout(notchRow: state.draft?.notchRow, placed: (state.draft?.placed ?? []).map(words))
+          ? Layout(
+            notchRow: state.draft?.notchRow, placed: (state.draft?.placed ?? []).map(words), button: state.draft?.button
+          )
           : nil
+        buttonShows = HomeLayout.buttonCenter(state.layout?.button, notch: state.notch)
         visible = state.visible.map(\.widget)
         widgets = state.widgets.map(\.id)
         isEditing = state.isEditing
@@ -91,8 +105,11 @@
       }
     }
 
-    static func qaActions(_ arguments: [String: String]) throws -> [HomeFeature.Action] {
-      let verbs = ["edit", "done", "cancel", "feature", "back", "search", "hover", "resize", "add", "remove", "move"]
+    /// What the command sends; `notch` is where the notch cuts into Home's column, for the button's slot.
+    static func qaActions(_ arguments: [String: String], notch: CGRect? = nil) throws -> [HomeFeature.Action] {
+      let verbs = [
+        "edit", "done", "cancel", "feature", "back", "search", "hover", "resize", "add", "remove", "move", "button",
+      ]
       let named = verbs.filter { arguments[$0] == "" }
       guard named.count == 1, let verb = named.first else {
         throw QAError("home takes one of \(verbs.joined(separator: ", "))")
@@ -132,6 +149,12 @@
         return (try size().map { [.sizeTapped(id, $0)] } ?? []) + [.addTapped(id)]
       case "remove":
         return [.removeTapped(try widget())]
+      case "button":
+        if arguments["slot"] == "" { return [.buttonDropped(HomeLayout.buttonSlot(notch: notch))] }
+        guard let x = Double(arguments["x"] ?? ""), let y = Double(arguments["y"] ?? "") else {
+          throw QAError("button takes x=<points> y=<points>, or slot")
+        }
+        return [.buttonDropped(CGPoint(x: x, y: y))]
       default:
         guard let column = Int(arguments["column"] ?? ""), let row = Int(arguments["row"] ?? "") else {
           throw QAError("move takes column=<0-3> row=<0-1>")

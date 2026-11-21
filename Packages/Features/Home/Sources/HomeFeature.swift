@@ -27,6 +27,9 @@ struct HomeFeature: Sendable {
     @Shared(.featuresOnHome) var featuresOnHome
     /// And the features whose request found no room, until a widget of theirs is on Home.
     @Shared(.noRoomOnHome) var noRoomOnHome
+    /// Where the notch cuts into Home's column, as its view last showed it; nil without one. Home's width follows it,
+    /// and the utilities button keeps clear of it.
+    var notch: CGRect?
 
     var available: Set<String> { Set(widgets.map(\.id)) }
 
@@ -203,6 +206,11 @@ struct HomeFeature: Sendable {
     case addTapped(String)
     /// A widget on Home dragged so its top left corner is over a cell: the widgets in its way move aside.
     case dropped(String, column: Int, row: Int)
+    /// The utilities button dragged in the editor and dropped with its center at this point, from the top left of
+    /// Home's column.
+    case buttonDropped(CGPoint)
+    /// Home's view shows on a display whose notch cuts into its column there, or on one without.
+    case notchChanged(CGRect?)
   }
 
   enum CancelID {
@@ -319,6 +327,17 @@ struct HomeFeature: Sendable {
         // The widgets in its way move aside; where they can't, it goes back and nothing moves.
         guard let moved = state.layout(moving: id, column: column, row: row) else { return .none }
         state.draft = moved
+        return .none
+
+      case let .buttonDropped(point):
+        // It settles where the layout's rules put it: its slot, or a place inside the column and clear of the notch.
+        guard state.isEditing else { return .none }
+        let place = HomeLayout.buttonPlace(droppedAt: point, notch: state.notch)
+        state.draft?.button = place
+        return .none
+
+      case let .notchChanged(notch):
+        state.notch = notch
         return .none
       }
     }

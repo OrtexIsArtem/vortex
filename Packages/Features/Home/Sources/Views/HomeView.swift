@@ -2,10 +2,11 @@ import ComposableArchitecture
 import SwiftUI
 import VortexCore
 
-/// Home: a widget in the row next to the notch, with the utilities button at the row's right end, and the others as
-/// cards on the 4×2 grid under it. In the editor Home stays where it is, and the window grows to the right for the panel
-/// of widgets; so it does by a narrow strip for the utilities dock. On a wide notch the window is wider: the row spans
-/// it, and the grid keeps its size in the middle, the extra room equal margins at its sides.
+/// Home: a widget in the row next to the notch, and the others as cards on the 4×2 grid under it; the utilities button
+/// floats over them, in its slot at the row's right end unless the editor moved it. In the editor Home stays where it
+/// is, and the window grows to the right for the panel of widgets; so it does by a narrow strip for the utilities dock.
+/// On a wide notch the window is wider: the row spans it, and the grid keeps its size in the middle, the extra room
+/// equal margins at its sides.
 struct HomeView: View {
   let store: StoreOf<HomeFeature>
   @Environment(\.homeWidgets) private var widgets
@@ -33,16 +34,19 @@ struct HomeView: View {
   var body: some View {
     let byID = Dictionary(widgets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     let isDockOpen = !store.isEditing && dock?.isOpen == true
+    let width = Self.width(notchWidth: cutout?.width)
+    // Where the utilities button's center shows in the layout Home shows: its slot, or its place.
+    let button = HomeLayout.buttonCenter(store.layout?.button, notch: cutout)
     HStack(spacing: 0) {
       VStack(spacing: 0) {
-        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] }, byID: byID, dock: dock)
+        NotchRow(store: store, widget: store.notchRowWidget.flatMap { byID[$0] }, byID: byID)
         GridArea(store: store, byID: byID)
           // On a wide notch the grid keeps its size in the column's middle: the extra room is equal margins.
           .frame(width: Self.gridWidth)
           .frame(maxWidth: .infinity)
       }
       // As wide as the regular window's tab, the panel or the strip past it.
-      .frame(width: Self.width(notchWidth: cutout?.width))
+      .frame(width: width)
       .contextMenu {
         if !store.isEditing {
           Button {
@@ -52,29 +56,37 @@ struct HomeView: View {
           }
         }
       }
-      .overlay {
-        // A click anywhere on Home outside the strip puts it away, the row's button included. A button, as the first
-        // click in a window opened by hover reaches buttons only.
-        if isDockOpen, let dock {
-          Button {
-            dock.close()
-          } label: {
-            Color.clear.contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .accessibilityHidden(true)
-        }
-      }
       if store.isEditing {
         HomeEditorPanel(store: store, byID: byID, showCatalog: showCatalog)
           .frame(width: Self.panelWidth)
       } else if isDockOpen, let dock {
-        UtilitiesStrip(dock: dock) { store.send(.editTapped) }
+        UtilitiesStrip(dock: dock, buttonY: button.y) { store.send(.editTapped) }
           .frame(width: Self.dockWidth)
+      }
+    }
+    // Over the row and the grid, and over the editor's panel while a drag takes it there.
+    .overlay(alignment: .topLeading) {
+      FloatingButton(store: store, dock: dock, center: button)
+    }
+    .overlay(alignment: .leading) {
+      // A click anywhere on Home outside the strip puts it away, the utilities button included. A button, as the first
+      // click in a window opened by hover reaches buttons only.
+      if isDockOpen, let dock {
+        Button {
+          dock.close()
+        } label: {
+          Color.clear.contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHidden(true)
+        .frame(width: width)
       }
     }
     // While the window grows, the panel waits past its right edge.
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .onChange(of: cutout, initial: true) { _, cutout in
+      store.send(.notchChanged(cutout))
+    }
     .onChange(of: store.isEditing) { _, isEditing in
       windowRequest?(isEditing ? Self.editorWindow : .regular)
     }
@@ -91,22 +103,19 @@ struct HomeView: View {
   }
 }
 
-/// The row next to the notch: its widget, or Home's title, and at its right end, outside the editor, the utilities
-/// button, in a slot of its own after the widget's controls, so the notch stays in the window's middle.
+/// The row next to the notch: its widget, or Home's title, and at its right end the utilities button's slot after the
+/// widget's controls, kept wherever the button is, so the notch stays in the window's middle.
 private struct NotchRow: View {
   let store: StoreOf<HomeFeature>
   let widget: HomeWidget?
   let byID: [String: HomeWidget]
-  let dock: UtilitiesDock?
 
   var body: some View {
     HStack(spacing: 0) {
       content
         .frame(maxWidth: .infinity)
-      if !store.isEditing {
-        UtilitiesButton(dock: dock) { store.send(.editTapped) }
-          .frame(width: UtilitiesButton.slot)
-      }
+      Color.clear
+        .frame(width: UtilitiesButton.slot)
     }
     .frame(height: VortexMetrics.headerHeight)
   }
@@ -137,6 +146,55 @@ private struct NotchRow: View {
           .padding(.leading, 10)
       }
     }
+  }
+}
+
+/// The utilities button at its center over Home: over the row, the grid and a dragged widget. Out of its slot it
+/// floats, with a shadow. In the editor it answers no click: the pointer or the keyboard's focus gives it the editor's
+/// ring, and a drag moves it alone, the drop settling where the layout's rules put it.
+private struct FloatingButton: View {
+  let store: StoreOf<HomeFeature>
+  let dock: UtilitiesDock?
+  /// Where its center shows, from the top left of Home's column.
+  let center: CGPoint
+  /// How far the pointer has dragged it so far.
+  @State private var drag = CGSize.zero
+  @State private var isHovered = false
+  @FocusState private var isFocused: Bool
+
+  var body: some View {
+    let isEditing = store.isEditing
+    UtilitiesButton(dock: dock, isFloating: store.layout?.button != nil || drag != .zero) { store.send(.editTapped) }
+      .allowsHitTesting(!isEditing)
+      .accessibilityHidden(isEditing)
+      .overlay {
+        if isEditing {
+          // Takes the pointer instead of the button.
+          Circle()
+            .strokeBorder(VortexColor.primaryText.opacity(isHovered || isFocused ? 0.28 : 0), lineWidth: 1)
+            .padding((UtilitiesButton.slot - 28) / 2)
+            .contentShape(Rectangle())
+        }
+      }
+      .onHover { isHovered = $0 }
+      .focusable(isEditing)
+      .focused($isFocused)
+      .focusEffectDisabled()
+      .offset(x: center.x - UtilitiesButton.slot / 2 + drag.width, y: center.y - UtilitiesButton.slot / 2 + drag.height)
+      .gesture(
+        DragGesture(minimumDistance: 3, coordinateSpace: .global)
+          .onChanged { drag = $0.translation }
+          .onEnded { value in
+            let point = CGPoint(x: center.x + value.translation.width, y: center.y + value.translation.height)
+            withAnimation(.snappy(duration: 0.25)) {
+              store.send(.buttonDropped(point))
+              drag = .zero
+            }
+          },
+        including: isEditing ? .all : .subviews
+      )
+      // Done or the window closing mid-drag: it doesn't stay lifted.
+      .onChange(of: isEditing) { drag = .zero }
   }
 }
 
