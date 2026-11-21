@@ -53,10 +53,12 @@ struct HomeTargetsTests {
     HomeLayout(notchRow: "timer.timer", placed: [Placement(widget: "clipboard.history", size: .large, column: 0, row: 0)])
   }
 
-  /// What an action is called here; nil for what the pointer's moves send rather than its clicks.
+  /// What an action is called here; nil for what the pointer's moves send rather than its clicks, and for the notch the
+  /// view tells as it shows.
   static func name(_ action: HomeFeature.Action) -> String? {
     switch action {
-    case .hovered: nil
+    case .hovered, .notchChanged: nil
+    case let .buttonDropped(point): "button \(Int(point.x)) \(Int(point.y))"
     case let .sizeTapped(id, size): "size \(id) \(size.rawValue)"
     case let .addTapped(id): "add \(id)"
     case let .featureTapped(id): "feature \(id)"
@@ -134,24 +136,61 @@ struct HomeTargetsTests {
     return try await show(state, width: width, dock: dock, cutout: cutout)
   }
 
+  /// A mouse event at `point`, from the top left corner of Home, as the window gets it.
+  func mouse(_ type: NSEvent.EventType, at point: CGPoint, in panel: Panel) -> NSEvent? {
+    NSEvent.mouseEvent(
+      with: type, location: CGPoint(x: point.x, y: panel.frame.height - point.y), modifierFlags: [],
+      timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber, context: nil, eventNumber: 0,
+      clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1
+    )
+  }
+
   /// A click at `point`, from the top left corner of Home: what it sent, by name.
   func click(_ panel: Panel, at point: CGPoint) -> String? {
     sent.names = []
-    let location = CGPoint(x: point.x, y: panel.frame.height - point.y)
-    func event(_ type: NSEvent.EventType) -> NSEvent? {
-      NSEvent.mouseEvent(
-        with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-        windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
-        pressure: type == .leftMouseDown ? 1 : 0
-      )
-    }
     // The search field's text follows a press in a loop of its own, which waits for the system's mouse-up: its points
     // aren't clicked, as no button sits there.
+    let location = CGPoint(x: point.x, y: panel.frame.height - point.y)
     if let view = panel.contentView?.hitTest(location), view is NSTextField || view is NSTextView { return nil }
-    guard let down = event(.leftMouseDown), let up = event(.leftMouseUp) else { return nil }
+    guard let down = mouse(.leftMouseDown, at: point, in: panel), let up = mouse(.leftMouseUp, at: point, in: panel)
+    else { return nil }
     panel.sendEvent(down)
     panel.sendEvent(up)
     return sent.names.isEmpty ? nil : sent.names.joined(separator: "+")
+  }
+
+  /// A drag from `start` to `end`, from the top left corner of Home, in ten moves: what it sent, by name. The events go
+  /// in one turn, so no other suite's window takes the keyboard halfway; SwiftUI ends the gesture on a later turn, so
+  /// what it sends is waited for, two seconds at most.
+  func drag(_ panel: Panel, from start: CGPoint, to end: CGPoint) async throws -> String? {
+    sent.names = []
+    let moves = (1...10).map { step in
+      CGPoint(x: start.x + (end.x - start.x) * CGFloat(step) / 10, y: start.y + (end.y - start.y) * CGFloat(step) / 10)
+    }
+    let events = [mouse(.leftMouseDown, at: start, in: panel)]
+      + moves.map { mouse(.leftMouseDragged, at: $0, in: panel) }
+      + [mouse(.leftMouseUp, at: end, in: panel)]
+    panel.makeKey()
+    for event in events.compactMap(\.self) {
+      panel.sendEvent(event)
+    }
+    for _ in 0..<40 where sent.names.isEmpty {
+      try await Task.sleep(for: .milliseconds(50))
+    }
+    return sent.names.isEmpty ? nil : sent.names.joined(separator: "+")
+  }
+
+  /// What Home's right-click menu at `point` holds, by what each of its items sends; empty without a menu.
+  func menu(_ panel: Panel, at point: CGPoint) -> [String] {
+    guard let event = mouse(.rightMouseDown, at: point, in: panel),
+          let view = panel.contentView?.hitTest(event.locationInWindow),
+          let menu = view.menu(for: event)
+    else { return [] }
+    return menu.items.indices.compactMap { index in
+      sent.names = []
+      menu.performActionForItem(at: index)
+      return sent.names.first
+    }
   }
 
   /// The targets in `area`, each found by clicks every 12 pt, less than any of them is wide, then measured to the point
@@ -354,7 +393,8 @@ struct HomeTargetsTests {
     }
   }
 
-  /// In the editor a click on the button opens nothing, the pencil or the utilities, in its slot or moved.
+  /// In the editor the button is there, in its slot or moved, the pencil or the utilities: a drag on it drops it where
+  /// it ends. A click on it opens nothing.
   @Test
   func inTheEditorAClickOnTheButtonOpensNothing() async throws {
     for place in [nil, overClipboard] {
@@ -364,26 +404,62 @@ struct HomeTargetsTests {
       for utilities in [nil, dock(isOpen: false)] {
         let panel = try await showEditor(.features, layout: layout, dock: utilities)
         defer { panel.orderOut(nil) }
+        let end = CGPoint(x: center.x - 100, y: center.y + 60)
+        #expect(try await drag(panel, from: center, to: end) == "button \(Int(end.x)) \(Int(end.y))", "\(center)")
         #expect(click(panel, at: center) == nil, "\(center)")
       }
     }
   }
 
-  /// The strip's first button lines up with the moved button; near Home's bottom the column moves up only as far as it
-  /// needs to stay inside the window.
+  /// While Home has no layout yet, the button in the editor stays in its slot: a drag on it moves nothing.
+  @Test
+  func beforeHomeHasALayoutTheEditorCantDragTheButton() async throws {
+    var state = HomeFeature.State()
+    state.widgets = infos
+    state.isEditing = true
+    let panel = try await show(state, width: WindowSize.large.size.width - VortexMetrics.sidebarWidth)
+    defer { panel.orderOut(nil) }
+    let slot = HomeLayout.buttonCenter(nil, notch: nil)
+    #expect(try await drag(panel, from: slot, to: CGPoint(x: slot.x - 100, y: slot.y + 60)) == nil)
+  }
+
+  /// Outside the editor a right-click on the button shows Home's menu, Edit Home, in its slot and moved.
+  @Test
+  func rightClickingTheButtonShowsHomesMenu() async throws {
+    for place in [nil, overClipboard] {
+      let state = home
+      state.$saved.withLock { $0?.button = place }
+      let panel = try await show(state, width: HomeView.gridWidth, dock: dock(isOpen: false))
+      defer { panel.orderOut(nil) }
+      let center = HomeLayout.buttonCenter(place, notch: nil)
+      #expect(menu(panel, at: center) == ["editTapped"], "\(center)")
+    }
+  }
+
+  /// The strip's first button lines up with the moved button, with one utility or two; near Home's bottom the column
+  /// moves up only as far as it needs to stay inside the window. A click on the moved button puts the strip away, as a
+  /// click anywhere else on Home does.
   @Test
   func theStripLinesUpWithTheMovedButton() async throws {
-    for (y, top) in [(CGFloat(200), CGFloat(178)), (418, 440 - 3 * 44 - 13)] {
-      let state = home
-      state.$saved.withLock { $0?.button = CGPoint(x: overClipboard.x, y: y) }
-      let panel = try await show(state, width: HomeView.gridWidth + HomeView.dockWidth, dock: dock(isOpen: true))
-      defer { panel.orderOut(nil) }
-      let strip = CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.dockWidth, height: 440)
-      let targets = await targets(in: panel, strip)
-      let lock = try #require(targets["run keyboard.lock"])
-      let pencil = try #require(targets["editTapped"])
-      #expect(lock.frame.minY == top, "\(y): \(lock.frame)")
-      #expect(pencil.frame.maxY <= 440, "\(y): \(pencil.frame)")
+    let lock = UtilitiesDockButton(id: "keyboard.lock", symbol: "keyboard", label: "Lock Keyboard")
+    let copy = UtilitiesDockButton(id: "screentext.copy", symbol: "text.viewfinder", label: "Copy Text")
+    for buttons in [[lock], [lock, copy]] {
+      // The column: the buttons and the pencil, 44 pt each, and the 13 pt line between them.
+      let column = CGFloat(buttons.count + 1) * 44 + 13
+      for (y, top) in [(CGFloat(200), CGFloat(178)), (418, 440 - column)] {
+        let state = home
+        state.$saved.withLock { $0?.button = CGPoint(x: overClipboard.x, y: y) }
+        let width = HomeView.gridWidth + HomeView.dockWidth
+        let panel = try await show(state, width: width, dock: dock(isOpen: true, buttons: buttons))
+        defer { panel.orderOut(nil) }
+        let strip = CGRect(x: HomeView.gridWidth, y: 0, width: HomeView.dockWidth, height: 440)
+        let targets = await targets(in: panel, strip)
+        let first = try #require(targets["run keyboard.lock"])
+        let pencil = try #require(targets["editTapped"])
+        #expect(first.frame.minY == top, "\(buttons.count) at \(y): \(first.frame)")
+        #expect(pencil.frame.maxY <= 440, "\(buttons.count) at \(y): \(pencil.frame)")
+        #expect(click(panel, at: CGPoint(x: 157, y: y)) == "dock close")
+      }
     }
   }
 

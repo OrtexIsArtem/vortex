@@ -47,15 +47,7 @@ struct HomeView: View {
       }
       // As wide as the regular window's tab, the panel or the strip past it.
       .frame(width: width)
-      .contextMenu {
-        if !store.isEditing {
-          Button {
-            store.send(.editTapped)
-          } label: {
-            Text("Edit Home", bundle: .module)
-          }
-        }
-      }
+      .contextMenu { EditHomeMenu(store: store) }
       if store.isEditing {
         HomeEditorPanel(store: store, byID: byID, showCatalog: showCatalog)
           .frame(width: Self.panelWidth)
@@ -149,9 +141,25 @@ private struct NotchRow: View {
   }
 }
 
+/// Home's right-click menu outside the editor, on the utilities button too: Edit Home.
+private struct EditHomeMenu: View {
+  let store: StoreOf<HomeFeature>
+
+  var body: some View {
+    if !store.isEditing {
+      Button {
+        store.send(.editTapped)
+      } label: {
+        Text("Edit Home", bundle: .module)
+      }
+    }
+  }
+}
+
 /// The utilities button at its center over Home: over the row, the grid and a dragged widget. Out of its slot it
 /// floats, with a shadow. In the editor it answers no click: the pointer or the keyboard's focus gives it the editor's
-/// ring, and a drag moves it alone, the drop settling where the layout's rules put it.
+/// ring, and a drag moves it alone, the drop settling where the layout's rules put it; before Home has a layout it just
+/// stays in its slot.
 private struct FloatingButton: View {
   let store: StoreOf<HomeFeature>
   let dock: UtilitiesDock?
@@ -164,11 +172,13 @@ private struct FloatingButton: View {
 
   var body: some View {
     let isEditing = store.isEditing
+    let canMove = store.canMoveButton
     UtilitiesButton(dock: dock, isFloating: store.layout?.button != nil || drag != .zero) { store.send(.editTapped) }
       .allowsHitTesting(!isEditing)
       .accessibilityHidden(isEditing)
+      .contextMenu { EditHomeMenu(store: store) }
       .overlay {
-        if isEditing {
+        if canMove {
           // Takes the pointer instead of the button.
           Circle()
             .strokeBorder(VortexColor.primaryText.opacity(isHovered || isFocused ? 0.28 : 0), lineWidth: 1)
@@ -177,9 +187,11 @@ private struct FloatingButton: View {
         }
       }
       .onHover { isHovered = $0 }
-      .focusable(isEditing)
+      .focusable(canMove)
       .focused($isFocused)
       .focusEffectDisabled()
+      // It can't be removed: Delete does nothing, without the alert sound of a key nothing takes.
+      .onKeyPress(keys: [.delete, .deleteForward]) { _ in isEditing ? .handled : .ignored }
       .offset(x: center.x - UtilitiesButton.slot / 2 + drag.width, y: center.y - UtilitiesButton.slot / 2 + drag.height)
       .gesture(
         DragGesture(minimumDistance: 3, coordinateSpace: .global)
@@ -191,7 +203,7 @@ private struct FloatingButton: View {
               drag = .zero
             }
           },
-        including: isEditing ? .all : .subviews
+        including: canMove ? .all : .subviews
       )
       // Done or the window closing mid-drag: it doesn't stay lifted.
       .onChange(of: isEditing) { drag = .zero }

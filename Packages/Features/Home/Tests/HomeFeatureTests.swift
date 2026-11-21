@@ -604,6 +604,7 @@ struct HomeFeatureTests {
   func aDroppedButtonGoesInTheDraft() async {
     let store = await editingStore()
     let saved = store.state.saved
+    #expect(store.state.canMoveButton)
     await store.send(.buttonDropped(CGPoint(x: 200, y: 150))) {
       $0.draft?.button = CGPoint(x: -112, y: 150)
     }
@@ -619,6 +620,18 @@ struct HomeFeatureTests {
       $0.draft?.button = nil
     }
     #expect(store.state.saved == saved)
+  }
+
+  /// While Home has no layout yet the editor can't move the button: its place would go in the draft, which there isn't,
+  /// so it stays in its slot and Done keeps nothing. A layout made for it would keep the first one from being laid out.
+  @Test
+  func beforeHomeHasALayoutTheButtonStaysInItsSlot() async {
+    let store = makeStore()
+    await store.send(.editTapped) { $0.isEditing = true }
+    #expect(!store.state.canMoveButton)
+    await store.send(.buttonDropped(CGPoint(x: 200, y: 150)))
+    await store.send(.doneTapped) { $0.isEditing = false }
+    #expect(store.state.saved == nil && !store.state.canMoveButton)
   }
 
   /// Done keeps the button's place, its only edit, in one write; Done with nothing changed writes nothing.
@@ -794,6 +807,25 @@ struct HomeFeatureTests {
       $0.draft = nil
       $0.$addRequests.withLock { $0 = [] }
       $0.$saved.withLock { $0?.placed[1] = Placement(widget: "tasks.list", size: .medium, column: 2, row: 0) }
+      $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "tasks"] }
+    }
+  }
+
+  /// With a request that waited for the editor, Done keeps the draft's button place too, in the same write.
+  @Test
+  func anAddRequestWhileEditingKeepsTheDraftsButtonAtDone() async {
+    let store = await addRequestWhileEditing()
+    await store.send(.buttonDropped(CGPoint(x: 200, y: 150))) {
+      $0.draft?.button = CGPoint(x: -112, y: 150)
+    }
+    await store.send(.doneTapped) {
+      $0.isEditing = false
+      $0.draft = nil
+      $0.$addRequests.withLock { $0 = [] }
+      $0.$saved.withLock {
+        $0?.placed[1] = Placement(widget: "tasks.list", size: .medium, column: 2, row: 0)
+        $0?.button = CGPoint(x: -112, y: 150)
+      }
       $0.$featuresOnHome.withLock { $0 = ["timer", "clipboard", "tasks"] }
     }
   }

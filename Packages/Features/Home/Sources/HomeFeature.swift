@@ -38,6 +38,11 @@ struct HomeFeature: Sendable {
       isEditing ? draft : saved
     }
 
+    /// The editor moves the utilities button: its place goes in the draft, so not while Home has no layout yet.
+    var canMoveButton: Bool {
+      isEditing && draft != nil
+    }
+
     /// The widgets on the grid now: those whose feature runs. An away widget's feature doesn't run: once its feature
     /// is back, the widget either shows again or has left the layout.
     var visible: [Placement] {
@@ -331,7 +336,7 @@ struct HomeFeature: Sendable {
 
       case let .buttonDropped(point):
         // It settles where the layout's rules put it: its slot, or a place inside the column and clear of the notch.
-        guard state.isEditing else { return .none }
+        guard state.canMoveButton else { return .none }
         let place = HomeLayout.buttonPlace(droppedAt: point, notch: state.notch)
         state.draft?.button = place
         return .none
