@@ -24,7 +24,7 @@ struct HomeView: View {
   /// Home's own column, the regular window's tab on a display whose notch is `notchWidth` points wide: the grid's
   /// width, or more on a wide notch (`VortexMetrics.regularWidth(notchWidth:)`), 678 pt on a 240 pt one. The notch row
   /// spans it; the grid stays in its middle.
-  static func width(notchWidth: CGFloat?) -> CGFloat {
+  nonisolated static func width(notchWidth: CGFloat?) -> CGFloat {
     WindowSize.regular.size(notchWidth: notchWidth).width - VortexMetrics.sidebarWidth
   }
   /// What the editor asks of the window: the large one, with the focus.

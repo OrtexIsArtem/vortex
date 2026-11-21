@@ -48,11 +48,15 @@ extension Placement {
   }
 }
 
-/// Where the widgets are on Home: one in the row next to the notch, the rest on the 4×2 grid. Widgets never overlap and
-/// never leave the grid; places that free up stay free.
+/// Where the widgets are on Home: one in the row next to the notch, the rest on the 4×2 grid, and where the utilities
+/// button floats. Widgets never overlap and never leave the grid; places that free up stay free.
 struct HomeLayout: Codable, Equatable, Sendable {
   var notchRow: String?
   var placed: [Placement] = []
+  /// The utilities button's place, where the editor dragged it: its circle's center, in points from the middle of
+  /// Home's column and from its top, so it keeps its spot over the grid and its side of the notch on every notch width.
+  /// Nil in its slot at the notch row's right end, as a home.json without it reads.
+  var button: CGPoint?
 
   /// Whether a widget of `size` fits with its top left cell at `column`, `row`: inside the grid and on no other widget's
   /// cells, those in `ignoring` left out.
@@ -130,7 +134,9 @@ struct HomeLayout: Codable, Equatable, Sendable {
         leaving.insert(index)
       }
     }
-    return HomeLayout(notchRow: notchRow, placed: result.indices.filter { !leaving.contains($0) }.map { result[$0] })
+    return HomeLayout(
+      notchRow: notchRow, placed: result.indices.filter { !leaving.contains($0) }.map { result[$0] }, button: button
+    )
   }
 
   /// The layout once `widget`, dragged, lands with its top left cell at `column`, `row`, and the widgets in its way move
@@ -195,6 +201,54 @@ struct HomeLayout: Codable, Equatable, Sendable {
       }
     }
     return layout
+  }
+}
+
+// MARK: - The utilities button
+
+extension HomeLayout {
+  /// How far the utilities button's center keeps from Home's column's edges and from the notch: its 28 pt circle's
+  /// radius and 8 pt, as in its slot.
+  private static let buttonInset: CGFloat = 14 + 8
+
+  /// The utilities button's slot at the notch row's right end, as its center from the top left of Home's column on a
+  /// display whose notch cuts in at `notch` (nil without one): the circle 8 pt from the column's right edge, in the
+  /// middle of the row.
+  static func buttonSlot(notch: CGRect?) -> CGPoint {
+    CGPoint(x: HomeView.width(notchWidth: notch?.width) - buttonInset, y: VortexMetrics.headerHeight / 2)
+  }
+
+  /// Where the utilities button's center shows, from the top left of Home's column: in its slot without a place;
+  /// otherwise at its place or, where that doesn't fit, as in a narrower notch's narrower column, at the nearest point
+  /// that does: the circle 8 pt inside the column, and 8 pt clear of the notch, beside it or below it.
+  static func buttonCenter(_ place: CGPoint?, notch: CGRect?) -> CGPoint {
+    guard let place else { return buttonSlot(notch: notch) }
+    let width = HomeView.width(notchWidth: notch?.width)
+    var center = CGPoint(
+      x: min(max(width / 2 + place.x, buttonInset), width - buttonInset),
+      y: min(max(place.y, buttonInset), WindowSize.regular.size.height - buttonInset)
+    )
+    if let clear = notch?.insetBy(dx: -buttonInset, dy: -buttonInset), clear.contains(center) {
+      let left = center.x - clear.minX, right = clear.maxX - center.x, below = clear.maxY - center.y
+      if left <= min(right, below) {
+        center.x = clear.minX
+      } else if right <= below {
+        center.x = clear.maxX
+      } else {
+        center.y = clear.maxY
+      }
+    }
+    return center
+  }
+
+  /// The utilities button's place once a drag drops its center at `point`, from the top left of Home's column: where it
+  /// then shows (`buttonCenter`), in whole points, or nil, its slot, within 20 pt of the slot's center.
+  static func buttonPlace(droppedAt point: CGPoint, notch: CGRect?) -> CGPoint? {
+    let middle = HomeView.width(notchWidth: notch?.width) / 2
+    let center = buttonCenter(CGPoint(x: point.x - middle, y: point.y), notch: notch)
+    let slot = buttonSlot(notch: notch)
+    guard hypot(center.x - slot.x, center.y - slot.y) > 20 else { return nil }
+    return CGPoint(x: (center.x - middle).rounded(), y: center.y.rounded())
   }
 }
 

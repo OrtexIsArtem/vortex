@@ -233,4 +233,74 @@ struct HomeLayoutTests {
     #expect(placement == Placement(widget: "clipboard.history", size: .large, column: 0, row: 0))
     #expect(!placement.isAway)
   }
+
+  // MARK: - The utilities button
+
+  /// A 186 pt notch, the widest the 680 pt window keeps, where it cuts into Home's 624 pt column, whose middle is 312.
+  let notch = CGRect(x: 191, y: 0, width: 186, height: 32)
+
+  /// The circle stays inside Home's column, 8 pt from its edges as in its slot: its center 22 pt in. Without a place
+  /// it is in its slot, 22 pt from the column's right edge in the middle of the row.
+  @Test
+  func theButtonStaysInsideTheColumn() {
+    #expect(HomeLayout.buttonCenter(nil, notch: nil) == CGPoint(x: 602, y: 26))
+    #expect(HomeLayout.buttonCenter(CGPoint(x: -100, y: 200), notch: nil) == CGPoint(x: 212, y: 200))
+    #expect(HomeLayout.buttonCenter(CGPoint(x: -400, y: 0), notch: nil) == CGPoint(x: 22, y: 22))
+    #expect(HomeLayout.buttonCenter(CGPoint(x: 400, y: 500), notch: nil) == CGPoint(x: 602, y: 418))
+    // A drop past an edge settles inside it.
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: -30, y: 470), notch: nil) == CGPoint(x: -290, y: 418))
+  }
+
+  /// A drop under the notch goes to the nearest place 8 pt clear of it: beside it, or below it from its middle.
+  @Test
+  func aDropUnderTheNotchGoesBesideOrBelowIt() {
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 200, y: 20), notch: notch) == CGPoint(x: 169 - 312, y: 22))
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 390, y: 30), notch: notch) == CGPoint(x: 399 - 312, y: 30))
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 284, y: 10), notch: notch) == CGPoint(x: 284 - 312, y: 54))
+    // Without a notch it stays where it was dropped.
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 284, y: 22), notch: nil) == CGPoint(x: 284 - 312, y: 22))
+  }
+
+  /// A drop whose center lands within 20 pt of the slot's center puts the button back in its slot; so does one past
+  /// the column's right edge at the row's height, which settles there.
+  @Test
+  func aDropNearTheSlotPutsTheButtonBack() {
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 602 - 12, y: 26 + 16), notch: nil) == nil)
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 602 - 12, y: 26 + 17), notch: nil) == CGPoint(x: 278, y: 43))
+    #expect(HomeLayout.buttonPlace(droppedAt: CGPoint(x: 680, y: 30), notch: nil) == nil)
+  }
+
+  /// A place that doesn't fit, as one saved at the right edge of a 240 pt notch's 678 pt column shown in the 624 pt
+  /// one, shows at the nearest place that does; the place itself doesn't change.
+  @Test
+  func aPlaceOutOfBoundsOnANarrowerColumnShowsAtTheNearestThatFits() {
+    let wideNotch = CGRect(x: 191, y: 0, width: 240, height: 32)
+    let place = CGPoint(x: 317, y: 300)
+    #expect(HomeLayout.buttonCenter(place, notch: wideNotch) == CGPoint(x: 339 + 317, y: 300))
+    #expect(HomeLayout.buttonCenter(place, notch: notch) == CGPoint(x: 602, y: 300))
+    // Its slot follows the column's right edge.
+    #expect(HomeLayout.buttonCenter(nil, notch: wideNotch) == CGPoint(x: 656, y: 26))
+  }
+
+  /// A home.json without the button's place, as builds before it wrote, reads as the button in its slot.
+  @Test
+  func anOldHomeJSONReadsAsTheButtonInItsSlot() throws {
+    let json = Data(
+      #"{"notchRow":"timer.timer","placed":[{"widget":"shelf.files","size":"medium","column":0,"row":0}]}"#.utf8
+    )
+    let layout = try JSONDecoder().decode(HomeLayout.self, from: json)
+    #expect(layout == HomeLayout(notchRow: "timer.timer", placed: [ownersHome.placed[0]]))
+    #expect(layout.button == nil)
+  }
+
+  /// The place goes to home.json and back as it was; in its slot the button writes nothing there.
+  @Test
+  func theButtonsPlaceMakesARoundTrip() throws {
+    var layout = ownersHome
+    #expect(!String(decoding: try JSONEncoder().encode(layout), as: UTF8.self).contains("button"))
+    layout.button = CGPoint(x: -120, y: 200)
+    let data = try JSONEncoder().encode(layout)
+    #expect(String(decoding: data, as: UTF8.self).contains(#""button":[-120,200]"#))
+    #expect(try JSONDecoder().decode(HomeLayout.self, from: data) == layout)
+  }
 }
