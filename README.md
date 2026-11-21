@@ -14,7 +14,7 @@ A macOS utility that lives in your MacBook's notch, or in the menu bar on a Mac 
 - **Keyboard cleaning**: lock every key while you wipe the keyboard.
 - **Screen Text**: copy text you can't select, right off the screen: a screenshot in a chat, a video frame, an error. Frame it on the frozen screen, and it's on the clipboard; the notch says how many lines. A QR code gives its link or text.
 
-Keyboard cleaning and Screen Text are utilities, tools that do one thing. Their buttons wait behind the utilities button at the end of Home's top row, and each can have its own shortcut. Turn off the ones you don't need in **Features**.
+Keyboard cleaning and Screen Text are utilities, tools that do one thing. Their buttons wait behind the utilities button, at the end of Home's top row until you move it, and each can have its own shortcut. Turn off the ones you don't need in **Features**.
 
 <table>
   <tr>
@@ -36,8 +36,9 @@ Vortex speaks English and Ukrainian, and follows light and dark mode.
 ## Features and Home
 During setup you choose your features, with the recommended ones checked. Add or remove any of them later in **Features**, the puzzle piece in the sidebar. A feature you haven't added doesn't run, and Vortex asks for no permission on its behalf. A removed feature keeps its data until you erase it with **Erase Data…** on its page.
 
-Home is a 4×2 grid of widgets that you lay out yourself, with room for one more in the row next to the notch. The pencil opens the editor: the last button behind the utilities button at the end of that row, or that button itself while you have no utility:
+Home is a 4×2 grid of widgets that you lay out yourself, with room for one more in the row next to the notch. The pencil opens the editor: the last button behind the utilities button, or that button itself while you have no utility:
 - Drag a widget, and the others make room.
+- Drag the utilities button anywhere on Home, even over a widget.
 - Pick a feature in the panel on the right to add its widgets or change their size.
 - Remove a widget with its **−**.
 - Press **Done** to keep the changes, or **Cancel** to leave Home as it was.
