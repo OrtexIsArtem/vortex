@@ -27,7 +27,10 @@ Keyboard cleaning and Screen Text are utilities, tools that do one thing. Their 
   </tr>
   <tr>
     <td><b>Keys for Claude</b><br><img src=".github/media/keys.gif" alt="Claude Code asks for the github key; the notch shows it and the Keys tab asks Allow"></td>
-    <td><b>Keyboard cleaning</b><br><img src=".github/media/keyboard.gif" alt="The keyboard button among Home's utilities locks every key until Turn the keyboard back on"></td>
+    <td><b>Keyboard cleaning</b><br><img src=".github/media/keyboard.gif" alt="Home's utilities button puts its strip out; the keyboard button there locks every key, keys light up as a cloth passes, and Turn the keyboard back on unlocks them"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><b>Screen Text</b><br><img src=".github/media/screentext.gif" width="50%" alt="The Screen Text button among Home's utilities freezes the screen; a frame drawn over a build log in a chat copies its three lines, and the notch says Copied · 3 lines"></td>
   </tr>
 </table>
 
@@ -43,7 +46,7 @@ Home is a 4×2 grid of widgets that you lay out yourself, with room for one more
 - Remove a widget with its **−**.
 - Press **Done** to keep the changes, or **Cancel** to leave Home as it was.
 
-![The pencil opens Home's editor; a drag swaps the clipboard and the shelf, a smaller size in the panel makes the shelf half as tall, and Done keeps the layout](.github/media/home.gif)
+![The utilities button puts its strip out and its pencil opens Home's editor; a drag swaps the clipboard and the shelf, a smaller size in the panel makes the shelf half as tall, and Done keeps the layout](.github/media/home.gif)
 
 To build a feature or a widget of your own, see [CONTRIBUTING.md](CONTRIBUTING.md) and its [step-by-step guide to widgets](CONTRIBUTING.md#make-a-widget-for-home).
 
