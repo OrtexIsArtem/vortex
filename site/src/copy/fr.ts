@@ -192,7 +192,7 @@ export const fr: Copy = {
   },
   open: {
     title: 'Survolez l’encoche. Vortex s’ouvre.',
-    titleQuiet: 'Le minuteur en haut, les fichiers et le presse-papiers en bas.',
+    titleQuiet: 'Le minuteur en haut, vos copies et vos fichiers dessous.',
     body: 'Vortex se déploie hors de l’encoche quand votre pointeur l’atteint, et s’y replie dès que vous passez à autre chose. Il affiche les outils dont vous vous servez une dizaine de fois par jour, et rien d’autre.',
     noNotch: 'Pas d’encoche\u202f? Vortex se loge dans la barre des menus.',
   },

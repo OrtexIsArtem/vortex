@@ -190,7 +190,7 @@ export const es: Copy = {
   },
   open: {
     title: 'Apunta al notch. Vortex se abre.',
-    titleQuiet: 'Arriba, el temporizador; abajo, archivos y copias.',
+    titleQuiet: 'Arriba, el temporizador; debajo, tus copias y archivos.',
     body: 'Vortex se despliega desde el notch cuando llega el puntero y se recoge cuando te alejas. Muestra las herramientas que usas una docena de veces al día, y nada más.',
     noNotch: '¿Sin notch? Vortex vive en la barra de menús.',
   },

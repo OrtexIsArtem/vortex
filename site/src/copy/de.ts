@@ -193,7 +193,7 @@ export const de: Copy = {
   },
   open: {
     title: 'Zeige auf die Notch. Vortex öffnet sich.',
-    titleQuiet: 'Der Timer vorn, Dateien und Kopien unten.',
+    titleQuiet: 'Der Timer oben, darunter deine Kopien und Dateien.',
     body: 'Vortex wächst aus der Notch, sobald dein Zeiger dort ankommt, und verschwindet wieder darin, wenn du weitermachst. Zu sehen sind die Werkzeuge, nach denen du dutzendmal am Tag greifst, und sonst nichts.',
     noNotch: 'Keine Notch? Dann sitzt Vortex in der Menüleiste.',
   },

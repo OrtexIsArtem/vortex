@@ -190,7 +190,7 @@ export const ptBr: Copy = {
   },
   open: {
     title: 'Aponte para o notch. O Vortex se abre.',
-    titleQuiet: 'Timer em cima, arquivos e cópias embaixo.',
+    titleQuiet: 'Timer em cima, suas cópias e arquivos logo abaixo.',
     body: 'O Vortex surge do notch quando o ponteiro chega lá e se recolhe quando você se afasta. Ele mostra as ferramentas que você usa várias vezes por dia, e nada mais.',
     noNotch: 'Sem notch? O Vortex fica na barra de menus.',
   },

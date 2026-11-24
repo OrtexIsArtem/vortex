@@ -193,7 +193,7 @@ export const zh: Copy = {
   },
   open: {
     title: '指向刘海，Vortex 随即打开。',
-    titleQuiet: '计时器一眼可见，文件和复制的内容排在底部。',
+    titleQuiet: '计时器在上方，复制的内容和文件就在它下面。',
     body: '指针移到刘海时，Vortex 会从中展开；指针移开，它又自己收回去。它只显示你一天要用上十几次的工具，别无其他。',
     noNotch: '没有刘海？Vortex 就待在菜单栏里。',
   },

@@ -326,7 +326,7 @@ export const en = {
   },
   open: {
     title: 'Point at the notch. Vortex\u00a0opens.',
-    titleQuiet: 'Timer up front, files and copies at the bottom.',
+    titleQuiet: 'Timer up top, your copies and files below.',
     body: 'Vortex grows out of the notch when your pointer gets there and tucks itself back in when you move on. It shows the tools you reach for a dozen times a day, and nothing else.',
     noNotch: 'No notch? Vortex lives in the menu bar.',
   },
