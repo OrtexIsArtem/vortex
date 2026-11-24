@@ -1,9 +1,11 @@
 ---
-// Home in the app's chosen layout, «Вуха»: the timer flanks the notch, the shelf and the clipboard share the dock, and
-// the utilities button ends the row. Sizes follow the app: a 680 × 440 window, a 56 pt sidebar, a 52 pt row beside a
-// 186 × 32 notch, and the utilities strip, 56 pt, that grows the window at its right.
+// Home as the app shows it to a new Mac: the timer flanks the notch, the clipboard and the shelf sit on cards of their
+// own on the 4×2 grid, and the utilities button ends the row. Sizes follow the app: a 680 × 440 window, a 56 pt sidebar,
+// a 52 pt row beside a 186 × 32 notch, cards of 298 × 376, and the utilities strip, 56 pt, that grows the window at its
+// right.
 import { copyFor } from '../copy';
 import { appLangOf, localeOf } from '../copy/locales';
+import { frame, homeWidgets, initialLayout } from '../lib/home-layout';
 import type { IconName } from '../lib/icons';
 import Icon from './Icon.astro';
 
@@ -20,6 +22,15 @@ const features: { icon: IconName; label: string; href: string }[] = [
   { icon: 'checklist', label: d.sidebar[4], href: '#tasks' },
   { icon: 'key', label: d.sidebar[5], href: '#keys' },
 ];
+// Home as the app lays it out for a new Mac (HomeLayout.initial): Timer in the notch row, Clipboard's history and the
+// shelf's files on cards of their own on the 4×2 grid, as the Home chapter shows them.
+const home = initialLayout(homeWidgets);
+const cardBox = (widget: string) => {
+  const placement = home.placed.find((item) => item.widget === widget);
+  if (!placement) return undefined;
+  const box = frame(placement.column, placement.row, placement.size);
+  return `left: ${box.x}px; top: ${box.y}px; width: ${box.width}px; height: ${box.height}px`;
+};
 // The strip's buttons, in the app's order: the utilities' actions, then, set apart, Home's own pencil. Here each leads to
 // its chapter, as the sidebar's icons do.
 const utilities: { icon: IconName; size: number; label: string; href: string }[] = [
@@ -37,9 +48,9 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
         </a>
       ))
     }
-    <span class="dw-side__item dw-side__catalog" title={d.features}>
+    <a class="dw-side__item dw-side__catalog" href="#choose" aria-label={d.features} title={d.features}>
       <Icon name="puzzle" size={17} />
-    </span>
+    </a>
     <span class="dw-side__item" title={d.settings}>
       <Icon name="gear" size={17} />
     </span>
@@ -93,8 +104,13 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
   {/* While the strip is out, a click anywhere else on Home only puts it away, as in the app. */}
   <span class="dw-catch" aria-hidden="true" data-strip-catch></span>
 
-  <div class="dw-dock">
-    <section class="dw-shelf" aria-label={d.shelf}>
+  {/* Home's grid: each widget on its own card, where a new Mac's Home has it. */}
+  <div class="dw-grid">
+    <section class="dw-card" aria-label={d.clipboard} style={cardBox('clipboard.history')}>
+      <p class="dw-title">{d.clipboard}</p>
+      <ul class="dw-rows" data-dw-rows></ul>
+    </section>
+    <section class="dw-card" aria-label={d.shelf} style={cardBox('shelf.files')}>
       <p class="dw-title">{d.shelf} <span data-dw-shelf-count>{d.files.length}</span></p>
       <ul class="dw-tiles" data-dw-tiles>
         {
@@ -115,12 +131,14 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
             </li>
           ))
         }
+        {/* The shelf's last tile, where files go; here the notch takes them. */}
+        <li class="dw-tile dw-tile--drop" aria-hidden="true">
+          <span class="dw-tile__preview">
+            <Icon name="download" size={15} />
+            <span>{copy.homeChapter.app.dropHere}</span>
+          </span>
+        </li>
       </ul>
-    </section>
-    <span class="dw-hairline" aria-hidden="true"></span>
-    <section class="dw-clip" aria-label={d.clipboard}>
-      <p class="dw-title">{d.clipboard}</p>
-      <ul class="dw-rows" data-dw-rows></ul>
     </section>
   </div>
   <span class="visually-hidden" aria-live="polite" data-copy-status></span>
@@ -352,14 +370,19 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     display: block;
   }
 
-  .dw-dock {
+  /* Home's grid under the notch row: the cards of the app's widgets, 18 pt round on the dock's shade, padded as the
+     app's homeWidgetCard. */
+  .dw-grid {
     position: absolute;
-    top: 56px;
-    right: 12px;
-    bottom: 12px;
-    left: 60px;
-    display: flex;
-    gap: 16px;
+    top: 52px;
+    left: 56px;
+    width: 624px;
+    height: 376px;
+  }
+
+  .dw-card {
+    position: absolute;
+    overflow: hidden;
     padding: 14px 16px;
     border-radius: 18px;
     background: var(--dock);
@@ -381,14 +404,10 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     font-variant-numeric: tabular-nums;
   }
 
-  .dw-shelf {
-    flex: none;
-    width: 352px;
-  }
-
+  /* Three tiles across, as the app's shelf widget has them on a large card. */
   .dw-tiles {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px 8px;
     margin: 10px 0 0;
     padding: 0;
@@ -422,10 +441,20 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     object-fit: cover;
   }
 
-  /* The visitor's own files take the samples' place. */
+  /* The visitor's own files take the samples' place, eight of them at most before the drop tile. */
   .dw-tiles.has-own :global([data-sample]),
-  .dw-tiles :global(.dw-tile:nth-child(n + 9)) {
+  .dw-tiles :global(.dw-tile[data-own]:nth-child(n + 9)) {
     display: none;
+  }
+
+  .dw-tiles .dw-tile--drop .dw-tile__preview {
+    align-content: center;
+    gap: 6px;
+    border: 1px dashed #3a3a3f;
+    background: none;
+    color: var(--text-2);
+    font-size: 11px;
+    text-align: center;
   }
 
   .dw-tiles :global(.dw-mock) {
@@ -457,20 +486,8 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     overflow: hidden;
     color: var(--text-2);
     font-size: 11px;
-    text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .dw-hairline {
-    flex: none;
-    width: 1px;
-    background: var(--line);
-  }
-
-  .dw-clip {
-    flex: 1;
-    min-width: 0;
   }
 
   .dw-rows {
@@ -645,7 +662,7 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     const escape = (text: string) =>
       text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
 
-    // The shelf in the dock shows the visitor's files once there are any; until then, a few samples.
+    // The shelf's card shows the visitor's files once there are any; until then, a few samples.
     const tiles = root.querySelector<HTMLElement>('[data-dw-tiles]');
     const shelfCount = root.querySelector<HTMLElement>('[data-dw-shelf-count]');
     const samples = tiles?.querySelectorAll('[data-sample]').length ?? 0;
@@ -665,7 +682,7 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
       shelfCount.textContent = String(items.length || samples);
     });
 
-    // The clipboard in the dock is the page's history: one-line rows, a click copies again.
+    // The clipboard's card is the page's history: one-line rows, a click copies again.
     const rows = root.querySelector<HTMLElement>('[data-dw-rows]');
     const status = root.querySelector<HTMLElement>('[data-copy-status]');
     const kindIcon: Record<string, Parameters<typeof iconSvg>[0]> = { text: 'text', code: 'text', link: 'link', image: 'image', file: 'file', secret: 'lock' };
