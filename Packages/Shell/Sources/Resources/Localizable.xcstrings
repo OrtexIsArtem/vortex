@@ -1246,7 +1246,14 @@
     },
     "System (theme)" : {
       "comment" : "Theme: follows macOS's light or dark appearance",
+      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "System"
+          }
+        },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
