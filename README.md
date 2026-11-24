@@ -29,9 +29,6 @@ Keyboard cleaning and Screen Text are utilities, tools that do one thing. Their 
     <td><b>Keys for Claude</b><br><img src=".github/media/keys.gif" alt="Claude Code asks for the github key; the notch shows it and the Keys tab asks Allow"></td>
     <td><b>Keyboard cleaning</b><br><img src=".github/media/keyboard.gif" alt="Home's utilities button puts its strip out; the keyboard button there locks every key, keys light up as a cloth passes, and Turn the keyboard back on unlocks them"></td>
   </tr>
-  <tr>
-    <td colspan="2" align="center"><b>Screen Text</b><br><img src=".github/media/screentext.gif" width="50%" alt="The Screen Text button among Home's utilities freezes the screen; a frame drawn over a build log in a chat copies its three lines, and the notch says Copied · 3 lines"></td>
-  </tr>
 </table>
 
 Vortex speaks English and Ukrainian, and follows light and dark mode.
