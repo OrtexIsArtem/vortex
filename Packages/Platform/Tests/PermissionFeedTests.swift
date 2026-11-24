@@ -5,8 +5,10 @@ import VortexCore
 
 @testable import VortexPlatform
 
-/// The live client's scheduling, with a read and a clock of the test's own: nothing here asks macOS.
-@Suite(.timeLimit(.minutes(1)))
+/// The live client's scheduling, with a read and a clock of the test's own: nothing here asks macOS. The time limit only
+/// stops a hang, so it is ten times longer on CI (`CI` set): on its three-core runners a run of every suite at once
+/// kept this suite waiting over a minute.
+@Suite(.timeLimit(.minutes(ProcessInfo.processInfo.environment["CI"] == nil ? 1 : 10)))
 struct PermissionFeedTests {
   typealias Statuses = [Permission: PermissionStatus]
 
@@ -43,6 +45,13 @@ struct PermissionFeedTests {
   /// Lets the feed's tasks run, so what would happen has happened.
   func settle() async throws {
     try await Task.sleep(for: .milliseconds(100))
+  }
+
+  /// Waits until something sleeps on the clock, as the feed's timer does between reads. An advance before that passes
+  /// the sleep by, and a few yields don't make sure it came: on a busy CI runner the timer had not slept yet, and the
+  /// read the test waited for never started. (`checkSuspension()` throws while a sleep is pending.)
+  func untilSleeping(_ clock: TestClock<Duration>) async {
+    while (try? await clock.checkSuspension()) != nil {}
   }
 
   // MARK: Listeners never stay behind
@@ -162,10 +171,10 @@ struct PermissionFeedTests {
 
     feed.setFrequentChecks(true)
     #expect(await startedReads.next() == 1)
-    await Task.megaYield()
+    await untilSleeping(clock)
     await clock.advance(by: .seconds(1))
     #expect(await startedReads.next() == 2)
-    await Task.megaYield()
+    await untilSleeping(clock)
     await clock.advance(by: .seconds(1))
     #expect(await startedReads.next() == 3)
 
@@ -180,17 +189,18 @@ struct PermissionFeedTests {
   func aDelayedWakeUpReadsOnlyAfterItsDelay() async throws {
     let clock = TestClock()
     let reads = LockIsolated(0)
+    let (started, didStart) = AsyncStream.makeStream(of: Int.self)
     let feed = PermissionFeed(clock: clock) {
-      reads.withValue { $0 += 1 }
+      didStart.yield(reads.withValue { $0 += 1; return $0 })
       return Self.off
     }
+    var startedReads = started.makeAsyncIterator()
     feed.wakeUp(after: .milliseconds(250))
-    await Task.megaYield()
+    await untilSleeping(clock)
     await clock.advance(by: .milliseconds(249))
     try await settle()
     #expect(reads.value == 0)
     await clock.advance(by: .milliseconds(1))
-    try await settle()
-    #expect(reads.value == 1)
+    #expect(await startedReads.next() == 1)
   }
 }
