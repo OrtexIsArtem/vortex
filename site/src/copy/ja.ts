@@ -185,6 +185,7 @@ export const ja: Copy = {
     replay: 'もう一度',
     widgetKeys: '矢印キーで移動し、deleteキーでHomeから外します。',
     buttonKeys: '矢印キーで移動します。',
+    rowKeys: 'deleteキーでHomeから外します。',
     moved: (name: string) => `${name}を移動しました`,
     resized: (name: string, size: string) => `${name}：${size}`,
     removed: (name: string) => `${name}をHomeから外しました`,

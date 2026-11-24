@@ -185,6 +185,7 @@ export const de: Copy = {
     replay: 'Noch mal',
     widgetKeys: 'Die Pfeiltasten verschieben es, die Rückschritttaste entfernt es.',
     buttonKeys: 'Die Pfeiltasten verschieben ihn.',
+    rowKeys: 'Die Rückschritttaste entfernt es.',
     moved: (name: string) => `${name} verschoben`,
     resized: (name: string, size: string) => `${name}: ${size}`,
     removed: (name: string) => `${name} entfernt`,

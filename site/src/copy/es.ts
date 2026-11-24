@@ -182,6 +182,7 @@ export const es: Copy = {
     replay: 'Repetir',
     widgetKeys: 'Las flechas lo mueven y la tecla Eliminar lo quita.',
     buttonKeys: 'Las flechas lo mueven.',
+    rowKeys: 'La tecla Eliminar lo quita.',
     moved: (name: string) => `${name} movido`,
     resized: (name: string, size: string) => `${name}: ${size}`,
     removed: (name: string) => `${name} quitado`,

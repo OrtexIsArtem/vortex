@@ -182,6 +182,7 @@ export const ptBr: Copy = {
     replay: 'Repetir',
     widgetKeys: 'As setas o movem, e a tecla Apagar o remove.',
     buttonKeys: 'As setas o movem.',
+    rowKeys: 'A tecla Apagar o remove.',
     moved: (name: string) => `${name} movido`,
     resized: (name: string, size: string) => `${name}: ${size}`,
     removed: (name: string) => `${name} removido`,

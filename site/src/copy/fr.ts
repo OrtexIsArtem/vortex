@@ -184,6 +184,7 @@ export const fr: Copy = {
     replay: 'Rejouer',
     widgetKeys: 'Les flèches le déplacent, la touche Supprimer le retire.',
     buttonKeys: 'Les flèches le déplacent.',
+    rowKeys: 'La touche Supprimer le retire.',
     moved: (name: string) => `${name} déplacé`,
     resized: (name: string, size: string) => `${name}\u00a0: ${size}`,
     removed: (name: string) => `${name} retiré`,

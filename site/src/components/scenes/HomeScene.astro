@@ -83,6 +83,7 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
                 <span class="hs-pill hs-pill--primary"><Icon name="play" size={9} />{d.start}</span>
               </div>
               <span class="hs-ring" aria-hidden="true"></span>
+              <button class="hs-handle" type="button" data-hs-handle hidden></button>
               <button class="hs-remove" type="button" tabindex="-1" aria-label={a.remove} title={a.remove} data-hs-remove="timer.timer">
                 <span><Icon name="minus" size={12} /></span>
               </button>
@@ -113,6 +114,7 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
                 </ul>
               </div>
               <span class="hs-ring" aria-hidden="true"></span>
+              <button class="hs-handle" type="button" data-hs-handle hidden></button>
               <button class="hs-remove" type="button" tabindex="-1" aria-label={a.remove} title={a.remove} data-hs-remove="clipboard.history">
                 <span><Icon name="minus" size={12} /></span>
               </button>
@@ -142,6 +144,7 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
                 </div>
               </div>
               <span class="hs-ring" aria-hidden="true"></span>
+              <button class="hs-handle" type="button" data-hs-handle hidden></button>
               <button class="hs-remove" type="button" tabindex="-1" aria-label={a.remove} title={a.remove} data-hs-remove="shelf.files">
                 <span><Icon name="minus" size={12} /></span>
               </button>
@@ -222,6 +225,7 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
   {/* The keys that stand in for a drag, read with a widget or the utilities button in the editor. */}
   <p class="visually-hidden" id="hs-widget-keys">{h.widgetKeys}</p>
   <p class="visually-hidden" id="hs-button-keys">{h.buttonKeys}</p>
+  <p class="visually-hidden" id="hs-row-keys">{h.rowKeys}</p>
   {/* What the visitor's own edits did, for a screen reader; the demo playing by itself stays silent. */}
   <p class="visually-hidden" role="status" data-hs-status></p>
 </div>
@@ -231,6 +235,8 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
      that a click inside keeps the focus here, where Esc reaches the editor, as in the Tasks scene. */
   .home {
     --s: 0.72;
+    /* A target's side on screen (WCAG 2.5.8): 24 px, and a pixel to spare for the browser's rounding. */
+    --target: 25px;
     outline: none;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -287,11 +293,17 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
     transform-origin: 0 0;
   }
 
-  /* Focus stays 2 px on screen whatever the scale. */
-  .hs-window :focus-visible,
+  /* Focus stays 2 px on screen whatever the scale; a round button's ring hugs its disc inside its target, as everywhere
+     on the page, so the window's edge never cuts it. */
+  .hs-window :focus-visible:not(.orb),
   .home.is-wide .hs-panel :focus-visible {
     outline-width: calc(2px / var(--s));
     outline-offset: calc(3px / var(--s));
+  }
+
+  .hs-window .orb:focus-visible {
+    outline-width: calc(2px / var(--s));
+    outline-offset: -5px;
   }
 
   /* The sidebar, as the app's; in the editor it dims and waits. */
@@ -613,6 +625,26 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
     white-space: nowrap;
   }
 
+  /* In the editor a widget is its handle, a button over its card for the keyboard and screen readers, beside its "−":
+     neither control sits inside the other. */
+  .hs-handle {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    touch-action: pan-y;
+  }
+
+  .hs-handle:focus-visible {
+    outline: none;
+  }
+
+  /* The notch row's widget keeps a target's height on screen however small the window gets, over the cards where it
+     reaches into the grid. */
+  .hs-timer .hs-handle {
+    height: max(100%, calc(var(--target) / var(--s)));
+  }
+
   /* In the editor: under the pointer, with the keyboard's focus or picked, a widget has a 1 pt ring and its "−". */
   .hs-ring {
     position: absolute;
@@ -658,26 +690,27 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
     stroke-width: 3;
   }
 
-  .home.is-editing .hs-widget:is(:hover, :focus-visible, .is-hover, .is-picked) .hs-ring {
+  .home.is-editing .hs-widget:is(:hover, .is-hover, .is-picked) .hs-ring,
+  .home.is-editing .hs-widget:has(.hs-handle:focus-visible) .hs-ring {
     opacity: 1;
   }
 
-  .home.is-editing .hs-widget:is(:hover, :focus-visible, .is-hover, .is-picked) .hs-remove {
+  .home.is-editing .hs-widget:is(:hover, .is-hover, .is-picked) .hs-remove,
+  .home.is-editing .hs-widget:has(.hs-handle:focus-visible) .hs-remove {
     display: grid;
   }
 
-  .home.is-editing .hs-widget:focus-visible {
-    outline: none;
-  }
-
-  .home.is-editing .hs-widget:focus-visible .hs-ring {
+  .home.is-editing .hs-widget:has(.hs-handle:focus-visible) .hs-ring {
     box-shadow:
       inset 0 0 0 1px rgb(245 245 247 / 0.28),
       0 0 0 calc(2px / var(--s)) var(--text-1);
   }
 
-  /* Over the cells that take a click, so its own "−" and a click on it, which puts it down, still reach it. */
-  .hs-card.is-picked {
+  /* A card showing its "−" comes over the notch row's target, so all of the "−" takes the click where the two meet; a
+     picked one also over the cells that take a click, so its own "−" and a click on it, which puts it down, still reach it.
+     While a widget is picked, the others stay under those cells. */
+  .home.is-editing .hs-card:is(:hover, .is-hover, .is-picked),
+  .home.is-editing:not(.is-picking-widget) .hs-card:has(.hs-handle:focus-visible) {
     z-index: 4;
   }
 
@@ -783,9 +816,10 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: var(--strip-gap, 0px);
     width: 56px;
     height: 440px;
-    padding-top: 4px;
+    padding-top: var(--strip-top, 4px);
     background: var(--panel);
     box-shadow: inset 1px 0 0 var(--line);
   }
@@ -1147,6 +1181,7 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
   .hs-again {
     visibility: hidden;
     justify-self: center;
+    min-height: var(--target);
     padding: 4px 10px;
     border-radius: 999px;
     color: var(--text-3);
@@ -1161,22 +1196,91 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
     color: var(--text-1);
   }
 
-  @media (pointer: coarse) {
-    /* A fingertip gets more than the scaled window gives: the small round buttons take taps from around them too. */
-    .hs-window :global(.orb)::after,
-    .hs-remove::after {
-      content: '';
-      position: absolute;
-      inset: -10px;
-    }
+  /* Every target keeps its side on screen however small the window is scaled (WCAG 2.5.8): its hit area grows as the
+     window shrinks, never past what it needs. */
+  .hs-strip .orb,
+  .hs-empty .hs-capsule,
+  .hs-panel :is(.hs-capsule, .hs-back, .hs-more, .hs-search__clear),
+  .hs-wcard :global(:is(.hs-chip, .hs-add)) {
+    position: relative;
+  }
 
-    .hs-window :global(.orb),
+  .hs-window :is(.orb, .hs-remove, .hs-capsule)::after,
+  .hs-panel :is(.hs-capsule, .hs-back, .hs-more, .hs-search__clear)::after,
+  .hs-wcard :global(:is(.hs-chip, .hs-add))::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, calc(var(--target) / var(--s)));
+    height: max(100%, calc(var(--target) / var(--s)));
+    transform: translate(-50%, -50%);
+  }
+
+  /* The panel is scaled with the window only beside it; under it, on a narrow scene, it is at its own size. */
+  .hs-panel :is(.hs-capsule, .hs-back, .hs-more, .hs-search__clear)::after,
+  .hs-wcard :global(:is(.hs-chip, .hs-add))::after {
+    width: max(100%, calc(var(--target) / var(--ps)));
+    height: max(100%, calc(var(--target) / var(--ps)));
+  }
+
+  .hs-panel {
+    --ps: 1;
+  }
+
+  .home.is-wide .hs-panel {
+    --ps: var(--s);
+  }
+
+  .home.is-wide .hs-search {
+    height: max(30px, calc(var(--target) / var(--ps)));
+  }
+
+  .home.is-wide .hs-wcard {
+    gap: max(8px, calc(var(--target) / var(--ps) - 24px));
+  }
+
+  /* The timer's "−" sits at the window's top edge: its hit area hangs down from that edge. */
+  .hs-timer .hs-remove::after {
+    top: 12px;
+    transform: translateX(-50%);
+  }
+
+  /* The utilities button's hit area is placed by the script, whole inside Home's column wherever the button is. */
+  .hs-window .hs-utilities::after {
+    top: var(--hit-y, 0px);
+    left: var(--hit-x, 0px);
+    transform: none;
+  }
+
+  /* So small that the strip's targets would reach into Home's column: they run down from under the utilities button's,
+     against the window's right edge, a target's height apart (the script sets how far down). Over Home, only the strip's
+     buttons take the pointer, so the strip's ground never cuts into the utilities button's target. */
+  .home.is-crowded .hs-strip {
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  .home.is-crowded .hs-strip .orb {
+    pointer-events: auto;
+  }
+
+  .home.is-crowded .hs-strip .orb::after {
+    right: -6px;
+    left: auto;
+    transform: translateY(-50%);
+  }
+
+  @media (pointer: coarse) {
+    /* A fingertip gets 44 points: Pause and Again take taps from just around them too. */
     .hs-again {
       position: relative;
     }
 
-    .hs-utilities {
+    .hs-again::after {
+      content: '';
       position: absolute;
+      inset: -12px;
     }
   }
 
@@ -1187,6 +1291,7 @@ const ticks = Array.from({ length: 17 }, (_, index) => {
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .hs-pointer,
     .hs-card,
     .hs-utilities,
     .hs-cell,

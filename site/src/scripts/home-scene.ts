@@ -47,6 +47,10 @@ const widths = { regular: 680, dock: 736, large: 880 };
 /** Room for the window's shoulders at its sides, and some under it, in the stage. */
 const margin = 10;
 const stageHeight = 456;
+/** The window's bottom corners. */
+const cornerRadius = 30;
+/** A target's side on screen, the scene's --target: 24 px, and a pixel to spare for the browser's rounding. */
+const targetSide = 25;
 /** Below this the scene is too narrow for the large window: the panel goes under the window. */
 const wideFrom = 600;
 
@@ -158,17 +162,25 @@ export function mountHome(scene: HTMLElement): void {
   const editing = () => draft !== null;
   const shownIds = (from: HomeLayout) => new Set<string>([...from.placed.map((item) => item.widget), ...(from.notchRow ? [from.notchRow] : [])]);
 
-  // The visitor's own edits are read out; the demo playing by itself stays silent.
+  // Who has the scene: the demo, playing by itself, or the visitor, from their first touch until it leaves the screen.
   let touched = false;
+  let run = 0;
+  let state: 'idle' | 'playing' | 'done' = 'idle';
+  let paused = false;
+  let inView = false;
+  let loopTimer = 0;
+  let autoTimer = 0;
+  let offer: 'pause' | 'again' | null = null;
+  /** Only what the visitor does is read out: a pass of the demo, the one their Again plays included, stays silent. */
   const announce = (message: string) => {
-    if (touched) status.textContent = message;
+    if (touched && state !== 'playing') status.textContent = message;
   };
 
   // The window's outline: it grows right for the strip and the editor, keeping its left edge, on the app's spring.
   const targetWidth = () => (editing() ? (wide ? widths.large : widths.regular) : stripOut ? widths.dock : widths.regular);
   let asked = widths.regular;
   const outline = new SpringGroup<'width'>({ width: widths.regular }, ({ width }) => {
-    const body = { width, height: 440, radius: 30, shoulder: 10 };
+    const body = { width, height: 440, radius: cornerRadius, shoulder: 10 };
     fill.setAttribute('d', hangingPath(body, true, margin + width / 2));
     edge.setAttribute('d', hangingPath(body, false, margin + width / 2));
     win.style.clipPath = `path('${hangingPath({ ...body, shoulder: 0 }, true, width / 2)}')`;
@@ -182,6 +194,26 @@ export function mountHome(scene: HTMLElement): void {
     else void outline.to({ width: target }, springs.open);
   };
 
+  /** A target's side in the window's points: 44, or what keeps it a target's side on screen (WCAG 2.5.8). */
+  let hit = 44;
+
+  /** The utilities button's hit area, a target's side square around it, kept whole inside Home's column, where the
+   *  window's outline can't cut it, at the slot by the window's edge and wherever the editor puts the button: in the
+   *  bottom right it comes in from the window's round corner. */
+  const fitButtonHit = () => {
+    const center = buttonCenter(layout().button);
+    let x = Math.min(Math.max(center.x - hit / 2, 0), homeColumn.width - hit);
+    let y = Math.min(Math.max(center.y - hit / 2, 0), homeColumn.height - hit);
+    const out = { x: x + hit - (homeColumn.width - cornerRadius), y: y + hit - (homeColumn.height - cornerRadius) };
+    const reach = Math.hypot(out.x, out.y);
+    if (out.x > 0 && out.y > 0 && reach > cornerRadius) {
+      x -= (out.x * (reach - cornerRadius)) / reach;
+      y -= (out.y * (reach - cornerRadius)) / reach;
+    }
+    utilities.style.setProperty('--hit-x', `${x - (center.x - 22)}px`);
+    utilities.style.setProperty('--hit-y', `${y - (center.y - 22)}px`);
+  };
+
   // The window at the scene's width: the large one fits beside its panel, or the regular one over it.
   let measured = 0;
   const resize = () => {
@@ -193,24 +225,32 @@ export function mountHome(scene: HTMLElement): void {
     scale = available / room;
     scene.style.setProperty('--s', String(scale));
     scene.classList.toggle('is-wide', wide);
+    // The strip's targets keep a target's side apart, the first one whole under the window's top edge. Once they would
+    // reach into Home's column, where the utilities button's hit area is, they run down from under it instead, two pixels
+    // clear of it.
+    hit = Math.max(44, targetSide / scale);
+    const crowded = !wide && hit > 56;
+    scene.classList.toggle('is-crowded', crowded);
+    scene.style.setProperty('--strip-top', `${crowded ? 1.5 * hit - 22 + 2 / scale : Math.max(4, hit / 2 - 22)}px`);
+    scene.style.setProperty('--strip-gap', `${Math.max(0, hit - 44)}px`);
     shape.setAttribute('viewBox', `0 0 ${room} ${stageHeight}`);
+    fitButtonHit();
     grow(true);
   };
   new ResizeObserver(resize).observe(screen);
 
-  /** A widget's place in the editor, for the keyboard and screen readers, or nothing outside it. */
+  /** In the editor a widget is its handle, a button over its card for the keyboard and screen readers, beside its "−";
+   *  outside the editor it has none. */
   const editable = (element: HTMLElement, id: WidgetId, on: boolean) => {
+    const handle = element.querySelector<HTMLButtonElement>('[data-hs-handle]');
     const widget = info(id);
-    if (on && widget) {
-      element.tabIndex = 0;
-      element.setAttribute('role', 'button');
-      element.setAttribute('aria-label', `${widget.featureName}, ${widget.name}`);
-      element.setAttribute('aria-describedby', 'hs-widget-keys');
-      element.setAttribute('aria-pressed', String(picked === id));
-    } else {
-      element.removeAttribute('tabindex');
-      for (const name of ['role', 'aria-label', 'aria-describedby', 'aria-pressed']) element.removeAttribute(name);
-    }
+    if (!handle) return;
+    handle.hidden = !on || !widget;
+    if (!on || !widget) return;
+    // The notch row's widget is its feature's own name once, and the arrow keys don't move it.
+    handle.setAttribute('aria-label', widget.name === widget.featureName ? widget.name : `${widget.featureName}, ${widget.name}`);
+    handle.setAttribute('aria-describedby', id === 'timer.timer' ? 'hs-row-keys' : 'hs-widget-keys');
+    handle.setAttribute('aria-pressed', String(picked === id));
   };
 
   const render = () => {
@@ -269,6 +309,7 @@ export function mountHome(scene: HTMLElement): void {
     const center = buttonCenter(current.button);
     const isDragged = drag?.id === 'button';
     utilities.style.transform = `translate(${center.x - 22 + (isDragged ? drag!.dx : 0)}px, ${center.y - 22 + (isDragged ? drag!.dy : 0)}px)`;
+    fitButtonHit();
     utilities.classList.toggle('is-floating', current.button !== null || isDragged);
     utilities.classList.toggle('is-dragged', isDragged);
     utilities.classList.toggle('is-picked', picked === 'button');
@@ -318,7 +359,7 @@ export function mountHome(scene: HTMLElement): void {
     box.style.height = `${real.height * k}px`;
     const source = widget.id === 'timer.timer' ? timer : cardOf(widget.id)?.querySelector('[data-hs-face]');
     const face = (source?.cloneNode(true) as HTMLElement | undefined) ?? document.createElement('div');
-    face.querySelectorAll('.hs-ring, .hs-remove').forEach((element) => element.remove());
+    face.querySelectorAll('.hs-ring, .hs-remove, .hs-handle').forEach((element) => element.remove());
     face.removeAttribute('tabindex');
     for (const name of ['role', 'aria-label', 'aria-describedby', 'aria-pressed', 'hidden', 'data-hs-widget']) face.removeAttribute(name);
     face.classList.remove('is-picked', 'is-hover');
@@ -390,7 +431,7 @@ export function mountHome(scene: HTMLElement): void {
     render();
     // A keyboard goes on from the first widget, where the arrow keys move it; a click keeps the focus in the scene,
     // where Esc reaches the editor. The demo playing by itself moves no focus.
-    if (fromKeyboard) (scene.querySelector<HTMLElement>('.hs-widget[tabindex="0"]') ?? done).focus({ preventScroll: true });
+    if (fromKeyboard) (scene.querySelector<HTMLElement>('.hs-handle:not([hidden])') ?? done).focus({ preventScroll: true });
     else if (touched && lost) scene.focus({ preventScroll: true });
   };
 
@@ -413,8 +454,8 @@ export function mountHome(scene: HTMLElement): void {
 
   const removeWidget = (id: WidgetId, fromKeyboard = false) => {
     if (!draft) return;
-    const order = [...scene.querySelectorAll<HTMLElement>('.hs-widget[tabindex="0"]')];
-    const next = order[order.findIndex((element) => element.dataset.hsWidget === id) + 1];
+    const order = [...scene.querySelectorAll<HTMLElement>('.hs-handle:not([hidden])')];
+    const next = order[order.findIndex((element) => element.closest<HTMLElement>('.hs-widget')?.dataset.hsWidget === id) + 1];
     draft = removed(draft, id);
     if (picked === id) picked = null;
     announce(h.removed(info(id)?.featureName ?? ''));
@@ -654,7 +695,7 @@ export function mountHome(scene: HTMLElement): void {
       render();
       return;
     }
-    const widget = target.classList.contains('hs-widget') ? target : null;
+    const widget = target.matches('[data-hs-handle]') ? target.closest<HTMLElement>('.hs-widget') : null;
     if (!widget) return;
     const id = widget.dataset.hsWidget as WidgetId;
     if (step) {
@@ -668,21 +709,20 @@ export function mountHome(scene: HTMLElement): void {
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       removeWidget(id, true);
-    } else if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      pick(picked === id ? null : id);
     }
   });
+  // Enter or Space on a widget's handle picks it, as a click does; a click of the pointer picks it on its own way up.
+  for (const handle of scene.querySelectorAll<HTMLButtonElement>('[data-hs-handle]'))
+    handle.addEventListener('click', (event) => {
+      if (event.detail !== 0) return;
+      const id = handle.closest<HTMLElement>('.hs-widget')?.dataset.hsWidget as WidgetId | undefined;
+      if (id) pick(picked === id ? null : id);
+    });
 
   // The demo: it plays by itself while it is in view, with a drawn pointer, until the visitor touches it.
-  let run = 0;
-  let state: 'idle' | 'playing' | 'done' = 'idle';
-  let paused = false;
-  let inView = false;
-  let loopTimer = 0;
-  let offer: 'pause' | 'again' | null = null;
   const looping = () => !touched && !paused && !reduceMotion;
-  const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, reduceMotion ? 0 : ms));
+  /** A step's pause; with Reduce Motion a short beat, so a pass still shows each step, one after another, unmoving. */
+  const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, reduceMotion ? Math.min(ms, 280) : ms));
 
   const movePointer = (x: number, y: number) => {
     pointer.style.setProperty('--px', `${x.toFixed(1)}px`);
@@ -734,11 +774,11 @@ export function mountHome(scene: HTMLElement): void {
     again.textContent = next === 'pause' ? copy.chapter.pause : h.replay;
     again.classList.toggle('is-shown', next !== null);
   };
-  /** The slot under the scene: Pause while the demo goes round by itself, Again once it rests. It never changes under
-   *  the visitor's focus: only pressing it does. */
+  /** The slot under the scene: Pause while a pass plays, or while the loop waits to go round again; Again once it rests.
+   *  It never changes under the visitor's focus: only pressing it does, and the end of the pass it paused. */
   const sync = () => {
     if (document.activeElement === again) return;
-    if (state !== 'idle' && looping()) offerSlot('pause');
+    if (state === 'playing' || (looping() && (state === 'done' || autoTimer !== 0))) offerSlot('pause');
     else offerSlot(state === 'done' ? 'again' : null);
   };
 
@@ -767,7 +807,9 @@ export function mountHome(scene: HTMLElement): void {
     if (drag && !press) drop();
   };
 
-  const play = async () => {
+  /** One pass: by itself only for a visitor who watches, never once they have the scene; `forVisitor`, their Again. */
+  const play = async (forVisitor = false) => {
+    if (!forVisitor && (touched || paused)) return;
     const current = ++run;
     state = 'playing';
     window.clearTimeout(loopTimer);
@@ -775,14 +817,12 @@ export function mountHome(scene: HTMLElement): void {
     reset(initial);
     sync();
     const alive = () => current === run;
-    if (!reduceMotion) {
-      pointer.classList.add('is-tracking');
-      const rest = spot(home, 0.42, 0.62);
-      movePointer(rest.x, rest.y);
-      pointer.getBoundingClientRect();
-      pointer.classList.remove('is-tracking');
-      pointer.classList.add('is-shown');
-    }
+    pointer.classList.add('is-tracking');
+    const rest = spot(home, 0.42, 0.62);
+    movePointer(rest.x, rest.y);
+    pointer.getBoundingClientRect();
+    pointer.classList.remove('is-tracking');
+    pointer.classList.add('is-shown');
     await wait(700);
     // The utilities button puts its strip out.
     await pointAt(utilities);
@@ -848,7 +888,9 @@ export function mountHome(scene: HTMLElement): void {
     if (current !== run) return;
     state = 'done';
     pointer.classList.remove('is-shown');
-    sync();
+    // The visitor's own pass is over: its Pause becomes Again, even under their focus.
+    if (offer === 'pause' && !looping()) offerSlot('again');
+    else sync();
     if (looping() && inView)
       loopTimer = window.setTimeout(async () => {
         loopTimer = 0;
@@ -872,8 +914,11 @@ export function mountHome(scene: HTMLElement): void {
 
   // Any touch hands the scene to the visitor: no more rounds on their own, and what the pass left half done settles.
   const takeOver = (event: Event) => {
+    if (event.target instanceof Node && again.contains(event.target)) return;
     window.clearTimeout(loopTimer);
     loopTimer = 0;
+    window.clearTimeout(autoTimer);
+    autoTimer = 0;
     // Settled before the visitor has it, so what the demo did is not read out as theirs.
     if (state === 'playing') {
       run++;
@@ -881,8 +926,7 @@ export function mountHome(scene: HTMLElement): void {
       settle();
     }
     touched = true;
-    // A press on the slot lands on what it showed: only its click changes it.
-    if (!(event.target instanceof Node && again.contains(event.target))) sync();
+    sync();
   };
   scene.addEventListener('pointerdown', takeOver, { capture: true });
   scene.addEventListener('keydown', takeOver, { capture: true });
@@ -893,13 +937,16 @@ export function mountHome(scene: HTMLElement): void {
   again.addEventListener('click', () => {
     if (offer === 'pause') {
       paused = true;
+      window.clearTimeout(autoTimer);
+      autoTimer = 0;
       still();
-      sync();
       offerSlot('again');
       return;
     }
+    // Again: one pass for the visitor who asked for it, and Pause stops it.
     touched = true;
-    void play();
+    offerSlot('pause');
+    void play(true);
   });
 
   // It starts when it comes into view and goes round while it stays there. Off screen it rests, and the visitor's turn
@@ -907,17 +954,26 @@ export function mountHome(scene: HTMLElement): void {
   new IntersectionObserver(
     ([entry]) => {
       inView = entry?.isIntersecting ?? false;
+      window.clearTimeout(autoTimer);
+      autoTimer = 0;
       if (!inView) {
         if (!scene.contains(document.activeElement)) touched = false;
         window.clearTimeout(loopTimer);
         loopTimer = 0;
+        sync();
         return;
       }
-      const ready = state === 'idle' || (state === 'done' && !loopTimer && !touched && !paused);
-      if ((entry?.intersectionRatio ?? 0) >= 0.5 && ready) void play();
-      else sync();
+      // A moment after it is well in view, for a visitor who only watches: never once they have it, or have paused it.
+      const ready = () => !touched && !paused && (state === 'idle' || (state === 'done' && !loopTimer));
+      if ((entry?.intersectionRatio ?? 0) >= 0.6 && ready())
+        autoTimer = window.setTimeout(() => {
+          autoTimer = 0;
+          if (inView && ready()) void play();
+          else sync();
+        }, 1000);
+      sync();
     },
-    { threshold: [0, 0.5] },
+    { threshold: [0, 0.6] },
   ).observe(scene);
 
   resize();

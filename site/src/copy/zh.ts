@@ -185,6 +185,7 @@ export const zh: Copy = {
     replay: '再来一次',
     widgetKeys: '方向键移动它，Delete 键将它移出 Home。',
     buttonKeys: '方向键移动它。',
+    rowKeys: 'Delete 键将它移出 Home。',
     moved: (name: string) => `已移动${name}`,
     resized: (name: string, size: string) => `${name}：${size}`,
     removed: (name: string) => `已将${name}移出 Home`,

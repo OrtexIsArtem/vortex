@@ -283,6 +283,7 @@ export const uk: Copy = {
     replay: 'Ще раз',
     widgetKeys: 'Стрілки переміщують віджет, Delete прибирає його.',
     buttonKeys: 'Стрілки переміщують кнопку.',
+    rowKeys: 'Delete прибирає віджет.',
     moved: (name: string) => `${name}: переміщено`,
     resized: (name: string, size: string) => `${name}: ${size}`,
     removed: (name: string) => `${name}: прибрано з головної`,

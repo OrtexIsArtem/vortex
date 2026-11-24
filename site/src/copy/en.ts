@@ -290,6 +290,8 @@ export const en = {
     /** For a screen reader, on a widget or the utilities button in the editor: the keys that stand in for a drag. */
     widgetKeys: 'Arrow keys move it, Delete removes it.',
     buttonKeys: 'Arrow keys move it.',
+    /** The notch row's widget stays in its row: only Delete does anything to it. */
+    rowKeys: 'Delete removes it.',
     /** For a screen reader: what the visitor's own edits did; the demo playing by itself stays silent. */
     moved: (name: string) => `${name} moved`,
     resized: (name: string, size: string) => `${name}: ${size}`,
