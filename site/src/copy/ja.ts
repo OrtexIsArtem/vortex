@@ -275,7 +275,7 @@ export const ja: Copy = {
     ...en.openSource,
     title: '無料で、オープンソース。',
     titleQuiet: 'MITライセンス。読んで、ビルドして、自分のものに。',
-    body: 'VortexはSwift 6とSwiftUIで書かれたネイティブのMacアプリで、The Composable Architectureをベースにしています。各機能はモジュールになっていて、それぞれが自分のタブ、Homeウィジェット、設定、データベースのテーブル、ドキュメントを持っています。ある機能のフォルダと、それを登録している数行を削除しても、残りはそのままビルドできます。',
+    body: 'VortexはSwift 6とSwiftUIで書かれたネイティブのMacアプリで、The Composable Architectureをベースにしています。各機能はモジュールになっていて、それぞれが自分のタブ（ユーティリティならHomeのユーティリティにあるボタン）、ウィジェット、設定、データベースのテーブル、ドキュメントを持っています。ある機能のフォルダと、それを登録している数行を削除しても、残りはそのままビルドできます。',
     note: (readme: string) => `Xcodeが必要です。ビルドし直しても許可を保つ方法は[README](${readme})で説明しています。`,
     code: 'GitHubでコードを読む',
     contribute: '開発に参加するには',

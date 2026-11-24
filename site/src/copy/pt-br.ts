@@ -271,7 +271,7 @@ export const ptBr: Copy = {
     ...en.openSource,
     title: 'Grátis e de código aberto.',
     titleQuiet: 'Licença MIT. Leia, compile e deixe com a sua cara.',
-    body: 'O Vortex é um app nativo para Mac em Swift 6 e SwiftUI, baseado em The Composable Architecture. Cada recurso é um módulo que traz a sua própria aba, widget na Home, ajustes, tabelas e documentação. Apague a pasta de um recurso e as linhas que o listam, e o resto continua compilando.',
+    body: 'O Vortex é um app nativo para Mac em Swift 6 e SwiftUI, baseado em The Composable Architecture. Cada recurso é um módulo com tudo o que é seu: a sua aba ou o seu botão entre os utilitários da Home, widgets, ajustes, tabelas e documentação. Apague a pasta de um recurso e as linhas que o listam, e o resto continua compilando.',
     note: (readme: string) => `Você precisa do Xcode. [O README](${readme}) mostra como manter as permissões entre recompilações.`,
     code: 'Leia o código no GitHub',
     contribute: 'Como contribuir',

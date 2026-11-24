@@ -271,7 +271,7 @@ export const de: Copy = {
     ...en.openSource,
     title: 'Kostenlos und Open Source.',
     titleQuiet: 'MIT-Lizenz. Lies den Code, bau ihn, mach ihn zu deinem.',
-    body: 'Vortex ist eine native Mac-App in Swift\u00a06 und SwiftUI, gebaut auf The Composable Architecture. Jedes Feature ist ein Modul und bringt alles Eigene mit: Tab, Home-Widget, Einstellungen, Tabellen und Doku. Lösche den Ordner eines Features und die Zeilen, die es auflisten, und der Rest lässt sich weiterhin bauen.',
+    body: 'Vortex ist eine native Mac-App in Swift\u00a06 und SwiftUI, gebaut auf The Composable Architecture. Jedes Feature ist ein Modul und bringt alles Eigene mit: seinen Tab oder seinen Button bei den Utilities in „Home“, Widgets, Einstellungen, Tabellen und Doku. Lösche den Ordner eines Features und die Zeilen, die es auflisten, und der Rest lässt sich weiterhin bauen.',
     note: (readme: string) => `Du brauchst Xcode. Wie du die Berechtigungen über neue Builds hinweg behältst, steht im [README](${readme}).`,
     code: 'Code auf GitHub lesen',
     contribute: 'So machst du mit',

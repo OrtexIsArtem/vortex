@@ -269,7 +269,7 @@ export const fr: Copy = {
   openSource: {
     title: 'Gratuit et open source.',
     titleQuiet: 'Licence MIT. Lisez le code, compilez-le, faites-le vôtre.',
-    body: 'Vortex est une app Mac native en Swift\u00a06 et SwiftUI, bâtie sur The Composable Architecture. Chaque fonctionnalité est un module qui apporte son propre onglet, son widget Home, ses réglages, ses tables et sa documentation. Supprimez le dossier d’une fonctionnalité et les lignes qui la déclarent\u00a0: le reste compile toujours.',
+    body: 'Vortex est une app Mac native en Swift\u00a06 et SwiftUI, bâtie sur The Composable Architecture. Chaque fonctionnalité est un module qui apporte tout ce qui lui est propre\u00a0: son onglet ou son bouton parmi les utilitaires de Home, ses widgets, ses réglages, ses tables et sa documentation. Supprimez le dossier d’une fonctionnalité et les lignes qui la déclarent\u00a0: le reste compile toujours.',
     commands: en.openSource.commands,
     note: (readme: string) =>
       `Il vous faut Xcode. [Le README](${readme}) explique comment conserver les autorisations d’une compilation à l’autre.`,

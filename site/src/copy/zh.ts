@@ -270,7 +270,7 @@ export const zh: Copy = {
   openSource: {
     title: '免费开源。',
     titleQuiet: 'MIT 许可证。随你阅读、构建和改造。',
-    body: 'Vortex 是用 Swift 6 和 SwiftUI 编写的原生 Mac App，基于 The Composable Architecture 构建。每个功能都是一个模块，自带标签页、Home 小组件、设置、数据表和文档。删掉某个功能的文件夹和登记它的那几行代码，其余部分照样能构建。',
+    body: 'Vortex 是用 Swift 6 和 SwiftUI 编写的原生 Mac App，基于 The Composable Architecture 构建。每个功能都是一个模块，自带标签页（实用工具则是 Home 实用工具里的按钮）、小组件、设置、数据表和文档。删掉某个功能的文件夹和登记它的那几行代码，其余部分照样能构建。',
     commands: en.openSource.commands,
     note: (readme: string) => `需要 Xcode。如何让权限在重新构建后保留下来，请参阅 [README](${readme})。`,
     code: '在 GitHub 上阅读代码',

@@ -116,6 +116,7 @@ const f = o.figure;
   }
 
   .mods__frame {
+    container-type: inline-size;
     overflow: hidden;
     border-radius: 24px;
     background: var(--window);
@@ -148,9 +149,10 @@ const f = o.figure;
     font: 12px var(--mono);
   }
 
+  /* The eight modules: four a row where the frame has room for their names, two where it hasn't. */
   .mods__grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     margin: 0;
     padding: 20px;
@@ -176,13 +178,27 @@ const f = o.figure;
     color: var(--text-1);
     font-size: 14px;
     font-weight: 500;
+    /* A two-word name, as Keyboard Cleaning, takes two lines where the tile is narrow. */
+    line-height: 1.2;
     transition:
       opacity 420ms var(--ease-out),
       transform 520ms var(--ease-out);
   }
 
   .mods__tile :global(svg) {
+    flex: none;
     color: var(--text-2);
+  }
+
+  @container (min-width: 540px) {
+    .mods__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .mods__tile {
+      gap: 8px;
+      padding: 0 12px;
+    }
   }
 
   .mods__tile.is-out {
@@ -257,7 +273,6 @@ const f = o.figure;
 
   @media (max-width: 599px) {
     .mods__grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       padding: 14px;
     }
 
@@ -295,8 +310,8 @@ const f = o.figure;
   if (figure && text && !reduceMotion) {
     const f = copy.openSource.figure;
     const tiles = new Map([...figure.querySelectorAll<HTMLElement>('[data-module]')].map((tile) => [tile.dataset.module, tile]));
-    // Which modules leave, in turn; Keys and Home stay, the ones a visitor would miss least go.
-    const order = ['Timer', 'Shelf', 'Tasks', 'Clipboard'];
+    // Which modules leave, in turn; Keys and Home stay, the ones a visitor would miss least go, the utilities too.
+    const order = ['Timer', 'Screen Text', 'Shelf', 'Keyboard Cleaning', 'Tasks', 'Clipboard'];
     let round = 0;
     let run = 0;
     const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));

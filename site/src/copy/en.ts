@@ -410,7 +410,7 @@ export const en = {
   openSource: {
     title: 'Free and open source.',
     titleQuiet: 'MIT license. Read it, build it, make it yours.',
-    body: "Vortex is a native Mac app in Swift 6 and SwiftUI, built on The Composable Architecture. Each feature is a module that brings its own tab, Home widget, settings, tables and docs. Delete a feature's folder and the lines that list it, and the rest still builds.",
+    body: "Vortex is a native Mac app in Swift 6 and SwiftUI, built on The Composable Architecture. Each feature is a module with everything of its own: its tab or its button among Home's utilities, widgets, settings, tables and docs. Delete a feature's folder and the lines that list it, and the rest still builds.",
     commands: ['brew install xcodegen', 'git clone https://github.com/OrtexIsArtem/vortex.git', 'cd vortex', 'make install'],
     note: (readme: string) => `You need Xcode. [The README](${readme}) shows how to keep the permissions across rebuilds.`,
     code: 'Read the code on GitHub',
@@ -418,6 +418,7 @@ export const en = {
     figure: {
       label: "Vortex's features as modules: one at a time is taken out, and the rest still builds.",
       folder: 'Packages/Features',
+      /** Every feature module the app ships (Packages/Package.swift, Features/Registry), by the name it shows. */
       modules: [
         { name: 'Home', icon: 'grid' },
         { name: 'Timer', icon: 'timer' },
@@ -425,6 +426,8 @@ export const en = {
         { name: 'Shelf', icon: 'tray' },
         { name: 'Tasks', icon: 'checklist' },
         { name: 'Keys', icon: 'key' },
+        { name: 'Keyboard Cleaning', icon: 'keyboard' },
+        { name: 'Screen Text', icon: 'textViewfinder' },
       ],
       build: 'make build',
       built: (features: number) => `Build succeeded, ${features} features`,
