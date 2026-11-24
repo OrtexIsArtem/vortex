@@ -51,20 +51,20 @@ struct QRCodeReadingTests {
     return CIContext().createCGImage(scaled, from: scaled.extent)!
   }
 
-  @Test
+  @Test(.liveVision)
   func readsALinkInAQRCode() async throws {
     let payload = try await TextRecognitionClient.liveValue.readQRCode(Self.image(codes: [("https://example.com/a?b=c", 60)]))
     #expect(payload == "https://example.com/a?b=c")
   }
 
-  @Test
+  @Test(.liveVision)
   func readsAnyTextInAQRCode() async throws {
     let payload = try await TextRecognitionClient.liveValue.readQRCode(Self.image(codes: [("WIFI:S:Office;T:WPA;P:demo;;", 60)]))
     #expect(payload == "WIFI:S:Office;T:WPA;P:demo;;")
   }
 
   /// Of two codes, the larger one is the one the frame is about.
-  @Test
+  @Test(.liveVision)
   func ofTwoCodesTheLargerOneIsRead() async throws {
     let context = CGContext(
       data: nil, width: 900, height: 420, bitsPerComponent: 8, bytesPerRow: 0,
@@ -79,7 +79,7 @@ struct QRCodeReadingTests {
     #expect(payload == "large")
   }
 
-  @Test
+  @Test(.liveVision)
   func textWithoutACodeIsNoCode() async throws {
     let payload = try await TextRecognitionClient.liveValue.readQRCode(Self.image(text: "No code here, only text"))
     #expect(payload == nil)

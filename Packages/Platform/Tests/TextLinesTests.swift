@@ -19,7 +19,7 @@ enum Fixture {
 /// their order, and the rows top to bottom.
 struct TextLinesTests {
   /// A chat's messages with their times at the right end: each line whole, its time and all.
-  @Test
+  @Test(.liveVision)
   func aRowsPiecesJoinWithASpaceAndRowsWithALineBreak() async throws {
     let text = try await TextRecognitionClient.liveValue.recognize(Fixture.image("chat"))
     #expect(text == "Build 43 failed on main again 14:21\nCan you look at the error? 14:22\nSure, sending the log now 14:25")
@@ -27,7 +27,7 @@ struct TextLinesTests {
 
   /// A terminal's lines, each a number and a path that Vision reads in up to four pieces: one line each, whole, with
   /// its number at its start where Vision finds it (it misses some of these short numbers, which is Vision's own).
-  @Test
+  @Test(.liveVision)
   func aLineNumberAndThePiecesOfALineStayOnItsLine() async throws {
     let lines = try await TextRecognitionClient.liveValue.recognize(Fixture.image("terminal")).split(separator: "\n")
     #expect(lines.count == 10, "\(lines)")

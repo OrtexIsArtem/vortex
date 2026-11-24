@@ -6,7 +6,7 @@ import Testing
 /// code, paths and times come as they show.
 struct TextAsWrittenTests {
   /// The tester's lines of Ukrainian, Russian, English and code, 1,400 × 350 px.
-  @Test
+  @Test(.liveVision)
   func codeAndPathsAreReadAsWritten() async throws {
     let text = try await TextRecognitionClient.liveValue.recognizeAsWritten(Fixture.image("code"))
     let lines = text.split(separator: "\n").map(String.init)
@@ -19,7 +19,7 @@ struct TextAsWrittenTests {
   /// The tester's 11 pt lines, the top of the screen: read as written alone, Vision drops a space between words in about
   /// a third of them ("brownfox jumps overthe"); the spaces a corrected read finds between two letters put them back.
   /// A letter Vision misreads, as in a line the picture's edge cuts, stays as read.
-  @Test
+  @Test(.liveVision)
   func smallTextKeepsTheSpacesBetweenWords() async throws {
     let text = try await TextRecognitionClient.liveValue.recognizeAsWritten(Fixture.image("dense-wide"))
     let numbered = text.split(separator: "\n").filter { $0.hasPrefix("Line ") }
@@ -32,7 +32,7 @@ struct TextAsWrittenTests {
 
   /// The warm-up's picture holds words Vision reads, so the warm-up loads what reads text, not only what finds it; and it
   /// ends without throwing.
-  @Test
+  @Test(.liveVision)
   func theWarmUpReadsWords() async throws {
     let picture = try #require(warmUpPicture())
     let text = try await TextRecognitionClient.liveValue.recognizeAsWritten(ScreenImage(cgImage: picture, scale: 2))
@@ -44,7 +44,7 @@ struct TextAsWrittenTests {
   /// threads: 32 reads at once, as tests running side by side make, once left no thread for that work, and none ended.
   /// The limit only stops a hang: in a run of every suite at once the reads wait their turns behind the other suites'
   /// for close to a minute.
-  @Test(.timeLimit(.minutes(3)))
+  @Test(.liveVision, .timeLimit(.minutes(3)))
   func manyReadsAtOnceAllEnd() async throws {
     let chat = try Fixture.image("chat"), code = try Fixture.image("code")
     let reads = try await withThrowingTaskGroup(of: String.self) { group in
@@ -88,7 +88,7 @@ struct TextAsWrittenTests {
 
   /// Identifiers in the system font at 11, 12 and 13 pt, where Vision's correction parts `querySelector`: read as
   /// written, each stays one word.
-  @Test
+  @Test(.liveVision)
   func identifiersInSmallTextStayWhole() async throws {
     for size in [22.0, 24.0, 26.0] {
       let lines = ["getElementById querySelector addEventListener", "LastName FirstName"]

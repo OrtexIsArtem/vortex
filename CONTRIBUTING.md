@@ -194,6 +194,7 @@ Add a line about the widget to two of the feature's docs:
 ## Testing
 - `make test` runs every package's tests. Use a `TestStore` with substituted clients for reducers.
 - A test tells what happens in which order, not how soon: a run of every suite at once keeps the threads busy for seconds. A time limit that only a Mac with nothing else running holds goes in a performance test, a suite named `…PerformanceTests` and skipped unless `VORTEX_PERFORMANCE_TESTS` is set: `VORTEX_PERFORMANCE_TESTS=1 swift test --package-path Packages --filter PerformanceTests`.
+- A test that has Apple Vision read a picture carries `.liveVision` (Platform's tests), and CI skips it: on CI's virtual Macs Vision has only the CPU, so it reads slowly and reads otherwise. `make test` and the pre-push hook run it on your Mac.
 - QA mode runs an isolated copy of a debug build next to your own Vortex:
   - it has its own data folder and port;
   - macOS permissions and other system services are simulated;

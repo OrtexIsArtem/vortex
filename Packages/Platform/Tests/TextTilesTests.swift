@@ -97,7 +97,7 @@ struct TextTilesTests {
 
   /// The tester's screen of 85 numbered lines of 11 pt text, cut 3,456 × 800 px, the whole screen's width: Vision alone
   /// reads nothing in it; in tiles every line of it is read, once.
-  @Test
+  @Test(.liveVision)
   func aWidePictureOfSmallTextIsReadWhole() async throws {
     let lines = try await TextRecognitionClient.liveValue.recognize(Fixture.image("dense-wide")).split(separator: "\n")
     let numbers = lines.compactMap { $0.firstMatch(of: /Line (\d\d)/).map { Int($0.1)! } }
@@ -109,7 +109,7 @@ struct TextTilesTests {
 
   /// The tester's chat, cut the whole screen's width: Vision alone loses two of the 12 pt times and a question mark; in
   /// tiles each line comes whole, with its time.
-  @Test
+  @Test(.liveVision)
   func aWideChatKeepsItsTimes() async throws {
     let text = try await TextRecognitionClient.liveValue.recognize(Fixture.image("chat-wide"))
     #expect(text == "Build 43 failed on main again 14:21\nCan you look at the error? 14:22\nSure, sending the log now 14:25")
@@ -117,7 +117,7 @@ struct TextTilesTests {
 
   /// Lines of 11 pt text set close, as in a log, across a whole screen's width, 3,456 × 800 px, which Vision alone reads
   /// little of and three tiles cut twice each: every line, whole, once.
-  @Test
+  @Test(.liveVision)
   func linesAcrossTheTilesAreReadWhole() async throws {
     let sentences = (1...28).map { number in
       "Step \(number) of the release: the tests in the payments module could not reach the staging server"

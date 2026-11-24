@@ -13,7 +13,7 @@
   struct ScreenTextQATests {
     /// The parts of the fixture are where the state says, and Vision reads them: each QR code's payload, and the chat's
     /// lines, Ukrainian too.
-    @Test
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil, "Vision on CI's virtual Macs has only the CPU: see LiveVision.swift in Platform's tests"))
     func theFixturesCodesAndTextAreWhereItSays() async throws {
       let size = CGSize(width: 1512, height: 982)
       let (png, frames) = try ScreenTextModule.Fixture.draw(size: size, scale: 2, background: nil)

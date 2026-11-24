@@ -50,7 +50,7 @@ struct TextRecognitionForSearchTests {
     return data as Data
   }
 
-  @Test
+  @Test(.liveVision)
   func readsEnglishAndUkrainian() async throws {
     let png = Self.png(width: 1_200, height: 360, size: 48, lines: [("mcp server", 48), ("Налаштування сервера", 48)])
     let text = try await TextRecognitionClient.liveValue.recognizeForSearch(png).lowercased()
@@ -58,7 +58,7 @@ struct TextRecognitionForSearchTests {
     #expect(text.contains("налаштування сервера"))
   }
 
-  @Test
+  @Test(.liveVision)
   func anImageWiderThan4096PxIsScaledDownAndStillRead() async throws {
     // Large text at both ends: scaled to 4,096 px, it is still about 80 px high.
     let png = Self.png(width: 6_000, height: 800, size: 120, lines: [("mcp server", 120), ("release notes", 4_200)])
@@ -92,7 +92,7 @@ struct TextRecognitionForSearchTests {
 
   /// Text with nothing behind it, as on a diagram, a logo or a text layer copied from a design app: dark (Vision takes
   /// a transparent pixel for black) or white.
-  @Test(arguments: [0, 1] as [CGFloat])
+  @Test(.liveVision, arguments: [0, 1] as [CGFloat])
   func textOnATransparentBackgroundIsRead(gray: CGFloat) async throws {
     let png = Self.png(
       width: 1_200, height: 300, size: 48, lines: [("mcp server release", 48)], color: CGColor(gray: gray, alpha: 1),
@@ -143,7 +143,7 @@ struct TextRecognitionForSearchTests {
   /// Text on transparency is read whatever its shade and whatever sits beside it, such as a larger fill of the other
   /// shade, which one background picked for the whole image would hide it on: a logo's name beside its mark, a title
   /// over a card. A line read over both backgrounds, as the card's own is, comes once.
-  @Test(arguments: [0, 1] as [CGFloat])
+  @Test(.liveVision, arguments: [0, 1] as [CGFloat])
   func textOnTransparencyBesideALargerFillOfTheOtherShadeIsRead(gray: CGFloat) async throws {
     let read = TextRecognitionClient.liveValue.recognizeForSearch
     #expect(try await read(Self.wordmark(gray: gray)).lowercased().contains("vortex"))
@@ -168,7 +168,7 @@ struct TextRecognitionForSearchTests {
     await #expect(throws: CancellationError.self) { try await read.value }
   }
 
-  @Test
+  @Test(.liveVision)
   func aReadGivenUpWhileVisionReadsStopsVisionAndBringsNoText() async throws {
     let png = Self.longRead
     let read = Task { try await TextRecognitionClient.liveValue.recognizeForSearch(png) }
