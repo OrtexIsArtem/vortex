@@ -81,7 +81,7 @@ So you either shut down or stop the keys first.
 - **The window stays open.** While the keys are locked, nothing closes it: not moving the pointer away, a click elsewhere, Esc, the notch or the menu bar icon. Vortex comes to the front, so a key that still gets through lands in Vortex and goes no further.
 - **The keys come back by themselves** if Vortex quits or crashes, or if you turn off its Accessibility permission during a lock.
 
-Vortex needs the Accessibility permission for this: macOS lets an app hold keys back only with it. Vortex asks macOS for it only when you click **Turn on**, and it never goes online by itself. The rules the lock follows are in [Vortex’s docs](https://github.com/OrtexIsArtem/vortex/blob/main/Packages/Shell/docs/behavior.md#keyboard-cleaning).
+Vortex needs the Accessibility permission for this: macOS lets an app hold keys back only with it. Vortex asks macOS for it only when you click **Turn on**, and it never goes online by itself. The rules the lock follows are in [Vortex’s docs](https://github.com/OrtexIsArtem/vortex/blob/main/Packages/Features/KeyboardCleaning/docs/behavior.md).
 
 ### What it can’t lock
 

@@ -82,7 +82,7 @@ Also schaltest du entweder aus oder sperrst vorher die Tasten.
 - **Das Fenster bleibt offen.** Solange die Tasten gesperrt sind, geht es nicht zu: nicht, wenn der Zeiger es verlässt, nicht bei einem Klick daneben und auch nicht über Esc, die Notch oder das Symbol in der Menüleiste. Vortex kommt nach vorn: Rutscht doch eine Taste durch, landet sie in Vortex und geht nicht weiter.
 - **Die Tasten kommen von selbst zurück,** wenn Vortex beendet wird oder abstürzt oder wenn du Vortex während der Sperre die Berechtigung „Bedienungshilfen“ entziehst.
 
-Dafür braucht Vortex die Berechtigung „Bedienungshilfen“, denn nur damit lässt macOS eine App Tasten zurückhalten. Vortex fragt macOS erst danach, wenn du auf „Turn on“ klickst, und geht nie von selbst online. Nach welchen Regeln die Sperre arbeitet, steht in der [Doku von Vortex](https://github.com/OrtexIsArtem/vortex/blob/main/Packages/Shell/docs/behavior.md#keyboard-cleaning) (auf Englisch).
+Dafür braucht Vortex die Berechtigung „Bedienungshilfen“, denn nur damit lässt macOS eine App Tasten zurückhalten. Vortex fragt macOS erst danach, wenn du auf „Turn on“ klickst, und geht nie von selbst online. Nach welchen Regeln die Sperre arbeitet, steht in der [Doku von Vortex](https://github.com/OrtexIsArtem/vortex/blob/main/Packages/Features/KeyboardCleaning/docs/behavior.md) (auf Englisch).
 
 ### Was sich nicht sperren lässt
 

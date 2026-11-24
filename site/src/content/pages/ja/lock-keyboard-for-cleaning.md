@@ -74,7 +74,7 @@ MacBook（2015以降）やMacBook Pro（2016以降）で、反応しないキー
 - **ウインドウは開いたままです**。キーがロックされている間は、ポインタを外しても、ほかの場所をクリックしても、Esc、ノッチ、メニューバーのアイコンでも閉じません。Vortexが最前面に来るので、万一すり抜けたキーがあってもVortexで止まります。
 - **キーは自動で元に戻ります**。Vortexが終了したりクラッシュしたりしたときや、ロック中に「アクセシビリティ」の許可をオフにしたときです。
 
-この機能には「アクセシビリティ」の許可が必要です。macOSでは、この許可がないアプリはキー入力を止められないためです。Vortexが許可を求めるのは「Turn on」をクリックしたときだけで、自分からインターネットに接続することもありません。ロックの詳しい仕様は、[Vortexのドキュメント](https://github.com/OrtexIsArtem/vortex/blob/main/Packages/Shell/docs/behavior.md#keyboard-cleaning)（英語）に書かれています。
+この機能には「アクセシビリティ」の許可が必要です。macOSでは、この許可がないアプリはキー入力を止められないためです。Vortexが許可を求めるのは「Turn on」をクリックしたときだけで、自分からインターネットに接続することもありません。ロックの詳しい仕様は、[Vortexのドキュメント](https://github.com/OrtexIsArtem/vortex/blob/main/Packages/Features/KeyboardCleaning/docs/behavior.md)（英語）に書かれています。
 
 ### ロックできないもの
 
