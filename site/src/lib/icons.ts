@@ -18,8 +18,6 @@ export const icons = {
   puzzle: '<path d="M6.2 5.8h8.4a2 2 0 0 1 2 2V10a2.3 2.3 0 1 1 0 4v2.2a2 2 0 0 1-2 2H6.2a2 2 0 0 1-2-2V14a2.3 2.3 0 1 0 0-4V7.8a2 2 0 0 1 2-2z"/>',
   /** Home's utilities button: wrench.and.screwdriver. */
   utilities: '<path d="M5.63 3.37 10.63 8.37 8.37 10.63 3.37 5.63zM9.5 9.5l9 9M5 19l8.8-8.8M19.91 6.79a3.6 3.6 0 1 1-2.7-2.7"/>',
-  /** Screen Text's button in the utilities strip: text.viewfinder. */
-  textViewfinder: '<path d="M4 8.5v-2A2.5 2.5 0 0 1 6.5 4h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2M8.5 9h7M8 12h8M8.5 15h4.5"/>',
   /** Edit Home, the strip's last button: pencil. */
   pencil: '<path d="M5 19l1.34-3.46L15.94 5.94a1.5 1.5 0 0 1 2.12 2.12L8.46 17.66zM13.94 7.94l2.12 2.12"/>',
   timer: '<circle cx="12" cy="13.5" r="7.2"/><path d="M12 13.5V9.6M9.8 3.2h4.4M18.6 6.6l1.3-1.3"/>',
@@ -57,6 +55,9 @@ export const icons = {
   copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.4"/><path d="M15.5 8.5V6.4A2.4 2.4 0 0 0 13.1 4H6.4A2.4 2.4 0 0 0 4 6.4v6.7a2.4 2.4 0 0 0 2.4 2.4h2.1"/>',
   share: '<path d="M12 14.5V3.5m0 0L8 7.5m4-4 4 4M8.5 10.5H7A2.5 2.5 0 0 0 4.5 13v5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-5a2.5 2.5 0 0 0-2.5-2.5h-1.5"/>',
   book: '<path d="M12 6.5C10 5.3 7.5 4.8 4 5v13c3.5-.2 6 .3 8 1.5 2-1.2 4.5-1.7 8-1.5V5c-3.5-.2-6 .3-8 1.5zM12 6.5v13"/>',
+  /** Screen Text's symbol in the app, text.viewfinder: lines of text inside a viewfinder's corners. */
+  textViewfinder:
+    '<path d="M4 9V6.5A2.5 2.5 0 0 1 6.5 4H9M15 4h2.5A2.5 2.5 0 0 1 20 6.5V9M20 15v2.5a2.5 2.5 0 0 1-2.5 2.5H15M9 20H6.5A2.5 2.5 0 0 1 4 17.5V15"/><path d="M8.5 9h7M8.5 12h7M8.5 15h4"/>',
 } as const;
 
 export type IconName = keyof typeof icons;
