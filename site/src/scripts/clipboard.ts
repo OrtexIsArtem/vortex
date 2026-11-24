@@ -35,6 +35,8 @@ let items: CopyItem[] = [
   // The Vortex logo, which a click copies as a picture (og/render.mjs draws it).
   { id: nextId++, kind: 'image', text: copy.clipboardChapter.image, value: `${basePath}vortex-logo.png`, app: samples.screenshot, copiedAt: minutesAgo(9), pinned: false },
   { id: nextId++, kind: 'secret', text: 'correct horse battery staple', value: 'correct horse battery staple', app: samples.passwords, copiedAt: minutesAgo(12), pinned: false },
+  // Six fill the chapter's 3 × 2 grid; a command reads the same in every language.
+  { id: nextId++, kind: 'code', text: 'git switch -c feature/offline-mode', value: 'git switch -c feature/offline-mode', app: samples.terminal, copiedAt: minutesAgo(31), pinned: false },
   { id: nextId++, kind: 'code', text: 'brew install xcodegen', value: 'brew install xcodegen', app: samples.terminal, copiedAt: minutesAgo(64), pinned: false },
 ];
 
