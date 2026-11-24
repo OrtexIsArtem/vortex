@@ -141,6 +141,7 @@ export const es: Copy = {
     titleQuiet: 'Las URL de bases de datos, los tokens de API y las contraseñas se quedan en tu llavero.',
     body: 'Dale un nombre a una clave en Vortex. Claude Code escribe {{name}} donde va el valor, y Vortex ejecuta el comando en tu shell a través de un servidor MCP local. El valor entra como variable y se vuelve a quitar de la salida, así que Claude recibe el resultado, nunca la clave. La primera vez que una sesión usa una clave, la autorizas desde el notch.',
     facts: ['Valores en el llavero de macOS', 'Servidor MCP local con token', 'Una autorización por clave y sesión'],
+    note: 'Añade Keys primero: márcalo durante la configuración o añádelo más tarde en «Features».',
     kindsTitle: 'Le dice a Claude qué es cada clave',
     kinds: [...en.keysChapter.kinds.slice(0, -1), 'Claves privadas'],
     kindsRest: 'y cualquier otro token o contraseña',

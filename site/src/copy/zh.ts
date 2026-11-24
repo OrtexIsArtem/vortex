@@ -144,6 +144,7 @@ export const zh: Copy = {
     titleQuiet: '数据库 URL、API 令牌和密码都留在你的钥匙串里。',
     body: '在 Vortex 里给密钥起个名字。Claude Code 在该填值的地方写上 {{name}}，Vortex 则通过本地 MCP 服务器，在你的 shell 中运行这条命令。密钥的值以变量形式传入，再从输出中剔除，所以 Claude 拿到的是结果，永远拿不到密钥。每个会话第一次用到某个密钥时，需要你在刘海上允许。',
     facts: ['值存放在 macOS 钥匙串中', '本地 MCP 服务器，凭令牌访问', '每个会话中，每个密钥只需允许一次'],
+    note: '请先添加 Keys：在设置时勾选它，或稍后在“Features”中添加。',
     kindsTitle: '告诉 Claude 每个密钥的类型',
     kinds: [...en.keysChapter.kinds.slice(0, -1), '私钥'],
     kindsRest: '以及其他任何令牌或密码',

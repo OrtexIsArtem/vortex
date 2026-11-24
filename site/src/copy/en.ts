@@ -234,6 +234,8 @@ export const en = {
     titleQuiet: 'Database URLs, API tokens and passwords stay in your keychain.',
     body: 'Give a key a name in Vortex. Claude Code writes {{name}} where the value goes, and Vortex runs the command in your shell through a local MCP server. The value goes in as a variable and is taken back out of the output, so Claude gets the result, never the key. The first time a session uses a key, you allow it from the notch.',
     facts: ['Values in the macOS keychain', 'Local MCP server with a token', 'Allow once per key, per session'],
+    /** Keys isn't added on a fresh install: the README's words. */
+    note: 'Add Keys first: check it during setup, or add it later in Features.',
     kindsTitle: 'Tells Claude what each key is',
     kinds: ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'GitHub', 'Anthropic', 'OpenAI', 'Slack', 'AWS', 'Stripe', 'JWT', 'Private keys'],
     kindsRest: 'and any other token or password',

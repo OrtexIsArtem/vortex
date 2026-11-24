@@ -143,6 +143,7 @@ export const fr: Copy = {
     titleQuiet: 'URL de bases de données, jetons d’API et mots de passe restent dans votre trousseau.',
     body: 'Donnez un nom à une clé dans Vortex. Claude Code écrit {{name}} à la place de la valeur, et Vortex exécute la commande dans votre shell via un serveur MCP local. La valeur est passée sous forme de variable, puis retirée de la sortie\u00a0: Claude obtient le résultat, jamais la clé. La première fois qu’une session utilise une clé, vous l’autorisez depuis l’encoche.',
     facts: ['Valeurs dans le trousseau macOS', 'Serveur MCP local, avec jeton', 'Une autorisation par clé et par session'],
+    note: 'Ajoutez d’abord Keys\u00a0: cochez-le pendant la configuration, ou ajoutez-le plus tard dans «\u00a0Features\u00a0».',
     kindsTitle: 'Dit à Claude ce qu’est chaque clé',
     kinds: [...en.keysChapter.kinds.slice(0, -1), 'Clés privées'],
     kindsRest: 'et tout autre jeton ou mot de passe',

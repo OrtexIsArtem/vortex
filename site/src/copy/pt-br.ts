@@ -141,6 +141,7 @@ export const ptBr: Copy = {
     titleQuiet: 'URLs de banco de dados, tokens de API e senhas ficam nas Chaves do macOS.',
     body: 'Dê um nome a uma chave no Vortex. O Claude Code escreve {{name}} onde vai o valor, e o Vortex executa o comando no seu shell por meio de um servidor MCP local. O valor entra como variável e é removido da saída, então o Claude recebe o resultado, nunca a chave. Na primeira vez que uma sessão usa uma chave, você a autoriza no notch.',
     facts: ['Valores nas Chaves do macOS', 'Servidor MCP local com token', 'Autorize uma vez por chave, por sessão'],
+    note: 'Adicione o Keys primeiro: marque-o na configuração ou adicione-o depois em Features.',
     kindsTitle: 'Diz ao Claude o que é cada chave',
     kinds: [...en.keysChapter.kinds.slice(0, -1), 'Chaves privadas'],
     kindsRest: 'e qualquer outro token ou senha',

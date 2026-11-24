@@ -4,7 +4,7 @@ description: How to stop Claude Code from reading .env files, keep MCP tokens ou
 heading: Keep secrets and .env files away from Claude Code
 label: Secrets and Claude Code
 published: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-24
 chapter: keys
 faq:
   - q: Does Claude Code read .env files?
@@ -156,18 +156,19 @@ It works with the tools your terminal already has: `psql`, `mysql`, `mongosh`, `
 ## Set up Vortex Keys for Claude Code
 
 1. **Install Vortex.** It’s free, for macOS 14 or later on Apple silicon. [Download it below](#download). Vortex isn’t notarized by Apple, so the first launch takes one more step, shown there.
-2. **Add a key.** Open Vortex, go to **Keys** and press **+**. Paste the value: a token, password or connection URL. Vortex shows what it is, such as PostgreSQL, GitHub token or OpenAI API key.
-3. **Name it.** Claude writes the name as `{{name}}`. Leave it empty to use the kind’s name, such as `postgres` or `github`. Add a note for Claude if it helps, and choose how long the key lives: 1 hour, until the end of the day, or for good.
-4. **Connect Claude Code once.** During Vortex’s setup, press **Connect** on the Claude Code page. Or open **Keys**, press **Copy** under “Connect Claude Code once” and run the command in Terminal. Once Claude Code has connected, that card goes away, and the command stays in **Settings › Features › Keys** as **Copy the connect command**. It adds Vortex to Claude Code for every project:
+2. **Add Keys first.** Check it during setup, or add it later in **Features**, the puzzle piece in Vortex’s sidebar. A fresh install doesn’t add it, and a feature you haven’t added doesn’t run.
+3. **Add a key.** Open Vortex, go to **Keys** and press **+**. Paste the value: a token, password or connection URL. Vortex shows what it is, such as PostgreSQL, GitHub token or OpenAI API key.
+4. **Name it.** Claude writes the name as `{{name}}`. Leave it empty to use the kind’s name, such as `postgres` or `github`. Add a note for Claude if it helps, and choose how long the key lives: 1 hour, until the end of the day, or for good.
+5. **Connect Claude Code once.** During Vortex’s setup, press **Connect** on the Claude Code page; if you add Keys later, its page in **Features** shows the same step. Or open **Keys**, press **Copy** under “Connect Claude Code once” and run the command in Terminal. Once Claude Code has connected, that card goes away, and the command stays in **Settings › Features › Keys** as **Copy the connect command**. It adds Vortex to Claude Code for every project:
 
    ```text
    claude mcp remove --scope user vortex >/dev/null 2>&1; claude mcp add --transport http --scope user vortex http://127.0.0.1:47823/mcp --header "Authorization: Bearer <token>"
    ```
 
    Vortex fills in its own token, so copy the command from Vortex, not from here.
-5. **Start a new Claude Code session.** Claude Code now has two tools from Vortex: `keys`, which lists your keys’ names, kinds and notes, never their values, and `run`, which runs a command with `{{name}}` in it.
-6. **Ask Claude.** For example: “How many users are in the database? Use my postgres key in Vortex.” Claude writes a command like `psql "{{postgres}}" -c 'select count(*) from users'`. To point Claude at a key, hover over it in Vortex and press **Copy the name**: it copies `postgres (Vortex)`.
-7. **Allow the key.** The first time a session uses a key, the notch shows its name and flashes, and a notification shows the command with **Allow** and **Deny**; the Keys tab shows it too, with the folder. Allow it, and the key works for the rest of that Claude Code session without asking. Deny it, or let 90 seconds pass, and Claude gets an error that says so.
+6. **Start a new Claude Code session.** Claude Code now has two tools from Vortex: `keys`, which lists your keys’ names, kinds and notes, never their values, and `run`, which runs a command with `{{name}}` in it.
+7. **Ask Claude.** For example: “How many users are in the database? Use my postgres key in Vortex.” Claude writes a command like `psql "{{postgres}}" -c 'select count(*) from users'`. To point Claude at a key, hover over it in Vortex and press **Copy the name**: it copies `postgres (Vortex)`.
+8. **Allow the key.** The first time a session uses a key, the notch shows its name and flashes, and a notification shows the command with **Allow** and **Deny**; the Keys tab shows it too, with the folder. Allow it, and the key works for the rest of that Claude Code session without asking. Deny it, or let 90 seconds pass, and Claude gets an error that says so.
 
 Without notifications turned on, the request waits in the Keys tab. A command stops after 60 seconds, unless Claude asks for up to 180.
 

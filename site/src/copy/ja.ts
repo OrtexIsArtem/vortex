@@ -144,6 +144,7 @@ export const ja: Copy = {
     titleQuiet: 'データベースのURL、APIトークン、パスワードは、キーチェーンに入ったまま。',
     body: 'Vortexでキーに名前を付けます。Claude Codeは値を入れる場所に{{name}}と書き、VortexがローカルのMCPサーバを通じて、そのコマンドをお使いのシェルで実行します。値は変数として渡され、出力からは取り除かれるので、Claudeに届くのは結果だけで、キーは届きません。セッションで初めてキーを使うときは、ノッチで許可します。',
     facts: ['値はmacOSのキーチェーンに保存', 'トークン付きのローカルMCPサーバ', '許可はキーごと、セッションごとに1回'],
+    note: 'まずKeysを追加してください。セットアップ中にチェックするか、あとから「Features」で追加できます。',
     kindsTitle: 'キーの種類をClaudeに伝える',
     kinds: [...en.keysChapter.kinds.slice(0, -1), '秘密鍵'],
     kindsRest: 'ほかのトークンやパスワードも',

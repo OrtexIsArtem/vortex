@@ -144,6 +144,7 @@ export const de: Copy = {
     titleQuiet: 'Datenbank-URLs, API-Tokens und Passwörter bleiben in deinem Schlüsselbund.',
     body: 'Gib einem Schlüssel in Vortex einen Namen. Claude Code schreibt {{name}} an die Stelle des Werts, und Vortex führt den Befehl über einen lokalen MCP-Server in deiner Shell aus. Der Wert wird als Variable übergeben und aus der Ausgabe wieder entfernt. So bekommt Claude das Ergebnis, nie den Schlüssel. Nutzt eine Sitzung einen Schlüssel zum ersten Mal, gibst du ihn in der Notch frei.',
     facts: ['Werte im macOS-Schlüsselbund', 'Lokaler MCP-Server mit Token', 'Freigabe einmal pro Schlüssel und Sitzung'],
+    note: 'Füge zuerst Keys hinzu: Hake es bei der Einrichtung an oder füge es später unter „Features“ hinzu.',
     kindsTitle: 'Sagt Claude, was jeder Schlüssel ist',
     kinds: [...en.keysChapter.kinds.slice(0, -1), 'Private Schlüssel'],
     kindsRest: 'und jedes andere Token oder Passwort',
