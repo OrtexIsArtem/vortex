@@ -17,6 +17,7 @@ import KeyLimits from './KeyLimits.astro';
 import ClipboardScene from './scenes/ClipboardScene.astro';
 import KeyboardScene from './scenes/KeyboardScene.astro';
 import KeysScene from './scenes/KeysScene.astro';
+import ScreenTextScene from './scenes/ScreenTextScene.astro';
 import TasksScene from './scenes/TasksScene.astro';
 import ShelfScene from './scenes/ShelfScene.astro';
 import TimerScene from './scenes/TimerScene.astro';
@@ -57,6 +58,9 @@ const guides = await chapterGuides(localeOf(Astro.url.pathname));
     </Chapter>
     <Chapter id="keyboard" icon="keyboard" {...copy.keyboardChapter} guides={guides.get('keyboard')}>
       <KeyboardScene />
+    </Chapter>
+    <Chapter id="screentext" icon="textViewfinder" {...copy.screenTextChapter}>
+      <ScreenTextScene />
     </Chapter>
     <SmallThings />
     <Privacy />

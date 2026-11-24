@@ -1,0 +1,464 @@
+---
+// Screen Text, as the app's utility runs it: Copy Text freezes the screen, a frame drawn over it puts the lines it
+// covers on the clipboard, and the notch says how many. The text is a build log in a chat's screenshot, a picture the
+// page never lets anyone select. The chat is the one Screen Text's catalog clip shows, drawn in the page's monochrome.
+// The script is scripts/screen-text.ts.
+import { copyFor } from '../../copy';
+import { appLangOf, localeOf } from '../../copy/locales';
+import Icon from '../Icon.astro';
+
+const copy = copyFor(Astro.url);
+const code = localeOf(Astro.url.pathname);
+// The button and the frozen screen's hint are the app's, in the app's language; the chat and what the page adds (Frame
+// the log for me, Pause, Again) are in the page's.
+const appLang = appLangOf(code);
+// Apple Vision reads English, Ukrainian and Russian, as the app asks it to: the messages on the Japanese and Chinese
+// pages are nothing it can read. The names, the times and the log it reads on every page.
+const readable = code === 'ja' || code === 'zh' ? undefined : '';
+const s = copy.screenTextChapter;
+// Dana's screenshot: a failed build's last lines, the same on every page.
+const log = ["error: cannot find 'WeatherService' in scope", '  --> Sources/Forecast/ForecastView.swift:42', '** BUILD FAILED ** (1 failure)'];
+---
+
+<div class="scene st" data-st-scene tabindex="-1" data-nosnippet>
+  <div class="st__screen" data-st-screen>
+    <div class="chat">
+      <div class="chat__bar">
+        <span class="chat__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="chat__title" data-st-line># mobile-team</span>
+      </div>
+      <div class="chat__body">
+        <div class="msg">
+          <span class="msg__avatar" aria-hidden="true">D</span>
+          <div class="msg__content">
+            <p class="msg__who" data-st-line>Dana <time>14:20</time></p>
+            <p class="msg__text" data-st-line={readable}>{s.dana}</p>
+            <div class="shot" role="img" aria-label={s.shot}>
+              <span class="shot__lights"><i></i><i></i><i></i></span>
+              <div class="shot__log" lang="en">
+                {log.map((line) => <p data-st-line data-st-log>{line}</p>)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="msg">
+          <span class="msg__avatar is-second" aria-hidden="true">S</span>
+          <div class="msg__content">
+            <p class="msg__who" data-st-line>Sam <time>14:21</time></p>
+            <p class="msg__text" data-st-line={readable}>{s.sam}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="freeze" data-st-freeze>
+      <div class="freeze__frame" data-st-frame aria-hidden="true"></div>
+      {/* The pointer the demo draws with: a crosshair, as the app's is over the frozen screen. */}
+      <svg class="freeze__pointer" data-st-pointer width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2.5v6.5M12 15v6.5M2.5 12H9M15 12h6.5" stroke="#000" stroke-opacity="0.55" stroke-width="3.4" stroke-linecap="round" />
+        <path d="M12 2.5v6.5M12 15v6.5M2.5 12H9M15 12h6.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+      <p class="freeze__hint" lang={appLang}><span data-st-hint>{s.frameHint}</span><span class="freeze__esc">{s.escHint}</span></p>
+      <button class="freeze__auto" type="button" data-st-auto>{s.frameForMe}</button>
+    </div>
+  </div>
+
+  <div class="st__bar">
+    <button class="st__copy" type="button" data-st-capture lang={appLang}><Icon name="textViewfinder" size={17} />{s.button}</button>
+    <button class="st__again" type="button" data-st-again>{s.replay}</button>
+  </div>
+  {/* What the visitor's own actions did, for a screen reader; the demo playing by itself stays silent. */}
+  <p class="visually-hidden" role="status" data-st-status></p>
+</div>
+
+<style>
+  /* Focusable only so that a click inside keeps the focus here, where Esc reaches the capture. */
+  .st {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px;
+    outline: none;
+  }
+
+  /* The Mac's screen: a dark wallpaper with the chat window on it, running off its bottom edge. Under the last message
+     there is room for the frozen screen's hint, which never covers the chat's words. */
+  .st__screen {
+    position: relative;
+    height: 290px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #16161a;
+  }
+
+  .chat {
+    position: absolute;
+    inset: 14px 14px 0;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+    background: #1e1e21;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+
+  .chat__bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 30px;
+    padding: 0 12px;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .chat__lights {
+    display: flex;
+    gap: 5px;
+  }
+
+  .chat__lights i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4a4a50;
+  }
+
+  .chat__title {
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  .chat__body {
+    display: grid;
+    gap: 14px;
+    padding: 12px 14px;
+  }
+
+  .msg {
+    display: flex;
+    gap: 10px;
+  }
+
+  .msg__avatar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #3a3a40;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .msg__avatar.is-second {
+    background: #2c2c31;
+  }
+
+  .msg__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .msg__who {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .msg__who time {
+    margin-left: 4px;
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  .msg__text {
+    margin: 2px 0 0;
+    color: #d1d1d6;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  /* The screenshot Dana posted: a terminal's last lines, a picture in the chat. Its words can't be selected, and no
+     I-beam offers to: framing them is the only way to copy them. */
+  .shot {
+    container-type: inline-size;
+    margin-top: 8px;
+    padding: 9px 14px 10px;
+    border-radius: 8px;
+    background: #0b0b0d;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  .shot__lights {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+
+  .shot__lights i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #3e3e43;
+  }
+
+  /* A log line is 44 characters, 26.4 em of a monospaced font: the size follows the screenshot's width so every line
+     stays whole, as a picture's would. */
+  .shot__log {
+    color: #a1a1a6;
+    font: 400 clamp(7px, 3.6cqi, 12.5px) / 1.75 var(--mono);
+  }
+
+  .shot__log p {
+    margin: 0;
+    overflow: hidden;
+    white-space: pre;
+  }
+
+  .shot__log p:first-child,
+  .shot__log p:last-child {
+    color: var(--text-1);
+    font-weight: 700;
+  }
+
+  /* The frozen screen: dimmed, a crosshair, the frame being drawn and the hint, as in the app. A drag here draws, unless
+     it is the loop's frozen screen under a finger, where it still scrolls the page. */
+  .freeze {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: none;
+    cursor: crosshair;
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .st.is-frozen .freeze {
+    display: block;
+    background: rgb(0 0 0 / 0.45);
+  }
+
+  .st.is-theirs .freeze {
+    touch-action: none;
+  }
+
+  /* With a frame, only what is outside it stays dim. */
+  .st.is-drawing .freeze {
+    background: none;
+  }
+
+  .freeze__frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.9),
+      0 0 0 9999px rgb(0 0 0 / 0.45);
+  }
+
+  .st.is-drawing .freeze__frame {
+    display: block;
+  }
+
+  /* Marks along each corner, 3 px thick and 12 px long, or a third of a shorter side (--mark). */
+  .freeze__frame::before {
+    --m: var(--mark, 12px);
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background:
+      linear-gradient(#fff 0 0) 0 0 / var(--m) 3px no-repeat,
+      linear-gradient(#fff 0 0) 0 0 / 3px var(--m) no-repeat,
+      linear-gradient(#fff 0 0) 100% 0 / var(--m) 3px no-repeat,
+      linear-gradient(#fff 0 0) 100% 0 / 3px var(--m) no-repeat,
+      linear-gradient(#fff 0 0) 0 100% / var(--m) 3px no-repeat,
+      linear-gradient(#fff 0 0) 0 100% / 3px var(--m) no-repeat,
+      linear-gradient(#fff 0 0) 100% 100% / var(--m) 3px no-repeat,
+      linear-gradient(#fff 0 0) 100% 100% / 3px var(--m) no-repeat;
+  }
+
+  .freeze__pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms linear;
+  }
+
+  .freeze__pointer.is-shown {
+    opacity: 1;
+  }
+
+  .freeze__hint {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 30px;
+    margin: 0;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.75);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .freeze__esc {
+    color: rgb(255 255 255 / 0.55);
+  }
+
+  .freeze__auto {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgb(20 20 22 / 0.88);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+    color: var(--text-2);
+    font-size: 12px;
+  }
+
+  .freeze__auto:hover {
+    color: var(--text-1);
+  }
+
+  .st.is-drawing .freeze__auto {
+    display: none;
+  }
+
+  /* Pressed by the visitor, it only fades while the frame is read, so a keyboard's focus stays on it until Copy Text
+     takes it back. */
+  .st.is-drawing.is-framing-for-me .freeze__auto {
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .st__bar {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+  }
+
+  /* The scene's one main action, as Copy Text is among Home's utilities. */
+  .st__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 18px 0 15px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 13.5px;
+    font-weight: 600;
+    transition:
+      background-color 160ms linear,
+      transform 160ms var(--ease-out);
+  }
+
+  .st__copy:hover,
+  .st__copy.is-pressed {
+    background: var(--accent-hover);
+  }
+
+  .st__copy:active,
+  .st__copy.is-pressed {
+    transform: scale(0.96);
+  }
+
+  /* Pause while the demo goes round by itself, Again once it rests; its room is kept, so showing it moves nothing. */
+  .st__again {
+    visibility: hidden;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text-3);
+    font: 400 12px/1 var(--mono);
+  }
+
+  .st__again.is-shown {
+    visibility: visible;
+  }
+
+  .st__again:hover {
+    color: var(--text-1);
+  }
+
+  /* A fingertip gets 44 points: the buttons keep their size and take taps from just around them too. */
+  @media (pointer: coarse) {
+    .st__copy,
+    .st__again {
+      position: relative;
+    }
+
+    .st__copy::after,
+    .st__again::after,
+    .freeze__auto::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+    }
+
+    .st__again::after {
+      inset: -12px -8px;
+    }
+
+    .freeze__auto::after {
+      inset: -8px -4px;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .st {
+      padding: 12px;
+    }
+
+    .st__screen {
+      height: 300px;
+    }
+
+    .chat {
+      inset: 10px 8px 0;
+    }
+
+    .chat__body {
+      gap: 12px;
+      padding: 10px;
+    }
+
+    /* The screenshot takes the message's whole width, under the avatar too, so the log's lines stay readable. */
+    .shot {
+      margin-left: -36px;
+      padding: 8px 10px 9px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .freeze__pointer,
+    .st__copy {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { mountScreenText } from '../../scripts/screen-text';
+
+  const scene = document.querySelector<HTMLElement>('[data-st-scene]');
+  if (scene) mountScreenText(scene);
+</script>
