@@ -7,14 +7,14 @@ import VortexPlatform
 
 @MainActor
 struct ScreenTextModuleTests {
-  /// A utility, without a tab, which keeps nothing and waits for the user's choice to be added.
+  /// A utility, without a tab, recommended, which keeps nothing: a fresh install adds it.
   @Test
-  func itIsAUtilityKeepsNothingAndIsNotRecommended() {
+  func itIsARecommendedUtilityThatKeepsNothing() {
     let d = ScreenTextModule.descriptor
     #expect(d.id == "screentext" && d.symbol == "text.viewfinder")
     #expect(d.kind == .utility && !d.hasTab)
     #expect(d.keeps == nil && d.dataFolder == nil && d.eraseNote == nil)
-    #expect(!d.isRecommended && !d.isBuiltIn && !d.hasOnboardingStep)
+    #expect(d.isRecommended && !d.isBuiltIn && !d.hasOnboardingStep)
     #expect(!d.author.isEmpty)
     #expect(ScreenTextModule.makeHomeWidgets().isEmpty)
     #expect(ScreenTextModule.makeSettings() != nil)

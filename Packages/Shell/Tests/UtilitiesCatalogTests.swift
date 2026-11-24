@@ -156,6 +156,6 @@ struct UtilitiesCatalogTests {
     let state = ShellFeature.State(settings: settings, features: all)
     #expect(state.onboarding.choosableFeatures.map(\.id) == ["timer", "tasks", "secrets"])
     #expect(state.onboarding.choosableUtilities.map(\.id) == ["screentext", "keyboard"])
-    #expect(state.onboarding.chosen == ["timer", "tasks", "keyboard"])
+    #expect(state.onboarding.chosen == ["timer", "tasks", "screentext", "keyboard"])
   }
 }

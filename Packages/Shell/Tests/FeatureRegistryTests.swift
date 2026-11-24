@@ -111,12 +111,15 @@ struct FeatureRegistryTests {
     }
   #endif
 
-  /// Keys and Screen Text wait for the user's choice; the maintainer recommends the rest, keyboard cleaning among them,
-  /// as Home brought it to everyone before it became a utility.
+  /// Keys waits for the user's choice; the maintainer recommends the rest: keyboard cleaning, as Home brought it to
+  /// everyone before it became a utility, and Screen Text.
   @Test
-  func onlyHomeIsBuiltInAndKeysAndScreenTextAreNotRecommended() {
+  func onlyHomeIsBuiltInAndOnlyKeysIsNotRecommended() {
     #expect(FeatureRegistry.all.filter { $0.isBuiltIn }.map { $0.id } == ["home"])
-    #expect(FeatureRegistry.all.filter { $0.isRecommended }.map { $0.id } == ["timer", "tasks", "clipboard", "shelf", "keyboard"])
+    #expect(
+      FeatureRegistry.all.filter { $0.isRecommended }.map { $0.id }
+        == ["timer", "tasks", "clipboard", "shelf", "keyboard", "screentext"]
+    )
   }
 
   /// The utilities, which have no tab, come in the catalog's order: keyboard cleaning, then Screen Text.
