@@ -187,8 +187,10 @@ public struct FeatureDescriptor: Equatable, Identifiable, Sendable {
     kind: FeatureKind = .feature,
     acceptsFileDrops: Bool = false,
     permissionNeeds: [PermissionNeed] = [],
-    summary: LocalizedStringResource = "",
-    details: LocalizedStringResource = "",
+    // No text, made through LocalizationValue(_: String), which Xcode doesn't extract: a "" here, or
+    // init(stringLiteral:), puts an empty key in Core's String Catalog at every build.
+    summary: LocalizedStringResource = LocalizedStringResource(String.LocalizationValue(String())),
+    details: LocalizedStringResource = LocalizedStringResource(String.LocalizationValue(String())),
     author: String = "",
     isRecommended: Bool = false,
     isBeta: Bool = false,
