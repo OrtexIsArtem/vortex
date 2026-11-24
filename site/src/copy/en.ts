@@ -201,6 +201,33 @@ export const en = {
       source: 'Notes · Release checklist',
     },
   },
+  screenTextChapter: {
+    label: 'Screen Text',
+    title: "Copy text you can't select.",
+    titleQuiet: 'Freeze the screen, frame it, paste it anywhere.',
+    body: "A screenshot in a chat, a video frame, an error: press Copy Text among Home's utilities, or a shortcut you set, and the screen freezes. Frame the text, and it's on your clipboard; the notch says how many lines. A QR code gives its link or text. Apple Vision reads it all on your Mac, and Vortex keeps none of it.",
+    facts: ['Needs Screen Recording', 'On-device OCR, nothing kept', 'QR codes give their link or text'],
+    note: 'Reads text in English, Ukrainian and Russian.',
+    tryIt: 'Press Copy Text, then draw a frame around the log.',
+    /** The app's words: the button among Home's utilities, the frozen screen's hint and the notch's message. */
+    button: 'Copy Text',
+    esc: 'Esc',
+    frameHint: 'Frame the text',
+    escHint: 'Esc to cancel',
+    reading: 'Reading the text…',
+    copied: 'Copied',
+    lines: (count: number) => (count === 1 ? '1 line' : `${count} lines`),
+    noText: 'No text found',
+    /** The frame drawn for a visitor who doesn't drag: the keyboard's way, and a touch screen's other one. */
+    frameForMe: 'Frame the log for me',
+    replay: 'Again',
+    /** The chat on the frozen screen, in the page's language; the build log in its screenshot stays English. */
+    shot: "A screenshot of a failed build's log",
+    /** Where the copy came from, in the page's clipboard history. */
+    app: 'Chat',
+    dana: "CI is red again, here's the log:",
+    sam: 'On it. Copying the error from your screenshot.',
+  },
   keysChapter: {
     label: 'Keys',
     title: 'Keys Claude Code can use but never see.',
