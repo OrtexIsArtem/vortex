@@ -132,7 +132,6 @@ export const uk: Copy = {
       safari: 'Safari',
       screenshot: 'Знімок екрана',
       passwords: 'Паролі',
-      finder: 'Finder',
       terminal: 'Термінал',
     },
   },

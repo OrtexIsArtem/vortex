@@ -76,7 +76,6 @@ export const zh: Copy = {
       safari: 'Safari浏览器',
       screenshot: '截屏',
       passwords: '密码',
-      finder: '访达',
       terminal: '终端',
     },
   },

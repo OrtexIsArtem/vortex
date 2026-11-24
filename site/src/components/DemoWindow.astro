@@ -533,17 +533,43 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     position: absolute;
     top: 0;
     right: 0;
-    left: 24px;
+    left: 32px;
     height: var(--hair);
     background: var(--line);
   }
 
+  /* As wide as an image's picture in every row, so all the text starts at one place, as in the app. */
   .dw-rows :global(.dw-copy__icon) {
     display: grid;
     flex: none;
     place-items: center;
-    width: 14px;
+    width: 22px;
     color: var(--text-3);
+  }
+
+  .dw-rows :global(.dw-copy__thumb) {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--thumb);
+  }
+
+  .dw-rows :global(.dw-copy__thumb img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .dw-rows :global(.dw-copy.is-copied .dw-copy__thumb .dw-copy__check) {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 0.5);
+    color: #ffffff;
   }
 
   .dw-rows :global(.dw-copy__text) {
@@ -685,7 +711,7 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
     // The clipboard's card is the page's history: one-line rows, a click copies again.
     const rows = root.querySelector<HTMLElement>('[data-dw-rows]');
     const status = root.querySelector<HTMLElement>('[data-copy-status]');
-    const kindIcon: Record<string, Parameters<typeof iconSvg>[0]> = { text: 'text', code: 'text', link: 'link', image: 'image', file: 'file', secret: 'lock' };
+    const kindIcon: Record<string, Parameters<typeof iconSvg>[0]> = { text: 'text', code: 'text', link: 'link', secret: 'lock' };
     onClipboard((items) => {
       if (!rows) return;
       rows.innerHTML = items
@@ -695,10 +721,14 @@ const utilities: { icon: IconName; size: number; label: string; href: string }[]
           const mono = item.kind === 'text' || item.kind === 'code' || item.kind === 'secret';
           // A secret shows as dots and is read out as what it is.
           const shown = item.kind === 'secret' ? `<span aria-hidden="true">••••••••</span><span class="visually-hidden">${escape(copy.demo.hiddenItem)}</span>` : escape(text);
-          const inner = `<span class="dw-copy__icon"><span class="dw-copy__kind">${iconSvg(kindIcon[item.kind] ?? 'text', 14)}</span><span class="dw-copy__check">${iconSvg('check', 14)}</span></span><span class="dw-copy__text${mono ? ' is-mono' : ''}">${shown}</span>`;
-          return item.value
-            ? `<li><button class="dw-copy" type="button" data-copy-id="${item.id}" title="${copy.demo.copy}">${inner}</button></li>`
-            : `<li><span class="dw-copy">${inner}</span></li>`;
+          // An image shows a tiny picture of itself, any other item the icon of its kind. After a click the check stands in
+          // for the icon, or over the picture.
+          const leading =
+            item.kind === 'image'
+              ? `<span class="dw-copy__thumb"><img src="${escape(item.value)}" alt="" draggable="false"><span class="dw-copy__check">${iconSvg('check', 12)}</span></span>`
+              : `<span class="dw-copy__kind">${iconSvg(kindIcon[item.kind] ?? 'text', 14)}</span><span class="dw-copy__check">${iconSvg('check', 14)}</span>`;
+          const inner = `<span class="dw-copy__icon">${leading}</span><span class="dw-copy__text${mono ? ' is-mono' : ''}">${shown}</span>`;
+          return `<li><button class="dw-copy" type="button" data-copy-id="${item.id}" title="${copy.demo.copy}">${inner}</button></li>`;
         })
         .join('');
     });

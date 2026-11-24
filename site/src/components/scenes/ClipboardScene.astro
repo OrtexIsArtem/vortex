@@ -128,52 +128,22 @@ const c = copy.clipboardChapter;
     font-size: 12px;
   }
 
+  /* An image's picture fills its preview, cut at the edges as the app's card cuts it. */
   .cscene__grid :global(.ccard__thumb) {
-    display: grid;
-    align-content: start;
-    gap: 6px;
+    display: block;
+    flex: none;
     height: 66px;
     margin: -4px -6px 0;
-    padding: 10px;
+    overflow: hidden;
     border-radius: 10px;
     background: var(--thumb);
   }
 
-  .cscene__grid :global(.ccard__thumb i) {
-    height: 7px;
-    border-radius: 3px;
-    background: #2e2e33;
-  }
-
-  .cscene__grid :global(.ccard__thumb i:first-child) {
-    width: 45%;
-    height: 9px;
-    background: #4a4a50;
-  }
-
-  .cscene__grid :global(.ccard__thumb i:last-child) {
-    width: 70%;
-  }
-
-  .cscene__grid :global(.ccard__file) {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    margin-top: 6px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .cscene__grid :global(.ccard__file svg) {
-    flex: none;
-    color: var(--text-2);
-  }
-
-  .cscene__grid :global(.ccard__file span) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .cscene__grid :global(.ccard__thumb img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .cscene__grid :global(.ccard__meta) {
@@ -356,9 +326,7 @@ const c = copy.clipboardChapter;
         case 'link':
           return `<span class="ccard__link"${own}>${iconSvg('link', 15)}<span class="ccard__title">${escape(item.text)}</span><span class="ccard__detail">${escape(item.detail ?? '')}</span></span>`;
         case 'image':
-          return '<span class="ccard__thumb" aria-hidden="true"><i></i><i></i><i></i></span>';
-        case 'file':
-          return `<span class="ccard__file"${own}>${iconSvg('file', 26)}<span>${escape(item.text)}</span></span>`;
+          return `<span class="ccard__thumb" aria-hidden="true"><img src="${escape(item.value)}" alt="" draggable="false"></span>`;
         case 'secret':
           return `<span class="ccard__secret"${own}>${revealed.has(item.id) ? escape(item.text) : '••••••••'}</span>`;
         default:
@@ -384,11 +352,8 @@ const c = copy.clipboardChapter;
       element.className = 'ccard';
       element.dataset.id = String(item.id);
       if (appLang) element.lang = appLang;
-      const body = item.value
-        ? '<button class="ccard__body" type="button" data-action="copy"></button>'
-        : '<div class="ccard__body"></div>';
       const eye = item.kind === 'secret' ? `<button type="button" data-action="eye">${iconSvg('eye', 13)}</button>` : '';
-      element.innerHTML = `${body}<div class="ccard__tools">${eye}<button type="button" data-action="pin">${iconSvg('pin', 13)}</button><button type="button" data-action="remove">${iconSvg('close', 12)}</button></div><span class="ccard__copied" aria-hidden="true">${iconSvg('check', 11)}${c.copied}</span>`;
+      element.innerHTML = `<button class="ccard__body" type="button" data-action="copy"></button><div class="ccard__tools">${eye}<button type="button" data-action="pin">${iconSvg('pin', 13)}</button><button type="button" data-action="remove">${iconSvg('close', 12)}</button></div><span class="ccard__copied" aria-hidden="true">${iconSvg('check', 11)}${c.copied}</span>`;
       if (isNew) {
         element.classList.add('is-new');
         // Only its arrival plays: a card that moves later (pinned, copied again) must not come in again.
@@ -402,7 +367,7 @@ const c = copy.clipboardChapter;
       const name = quote(item);
       const body = element.querySelector('.ccard__body');
       if (body) {
-        if (item.value) set(body, 'aria-label', name === null ? c.copyHidden : c.copyItem(name));
+        set(body, 'aria-label', name === null ? c.copyHidden : c.copyItem(name));
         fill(body, content(item) + meta(item));
       }
       const eye = element.querySelector('[data-action="eye"]');

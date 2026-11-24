@@ -126,7 +126,6 @@ export const en = {
       safari: 'Safari',
       screenshot: 'Screenshot',
       passwords: 'Passwords',
-      finder: 'Finder',
       terminal: 'Terminal',
     },
   },

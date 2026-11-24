@@ -1,18 +1,20 @@
 // The page's clipboard history: a few sample copies, then whatever the visitor copies on the page. Like the app, it
-// keeps the newest first with pinned ones on top, and Vortex's own copies are not recorded again.
+// keeps the newest first with pinned ones on top, and Vortex's own copies are not recorded again. Every item copies
+// what it shows, so the samples are only what a web page can put on the clipboard: text and a picture, never a file.
+import { basePath } from '../copy/locales';
 import { copy } from './copy';
 
-export type CopyKind = 'text' | 'code' | 'link' | 'image' | 'file' | 'secret';
+export type CopyKind = 'text' | 'code' | 'link' | 'image' | 'secret';
 
 export interface CopyItem {
   id: number;
   kind: CopyKind;
-  /** What the card shows: the text, a link's title, a file's name. */
+  /** What the card shows: the text, a link's title, or for an image the app's word for one. */
   text: string;
   /** A link's host, or nothing. */
   detail?: string;
-  /** What a click copies; nothing for things the page can't put on the pasteboard. */
-  value: string | null;
+  /** What a click copies: the text, or for an image the address of its picture, a PNG on this site. */
+  value: string;
   app: string;
   copiedAt: number;
   pinned: boolean;
@@ -30,9 +32,9 @@ const samples = copy.clipboardChapter.samples;
 let items: CopyItem[] = [
   { id: nextId++, kind: 'text', text: samples.note, value: samples.note, app: samples.notes, copiedAt: minutesAgo(2), pinned: false },
   { id: nextId++, kind: 'link', text: 'OrtexIsArtem/vortex', detail: 'github.com', value: 'https://github.com/OrtexIsArtem/vortex', app: samples.safari, copiedAt: minutesAgo(5), pinned: false },
-  { id: nextId++, kind: 'image', text: copy.clipboardChapter.image, value: null, app: samples.screenshot, copiedAt: minutesAgo(9), pinned: false },
+  // The Vortex logo, which a click copies as a picture (og/render.mjs draws it).
+  { id: nextId++, kind: 'image', text: copy.clipboardChapter.image, value: `${basePath}vortex-logo.png`, app: samples.screenshot, copiedAt: minutesAgo(9), pinned: false },
   { id: nextId++, kind: 'secret', text: 'correct horse battery staple', value: 'correct horse battery staple', app: samples.passwords, copiedAt: minutesAgo(12), pinned: false },
-  { id: nextId++, kind: 'file', text: 'Q3-report.pdf', value: null, app: samples.finder, copiedAt: minutesAgo(20), pinned: false },
   { id: nextId++, kind: 'code', text: 'brew install xcodegen', value: 'brew install xcodegen', app: samples.terminal, copiedAt: minutesAgo(64), pinned: false },
 ];
 
@@ -55,7 +57,7 @@ export function onClipboard(listener: Listener): () => void {
 export function record(text: string, app: string): void {
   const value = text.trim();
   if (!value) return;
-  const existing = items.find((item) => item.value === value);
+  const existing = items.find((item) => item.kind !== 'image' && item.value === value);
   if (existing) existing.copiedAt = Date.now();
   else items.push({ id: nextId++, kind: 'text', text: value.slice(0, 400), value, app, copiedAt: Date.now(), pinned: false });
   // The oldest unpinned copy goes when there are too many.
@@ -76,12 +78,23 @@ export function remove(id: number): void {
   emit();
 }
 
-/** Copies an item again, as a click does; the page's own copies are not recorded again. */
+/** Copies an item again, as a click does: text as text, an image as its PNG. The page's own copies are not recorded
+ *  again. False when the browser keeps its clipboard to itself, as Firefox before 127 does with pictures. */
 export async function copyAgain(id: number): Promise<boolean> {
   const item = items.find((candidate) => candidate.id === id);
-  if (!item?.value) return false;
+  if (!item) return false;
   try {
-    await navigator.clipboard.writeText(item.value);
+    if (item.kind === 'image') {
+      if (typeof ClipboardItem === 'undefined') return false;
+      // The write starts within the click, the only time Safari lets a page copy, and waits there for the picture.
+      const picture = fetch(item.value).then(async (response) => {
+        if (!response.ok) throw new Error(`The picture is missing: ${response.status}`);
+        return new Blob([await response.arrayBuffer()], { type: 'image/png' });
+      });
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': picture })]);
+    } else {
+      await navigator.clipboard.writeText(item.value);
+    }
   } catch {
     return false;
   }

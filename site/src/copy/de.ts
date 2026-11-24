@@ -76,7 +76,6 @@ export const de: Copy = {
       safari: 'Safari',
       screenshot: 'Bildschirmfoto',
       passwords: 'Passwörter',
-      finder: 'Finder',
       terminal: 'Terminal',
     },
   },

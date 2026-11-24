@@ -76,7 +76,6 @@ export const ja: Copy = {
       safari: 'Safari',
       screenshot: 'スクリーンショット',
       passwords: 'パスワード',
-      finder: 'Finder',
       terminal: 'ターミナル',
     },
   },
