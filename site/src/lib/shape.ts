@@ -6,7 +6,20 @@ export const metrics = {
   glow: { spread: 130, depth: 100 },
   header: 52,
   sidebar: 56,
+  /** Home's utilities strip at the window's right, as wide as the sidebar: the window grows by it (WindowSize.dock). */
+  dock: 56,
 } as const;
+
+/**
+ * The open window's scale on a screen of `width` × `height`: whole where it fits, 16 px clear of each side where the
+ * screen is narrower, and on a short screen small enough to leave room for the text under it, but never below 0.55.
+ * The window hangs from the notch in the screen's middle and grows only to the right, so `extra` room it takes there
+ * (Home's utilities strip) has to fit between the notch and the screen's right side as well.
+ */
+export function windowScale(width: number, height: number, extra = 0): number {
+  const half = metrics.window.width / 2;
+  return Math.min(1, (width / 2 - 16) / (half + extra), Math.max(0.55, (height - 340) / metrics.window.height));
+}
 
 export interface Outline {
   width: number;

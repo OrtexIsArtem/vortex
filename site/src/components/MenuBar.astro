@@ -104,6 +104,8 @@ const section = (hash: string) => (landing ? hash : `${home}${hash}`);
 
   .menubar__side--end {
     justify-content: flex-end;
+    /* The open window reaches further right once Home's utilities strip has grown it there. */
+    max-width: calc(50% - var(--notch-w) / 2 - var(--ear-w-end, var(--ear-w)) - 22px);
   }
 
   .menubar__brand,
@@ -273,6 +275,14 @@ const section = (hash: string) => (landing ? hash : `${home}${hash}`);
   @media (max-width: 1099px) {
     .menubar.has-window .menubar__download {
       display: none;
+    }
+  }
+
+  /* Grown by Home's utilities strip, the window reaches 340 + 56 px right of the middle, its shoulder 10 more: on a
+     screen narrower than that and the menu button, the bar's right end would peek out from under it. */
+  @media (max-width: 907px) {
+    .menubar.has-wide-window .menubar__side--end {
+      visibility: hidden;
     }
   }
 

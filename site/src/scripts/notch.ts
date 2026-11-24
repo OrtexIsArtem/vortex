@@ -2,7 +2,7 @@
 // leaving closes it after 0.5 s, a click opens or closes it, Esc and a click outside close it. Scenes further down
 // the page show their state in its ears and flash it.
 import { iconSvg, type IconName } from '../lib/icons';
-import { hangingPath, metrics, type Outline } from '../lib/shape';
+import { hangingPath, metrics, windowScale as fitWindow, type Outline } from '../lib/shape';
 import { SpringGroup, springs } from './spring';
 
 export type EarItem =
@@ -23,6 +23,13 @@ type OpenReason = 'hover' | 'click' | 'scroll';
 
 /** While something is dragged over the page the notch opens into a drop zone, brighter with the drag over it. */
 export type DropState = 'off' | 'shown' | 'hover';
+
+/** The silhouette as the spring moves it: its outline, how far its middle stands right of the notch's (the open window
+ *  grows only to the right), and the window's scale inside it. */
+interface Frame extends Outline {
+  shift: number;
+  scale: number;
+}
 
 const glowColors: Record<FlashColor, string> = {
   'glow-1': 'rgb(90 200 250)',
@@ -82,6 +89,12 @@ let notchW = 186;
 let notchH = 32;
 /** The open window is scaled down to fit narrow screens. */
 let windowScale = 1;
+/** Room the open window takes beyond its regular width, at its right: Home's utilities strip while it is out. */
+let extraWidth = 0;
+/** The scale the window was last drawn at. */
+let drawnScale = Number.NaN;
+/** What Esc puts away inside the open window before it closes the window. */
+let escapeInside: (() => boolean) | null = null;
 let earW = 0;
 let isOpen = false;
 let openedBy: OpenReason | null = null;
@@ -102,51 +115,64 @@ function readSizes(): void {
   notchW = parseFloat(style.getPropertyValue('--notch-w')) || 186;
   notchH = parseFloat(style.getPropertyValue('--notch-h')) || 32;
   // Narrow screens scale the window to fit; short ones too, leaving room for the text under it.
-  windowScale = Math.min(1, (window.innerWidth - 32) / metrics.window.width, Math.max(0.55, (window.innerHeight - 340) / metrics.window.height));
+  windowScale = fitWindow(window.innerWidth, window.innerHeight);
   // On the page's root too: the section that opens the window pins its text just under it.
   document.documentElement.style.setProperty('--window-scale', String(windowScale));
   root!.style.setProperty('--drop-scale', String(dropScale()));
 }
 
-function closedOutline(): Outline {
+function closedOutline(): Frame {
   return earW > 0
-    ? { width: notchW + earW * 2, height: notchH, radius: metrics.ears.radius, shoulder: metrics.window.shoulder }
-    : { width: notchW, height: notchH, radius: metrics.notchRadius, shoulder: 0 };
+    ? { width: notchW + earW * 2, height: notchH, radius: metrics.ears.radius, shoulder: metrics.window.shoulder, shift: 0, scale: windowScale }
+    : { width: notchW, height: notchH, radius: metrics.notchRadius, shoulder: 0, shift: 0, scale: windowScale };
 }
 
 function dropScale(): number {
   return Math.min(1, (window.innerWidth - 32) / 420);
 }
 
-function dropOutline(): Outline {
+function dropOutline(): Frame {
   const s = dropScale();
-  return { width: 380 * s, height: 104 * s, radius: 26 * s, shoulder: 10 * s };
+  return { width: 380 * s, height: 104 * s, radius: 26 * s, shoulder: 10 * s, shift: 0, scale: windowScale };
 }
 
-function openOutline(): Outline {
+function openOutline(): Frame {
   const { width, height, radius, shoulder } = metrics.window;
-  const s = windowScale;
-  return { width: width * s, height: height * s, radius: radius * s, shoulder: shoulder * s };
+  // Grown, the window keeps its left edge, as the app's does; a screen too narrow for the room it took scales it down.
+  const s = extraWidth > 0 ? fitWindow(window.innerWidth, window.innerHeight, extraWidth) : windowScale;
+  return {
+    width: (width + extraWidth) * s,
+    height: height * s,
+    radius: radius * s,
+    shoulder: shoulder * s,
+    shift: (extraWidth / 2) * s,
+    scale: s,
+  };
 }
 
-function draw(o: Outline): void {
-  const d = hangingPath(o);
+function draw(o: Frame): void {
+  const d = hangingPath(o, true, o.shift);
   fill.setAttribute('d', d);
   flashFill.setAttribute('d', d);
-  edge.setAttribute('d', hangingPath(o, false));
+  edge.setAttribute('d', hangingPath(o, false, o.shift));
 
   // How far the window has opened: the notch inside it shrinks to the window's scale, so narrow screens fit.
-  const openHeight = metrics.window.height * windowScale;
+  const s = o.scale || 1;
+  const openHeight = metrics.window.height * s;
   const progress = clamp((o.height - notchH) / Math.max(1, openHeight - notchH), 0, 1);
-  const coreW = lerp(notchW, 186 * windowScale, progress);
-  const coreH = lerp(notchH, 32 * windowScale, progress);
+  const coreW = lerp(notchW, 186 * s, progress);
+  const coreH = lerp(notchH, 32 * s, progress);
   core.setAttribute('d', hangingPath({ width: coreW, height: coreH, radius: metrics.notchRadius, shoulder: 0 }));
   lens.setAttribute('cy', (coreH / 2).toFixed(2));
 
+  // The window springs to a smaller scale with its outline when a narrow screen has no room for the strip.
+  if (s !== drawnScale) {
+    drawnScale = s;
+    win.style.transform = `scale(${s})`;
+  }
   // The content is clipped to the shape while it grows, as the app clips it (WindowChromeView).
-  const s = windowScale || 1;
   const local: Outline = { width: o.width / s, height: o.height / s, radius: o.radius / s, shoulder: o.shoulder / s };
-  win.style.clipPath = `path('${hangingPath(local, true, metrics.window.width / 2)}')`;
+  win.style.clipPath = `path('${hangingPath(local, true, metrics.window.width / 2 + o.shift / s)}')`;
 
   // Closed, the whole silhouette takes the pointer; open, only the notch does, the window takes the rest. On the notch
   // itself: on the root, a custom property would restyle the whole window every frame of the spring.
@@ -154,7 +180,7 @@ function draw(o: Outline): void {
   button.style.setProperty('--hit-h', `${isOpen ? coreH : o.height}px`);
 }
 
-const outline = new SpringGroup<keyof Outline>(closedOutline(), draw);
+const outline = new SpringGroup<keyof Frame>(closedOutline(), draw);
 
 function sizeGlow(): void {
   const silhouette = closedOutline();
@@ -220,13 +246,18 @@ function fitEar(ear: HTMLElement, items: EarItem[], room: number): number {
   return renderEar(ear, []);
 }
 
-/** Tells the menu bar how far the notch reaches to each side: its ears, or the open window. */
+/** Tells the menu bar how far the notch reaches to each side: its ears, or the open window, which reaches further right
+ *  once it has grown there. */
 function reachMenubar(): void {
   if (!menubar) return;
-  const reach = isOpen ? Math.max(0, (openOutline().width - notchW) / 2) : earW;
+  const open = openOutline();
+  const start = isOpen ? Math.max(0, open.width / 2 - open.shift - notchW / 2) : earW;
+  const end = isOpen ? Math.max(0, open.width / 2 + open.shift - notchW / 2) : earW;
   // Only on what reads it: on the page's root, a custom property would restyle the whole page each time it changes.
-  menubar.style.setProperty('--ear-w', `${reach}px`);
+  menubar.style.setProperty('--ear-w', `${start}px`);
+  menubar.style.setProperty('--ear-w-end', `${end}px`);
   menubar.classList.toggle('has-window', isOpen);
+  menubar.classList.toggle('has-wide-window', isOpen && extraWidth > 0);
 }
 
 /** Shows `left` and `right` beside the closed notch; empty on both sides, the ears fold away. */
@@ -286,6 +317,8 @@ export function close(): void {
   if (!isOpen) return;
   isOpen = false;
   openedBy = null;
+  // Every open starts at the regular size.
+  extraWidth = 0;
   hoverSpent = button.matches(':hover');
   if (win.contains(document.activeElement)) button.focus();
   root!.classList.remove('is-open');
@@ -394,6 +427,29 @@ export function holdOpen(ms: number): void {
   leaveOverride = ms;
 }
 
+/**
+ * Grows the open window right by `width`, or back to its regular size with 0, as the app's window grows for Home's
+ * utilities strip (WindowSize.dock): it keeps its left edge, the content takes the new size at once and the outline
+ * follows on the opening's spring. Growing is deliberate: a window the pointer opened no longer closes as it leaves.
+ */
+export function setExtraWidth(width: number): void {
+  if (!isOpen || width === extraWidth) return;
+  extraWidth = width;
+  if (width > 0 && openedBy === 'hover') {
+    openedBy = 'click';
+    window.clearTimeout(leaveTimer);
+  }
+  reachMenubar();
+  if (reduceMotion.matches) outline.set(openOutline());
+  else void outline.to(openOutline(), springs.open);
+}
+
+/** What Esc puts away inside the open window first, as the app's Esc puts Home's utilities strip away before it closes
+ *  the window: `handler` answers whether it put something away. */
+export function onEscapeInside(handler: () => boolean): void {
+  escapeInside = handler;
+}
+
 export function isWindowOpen(): boolean {
   return isOpen;
 }
@@ -452,9 +508,11 @@ button.addEventListener('click', () => {
   else close();
 });
 
-// Esc closes the window, or else quiets the alarm: a keyboard needs no pointer over the notch to say it was seen.
+// Esc closes the window, after what is out inside it, or else quiets the alarm: a keyboard needs no pointer over the
+// notch to say it was seen.
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
+  if (isOpen && escapeInside?.()) return;
   if (isOpen) close();
   else stopAlarm();
 });
