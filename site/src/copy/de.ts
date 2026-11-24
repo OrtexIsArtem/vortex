@@ -168,10 +168,10 @@ export const de: Copy = {
     ...en.keyboardChapter,
     title: 'Sperre die Tastatur zum Reinigen.',
     titleQuiet: 'Alle Tasten ruhen, bis du sie wieder einschaltest.',
-    body: 'Der Tastatur-Button unter den „Utilities“ in „Home“ oder ein Tastenkürzel deiner Wahl sperrt jede Taste: Buchstaben, Sondertasten, Esc, die Funktionstasten und die Tasten für Helligkeit, Lautstärke und Medien. Maus und Trackpad funktionieren weiter, also holt ein Klick die Tastatur zurück.',
+    body: 'Der Tastatur-Button bei den Utilities in „Home“ oder ein Tastenkürzel deiner Wahl sperrt jede Taste: Buchstaben, Sondertasten, Esc, die Funktionstasten und die Tasten für Helligkeit, Lautstärke und Medien. Maus und Trackpad funktionieren weiter, also holt ein Klick die Tastatur zurück.',
     facts: ['Braucht „Bedienungshilfen“', 'Maus und Trackpad funktionieren weiter', 'Tasten gehen wieder, wenn Vortex beendet wird'],
     note: 'macOS lässt keine App Touch ID oder Caps Lock sperren.',
-    tryIt: 'Drücke ein paar Tasten und sperre sie dann über die „Utilities“.',
+    tryIt: 'Drücke ein paar Tasten und sperre sie dann über die Utilities.',
   },
   open: {
     title: 'Zeige auf die Notch. Vortex öffnet sich.',
