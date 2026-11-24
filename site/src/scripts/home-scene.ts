@@ -12,6 +12,8 @@ import {
   frame,
   freeCells,
   homeColumn,
+  homeWidgets,
+  initialLayout,
   moving,
   nudged,
   nudgedButton,
@@ -49,14 +51,7 @@ const stageHeight = 456;
 const wideFrom = 600;
 
 /** The app's Home on a new Mac: Clipboard's history and the shelf's files, large, side by side; Timer in the row. */
-const initial: HomeLayout = {
-  notchRow: 'timer.timer',
-  placed: [
-    { widget: 'clipboard.history', size: 'large', column: 0, row: 0 },
-    { widget: 'shelf.files', size: 'large', column: 2, row: 0 },
-  ],
-  button: null,
-};
+const initial: HomeLayout = initialLayout(homeWidgets);
 
 /** Where the demo leaves it: the two swapped, the shelf half as tall. */
 const final: HomeLayout = {
@@ -125,10 +120,11 @@ export function mountHome(scene: HTMLElement): void {
   const cells = [...scene.querySelectorAll<HTMLElement>('[data-hs-cell]')];
   const targetCells = [...targets.querySelectorAll<HTMLElement>('[data-hs-target]')];
 
+  const placeOf = (id: WidgetId): WidgetPlace => homeWidgets.find((widget) => widget.id === id)?.place ?? 'notchRow';
   const widgets: WidgetInfo[] = [
-    { id: 'timer.timer', place: 'notchRow', name: d.sidebar[1] ?? '', featureName: d.sidebar[1] ?? '', icon: 'timer' },
-    { id: 'clipboard.history', place: ['large', 'medium'], name: a.history, featureName: d.sidebar[2] ?? '', icon: 'clipboard' },
-    { id: 'shelf.files', place: ['large', 'medium', 'wide'], name: a.files, featureName: d.sidebar[3] ?? '', icon: 'tray' },
+    { id: 'timer.timer', place: placeOf('timer.timer'), name: d.sidebar[1] ?? '', featureName: d.sidebar[1] ?? '', icon: 'timer' },
+    { id: 'clipboard.history', place: placeOf('clipboard.history'), name: a.history, featureName: d.sidebar[2] ?? '', icon: 'clipboard' },
+    { id: 'shelf.files', place: placeOf('shelf.files'), name: a.files, featureName: d.sidebar[3] ?? '', icon: 'tray' },
   ];
   const info = (id: string) => widgets.find((widget) => widget.id === id);
   const cardOf = (id: string) => cards.find((element) => element.dataset.hsWidget === id);

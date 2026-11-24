@@ -53,6 +53,14 @@ export interface HomeLayout {
 /** Where a widget goes: the notch row, or the grid in its sizes, the first preferred. */
 export type WidgetPlace = 'notchRow' | readonly WidgetSize[];
 
+/** The widgets the app's features offer, in its sidebar's first order: Timer's in the notch row, then Clipboard's
+ *  history and the shelf's files on the grid, in the sizes each offers (their modules' makeHomeWidgets). */
+export const homeWidgets = [
+  { id: 'timer.timer', place: 'notchRow' },
+  { id: 'clipboard.history', place: ['large', 'medium'] },
+  { id: 'shelf.files', place: ['large', 'medium', 'wide'] },
+] as const satisfies readonly { id: string; place: WidgetPlace }[];
+
 /** A widget's card on the grid, from the grid's top left: 8 pt in from the column's side, under the notch row. */
 export function frame(column: number, row: number, size: WidgetSize): { x: number; y: number; width: number; height: number } {
   const { cell, gap, side } = homeGrid;
@@ -88,6 +96,21 @@ export function firstFit(placed: readonly Placement[], sizes: readonly WidgetSiz
     for (let row = 0; row < homeGrid.rows; row++)
       for (let column = 0; column < homeGrid.columns; column++) if (fits(placed, size, column, row)) return { size, column, row };
   return null;
+}
+
+/** The first layout, a new Mac's: the first notch row widget goes there; the others, in sidebar order, each at its first
+ *  size that fits, in the first free place. One that fits nowhere stays off. */
+export function initialLayout(widgets: readonly { id: string; place: WidgetPlace }[]): HomeLayout {
+  const layout: HomeLayout = { notchRow: null, placed: [], button: null };
+  for (const widget of widgets) {
+    if (widget.place === 'notchRow') {
+      layout.notchRow ??= widget.id;
+      continue;
+    }
+    const fit = firstFit(layout.placed, widget.place);
+    if (fit) layout.placed.push({ widget: widget.id, ...fit });
+  }
+  return layout;
 }
 
 /** The cell nearest a dragged widget's top left corner once it has moved by `dx`, `dy`: past half a cell it goes on to

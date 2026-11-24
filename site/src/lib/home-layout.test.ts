@@ -6,6 +6,8 @@ import {
   firstFit,
   fits,
   freeCells,
+  homeWidgets,
+  initialLayout,
   moving,
   nudged,
   nudgedButton,
@@ -60,6 +62,24 @@ describe('the grid', () => {
     expect(cellMovedBy(shelf, -150, 10)).toEqual({ column: 1, row: 0 });
     expect(cellMovedBy(shelf, 80, 100)).toEqual({ column: 3, row: 1 });
     expect(cellMovedBy(shelf, 70, 90)).toEqual({ column: 2, row: 0 });
+  });
+});
+
+describe("a new Mac's Home", () => {
+  it('puts the notch row widget there and the others, in sidebar order, where they first fit', () => {
+    expect(initialLayout(homeWidgets)).toEqual({
+      notchRow: 'timer.timer',
+      placed: [p('clipboard.history', 'large', 0, 0), p('shelf.files', 'large', 2, 0)],
+      button: null,
+    });
+  });
+
+  it('leaves off a widget that fits nowhere', () => {
+    const many = [
+      { id: 'a', place: ['full'] as const },
+      { id: 'b', place: ['small'] as const },
+    ];
+    expect(initialLayout(many).placed).toEqual([p('a', 'full', 0, 0)]);
   });
 });
 
