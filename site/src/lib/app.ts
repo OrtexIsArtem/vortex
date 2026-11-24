@@ -12,6 +12,8 @@ const projectVersion: string = (() => {
 export const repoUrl = 'https://github.com/OrtexIsArtem/vortex';
 export const releasesUrl = `${repoUrl}/releases`;
 export const contributingUrl = `${repoUrl}/blob/main/CONTRIBUTING.md`;
+/** CONTRIBUTING's step-by-step guide to a widget for Home. */
+export const widgetsUrl = `${contributingUrl}#make-a-widget-for-home`;
 export const licenseUrl = `${repoUrl}/blob/main/LICENSE`;
 export const issuesUrl = `${repoUrl}/issues`;
 export const buildUrl = `${repoUrl}#build-it-yourself`;

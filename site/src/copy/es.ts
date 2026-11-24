@@ -311,7 +311,7 @@ export const es: Copy = {
     title: 'Preguntas.',
     titleQuiet: 'Respuestas directas.',
     more: (issues: string) => `¿Algo más? [Pregunta en GitHub](${issues}).`,
-    items: (contributing: string) => [
+    items: (contributing: string, widgets: string) => [
       { q: '¿Vortex es gratis?', a: 'Sí. Vortex es gratis y de código abierto con licencia MIT, sin suscripción y sin cuenta.' },
       {
         q: '¿Funciona si mi Mac no tiene notch, como el MacBook Neo?',
@@ -324,6 +324,10 @@ export const es: Copy = {
       {
         q: '¿Vortex recopila datos?',
         a: 'No. Nunca se conecta a internet por su cuenta: sin analíticas, sin buscar actualizaciones, sin cuentas. Tus datos se quedan en `~/Library/Application Support/Vortex` y tus secretos, en tu llavero de inicio de sesión.',
+      },
+      {
+        q: '¿Puedo desactivar lo que no necesito?',
+        a: 'Sí. Al configurarlo eliges tus funciones, con las recomendadas ya marcadas, y después puedes añadir o quitar cualquiera en «Features», la pieza de puzle de la barra lateral. Una función que no has añadido no se ejecuta, y Vortex no pide ningún permiso para ella. Una función que quitas conserva sus datos hasta que los borres con «Erase Data…» en su página.',
       },
       {
         q: '¿Por qué macOS no me deja abrir Vortex?',
@@ -339,15 +343,15 @@ export const es: Copy = {
       },
       {
         q: '¿En qué se diferencia Vortex de NotchNook, Boring Notch y otras apps tipo Dynamic Island?',
-        a: 'Vortex está pensado para el trabajo: un estante para compilaciones y archivos, tareas desde tu pantalla, claves para Claude Code, un temporizador y el historial del portapapeles. Nunca se conecta a internet por su cuenta y es de código abierto con licencia MIT. No tiene controles de música ni calendario. [Compara las tres lado a lado](../notchnook-alternative/) (en inglés).',
+        a: 'Vortex está pensado para el trabajo: un estante para compilaciones y archivos, tareas y texto desde tu pantalla, claves para Claude Code, un temporizador y el historial del portapapeles. Nunca se conecta a internet por su cuenta y es de código abierto con licencia MIT. No tiene controles de música ni calendario. [Compara las tres lado a lado](../notchnook-alternative/) (en inglés).',
       },
       {
         q: '¿Cómo actualizo Vortex?',
         a: 'Vuelve a ejecutar el comando en Terminal, o descarga la nueva versión y ábrela: Vortex ocupa el lugar de la anterior en Aplicaciones. Todas las versiones se firman con el mismo certificado, así que tus permisos se mantienen; solo el llavero vuelve a preguntar, una vez por clave. «Check for Updates», en «Settings» › «General», abre la versión más reciente.',
       },
       {
-        q: '¿Puedo añadir mi propia función?',
-        a: `Sí. Copia \`Features/_Template\`, cámbiale el nombre y añádela al paquete y al registro. [CONTRIBUTING.md](${contributing}) te guía paso a paso.`,
+        q: '¿Puedo añadir mi propia función o un widget para Home?',
+        a: `Sí. Copia \`Features/_Template\`, o \`Features/_UtilityTemplate\` para una utilidad, cámbiale el nombre y añádela al paquete y al registro. Una función puede traer hasta dos widgets para Home. [CONTRIBUTING.md](${contributing}) te guía paso a paso, y su [guía de widgets](${widgets}) explica cada paso de un widget.`,
       },
     ],
   },

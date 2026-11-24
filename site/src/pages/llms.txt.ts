@@ -3,7 +3,7 @@
 import type { APIRoute } from 'astro';
 import { en } from '../copy/en';
 import { defaultLocale, locales, pathFor } from '../copy/locales';
-import { appVersion, buildUrl, contributingUrl, downloadUrl, licenseUrl, releasesUrl, repoUrl } from '../lib/app';
+import { appVersion, buildUrl, contributingUrl, downloadUrl, licenseUrl, releasesUrl, repoUrl, widgetsUrl } from '../lib/app';
 import { guidesFor } from '../lib/content';
 import { inlineText } from '../lib/inline';
 
@@ -48,7 +48,7 @@ export const GET: APIRoute = async ({ site }) => {
     '',
     '## Questions',
     '',
-    ...en.faq.items(contributingUrl).map((item) => `- [${item.q}](${at('faq')}): ${inlineText(item.a)}`),
+    ...en.faq.items(contributingUrl, widgetsUrl).map((item) => `- [${item.q}](${at('faq')}): ${inlineText(item.a)}`),
     '',
     ...(guides.length > 0 ? ['## Guides', '', ...guides.map((guide) => `- [${guide.heading}](${url(guide.href)}): ${guide.description}`), ''] : []),
     '## Links',

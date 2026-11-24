@@ -312,7 +312,7 @@ export const de: Copy = {
     title: 'Fragen.',
     titleQuiet: 'Klare Antworten.',
     more: (issues: string) => `Noch etwas? [Frag auf GitHub](${issues}).`,
-    items: (contributing: string) => [
+    items: (contributing: string, widgets: string) => [
       { q: 'Ist Vortex kostenlos?', a: 'Ja. Vortex ist kostenlos und Open Source unter der MIT-Lizenz, ohne Abo und ohne Konto.' },
       {
         q: 'Funktioniert Vortex auch auf einem Mac ohne Notch, etwa dem MacBook Neo?',
@@ -325,6 +325,10 @@ export const de: Copy = {
       {
         q: 'Sammelt Vortex Daten?',
         a: 'Nein. Vortex geht nie von selbst online: keine Analysedaten, keine Update-Prüfung, keine Konten. Deine Daten bleiben in `~/Library/Application Support/Vortex`, deine Zugangsdaten in deinem Anmeldeschlüsselbund.',
+      },
+      {
+        q: 'Kann ich abschalten, was ich nicht brauche?',
+        a: 'Ja. Bei der Einrichtung wählst du deine Funktionen, die empfohlenen sind schon angehakt, und später fügst du jede unter „Features“ hinzu oder entfernst sie: das Puzzleteil in der Seitenleiste. Eine Funktion, die du nicht hinzugefügt hast, läuft nicht, und Vortex fragt für sie nach keiner Berechtigung. Eine entfernte Funktion behält ihre Daten, bis du sie mit „Erase Data…“ auf ihrer Seite löschst.',
       },
       {
         q: 'Warum blockiert macOS das Öffnen von Vortex?',
@@ -340,15 +344,15 @@ export const de: Copy = {
       },
       {
         q: 'Was unterscheidet Vortex von NotchNook, Boring Notch und anderen Dynamic-Island-Apps?',
-        a: 'Vortex ist auf die Arbeit ausgelegt: eine Ablage für Builds und Dateien, Aufgaben vom Bildschirm, Schlüssel für Claude Code, ein Timer und ein Zwischenablage-Verlauf. Vortex geht nie von selbst online und ist Open Source unter MIT. Musiksteuerung und Kalender gibt es nicht. [Die drei im Vergleich](../notchnook-alternative/) (auf Englisch).',
+        a: 'Vortex ist auf die Arbeit ausgelegt: eine Ablage für Builds und Dateien, Aufgaben und Text vom Bildschirm, Schlüssel für Claude Code, ein Timer und ein Zwischenablage-Verlauf. Vortex geht nie von selbst online und ist Open Source unter MIT. Musiksteuerung und Kalender gibt es nicht. [Die drei im Vergleich](../notchnook-alternative/) (auf Englisch).',
       },
       {
         q: 'Wie aktualisiere ich Vortex?',
         a: 'Führe den Terminal-Befehl erneut aus, oder lade die neue Version und öffne sie: Vortex nimmt den Platz der alten in „Programme“ ein. Jedes Release ist mit demselben Zertifikat signiert, deine Berechtigungen bleiben also erhalten; nur der Schlüsselbund fragt erneut, einmal pro Schlüssel. „Check for Updates“ unter „Settings“ › „General“ öffnet das neueste Release.',
       },
       {
-        q: 'Kann ich ein eigenes Feature hinzufügen?',
-        a: `Ja. Kopiere \`Features/_Template\`, benenne die Kopie um und trage sie im Package und in der Registry ein. [CONTRIBUTING.md](${contributing}) führt dich durch die Schritte.`,
+        q: 'Kann ich ein eigenes Feature oder ein Widget für „Home“ hinzufügen?',
+        a: `Ja. Kopiere \`Features/_Template\`, für ein Utility \`Features/_UtilityTemplate\`, benenne die Kopie um und trage sie im Package und in der Registry ein. Ein Feature kann bis zu zwei Widgets für „Home“ mitbringen. [CONTRIBUTING.md](${contributing}) führt dich durch die Schritte, die [Anleitung für Widgets](${widgets}) durch jeden Schritt eines Widgets.`,
       },
     ],
   },

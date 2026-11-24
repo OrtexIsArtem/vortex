@@ -313,7 +313,7 @@ export const ptBr: Copy = {
     title: 'Perguntas.',
     titleQuiet: 'Respostas diretas.',
     more: (issues: string) => `Outra dúvida? [Pergunte no GitHub](${issues}).`,
-    items: (contributing: string) => [
+    items: (contributing: string, widgets: string) => [
       { q: 'O Vortex é grátis?', a: 'Sim. O Vortex é grátis e de código aberto, sob a licença MIT, sem assinatura e sem conta.' },
       {
         q: 'Funciona em um Mac sem notch, como o MacBook Neo?',
@@ -326,6 +326,10 @@ export const ptBr: Copy = {
       {
         q: 'O Vortex coleta algum dado?',
         a: 'Não. Ele nunca acessa a internet sozinho: sem telemetria, sem busca de atualizações, sem contas. Seus dados ficam em `~/Library/Application Support/Vortex` e seus segredos, nas suas chaves de início de sessão.',
+      },
+      {
+        q: 'Posso desativar o que não uso?',
+        a: 'Sim. Na configuração você escolhe seus recursos, com os recomendados já marcados, e depois pode adicionar ou remover qualquer um em Features, a peça de quebra-cabeça na barra lateral. Um recurso que você não adicionou não roda, e o Vortex não pede nenhuma permissão para ele. Um recurso removido guarda os dados até você apagá-los com “Erase Data…” na página dele.',
       },
       {
         q: 'Por que o macOS se recusa a abrir o Vortex?',
@@ -341,15 +345,15 @@ export const ptBr: Copy = {
       },
       {
         q: 'Qual a diferença entre o Vortex e o NotchNook, o Boring Notch e outros apps estilo Dynamic Island?',
-        a: 'O Vortex é pensado para o trabalho: uma prateleira para builds e arquivos, tarefas a partir da tela, chaves para o Claude Code, um timer e histórico da área de transferência. Ele nunca acessa a internet sozinho e é de código aberto, sob a licença MIT. Não tem controles de música nem calendário. [Compare os três lado a lado](../notchnook-alternative/) (em inglês).',
+        a: 'O Vortex é pensado para o trabalho: uma prateleira para builds e arquivos, tarefas e texto a partir da tela, chaves para o Claude Code, um timer e histórico da área de transferência. Ele nunca acessa a internet sozinho e é de código aberto, sob a licença MIT. Não tem controles de música nem calendário. [Compare os três lado a lado](../notchnook-alternative/) (em inglês).',
       },
       {
         q: 'Como atualizar o Vortex?',
         a: 'Rode de novo o comando no Terminal, ou baixe a nova versão e abra: o Vortex toma o lugar da antiga em Aplicativos. Todas as versões são assinadas com o mesmo certificado, então suas permissões continuam; só os itens de chaves do Vortex pedem acesso de novo, uma vez cada. Check for Updates, em Settings › General, abre a versão mais recente.',
       },
       {
-        q: 'Posso adicionar meu próprio recurso?',
-        a: `Sim. Copie \`Features/_Template\`, renomeie a cópia e inclua o novo recurso no pacote e no registro de recursos. O [CONTRIBUTING.md](${contributing}) explica o passo a passo.`,
+        q: 'Posso adicionar meu próprio recurso ou um widget para a Home?',
+        a: `Sim. Copie \`Features/_Template\`, ou \`Features/_UtilityTemplate\` para um utilitário, renomeie a cópia e inclua o novo recurso no pacote e no registro de recursos. Um recurso pode trazer até dois widgets para a Home. O [CONTRIBUTING.md](${contributing}) explica o passo a passo, e o [guia de widgets](${widgets}) detalha cada etapa de um widget.`,
       },
     ],
   },

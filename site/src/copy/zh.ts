@@ -312,7 +312,7 @@ export const zh: Copy = {
     title: '常见问题。',
     titleQuiet: '直截了当的回答。',
     more: (issues: string) => `还有其他问题？[到 GitHub 上提问](${issues})。`,
-    items: (contributing: string) => [
+    items: (contributing: string, widgets: string) => [
       { q: 'Vortex 免费吗？', a: '是的。Vortex 免费开源，采用 MIT 许可证，无需订阅，也无需账户。' },
       {
         q: '没有刘海的 Mac（比如 MacBook Neo）能用 Vortex 吗？',
@@ -325,6 +325,10 @@ export const zh: Copy = {
       {
         q: 'Vortex 会收集数据吗？',
         a: '不会。它从不自行联网：没有统计分析，没有更新检查，也没有账户。你的数据保存在 `~/Library/Application Support/Vortex`，密钥保存在你的登录钥匙串中。',
+      },
+      {
+        q: '我能关掉不需要的功能吗？',
+        a: '可以。设置时由你挑选功能，推荐的功能已预先勾选；之后也可以随时在“Features”（边栏中的拼图图标）里添加或移除任何功能。未添加的功能不会运行，Vortex 也不会为它请求任何权限。已移除的功能会保留数据，直到你在它的页面上用“Erase Data…”清除。',
       },
       {
         q: '为什么 macOS 拒绝打开 Vortex？',
@@ -340,15 +344,15 @@ export const zh: Copy = {
       },
       {
         q: 'Vortex 和 NotchNook、Boring Notch 等 Mac 灵动岛应用有什么区别？',
-        a: 'Vortex 围绕工作而设计：存放安装包和文件的暂存架、从屏幕截取的任务、给 Claude Code 用的密钥、计时器和剪贴板历史。它从不自行联网，并以 MIT 许可证开源。它没有音乐控制，也没有日历。另见[三款应用的对比](../notchnook-alternative/)（英文）。',
+        a: 'Vortex 围绕工作而设计：存放安装包和文件的暂存架、从屏幕截取的任务和文字、给 Claude Code 用的密钥、计时器和剪贴板历史。它从不自行联网，并以 MIT 许可证开源。它没有音乐控制，也没有日历。另见[三款应用的对比](../notchnook-alternative/)（英文）。',
       },
       {
         q: '如何更新 Vortex？',
         a: '再次运行“终端”中的命令，或者下载新版本并打开它：Vortex 会替换“应用程序”中的旧版本。所有版本都使用同一张证书签名，所以你的权限会保留；只有钥匙串会再问一次，每个密钥一次。“Settings”›“General”中的“Check for Updates”会打开最新版本。',
       },
       {
-        q: '我能添加自己的功能吗？',
-        a: `可以。复制 \`Features/_Template\` 并重命名，再在 Package.swift 和 Registry 中登记它。[CONTRIBUTING.md](${contributing}) 会一步步带你完成。`,
+        q: '我能添加自己的功能或 Home 小组件吗？',
+        a: `可以。复制 \`Features/_Template\`（实用工具则复制 \`Features/_UtilityTemplate\`）并重命名，再在 Package.swift 和 Registry 中登记它。一个功能最多可以为 Home 提供两个小组件。[CONTRIBUTING.md](${contributing}) 会一步步带你完成，[小组件指南](${widgets})则逐步讲解小组件的做法。`,
       },
     ],
   },

@@ -313,7 +313,7 @@ export const fr: Copy = {
     title: 'Questions.',
     titleQuiet: 'Des réponses directes.',
     more: (issues: string) => `Autre chose\u202f? [Demandez sur GitHub](${issues}).`,
-    items: (contributing: string) => [
+    items: (contributing: string, widgets: string) => [
       { q: 'Vortex est-il gratuit\u202f?', a: 'Oui. Vortex est gratuit et open source, sous licence MIT, sans abonnement ni compte.' },
       {
         q: 'Vortex fonctionne-t-il sur un Mac sans encoche, comme le MacBook Neo\u202f?',
@@ -326,6 +326,10 @@ export const fr: Copy = {
       {
         q: 'Vortex collecte-t-il des données\u202f?',
         a: 'Non. Il ne se connecte jamais de lui-même\u00a0: ni statistiques d’utilisation, ni vérification des mises à jour, ni compte. Vos données restent dans `~/Library/Application Support/Vortex`, et vos secrets dans votre trousseau de session.',
+      },
+      {
+        q: 'Puis-je désactiver ce dont je n’ai pas besoin\u202f?',
+        a: 'Oui. Pendant la configuration, vous choisissez vos fonctionnalités, les recommandées déjà cochées, et vous pouvez en ajouter ou en retirer plus tard dans «\u00a0Features\u00a0», la pièce de puzzle de la barre latérale. Une fonctionnalité que vous n’avez pas ajoutée ne tourne pas, et Vortex ne demande aucune autorisation pour elle. Une fonctionnalité retirée garde ses données jusqu’à ce que vous les effaciez avec «\u00a0Erase Data…\u00a0» sur sa page.',
       },
       {
         q: 'Pourquoi macOS refuse-t-il d’ouvrir Vortex\u202f?',
@@ -341,15 +345,15 @@ export const fr: Copy = {
       },
       {
         q: 'En quoi Vortex diffère-t-il de NotchNook, de Boring Notch et des autres apps façon Dynamic Island\u202f?',
-        a: 'Vortex est pensé pour le travail\u00a0: une étagère pour les builds et les fichiers, des tâches tirées de l’écran, des clés pour Claude Code, un minuteur et l’historique du presse-papiers. Il ne se connecte jamais de lui-même, et il est open source sous licence MIT. Il n’a ni commandes de musique ni calendrier. [Comparez les trois côte à côte](../notchnook-alternative/) (en anglais).',
+        a: 'Vortex est pensé pour le travail\u00a0: une étagère pour les builds et les fichiers, des tâches et du texte tirés de l’écran, des clés pour Claude Code, un minuteur et l’historique du presse-papiers. Il ne se connecte jamais de lui-même, et il est open source sous licence MIT. Il n’a ni commandes de musique ni calendrier. [Comparez les trois côte à côte](../notchnook-alternative/) (en anglais).',
       },
       {
         q: 'Comment mettre à jour Vortex\u202f?',
         a: 'Relancez la commande dans Terminal, ou téléchargez la nouvelle version et ouvrez-la\u00a0: Vortex prend la place de l’ancienne dans Applications. Toutes les versions sont signées avec le même certificat, vos autorisations restent donc en place\u202f; seul le trousseau redemande, une fois par clé. «\u00a0Check for Updates\u00a0», dans «\u00a0Settings\u00a0» › «\u00a0General\u00a0», ouvre la dernière version.',
       },
       {
-        q: 'Puis-je ajouter ma propre fonctionnalité\u202f?',
-        a: `Oui. Copiez \`Features/_Template\`, renommez-le et déclarez-le dans le package et dans le registre. [CONTRIBUTING.md](${contributing}) vous guide pas à pas.`,
+        q: 'Puis-je ajouter ma propre fonctionnalité, ou un widget pour Home\u202f?',
+        a: `Oui. Copiez \`Features/_Template\`, ou \`Features/_UtilityTemplate\` pour un utilitaire, renommez-le et déclarez-le dans le package et dans le registre. Une fonctionnalité peut apporter jusqu’à deux widgets pour Home. [CONTRIBUTING.md](${contributing}) vous guide pas à pas, et son [guide des widgets](${widgets}) détaille chaque étape d’un widget.`,
       },
     ],
   },

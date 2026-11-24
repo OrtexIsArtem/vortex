@@ -3,14 +3,14 @@
 // data, in plain text.
 import { copyFor } from '../copy';
 import { headingGap, localeByCode, localeOf, urlFor } from '../copy/locales';
-import { contributingUrl, issuesUrl } from '../lib/app';
+import { contributingUrl, issuesUrl, widgetsUrl } from '../lib/app';
 import { inlineHtml, inlineText } from '../lib/inline';
 
 const copy = copyFor(Astro.url);
 const gap = headingGap(Astro.url.pathname);
 
 const q = copy.faq;
-const items = q.items(contributingUrl);
+const items = q.items(contributingUrl, widgetsUrl);
 const code = localeOf(Astro.url.pathname);
 const page = urlFor(code, Astro.site);
 const structured = JSON.stringify({

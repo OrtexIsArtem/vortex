@@ -461,7 +461,8 @@ export const en = {
     title: 'Questions.',
     titleQuiet: 'Straight answers.',
     more: (issues: string) => `Something else? [Ask on GitHub](${issues}).`,
-    items: (contributing: string) => [
+    /** `widgets`: CONTRIBUTING's guide to a widget for Home. */
+    items: (contributing: string, widgets: string) => [
       { q: 'Is Vortex free?', a: 'Yes. Vortex is free and open source under the MIT license, with no subscription and no account.' },
       {
         q: 'Does it work on a Mac without a notch, like the MacBook Neo?',
@@ -474,6 +475,10 @@ export const en = {
       {
         q: 'Does Vortex collect any data?',
         a: 'No. It never goes online by itself: no analytics, no update checks, no accounts. Your data stays in `~/Library/Application Support/Vortex` and your secrets in your login keychain.',
+      },
+      {
+        q: "Can I turn off what I don't need?",
+        a: "Yes. During setup you choose your features, with the recommended ones checked, and you can add or remove any of them later in Features, the puzzle piece in the sidebar. A feature you haven't added doesn't run, and Vortex asks for no permission on its behalf. A removed feature keeps its data until you erase it with Erase Data… on its page.",
       },
       {
         q: 'Why does macOS refuse to open Vortex?',
@@ -489,15 +494,15 @@ export const en = {
       },
       {
         q: 'How is Vortex different from NotchNook, Boring Notch and other Dynamic Island apps?',
-        a: "Vortex is built around work: a shelf for builds and files, tasks from your screen, keys for Claude Code, a timer and clipboard history. It never goes online by itself, and it's open source under MIT. It has no music controls or calendar. [Compare the three side by side](notchnook-alternative/).",
+        a: "Vortex is built around work: a shelf for builds and files, tasks and text from your screen, keys for Claude Code, a timer and clipboard history. It never goes online by itself, and it's open source under MIT. It has no music controls or calendar. [Compare the three side by side](notchnook-alternative/).",
       },
       {
         q: 'How do I update Vortex?',
         a: "Run the Terminal command again, or download the new version and open it: Vortex takes the old one's place in Applications. Every release is signed with the same certificate, so your permissions stay; only the keychain asks again, once per key. Check for Updates in Settings › General opens the latest release.",
       },
       {
-        q: 'Can I add my own feature?',
-        a: `Yes. Copy \`Features/_Template\`, rename it and list it in the package and the registry. [CONTRIBUTING.md](${contributing}) walks you through it.`,
+        q: 'Can I add my own feature, or a widget for Home?',
+        a: `Yes. Copy \`Features/_Template\`, or \`Features/_UtilityTemplate\` for a utility, rename it and list it in the package and the registry. A feature can bring up to two widgets for Home. [CONTRIBUTING.md](${contributing}) walks you through it, and its [guide to widgets](${widgets}) step by step.`,
       },
     ],
   },
