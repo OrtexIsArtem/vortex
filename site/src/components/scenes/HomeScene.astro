@@ -1,0 +1,1206 @@
+---
+// Home and its editor, as the app lays them out (Packages/Features/Home/docs/behavior.md): the utilities button puts its
+// strip out, its pencil opens the editor in the large window with the panel at its right; a dragged widget lands on a
+// cell and the others move aside, a size changes in the panel, Done keeps the layout and Cancel puts Home back. The
+// window is the app's at its own sizes, scaled to the scene; on a narrow one the panel sits under it.
+import { copyFor } from '../../copy';
+import { appLangOf, localeOf } from '../../copy/locales';
+import type { IconName } from '../../lib/icons';
+import Icon from '../Icon.astro';
+
+const copy = copyFor(Astro.url);
+// Home, the editor and the strip are the app's, in the app's language.
+const appLang = appLangOf(localeOf(Astro.url.pathname));
+
+const h = copy.homeChapter;
+const a = h.app;
+const d = copy.demo;
+
+const sidebar: IconName[] = ['grid', 'timer', 'clipboard', 'tray', 'checklist', 'key'];
+const clips = [
+  'npm run lint && npm test',
+  '~/Projects/weather-app/README.md',
+  '#5AC8FA',
+  'git switch -c feature/offline-mode',
+  'https://developer.apple.com/documentation',
+];
+const files = [
+  { ext: '.ipa', name: 'Build 42.ipa' },
+  { ext: '.aab', name: 'app-release.aab' },
+];
+// The drum's ticks, as the timer draws them: a minute each, longer every five, fading toward its ends.
+const ticks = Array.from({ length: 17 }, (_, index) => {
+  const offset = index - 8;
+  const long = offset === 0 ? 26 : offset % 5 === 0 ? 16 : 9;
+  return { x: 58 + offset * 6.5, long, opacity: offset === 0 ? 1 : Math.max(0.15, 0.75 - Math.abs(offset) / 11) };
+});
+---
+
+<div class="scene home" data-home-scene tabindex="-1" data-nosnippet>
+  <div class="hs-screen" data-hs-screen>
+    <div class="hs-stage" data-hs-stage>
+      <svg class="hs-shape" data-hs-shape viewBox="0 0 900 456" preserveAspectRatio="xMinYMin meet" aria-hidden="true">
+        <path class="hs-shape__fill" data-hs-fill></path>
+        <path class="hs-shape__edge" data-hs-edge></path>
+      </svg>
+
+      <div class="hs-window" data-hs-window lang={appLang}>
+        <div class="hs-side" data-hs-side aria-hidden="true">
+          {
+            sidebar.map((icon, index) => (
+              <span class:list={['hs-side__item', { 'is-selected': index === 0 }]}>
+                <Icon name={icon} size={17} />
+              </span>
+            ))
+          }
+          <span class="hs-side__item hs-side__catalog"><Icon name="puzzle" size={17} /></span>
+          <span class="hs-side__item"><Icon name="gear" size={17} /></span>
+        </div>
+
+        <div class="hs-home" data-hs-home>
+          <div class="hs-row">
+            <div class="hs-timer hs-widget" data-hs-widget="timer.timer">
+              <div class="hs-timer__lead" aria-hidden="true">
+                <svg class="hs-drum" width="116" height="34" viewBox="0 0 116 34">
+                  {
+                    ticks.map((tick) => (
+                      <line
+                        x1={tick.x}
+                        x2={tick.x}
+                        y1={17 - tick.long / 2}
+                        y2={17 + tick.long / 2}
+                        stroke-width={tick.long === 26 ? 2 : 1.2}
+                        stroke-opacity={tick.opacity}
+                      />
+                    ))
+                  }
+                </svg>
+                <span class="hs-timer__minutes"><b>5</b> {d.minutes}</span>
+              </div>
+              <div class="hs-timer__trail" aria-hidden="true">
+                <span class="hs-pill">+5</span>
+                <span class="hs-pill">+10</span>
+                <span class="hs-pill hs-pill--primary"><Icon name="play" size={9} />{d.start}</span>
+              </div>
+              <span class="hs-ring" aria-hidden="true"></span>
+              <button class="hs-remove" type="button" tabindex="-1" aria-label={a.remove} title={a.remove} data-hs-remove="timer.timer">
+                <span><Icon name="minus" size={12} /></span>
+              </button>
+            </div>
+            <p class="hs-row__title" data-hs-row-title hidden>{a.home}</p>
+          </div>
+
+          <div class="hs-grid" data-hs-grid>
+            {
+              [0, 1].flatMap((row) =>
+                [0, 1, 2, 3].map((column) => <span class="hs-cell" data-hs-cell={`${column},${row}`} aria-hidden="true" />),
+              )
+            }
+            <span class="hs-landing" data-hs-landing aria-hidden="true"></span>
+
+            <div class="hs-card hs-widget" data-hs-widget="clipboard.history">
+              <div class="hs-face" data-hs-face aria-hidden="true">
+                <p class="hs-face__title">{d.clipboard}</p>
+                <ul class="hs-clips">
+                  {
+                    clips.map((text) => (
+                      <li>
+                        <Icon name="text" size={14} />
+                        <span>{text}</span>
+                      </li>
+                    ))
+                  }
+                </ul>
+              </div>
+              <span class="hs-ring" aria-hidden="true"></span>
+              <button class="hs-remove" type="button" tabindex="-1" aria-label={a.remove} title={a.remove} data-hs-remove="clipboard.history">
+                <span><Icon name="minus" size={12} /></span>
+              </button>
+            </div>
+
+            <div class="hs-card hs-widget" data-hs-widget="shelf.files">
+              <div class="hs-face" data-hs-face aria-hidden="true">
+                <p class="hs-face__title">{d.shelf} <span>{files.length}</span></p>
+                <div class="hs-tiles">
+                  {
+                    files.map((file) => (
+                      <div class="hs-tile">
+                        <span class="hs-tile__preview">
+                          {file.ext}
+                          <i />
+                        </span>
+                        <span class="hs-tile__name">{file.name}</span>
+                      </div>
+                    ))
+                  }
+                  <div class="hs-tile">
+                    <span class="hs-tile__preview hs-tile__preview--drop">
+                      <Icon name="download" size={15} />
+                      <span>{a.dropHere}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span class="hs-ring" aria-hidden="true"></span>
+              <button class="hs-remove" type="button" tabindex="-1" aria-label={a.remove} title={a.remove} data-hs-remove="shelf.files">
+                <span><Icon name="minus" size={12} /></span>
+              </button>
+            </div>
+
+            <div class="hs-empty" data-hs-empty hidden>
+              <p data-hs-empty-text>{a.empty}</p>
+              <button class="hs-capsule" type="button" data-hs-edit>{d.editHome}</button>
+            </div>
+            {/* With a widget picked, each cell takes a click: the widget goes there, as a drag would take it. */}
+            <div class="hs-targets" data-hs-targets aria-hidden="true">
+              {[0, 1].flatMap((row) => [0, 1, 2, 3].map((column) => <span class="hs-target" data-hs-target={`${column},${row}`} />))}
+            </div>
+          </div>
+
+          {/* A click on Home that only puts the strip away, or, with the utilities button picked, puts it there. */}
+          <span class="hs-catch" data-hs-catch aria-hidden="true"></span>
+          <button
+            class="orb hs-utilities"
+            type="button"
+            aria-expanded="false"
+            aria-controls="hs-strip"
+            aria-label={d.utilities}
+            title={d.utilities}
+            data-hs-utilities
+          >
+            <span class="orb__disc"><Icon name="utilities" size={18} /></span>
+          </button>
+        </div>
+
+        <div class="hs-strip" id="hs-strip" role="group" aria-label={d.utilities} data-hs-strip inert>
+          <a class="orb" href="#keyboard" aria-label={d.lockKeyboard} title={d.lockKeyboard}>
+            <span class="orb__disc"><Icon name="keyboard" size={17} /></span>
+          </a>
+          <a class="orb" href="#screentext" aria-label={d.copyText} title={d.copyText}>
+            <span class="orb__disc"><Icon name="textViewfinder" size={17} /></span>
+          </a>
+          <span class="hs-strip__line" aria-hidden="true"></span>
+          <button class="orb" type="button" aria-label={d.editHome} title={d.editHome} data-hs-pencil>
+            <span class="orb__disc"><Icon name="pencil" size={16} /></span>
+          </button>
+        </div>
+
+        <span class="hs-notch" aria-hidden="true"><i></i></span>
+      </div>
+    </div>
+
+    <div class="hs-panel" data-hs-panel lang={appLang} inert>
+      <div class="hs-panel__bar">
+        <button class="hs-capsule" type="button" data-hs-cancel>{a.cancel}</button>
+        <button class="hs-capsule hs-capsule--primary" type="button" data-hs-done>{a.done}</button>
+      </div>
+      <div class="hs-list" data-hs-list>
+        <div class="hs-search">
+          <Icon name="search" size={13} />
+          <input type="text" placeholder={a.search} aria-label={a.search} autocomplete="off" spellcheck="false" data-hs-search />
+          <button class="hs-search__clear" type="button" aria-label={a.clearSearch} title={a.clearSearch} data-hs-clear hidden>
+            <Icon name="close" size={11} />
+          </button>
+        </div>
+        <div class="hs-sections" data-hs-sections></div>
+        <button class="hs-more" type="button" data-hs-more>{a.moreWidgets}<span aria-hidden="true"> ›</span></button>
+      </div>
+      <div class="hs-feature" data-hs-feature hidden>
+        <button class="hs-back" type="button" data-hs-back><span aria-hidden="true">‹ </span>{a.back}</button>
+        <p class="hs-feature__name" data-hs-feature-name></p>
+        <div class="hs-wcard" data-hs-wcard></div>
+      </div>
+    </div>
+
+    {/* The pointer the demo moves while it plays by itself. */}
+    <svg class="hs-pointer" data-hs-pointer width="17" height="25" viewBox="0 0 17 25" aria-hidden="true">
+      <path d="M1.5 1.5v18.6l4.6-4.4 3 6.9 3.3-1.4-3-6.8h6.4z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"></path>
+    </svg>
+  </div>
+
+  <button class="hs-again" type="button" data-hs-again>{h.replay}</button>
+  {/* The keys that stand in for a drag, read with a widget or the utilities button in the editor. */}
+  <p class="visually-hidden" id="hs-widget-keys">{h.widgetKeys}</p>
+  <p class="visually-hidden" id="hs-button-keys">{h.buttonKeys}</p>
+  {/* What the visitor's own edits did, for a screen reader; the demo playing by itself stays silent. */}
+  <p class="visually-hidden" role="status" data-hs-status></p>
+</div>
+
+<style>
+  /* Sizes inside the window are the app's points; the window is scaled to the scene as a whole (--s). Focusable only so
+     that a click inside keeps the focus here, where Esc reaches the editor, as in the Tasks scene. */
+  .home {
+    --s: 0.72;
+    outline: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .hs-screen {
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #121214;
+  }
+
+  .hs-stage {
+    position: relative;
+    height: calc(456px * var(--s));
+    transition: opacity 300ms linear;
+  }
+
+  .home.is-resetting :is(.hs-stage, .hs-panel) {
+    opacity: 0;
+  }
+
+  .hs-shape {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .hs-shape__fill {
+    fill: var(--window);
+  }
+
+  .hs-shape__edge {
+    fill: none;
+    stroke: var(--edge);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .hs-window {
+    position: absolute;
+    top: 0;
+    left: calc(10px * var(--s));
+    width: 736px;
+    height: 440px;
+    color: var(--text-1);
+    font-size: 13px;
+    line-height: 1.2;
+    transform: scale(var(--s));
+    transform-origin: 0 0;
+  }
+
+  /* Focus stays 2 px on screen whatever the scale. */
+  .hs-window :focus-visible,
+  .home.is-wide .hs-panel :focus-visible {
+    outline-width: calc(2px / var(--s));
+    outline-offset: calc(3px / var(--s));
+  }
+
+  /* The sidebar, as the app's; in the editor it dims and waits. */
+  .hs-side {
+    position: absolute;
+    top: 52px;
+    bottom: 16px;
+    left: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: opacity 200ms var(--ease-out);
+  }
+
+  .home.is-editing .hs-side {
+    opacity: 0.35;
+  }
+
+  .hs-side__item {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    color: var(--text-3);
+  }
+
+  .hs-side__item.is-selected {
+    background: var(--raised);
+    color: var(--text-1);
+  }
+
+  .hs-side__catalog {
+    margin-top: auto;
+  }
+
+  .hs-notch {
+    position: absolute;
+    top: 0;
+    left: 247px;
+    width: 186px;
+    height: 32px;
+    border-radius: 0 0 10px 10px;
+    background: var(--notch);
+    pointer-events: none;
+  }
+
+  .hs-notch i {
+    position: absolute;
+    top: 13px;
+    left: 90px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lens);
+  }
+
+  /* Home's column: the notch row, then the 4×2 grid. */
+  .hs-home {
+    position: absolute;
+    top: 0;
+    left: 56px;
+    width: 624px;
+    height: 440px;
+  }
+
+  .hs-row {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 580px;
+    height: 52px;
+  }
+
+  .hs-row__title {
+    margin: 0;
+    padding: 17px 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .hs-timer {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+  }
+
+  .hs-timer__lead {
+    position: absolute;
+    top: 9px;
+    right: calc(580px - 179px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+  }
+
+  .hs-drum {
+    stroke: var(--text-1);
+  }
+
+  .hs-timer__minutes {
+    min-width: 46px;
+    color: var(--text-2);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .hs-timer__minutes b {
+    color: var(--text-1);
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .hs-timer__trail {
+    position: absolute;
+    top: 9px;
+    left: 389px;
+    display: flex;
+    gap: 6px;
+  }
+
+  .hs-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--raised);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .hs-pill--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  /* The grid's cells: dashed in the editor while free. */
+  .hs-grid {
+    position: absolute;
+    top: 52px;
+    left: 0;
+    width: 624px;
+    height: 376px;
+  }
+
+  .hs-cell,
+  .hs-landing,
+  .hs-target {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 143px;
+    height: 182px;
+    border-radius: 18px;
+  }
+
+  .hs-cell {
+    border: 1px dashed #3a3a3f;
+    opacity: 0;
+    transition: opacity 200ms linear;
+  }
+
+  .hs-cell.is-free {
+    opacity: 1;
+  }
+
+  /* Under the cards, as the app draws it: the widgets in the way slide off it. */
+  .hs-landing {
+    display: none;
+    border: 1px dashed var(--text-2);
+  }
+
+  .hs-landing.is-shown {
+    display: block;
+  }
+
+  /* A widget's card, the app's: padded, on the dock's shade, 18 pt round. It slides where the layout puts it. */
+  .hs-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    border-radius: 18px;
+    background: var(--dock);
+    touch-action: pan-y;
+    transition:
+      transform 250ms var(--ease-out),
+      width 250ms var(--ease-out),
+      height 250ms var(--ease-out);
+  }
+
+  .hs-card.is-dragged {
+    z-index: 3;
+    cursor: grabbing;
+    transition: none;
+  }
+
+  .home.is-editing .hs-card {
+    cursor: grab;
+  }
+
+  .hs-face {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    padding: 14px 16px;
+    border-radius: inherit;
+  }
+
+  .hs-face__title {
+    display: flex;
+    gap: 6px;
+    height: 18px;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+
+  .hs-face__title span {
+    color: var(--text-3);
+  }
+
+  .hs-clips {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hs-clips li {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+    color: var(--text-1);
+    font: 11.5px/1.2 var(--mono);
+    white-space: nowrap;
+  }
+
+  .hs-clips li :global(svg) {
+    flex: none;
+    color: var(--text-3);
+  }
+
+  .hs-clips span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hs-clips li + li::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 24px;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .hs-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 8px;
+    margin-top: 10px;
+  }
+
+  /* Six tiles across a wide shelf, three across the others; its copy in the panel too. */
+  [data-size='wide'] .hs-tiles {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .hs-tile {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .hs-tile__preview {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 72px;
+    border-radius: 12px;
+    background: var(--thumb);
+    color: var(--text-2);
+    font: 300 15px/1 var(--mono);
+  }
+
+  .hs-tile__preview i {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-1);
+  }
+
+  .hs-tile__preview--drop {
+    align-content: center;
+    gap: 6px;
+    border: 1px dashed #3a3a3f;
+    background: none;
+    color: var(--text-2);
+    font: 400 11px/1.2 var(--font);
+    text-align: center;
+  }
+
+  .hs-tile__name {
+    overflow: hidden;
+    color: var(--text-2);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* In the editor: under the pointer, with the keyboard's focus or picked, a widget has a 1 pt ring and its "−". */
+  .hs-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgb(245 245 247 / 0.28);
+    background: rgb(245 245 247 / 0.02);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .hs-timer .hs-ring {
+    inset: 8px;
+  }
+
+  .hs-remove {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    z-index: 4;
+    display: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+  }
+
+  .hs-timer .hs-remove {
+    top: -12px;
+    left: -12px;
+  }
+
+  .hs-remove span {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text-3);
+    color: var(--window);
+  }
+
+  .hs-remove :global(svg) {
+    stroke-width: 3;
+  }
+
+  .home.is-editing .hs-widget:is(:hover, :focus-visible, .is-hover, .is-picked) .hs-ring {
+    opacity: 1;
+  }
+
+  .home.is-editing .hs-widget:is(:hover, :focus-visible, .is-hover, .is-picked) .hs-remove {
+    display: grid;
+  }
+
+  .home.is-editing .hs-widget:focus-visible {
+    outline: none;
+  }
+
+  .home.is-editing .hs-widget:focus-visible .hs-ring {
+    box-shadow:
+      inset 0 0 0 1px rgb(245 245 247 / 0.28),
+      0 0 0 calc(2px / var(--s)) var(--text-1);
+  }
+
+  /* Over the cells that take a click, so its own "−" and a click on it, which puts it down, still reach it. */
+  .hs-card.is-picked {
+    z-index: 4;
+  }
+
+  .hs-empty {
+    position: absolute;
+    inset: 0 0 52px;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 12px;
+    color: var(--text-3);
+    font-size: 12.5px;
+  }
+
+  .hs-empty p {
+    margin: 0;
+  }
+
+  /* Cells that take a click while a widget is picked: over the cards, under the picked one's "−". */
+  .hs-targets {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: none;
+  }
+
+  .home.is-picking-widget .hs-targets {
+    display: block;
+  }
+
+  .hs-target {
+    cursor: pointer;
+  }
+
+  .hs-target.is-hover {
+    background: rgb(245 245 247 / 0.04);
+  }
+
+  .hs-catch {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: none;
+  }
+
+  .home.has-strip .hs-catch,
+  .home.is-picking-button .hs-catch {
+    display: block;
+  }
+
+  .home.is-picking-button .hs-catch {
+    cursor: crosshair;
+  }
+
+  /* The utilities button: in its slot at the row's end, or floating where the editor put it, over everything. */
+  .hs-utilities {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 6;
+    transition: transform 250ms var(--ease-out);
+  }
+
+  .hs-utilities.is-dragged {
+    transition: none;
+  }
+
+  .hs-utilities.is-floating :global(.orb__disc) {
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  }
+
+  .home.is-editing .hs-utilities {
+    cursor: grab;
+    touch-action: pan-y;
+  }
+
+  .home.is-editing .hs-utilities:is(:hover, :focus-visible, .is-hover, .is-picked) :global(.orb__disc) {
+    box-shadow:
+      0 0 0 1px rgb(245 245 247 / 0.28),
+      0 4px 12px rgb(0 0 0 / 0.25);
+  }
+
+  .hs-utilities.is-pressed :global(.orb__disc),
+  .hs-strip :global(.orb.is-pressed .orb__disc) {
+    background: var(--track);
+  }
+
+  .hs-utilities.is-hover,
+  .hs-strip :global(.orb.is-hover) {
+    color: var(--text-1);
+  }
+
+  .hs-utilities.is-hover :global(.orb__disc),
+  .hs-strip :global(.orb.is-hover .orb__disc) {
+    background: var(--track);
+  }
+
+  /* The utilities strip at the window's right, as in the demo window. */
+  .hs-strip {
+    position: absolute;
+    top: 0;
+    left: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 56px;
+    height: 440px;
+    padding-top: 4px;
+    background: var(--panel);
+    box-shadow: inset 1px 0 0 var(--line);
+  }
+
+  .home:not(.has-strip) .hs-strip {
+    visibility: hidden;
+  }
+
+  .hs-strip__line {
+    flex: none;
+    width: 20px;
+    height: 1px;
+    margin: 6px 0;
+    background: var(--line);
+  }
+
+  /* The editor's panel: at the window's right in the large window; under it on a narrow scene, where it waits dimmed
+     until the editor opens. */
+  .hs-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    background: var(--panel);
+    color: var(--text-1);
+    font-size: 13px;
+    line-height: 1.2;
+    transition: opacity 250ms linear;
+  }
+
+  .home.is-wide .hs-panel {
+    position: absolute;
+    top: 0;
+    left: calc(690px * var(--s));
+    width: 200px;
+    height: 440px;
+    box-shadow: inset 1px 0 0 var(--line);
+    transform: scale(var(--s));
+    transform-origin: 0 0;
+  }
+
+  .home:not(.is-wide) .hs-panel {
+    min-height: 240px;
+    margin: 12px;
+    border-radius: 16px;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+
+  .home:not(.is-wide):not(.is-editing) .hs-panel {
+    opacity: 0.35;
+  }
+
+  .hs-panel__bar {
+    display: flex;
+    flex: none;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .hs-capsule {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--raised);
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .hs-capsule--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  .hs-capsule:hover,
+  .hs-capsule.is-hover {
+    background: var(--track);
+  }
+
+  .hs-capsule--primary:hover,
+  .hs-capsule--primary.is-hover {
+    background: var(--accent-hover);
+  }
+
+  .hs-list,
+  .hs-feature {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .hs-search {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    margin-top: 10px;
+    padding: 0 10px;
+    border-radius: 9px;
+    background: var(--raised);
+    color: var(--text-3);
+  }
+
+  .hs-search input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    background: none;
+    color: var(--text-1);
+    font: 12.5px var(--font);
+    outline: none;
+  }
+
+  .hs-search:focus-within {
+    box-shadow: 0 0 0 calc(2px / var(--s)) var(--text-1);
+  }
+
+  .hs-search input::placeholder {
+    color: var(--text-3);
+  }
+
+  .hs-search__clear {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-right: -6px;
+    color: var(--text-3);
+  }
+
+  .hs-sections {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .hs-sections :global(.hs-section) {
+    margin: 14px 0 0;
+    color: var(--text-3);
+    font-size: 11.5px;
+  }
+
+  .hs-sections :global(.hs-section + .hs-frow) {
+    margin-top: 4px;
+  }
+
+  .hs-sections :global(.hs-frow) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 44px;
+    margin-top: 4px;
+    border-radius: 10px;
+    text-align: left;
+  }
+
+  .hs-sections :global(.hs-frow__icon) {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--raised);
+  }
+
+  .hs-sections :global(.hs-frow__text) {
+    display: grid;
+    flex: 1;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .hs-sections :global(.hs-frow__name) {
+    font-size: 12.5px;
+  }
+
+  .hs-sections :global(.hs-frow__sub) {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hs-sections :global(.hs-frow__chevron) {
+    color: var(--text-3);
+    font-size: 15px;
+  }
+
+  .hs-sections :global(.hs-frow:hover .hs-frow__name),
+  .hs-sections :global(.hs-frow.is-hover .hs-frow__name) {
+    text-decoration: underline;
+    text-decoration-color: var(--track);
+    text-underline-offset: 3px;
+  }
+
+  .hs-sections :global(.hs-none) {
+    margin: 14px 0 0;
+    color: var(--text-3);
+    font-size: 12px;
+  }
+
+  .hs-more {
+    flex: none;
+    min-height: 30px;
+    margin-top: 6px;
+    color: var(--text-2);
+    font-size: 11.5px;
+    text-align: left;
+  }
+
+  .hs-back {
+    align-self: flex-start;
+    min-height: 30px;
+    margin-top: 6px;
+    color: var(--text-2);
+    font-size: 12.5px;
+  }
+
+  .hs-feature__name {
+    margin: 2px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .hs-wcard {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgb(245 245 247 / 0.02);
+    box-shadow: inset 0 0 0 1px rgb(245 245 247 / 0.07);
+  }
+
+  .hs-wcard :global(.hs-thumb) {
+    position: relative;
+    justify-self: center;
+    overflow: hidden;
+    border-radius: calc(18px * var(--k));
+    box-shadow: inset 0 0 0 1px rgb(245 245 247 / 0.1);
+  }
+
+  .hs-wcard :global(.hs-thumb > *) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: scale(var(--k));
+    transform-origin: 0 0;
+    background: var(--dock);
+    pointer-events: none;
+  }
+
+  .hs-wcard :global(.hs-wcard__row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    min-height: 24px;
+    font-size: 12.5px;
+  }
+
+  .hs-wcard :global(.hs-quiet) {
+    color: var(--text-3);
+    font-size: 11px;
+  }
+
+  .hs-wcard :global(.hs-add) {
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .hs-wcard :global(.hs-chips) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .hs-wcard :global(.hs-chip) {
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--raised);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hs-wcard :global(.hs-chip.is-chosen) {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .hs-wcard :global(.hs-chip:disabled) {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .hs-wcard :global(.hs-chip.is-hover:not(.is-chosen)),
+  .hs-wcard :global(.hs-chip:not(.is-chosen):not(:disabled):hover) {
+    background: var(--track);
+  }
+
+  .hs-wcard :global(.hs-hint) {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  /* A narrow scene's panel: shorter, its widget's card in a row. */
+  .home:not(.is-wide) :is(.hs-search, .hs-more) {
+    display: none;
+  }
+
+  .home:not(.is-wide) .hs-wcard {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  .home:not(.is-wide) .hs-wcard :global(.hs-thumb) {
+    grid-row: span 3;
+  }
+
+  .hs-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(var(--px, 0px), var(--py, 0px));
+    transition:
+      transform 560ms var(--ease-in-out),
+      opacity 200ms linear;
+  }
+
+  .hs-pointer.is-shown {
+    opacity: 1;
+  }
+
+  .hs-pointer.is-tracking {
+    transition: opacity 200ms linear;
+  }
+
+  /* Pause while the demo goes round by itself, Again once it rests; its room is kept, so showing it moves nothing. */
+  .hs-again {
+    visibility: hidden;
+    justify-self: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text-3);
+    font: 400 12px/1 var(--mono);
+  }
+
+  .hs-again.is-shown {
+    visibility: visible;
+  }
+
+  .hs-again:hover {
+    color: var(--text-1);
+  }
+
+  @media (pointer: coarse) {
+    /* A fingertip gets more than the scaled window gives: the small round buttons take taps from around them too. */
+    .hs-window :global(.orb)::after,
+    .hs-remove::after {
+      content: '';
+      position: absolute;
+      inset: -10px;
+    }
+
+    .hs-window :global(.orb),
+    .hs-again {
+      position: relative;
+    }
+
+    .hs-utilities {
+      position: absolute;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .home {
+      padding: 12px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hs-card,
+    .hs-utilities,
+    .hs-cell,
+    .hs-stage,
+    .hs-panel,
+    .hs-side {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { mountHome } from '../../scripts/home-scene';
+
+  const scene = document.querySelector<HTMLElement>('[data-home-scene]');
+  if (scene) mountHome(scene);
+</script>

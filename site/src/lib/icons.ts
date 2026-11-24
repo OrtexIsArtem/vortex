@@ -20,6 +20,10 @@ export const icons = {
   utilities: '<path d="M5.63 3.37 10.63 8.37 8.37 10.63 3.37 5.63zM9.5 9.5l9 9M5 19l8.8-8.8M19.91 6.79a3.6 3.6 0 1 1-2.7-2.7"/>',
   /** Edit Home, the strip's last button: pencil. */
   pencil: '<path d="M5 19l1.34-3.46L15.94 5.94a1.5 1.5 0 0 1 2.12 2.12L8.46 17.66zM13.94 7.94l2.12 2.12"/>',
+  /** The editor's search of widgets: magnifyingglass. */
+  search: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 4.5 4.5"/>',
+  /** A widget's "−" in Home's editor. */
+  minus: '<path d="M6 12h12"/>',
   timer: '<circle cx="12" cy="13.5" r="7.2"/><path d="M12 13.5V9.6M9.8 3.2h4.4M18.6 6.6l1.3-1.3"/>',
   clipboard: '<rect x="5.5" y="5" width="13" height="16" rx="2.6"/><path d="M9 5v-.4A1.6 1.6 0 0 1 10.6 3h2.8A1.6 1.6 0 0 1 15 4.6V5M9 11h6M9 15h4"/>',
   tray: '<path d="M3.5 13.5 6 5.5h12l2.5 8V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><path d="M3.5 13.5h5a3.5 3.5 0 0 0 7 0h5"/>',
