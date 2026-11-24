@@ -1,6 +1,7 @@
 ---
-// Home in the app's chosen layout, «Вуха»: the timer flanks the notch, the shelf and the clipboard share the dock.
-// Sizes follow the app: a 680 × 440 window, a 56 pt sidebar, a 52 pt row beside a 186 × 32 notch.
+// Home in the app's chosen layout, «Вуха»: the timer flanks the notch, the shelf and the clipboard share the dock, and
+// the utilities button ends the row. Sizes follow the app: a 680 × 440 window, a 56 pt sidebar, a 52 pt row beside a
+// 186 × 32 notch, and the utilities strip, 56 pt, that grows the window at its right.
 import { copyFor } from '../copy';
 import { appLangOf, localeOf } from '../copy/locales';
 import type { IconName } from '../lib/icons';
@@ -19,6 +20,12 @@ const features: { icon: IconName; label: string; href: string }[] = [
   { icon: 'checklist', label: d.sidebar[4], href: '#tasks' },
   { icon: 'key', label: d.sidebar[5], href: '#keys' },
 ];
+// The strip's buttons, in the app's order: the utilities' actions, then, set apart, Home's own pencil. Here each leads to
+// its chapter, as the sidebar's icons do.
+const utilities: { icon: IconName; size: number; label: string; href: string }[] = [
+  { icon: 'keyboard', size: 17, label: d.lockKeyboard, href: '#keyboard' },
+  { icon: 'textViewfinder', size: 17, label: d.copyText, href: '#screentext' },
+];
 ---
 
 <div class="dw" lang={appLang}>
@@ -30,7 +37,10 @@ const features: { icon: IconName; label: string; href: string }[] = [
         </a>
       ))
     }
-    <span class="dw-side__item dw-side__settings" title={d.settings}>
+    <span class="dw-side__item dw-side__catalog" title={d.features}>
+      <Icon name="puzzle" size={17} />
+    </span>
+    <span class="dw-side__item" title={d.settings}>
       <Icon name="gear" size={17} />
     </span>
   </nav>
@@ -52,7 +62,36 @@ const features: { icon: IconName; label: string; href: string }[] = [
       </button>
       <button class="dw-round" type="button" data-stop aria-label={d.stop}><Icon name="stop" size={12} /></button>
     </div>
+    <button
+      class="orb dw-utilities"
+      type="button"
+      aria-expanded="false"
+      aria-controls="dw-strip"
+      aria-label={d.utilities}
+      title={d.utilities}
+      data-utilities
+    >
+      <span class="orb__disc"><Icon name="utilities" size={18} /></span>
+    </button>
   </div>
+
+  <div class="dw-strip" id="dw-strip" role="group" aria-label={d.utilities} data-strip inert>
+    {
+      utilities.map((item) => (
+        <a class="orb" href={item.href} aria-label={item.label} title={item.label}>
+          <span class="orb__disc">
+            <Icon name={item.icon} size={item.size} />
+          </span>
+        </a>
+      ))
+    }
+    <span class="dw-strip__line" aria-hidden="true"></span>
+    <a class="orb" href="#home" aria-label={d.editHome} title={d.editHome}>
+      <span class="orb__disc"><Icon name="pencil" size={16} /></span>
+    </a>
+  </div>
+  {/* While the strip is out, a click anywhere else on Home only puts it away, as in the app. */}
+  <span class="dw-catch" aria-hidden="true" data-strip-catch></span>
 
   <div class="dw-dock">
     <section class="dw-shelf" aria-label={d.shelf}>
@@ -83,9 +122,6 @@ const features: { icon: IconName; label: string; href: string }[] = [
       <p class="dw-title">{d.clipboard}</p>
       <ul class="dw-rows" data-dw-rows></ul>
     </section>
-    <a class="dw-kbd" href="#keyboard" aria-label={d.keyboard} title={d.keyboard}>
-      <Icon name="keyboard" size={15} />
-    </a>
   </div>
   <span class="visually-hidden" aria-live="polite" data-copy-status></span>
 </div>
@@ -129,7 +165,8 @@ const features: { icon: IconName; label: string; href: string }[] = [
     color: var(--text-1);
   }
 
-  .dw-side__settings {
+  /* The catalog's puzzle piece and Settings stay at the bottom. */
+  .dw-side__catalog {
     margin-top: auto;
   }
 
@@ -262,6 +299,57 @@ const features: { icon: IconName; label: string; href: string }[] = [
 
   .dw-minutes.is-paused b {
     color: var(--text-2);
+  }
+
+  /* The utilities button in its slot at the row's end: a 44 pt target whose 28 pt disc keeps 8 pt from the window's
+     edge, after the timer's Start. */
+  .dw-utilities {
+    position: absolute;
+    top: 4px;
+    right: 0;
+    z-index: 2;
+  }
+
+  /* The strip, out at the window's right on the panel's shade: its first button at the utilities button's height, then,
+     past a short line, the pencil. Out of the window's 680 pt, it shows as the window grows by it. */
+  .dw-strip {
+    position: absolute;
+    top: 0;
+    left: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 56px;
+    height: 440px;
+    padding-top: 4px;
+    background: var(--panel);
+    box-shadow: inset 1px 0 0 var(--line);
+  }
+
+  .dw:not(.has-strip) .dw-strip {
+    visibility: hidden;
+  }
+
+  .dw-strip__line {
+    flex: none;
+    width: 20px;
+    height: 1px;
+    margin: 6px 0;
+    background: var(--line);
+  }
+
+  .dw-catch {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 56px;
+    z-index: 1;
+    display: none;
+  }
+
+  .dw.has-strip .dw-catch {
+    display: block;
   }
 
   .dw-dock {
@@ -451,26 +539,6 @@ const features: { icon: IconName; label: string; href: string }[] = [
   .dw-rows :global(.dw-copy__text.is-mono) {
     font: 11.5px/1.2 var(--mono);
   }
-
-  .dw-kbd {
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
-    color: var(--text-3);
-    transition:
-      background-color 120ms linear,
-      color 120ms linear;
-  }
-
-  .dw-kbd:hover {
-    background: var(--track);
-    color: var(--text-1);
-  }
 </style>
 
 <script>
@@ -479,7 +547,8 @@ const features: { icon: IconName; label: string; href: string }[] = [
   import { DrumControl, drumStyles } from '../scripts/drum';
   import { iconSvg } from '../lib/icons';
   import { copyAgain, onClipboard } from '../scripts/clipboard';
-  import { holdOpen } from '../scripts/notch';
+  import { metrics } from '../lib/shape';
+  import { holdOpen, isWindowOpen, onEscapeInside, setExtraWidth } from '../scripts/notch';
   import { extension, onShelf } from '../scripts/shelf';
   import { onTimer, start, stop, togglePause } from '../scripts/timer';
 
@@ -538,6 +607,40 @@ const features: { icon: IconName; label: string; href: string }[] = [
       }
       drum.redraw();
     });
+
+    // Home's utilities (Packages/Features/Home/docs/behavior.md): the button at the row's end puts the strip out at the
+    // window's right, which grows by it, and is lit meanwhile. The button again, Esc, a click on Home (which does nothing
+    // more) or in the sidebar, a button of the strip, or the window closing puts it away.
+    const utilitiesButton = root.querySelector<HTMLButtonElement>('[data-utilities]');
+    const strip = root.querySelector<HTMLElement>('[data-strip]');
+    const catcher = root.querySelector<HTMLElement>('[data-strip-catch]');
+    const sidebar = root.querySelector<HTMLElement>('.dw-side');
+    if (utilitiesButton && strip && catcher && sidebar) {
+      let stripOut = false;
+      const setStrip = (out: boolean) => {
+        if (out === stripOut || (out && !isWindowOpen())) return;
+        stripOut = out;
+        root.classList.toggle('has-strip', out);
+        strip.inert = !out;
+        utilitiesButton.setAttribute('aria-expanded', String(out));
+        setExtraWidth(out ? metrics.dock : 0);
+      };
+      utilitiesButton.addEventListener('click', () => setStrip(!stripOut));
+      catcher.addEventListener('click', () => setStrip(false));
+      sidebar.addEventListener('pointerdown', () => setStrip(false));
+      // A button of the strip puts it away, then its link leads to its chapter.
+      strip.addEventListener('click', (event) => {
+        if ((event.target as Element).closest('a')) setStrip(false);
+      });
+      onEscapeInside(() => {
+        if (!stripOut) return false;
+        const hadFocus = strip.contains(document.activeElement);
+        setStrip(false);
+        if (hadFocus) utilitiesButton.focus();
+        return true;
+      });
+      document.addEventListener('vx:close', () => setStrip(false));
+    }
 
     const escape = (text: string) =>
       text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);

@@ -142,6 +142,48 @@ button {
   flex: none;
 }
 
+/* Round buttons, as the app's RoundButton (Home's UtilitiesButton.swift): a 28 px disc in a 44 px target, lit under the
+   pointer or while what it puts out is out. */
+.orb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--hit);
+  height: var(--hit);
+  border-radius: 50%;
+  color: var(--text-2);
+  transition: color 120ms linear;
+}
+
+.orb__disc {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--raised);
+  transition: background-color 120ms linear;
+}
+
+.orb:hover,
+.orb[aria-expanded='true'] {
+  color: var(--text-1);
+}
+
+.orb:hover .orb__disc,
+.orb[aria-expanded='true'] .orb__disc {
+  background: var(--track);
+}
+
+.orb:active .orb__disc {
+  opacity: 0.75;
+}
+
+/* The focus ring hugs the disc, inside the target, so it stays clear of an edge the target meets. */
+.orb:focus-visible {
+  outline-offset: -5px;
+}
+
 .container {
   width: 100%;
   max-width: calc(var(--max) + var(--gutter) * 2);

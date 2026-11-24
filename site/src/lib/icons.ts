@@ -14,6 +14,14 @@ function gear(): string {
 
 export const icons = {
   grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>',
+  /** The sidebar's Features, the catalog: puzzlepiece.extension. */
+  puzzle: '<path d="M6.2 5.8h8.4a2 2 0 0 1 2 2V10a2.3 2.3 0 1 1 0 4v2.2a2 2 0 0 1-2 2H6.2a2 2 0 0 1-2-2V14a2.3 2.3 0 1 0 0-4V7.8a2 2 0 0 1 2-2z"/>',
+  /** Home's utilities button: wrench.and.screwdriver. */
+  utilities: '<path d="M5.63 3.37 10.63 8.37 8.37 10.63 3.37 5.63zM9.5 9.5l9 9M5 19l8.8-8.8M19.91 6.79a3.6 3.6 0 1 1-2.7-2.7"/>',
+  /** Screen Text's button in the utilities strip: text.viewfinder. */
+  textViewfinder: '<path d="M4 8.5v-2A2.5 2.5 0 0 1 6.5 4h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2M8.5 9h7M8 12h8M8.5 15h4.5"/>',
+  /** Edit Home, the strip's last button: pencil. */
+  pencil: '<path d="M5 19l1.34-3.46L15.94 5.94a1.5 1.5 0 0 1 2.12 2.12L8.46 17.66zM13.94 7.94l2.12 2.12"/>',
   timer: '<circle cx="12" cy="13.5" r="7.2"/><path d="M12 13.5V9.6M9.8 3.2h4.4M18.6 6.6l1.3-1.3"/>',
   clipboard: '<rect x="5.5" y="5" width="13" height="16" rx="2.6"/><path d="M9 5v-.4A1.6 1.6 0 0 1 10.6 3h2.8A1.6 1.6 0 0 1 15 4.6V5M9 11h6M9 15h4"/>',
   tray: '<path d="M3.5 13.5 6 5.5h12l2.5 8V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><path d="M3.5 13.5h5a3.5 3.5 0 0 0 7 0h5"/>',

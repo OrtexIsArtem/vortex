@@ -50,6 +50,8 @@ export const en = {
   },
   demo: {
     sidebar: ['Home', 'Timer', 'Clipboard', 'Shelf', 'Tasks', 'Keys'],
+    /** The puzzle piece above Settings: the catalog where features are added and removed. */
+    features: 'Features',
     settings: 'Settings',
     minutes: 'min',
     add5: 'Add 5 minutes',
@@ -67,7 +69,12 @@ export const en = {
     ago: (minutes: number) => (minutes < 1 ? 'now' : minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h`),
     shelf: 'Shelf',
     clipboard: 'Clipboard',
-    keyboard: 'Lock the keyboard for cleaning',
+    /** Home's utilities button, at the end of its top row, and the strip it puts out at the window's right. */
+    utilities: 'Utilities',
+    /** The strip's buttons, by their names in the app; on the site each leads to its chapter. */
+    lockKeyboard: 'Lock Keyboard',
+    copyText: 'Copy Text',
+    editHome: 'Edit Home',
     files: [
       { name: 'app-release.aab', kind: 'aab' },
       { name: 'Build 42.ipa', kind: 'ipa' },

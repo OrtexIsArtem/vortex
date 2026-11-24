@@ -67,6 +67,7 @@ export const uk: Copy = {
   },
   demo: {
     sidebar: ['Головна', 'Таймер', 'Буфер обміну', 'Полиця', 'Завдання', 'Ключі'],
+    features: 'Функції',
     settings: 'Параметри',
     minutes: 'хв',
     add5: 'Додати 5 хвилин',
@@ -83,7 +84,10 @@ export const uk: Copy = {
     ago: (minutes: number) => (minutes < 1 ? 'щойно' : minutes < 60 ? `${minutes} хв` : `${Math.floor(minutes / 60)} год`),
     shelf: 'Полиця',
     clipboard: 'Буфер обміну',
-    keyboard: 'Заблокувати клавіатуру для очищення',
+    utilities: 'Утиліти',
+    lockKeyboard: 'Заблокувати клавіатуру',
+    copyText: 'Скопіювати текст',
+    editHome: 'Змінити головну',
     files: en.demo.files,
   },
   chapter: {

@@ -9,6 +9,7 @@
   --surface: #111113;       /* VortexColor.card */
   --raised: #1a1a1d;        /* VortexColor.raised */
   --dock: #0e0e10;          /* VortexColor.dock */
+  --panel: #09090a;         /* VortexColor.panel: a side panel's shade, as Home's utilities strip */
   --thumb: #18181b;         /* VortexColor.thumbnail */
   --line: #1b1b1e;          /* VortexColor.line */
   --track: #2a2a2e;         /* VortexColor.track */
