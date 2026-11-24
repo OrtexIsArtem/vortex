@@ -2,7 +2,7 @@
 
 ## Provides
 - `ScreenTextModule`: id `screentext`, a utility (`UtilityModule`): no tab, a button in Home's utilities dock; settings; `setEnabled` starts and stops the feature.
-- The catalog's description: one line, details, author; Recommended; keeps nothing; media in Resources/Catalog, a temporary placeholder (the symbol, the name and "Preview coming soon") until the real clip is recorded.
+- The catalog's description: one line, details, author; Recommended; keeps nothing; media in Resources/Catalog: a looping preview of a frame copying a build log off a chat, and its still.
 - One utility action, `screentext.copy` ("Copy Text", help "Copy text from the screen", `text.viewfinder`): window `.closed`, permission Screen Recording, shortcut `copyScreenText`; it sends `captureRequested`.
 - Its own shortcut `Hotkey.copyScreenText`, which the shell records on its page in Settings › Features and listens for, through the utility action.
 - Its notch indicator `screentext`, priority 15, while a message shows: its words as text items.
