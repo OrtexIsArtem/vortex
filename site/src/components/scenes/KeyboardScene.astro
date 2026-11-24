@@ -1,8 +1,8 @@
 ---
-// Keyboard cleaning, drawn: a MacBook keyboard that lights the keys the visitor presses. It locks as in the app, from
-// the keyboard button in Home's utilities strip, which starts out; locking dims every key in a wave, except Touch ID and
-// Caps Lock, which macOS never lets an app lock, and the pointer can wipe the keys meanwhile. The page never holds back
-// the visitor's own keys.
+// Keyboard cleaning, drawn: a MacBook keyboard that lights the keys the visitor presses. It locks as in the app, with
+// keyboard cleaning's own button, Lock Keyboard, a white capsule as Screen Text's Copy Text is; locking dims every key in
+// a wave, except Touch ID and Caps Lock, which macOS never lets an app lock, and the pointer can wipe the keys meanwhile.
+// The page never holds back the visitor's own keys.
 import { copyFor } from '../../copy';
 import { appLangOf, localeOf } from '../../copy/locales';
 import Icon from '../Icon.astro';
@@ -111,32 +111,8 @@ const rows: { keys: Key[]; short?: boolean }[] = [
       <p class="board__mode">{b.mode}</p>
       <p class="board__locked">{b.locked}</p>
     </div>
-    {/* Home's utilities: the strip, laid along the panel, then the button that puts it out and away. */}
-    <div class="board__utilities">
-      <div class="board__strip" id="kbd-strip" role="group" aria-label={d.utilities}>
-        <button class="orb" type="button" aria-label={d.lockKeyboard} title={d.lockKeyboard} data-kbd-lock>
-          <span class="orb__disc"><Icon name="keyboard" size={17} /></span>
-        </button>
-        <a class="orb" href="#screentext" aria-label={d.copyText} title={d.copyText}>
-          <span class="orb__disc"><Icon name="textViewfinder" size={17} /></span>
-        </a>
-        <span class="board__strip-line" aria-hidden="true"></span>
-        <a class="orb" href="#home" aria-label={d.editHome} title={d.editHome}>
-          <span class="orb__disc"><Icon name="pencil" size={16} /></span>
-        </a>
-      </div>
-      <button
-        class="orb"
-        type="button"
-        aria-expanded="true"
-        aria-controls="kbd-strip"
-        aria-label={d.utilities}
-        title={d.utilities}
-        data-kbd-utilities
-      >
-        <span class="orb__disc"><Icon name="utilities" size={18} /></span>
-      </button>
-    </div>
+    {/* Keyboard cleaning's own action, under the app's name for it: the scene's one button, as Copy Text is Screen Text's. */}
+    <button class="board__lock" type="button" data-kbd-lock><Icon name="keyboard" size={17} />{d.lockKeyboard}</button>
     <button class="board__unlock" type="button" data-kbd-unlock>{b.unlock}</button>
     <span class="visually-hidden" aria-live="polite" data-kbd-status></span>
   </div>
@@ -271,42 +247,31 @@ const rows: { keys: Key[]; short?: boolean }[] = [
     font-size: 12.5px;
   }
 
-  /* Unlocked, Home's utilities: the strip on the panel's shade with its hairline, as in the app, laid along the panel. */
-  .board__utilities {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
-
-  .board__strip {
-    display: flex;
-    align-items: center;
-    padding: 0 2px;
-    border-radius: 999px;
-    background: var(--panel);
-    box-shadow: inset 0 0 0 1px var(--line);
-    transition:
-      opacity 240ms var(--ease-out),
-      transform 240ms var(--ease-out);
-  }
-
-  .board.is-strip-in .board__strip {
-    opacity: 0;
-    transform: translateX(12px);
-    visibility: hidden;
-    transition:
-      opacity 160ms linear,
-      transform 160ms linear,
-      visibility 0s linear 160ms;
-  }
-
-  .board__strip-line {
+  /* Unlocked, the scene's one action under the keyboard, as Screen Text's Copy Text is under its screen. */
+  .board__lock {
+    display: inline-flex;
     flex: none;
-    width: 1px;
-    height: 20px;
-    margin: 0 6px;
-    background: var(--line);
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    margin: 0 auto;
+    padding: 0 18px 0 15px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 13.5px;
+    font-weight: 600;
+    transition:
+      background-color 160ms linear,
+      transform 160ms var(--ease-out);
+  }
+
+  .board__lock:hover {
+    background: var(--accent-hover);
+  }
+
+  .board__lock:active {
+    transform: scale(0.96);
   }
 
   /* Locked, the app's lock screen: the state, and the one button that turns the keyboard back on. */
@@ -326,7 +291,7 @@ const rows: { keys: Key[]; short?: boolean }[] = [
   }
 
   .board:not(.is-locked) .board__unlock,
-  .board.is-locked .board__utilities {
+  .board.is-locked .board__lock {
     display: none;
   }
 
@@ -359,13 +324,8 @@ const rows: { keys: Key[]; short?: boolean }[] = [
 
   @media (prefers-reduced-motion: reduce) {
     .kbd__key,
-    .board__strip,
-    .board.is-strip-in .board__strip {
+    .board__lock {
       transition: none;
-    }
-
-    .board.is-strip-in .board__strip {
-      transform: none;
     }
   }
 </style>
@@ -378,12 +338,11 @@ const rows: { keys: Key[]; short?: boolean }[] = [
   const board = scene?.querySelector<HTMLElement>('[data-kbd]');
   const button = scene?.querySelector<HTMLButtonElement>('[data-kbd-lock]');
   const unlock = scene?.querySelector<HTMLButtonElement>('[data-kbd-unlock]');
-  const utilities = scene?.querySelector<HTMLButtonElement>('[data-kbd-utilities]');
   const status = scene?.querySelector<HTMLElement>('[data-kbd-status]');
   const wipe = scene?.querySelector<HTMLCanvasElement>('[data-kbd-wipe]');
   const context = wipe?.getContext('2d');
 
-  if (scene && board && button && unlock && utilities && wipe && context) {
+  if (scene && board && button && unlock && wipe && context) {
     const b = copy.keyboardChapter;
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const keys = Array.from(board.querySelectorAll<HTMLElement>('.kbd__key'));
@@ -407,13 +366,6 @@ const rows: { keys: Key[]; short?: boolean }[] = [
       if (key) press(key);
     });
 
-    // The utilities button puts the strip out and away; the scene starts with it out, its keyboard button in reach.
-    const setStrip = (out: boolean) => {
-      scene.classList.toggle('is-strip-in', !out);
-      utilities.setAttribute('aria-expanded', String(out));
-    };
-    utilities.addEventListener('click', () => setStrip(utilities.getAttribute('aria-expanded') !== 'true'));
-
     const setLocked = (next: boolean) => {
       // The button that did it goes with the state it changes: focus moves to the one that changes it back.
       const hadFocus = scene.contains(document.activeElement);
@@ -433,9 +385,6 @@ const rows: { keys: Key[]; short?: boolean }[] = [
         context.clearRect(0, 0, boardW, boardH);
       }
       scene.classList.toggle('is-locked', next);
-      // As in the app, the strip's button puts the strip away as it locks; turned back on, the scene starts over with
-      // the strip out.
-      setStrip(!next);
       if (hadFocus) (next ? unlock : button).focus({ preventScroll: true });
       // The state is read out once.
       if (status) status.textContent = next ? `${b.mode}. ${b.locked}` : '';
@@ -483,13 +432,10 @@ const rows: { keys: Key[]; short?: boolean }[] = [
     });
     new ResizeObserver(size).observe(board);
 
-    // Leaving the scene turns the keyboard back on, so the notch never stays "Locked" for nothing, and the scene starts
-    // over from the strip.
+    // Leaving the scene turns the keyboard back on, so the notch never stays "Locked" for nothing.
     new IntersectionObserver(([entry]) => {
       onScreen = entry?.isIntersecting ?? false;
-      if (onScreen) return;
-      if (locked) setLocked(false);
-      else setStrip(true);
+      if (!onScreen && locked) setLocked(false);
     }).observe(scene);
   }
 </script>

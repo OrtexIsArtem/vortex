@@ -271,7 +271,7 @@ export const en = {
     body: "The keyboard button among Home's utilities, or a shortcut you set, locks every key: letters, modifiers, Esc, the function row and the keys for brightness, sound and media. The mouse and trackpad keep working, so one click brings the keyboard back.",
     facts: ['Needs Accessibility', 'Mouse and trackpad keep working', 'The keyboard unlocks if Vortex quits'],
     note: "macOS doesn't let any app lock Touch ID or Caps Lock.",
-    tryIt: 'Press a few keys, then lock them from the utilities.',
+    tryIt: 'Press a few keys, then Lock Keyboard.',
     mode: 'Keyboard cleaning mode',
     locked: 'All keys are locked',
     unlock: 'Turn the keyboard back on',

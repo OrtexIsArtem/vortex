@@ -172,7 +172,7 @@ export const zh: Copy = {
     body: 'Home 的实用工具里的键盘按钮，或你自己设定的快捷键，都能锁定所有按键：字母键、修饰键、Esc、功能键，以及调节亮度、音量和媒体的按键。鼠标和触控板照常工作，点按一下就能恢复键盘。',
     facts: ['需要“辅助功能”权限', '鼠标和触控板照常工作', 'Vortex 退出后按键随即恢复'],
     note: 'macOS 不允许任何 App 锁定 Touch ID 或 Caps Lock。',
-    tryIt: '先按几个键，再从实用工具里把它们锁住。',
+    tryIt: '先按几个键，再点按“Lock Keyboard”。',
   },
   homeChapter: {
     ...en.homeChapter,

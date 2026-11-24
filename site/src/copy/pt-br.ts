@@ -169,7 +169,7 @@ export const ptBr: Copy = {
     body: 'O botão de teclado entre os utilitários da Home, ou um atalho que você definir, bloqueia todas as teclas: letras, modificadoras, Esc, as teclas de função e as de brilho, som e mídia. O mouse e o trackpad continuam funcionando, então um clique traz o teclado de volta.',
     facts: ['Requer Acessibilidade', 'Mouse e trackpad continuam ativos', 'Teclas voltam se o Vortex for encerrado'],
     note: 'O macOS não permite que nenhum app bloqueie o Touch ID nem o Caps Lock.',
-    tryIt: 'Pressione algumas teclas e depois bloqueie-as pelos utilitários.',
+    tryIt: 'Pressione algumas teclas e depois clique em “Lock Keyboard”.',
   },
   homeChapter: {
     ...en.homeChapter,

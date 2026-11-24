@@ -171,7 +171,7 @@ export const fr: Copy = {
     body: 'Le bouton en forme de clavier parmi les utilitaires de Home, ou un raccourci de votre choix, verrouille toutes les touches\u00a0: lettres, touches de modification, Esc, rangée des touches de fonction et touches de luminosité, de volume et multimédias. La souris et le trackpad continuent de fonctionner\u00a0: un clic suffit pour réactiver le clavier.',
     facts: ['Nécessite l’Accessibilité', 'Souris et trackpad restent actifs', 'Touches rétablies si vous quittez Vortex'],
     note: 'macOS ne permet à aucune app de verrouiller Touch ID ni Caps Lock.',
-    tryIt: 'Appuyez sur quelques touches, puis verrouillez-les depuis les utilitaires.',
+    tryIt: 'Appuyez sur quelques touches, puis sur « Lock Keyboard ».',
   },
   homeChapter: {
     ...en.homeChapter,
