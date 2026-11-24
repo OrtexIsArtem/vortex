@@ -2,6 +2,7 @@
 // The landing page, in the language of its URL: every component reads its words from the page's path.
 import DevStates from './DevStates.astro';
 import Chapter from './Chapter.astro';
+import Choose from './Choose.astro';
 import Download from './Download.astro';
 import Faq from './Faq.astro';
 import Footer from './Footer.astro';
@@ -66,6 +67,7 @@ const guides = await chapterGuides(localeOf(Astro.url.pathname));
     <Chapter id="home" icon="grid" {...copy.homeChapter}>
       <HomeScene />
     </Chapter>
+    <Choose />
     <SmallThings />
     <Privacy />
     <OpenSource />

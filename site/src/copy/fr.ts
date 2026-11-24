@@ -190,6 +190,18 @@ export const fr: Copy = {
     kept: 'Changements conservés',
     putBack: 'Home est comme avant',
   },
+  choose: {
+    ...en.choose,
+    title: 'Seulement ce qu’il vous faut.',
+    titleQuiet: 'Choisissez vos fonctionnalités, et changez-les quand vous voulez.',
+    body: 'Tout est intégré à Vortex et fonctionne hors ligne. Ajoutez ce qui vous sert, retirez le reste.',
+    facts: [
+      { label: 'À la configuration', text: 'vous choisissez vos fonctionnalités, les recommandées déjà cochées' },
+      { label: 'Plus tard', text: 'ajoutez-en ou retirez-en dans «\u00a0Features\u00a0», la pièce de puzzle de la barre latérale' },
+      { label: 'Non ajoutée', text: 'une fonctionnalité ne tourne pas, et Vortex ne demande aucune autorisation pour elle' },
+      { label: 'Retirée', text: 'elle garde ses données jusqu’à ce que vous les effaciez avec «\u00a0Erase Data…\u00a0» sur sa page' },
+    ],
+  },
   open: {
     title: 'Survolez l’encoche. Vortex s’ouvre.',
     titleQuiet: 'Le minuteur en haut, vos copies et vos fichiers dessous.',
@@ -220,9 +232,9 @@ export const fr: Copy = {
         text: '`open -a Vortex <files>` place des fichiers sur l’étagère sans ouvrir la fenêtre.',
       },
       {
-        icon: 'toggle',
-        title: 'Désactivez ce qui ne vous sert pas.',
-        text: 'Une fonctionnalité désactivée disparaît de la barre latérale et de Home, et Vortex ne demande plus son autorisation.',
+        icon: 'utilities',
+        title: 'Des outils pour une seule chose.',
+        text: 'Le nettoyage du clavier et Screen Text attendent derrière le bouton des utilitaires de Home, et chacun peut avoir son propre raccourci.',
       },
       { icon: 'appearance', title: 'Clair et sombre.', text: 'Vortex suit l’apparence de votre Mac, ou garde celle que vous choisissez.' },
       {

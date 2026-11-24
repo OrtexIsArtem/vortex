@@ -324,6 +324,21 @@ export const en = {
       dropHere: 'Drop here',
     },
   },
+  /** Only what you need: the features a visitor chooses, as the README's "Features and Home" says. */
+  choose: {
+    /** The catalog's name in the app, beside its puzzle piece, as a chapter's label. */
+    label: 'Features',
+    title: 'Only what you need.',
+    titleQuiet: 'Choose your features, and change them any time.',
+    /** The app's own words on its Features page. */
+    body: "Everything is built into Vortex and works offline. Add what you need, remove what you don't.",
+    facts: [
+      { label: 'During setup', text: 'you choose your features, with the recommended ones checked' },
+      { label: 'Later', text: 'add or remove any of them in Features, the puzzle piece in the sidebar' },
+      { label: 'Not added', text: "a feature doesn't run, and Vortex asks for no permission on its behalf" },
+      { label: 'Removed', text: 'it keeps its data until you erase it with Erase Data… on its page' },
+    ],
+  },
   open: {
     title: 'Point at the notch. Vortex\u00a0opens.',
     titleQuiet: 'Timer up top, your copies and files below.',
@@ -354,9 +369,9 @@ export const en = {
         text: '`open -a Vortex <files>` puts files on the shelf without opening the window.',
       },
       {
-        icon: 'toggle',
-        title: "Turn off what you don't use.",
-        text: 'A feature you switch off leaves the sidebar and Home, and Vortex stops asking for its permission.',
+        icon: 'utilities',
+        title: 'Tools that do one thing.',
+        text: 'Keyboard cleaning and Screen Text wait behind the utilities button on Home, and each can have its own shortcut.',
       },
       { icon: 'appearance', title: 'Light and dark.', text: "Vortex follows your Mac's appearance, or keeps the one you pick." },
       {

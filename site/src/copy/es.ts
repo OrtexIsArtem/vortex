@@ -188,6 +188,18 @@ export const es: Copy = {
     kept: 'Cambios guardados',
     putBack: 'Home vuelve a estar como antes',
   },
+  choose: {
+    ...en.choose,
+    title: 'Solo lo que necesitas.',
+    titleQuiet: 'Elige tus funciones y cámbialas cuando quieras.',
+    body: 'Todo viene integrado en Vortex y funciona sin conexión. Añade lo que necesites y quita lo que no.',
+    facts: [
+      { label: 'Al configurarlo', text: 'eliges tus funciones, con las recomendadas ya marcadas' },
+      { label: 'Después', text: 'añade o quita cualquiera en «Features», la pieza de puzle de la barra lateral' },
+      { label: 'Sin añadir', text: 'una función no se ejecuta, y Vortex no pide ningún permiso para ella' },
+      { label: 'Quitada', text: 'conserva sus datos hasta que los borres con «Erase Data…» en su página' },
+    ],
+  },
   open: {
     title: 'Apunta al notch. Vortex se abre.',
     titleQuiet: 'Arriba, el temporizador; debajo, tus copias y archivos.',
@@ -219,8 +231,8 @@ export const es: Copy = {
       },
       {
         ...en.more.items[3],
-        title: 'Desactiva lo que no uses.',
-        text: 'Si desactivas una función, desaparece de la barra lateral y de Home, y Vortex deja de pedir su permiso.',
+        title: 'Herramientas para una sola cosa.',
+        text: 'La limpieza del teclado y Screen Text esperan tras el botón de las utilidades de Home, y cada una puede tener su propio atajo.',
       },
       { ...en.more.items[4], title: 'Claro y oscuro.', text: 'Vortex sigue el modo claro u oscuro de tu Mac, o mantiene el que elijas.' },
       {

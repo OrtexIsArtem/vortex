@@ -191,6 +191,18 @@ export const zh: Copy = {
     kept: '已保留更改',
     putBack: 'Home 已恢复原样',
   },
+  choose: {
+    ...en.choose,
+    title: '只要你需要的。',
+    titleQuiet: '功能由你挑选，随时可以更改。',
+    body: '所有功能都内置在 Vortex 中，离线运行。需要的就添加，不需要的就移除。',
+    facts: [
+      { label: '设置时', text: '由你挑选功能，推荐的功能已预先勾选' },
+      { label: '之后', text: '随时在“Features”（边栏中的拼图图标）里添加或移除任何功能' },
+      { label: '未添加', text: '功能不会运行，Vortex 也不会为它请求任何权限' },
+      { label: '已移除', text: '功能会保留数据，直到你在它的页面上用“Erase Data…”清除' },
+    ],
+  },
   open: {
     title: '指向刘海，Vortex 随即打开。',
     titleQuiet: '计时器在上方，复制的内容和文件就在它下面。',
@@ -221,9 +233,9 @@ export const zh: Copy = {
         text: '`open -a Vortex <files>` 会把文件放上暂存架，不会打开窗口。',
       },
       {
-        icon: 'toggle',
-        title: '用不上的，关掉就好。',
-        text: '关闭的功能会从边栏和 Home 页消失，Vortex 也不再请求它所需的权限。',
+        icon: 'utilities',
+        title: '只做一件事的工具。',
+        text: '键盘清洁和 Screen Text 都在 Home 的实用工具按钮后面，每个都可以有自己的快捷键。',
       },
       { icon: 'appearance', title: '浅色与深色。', text: 'Vortex 跟随 Mac 的外观，也可以固定使用你选的那一种。' },
       {

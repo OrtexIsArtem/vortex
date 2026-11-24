@@ -191,6 +191,18 @@ export const de: Copy = {
     kept: 'Änderungen behalten',
     putBack: '„Home“ ist wieder wie vorher',
   },
+  choose: {
+    ...en.choose,
+    title: 'Nur, was du brauchst.',
+    titleQuiet: 'Wähle deine Funktionen und ändere sie jederzeit.',
+    body: 'Alles ist in Vortex eingebaut und funktioniert offline. Füge hinzu, was du brauchst, und entferne den Rest.',
+    facts: [
+      { label: 'Bei der Einrichtung', text: 'wählst du deine Funktionen, die empfohlenen sind schon angehakt' },
+      { label: 'Später', text: 'fügst du jede unter „Features“ hinzu oder entfernst sie: das Puzzleteil in der Seitenleiste' },
+      { label: 'Nicht hinzugefügt', text: 'läuft eine Funktion nicht, und Vortex fragt für sie nach keiner Berechtigung' },
+      { label: 'Entfernt', text: 'behält eine Funktion ihre Daten, bis du sie mit „Erase Data…“ auf ihrer Seite löschst' },
+    ],
+  },
   open: {
     title: 'Zeige auf die Notch. Vortex öffnet sich.',
     titleQuiet: 'Der Timer oben, darunter deine Kopien und Dateien.',
@@ -221,9 +233,9 @@ export const de: Copy = {
         text: '`open -a Vortex <files>` legt Dateien in die Ablage, ohne das Fenster zu öffnen.',
       },
       {
-        icon: 'toggle',
-        title: 'Schalte ab, was du nicht brauchst.',
-        text: 'Eine abgeschaltete Funktion verschwindet aus der Seitenleiste und aus „Home“, und Vortex fragt nicht mehr nach ihrer Berechtigung.',
+        icon: 'utilities',
+        title: 'Werkzeuge für genau eine Sache.',
+        text: 'Die Tastaturreinigung und Screen Text warten hinter dem Utilities-Button in „Home“, und jedes davon kann ein eigenes Tastenkürzel haben.',
       },
       { icon: 'appearance', title: 'Hell und dunkel.', text: 'Vortex folgt dem Erscheinungsbild deines Macs oder bleibt bei dem, das du wählst.' },
       {

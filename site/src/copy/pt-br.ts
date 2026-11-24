@@ -188,6 +188,18 @@ export const ptBr: Copy = {
     kept: 'Mudanças mantidas',
     putBack: 'A Home voltou a ser como era',
   },
+  choose: {
+    ...en.choose,
+    title: 'Só o que você precisa.',
+    titleQuiet: 'Escolha seus recursos e mude quando quiser.',
+    body: 'Tudo vem embutido no Vortex e funciona offline. Adicione o que você precisa e remova o resto.',
+    facts: [
+      { label: 'Na configuração', text: 'você escolhe seus recursos, com os recomendados já marcados' },
+      { label: 'Depois', text: 'adicione ou remova qualquer um em Features, a peça de quebra-cabeça na barra lateral' },
+      { label: 'Não adicionado', text: 'um recurso não roda, e o Vortex não pede nenhuma permissão para ele' },
+      { label: 'Removido', text: 'ele guarda os dados até você apagá-los com “Erase Data…” na página dele' },
+    ],
+  },
   open: {
     title: 'Aponte para o notch. O Vortex se abre.',
     titleQuiet: 'Timer em cima, suas cópias e arquivos logo abaixo.',
@@ -219,8 +231,8 @@ export const ptBr: Copy = {
       },
       {
         ...en.more.items[3],
-        title: 'Desative o que não usa.',
-        text: 'Um recurso desativado sai da barra lateral e da aba Home, e o Vortex para de pedir a permissão dele.',
+        title: 'Ferramentas que fazem uma coisa só.',
+        text: 'A limpeza do teclado e o Screen Text ficam atrás do botão dos utilitários da Home, e cada um pode ter o próprio atalho.',
       },
       {
         ...en.more.items[4],
