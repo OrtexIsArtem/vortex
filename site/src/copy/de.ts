@@ -6,7 +6,7 @@ export const de: Copy = {
   meta: {
     title: 'Vortex – Notch-App für den Mac, kostenlos und Open Source',
     description:
-      'Vortex bringt Timer, Zwischenablage-Verlauf, Dateiablage, Aufgaben mit OCR und Schlüssel für Claude Code in die Notch deines MacBooks. Kostenlos und offline.',
+      'Timer, Zwischenablage-Verlauf, Dateiablage, Aufgaben und Text vom Bildschirm (OCR) und Schlüssel für Claude Code in deiner MacBook-Notch. Kostenlos und offline.',
     imageAlt: 'Der Schriftzug Vortex unter der Notch eines MacBook, in die Lichtstreifen spiralförmig fließen',
   },
   skip: 'Zum Inhalt springen',
@@ -35,7 +35,7 @@ export const de: Copy = {
     eyebrow: 'Kostenlose Open-Source-Notch-App für den\u00a0Mac · macOS\u00a014+ · Apple\u00a0silicon',
     wordmark: 'Vortex',
     tagline: 'Die Notch deines MacBooks, sinnvoll genutzt.',
-    lead: 'Ein Timer, ein Zwischenablage-Verlauf, eine Ablage für Dateien, Aufgaben vom Bildschirm und Schlüssel, die Claude Code nutzen kann, ohne sie zu sehen. Griffbereit in der Notch und von Grund auf offline.',
+    lead: 'Ein Timer, ein Zwischenablage-Verlauf, eine Ablage für Dateien, Aufgaben und Text vom Bildschirm und Schlüssel, die Claude Code nutzen kann, ohne sie zu sehen. Füge nur hinzu, was du brauchst, und ordne „Home“ so an, wie du willst. Griffbereit in der Notch und von Grund auf offline.',
     download: 'Download für Mac',
     star: 'Stern auf GitHub',
     note: (version: string) => `Version ${version} · Kostenlos · MIT-Lizenz`,
@@ -296,7 +296,7 @@ export const de: Copy = {
     permissions: [
       { name: 'Mitteilungen', use: 'das Ende des Timers und Claudes Schlüsselanfragen bei geschlossenem Fenster' },
       { name: 'Bedienungshilfen', use: 'die Tastaturreinigung' },
-      { name: 'Bildschirmaufnahme', use: 'Aufgaben vom Bildschirm' },
+      { name: 'Bildschirmaufnahme', use: 'Aufgaben vom Bildschirm und Screen Text' },
       { name: 'Automation, pro Browser', use: 'die Seitenadresse einer Aufgabe; macOS fragt beim ersten Mal' },
       { name: 'Aus anderen Apps einsetzen', use: 'der Zwischenablage-Verlauf, nur unter macOS-Versionen, die danach fragen' },
     ],

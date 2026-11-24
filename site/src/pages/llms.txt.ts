@@ -5,6 +5,7 @@ import { en } from '../copy/en';
 import { defaultLocale, locales, pathFor } from '../copy/locales';
 import { appVersion, buildUrl, contributingUrl, downloadUrl, licenseUrl, releasesUrl, repoUrl, widgetsUrl } from '../lib/app';
 import { guidesFor } from '../lib/content';
+import { chaptersOf } from '../lib/features';
 import { inlineText } from '../lib/inline';
 
 export const GET: APIRoute = async ({ site }) => {
@@ -12,14 +13,9 @@ export const GET: APIRoute = async ({ site }) => {
   const url = (path: string) => (site ? new URL(path, site).href : path);
   // A part of the English page.
   const at = (id: string) => url(`${pathFor(defaultLocale)}#${id}`);
-  const chapters = [
-    { id: 'timer', chapter: en.timerChapter },
-    { id: 'clipboard', chapter: en.clipboardChapter },
-    { id: 'shelf', chapter: en.shelfChapter },
-    { id: 'tasks', chapter: en.tasksChapter },
-    { id: 'keys', chapter: en.keysChapter },
-    { id: 'keyboard', chapter: en.keyboardChapter },
-  ];
+  // A chapter's small print, as "Reads text in English, Ukrainian and Russian.", follows its facts.
+  const chapters = chaptersOf(en).map(({ id, chapter }) => ({ id, chapter, note: 'note' in chapter ? ` ${chapter.note}` : '' }));
+  const choose = en.choose;
   const text = [
     '# Vortex',
     '',
@@ -31,7 +27,10 @@ export const GET: APIRoute = async ({ site }) => {
     '',
     '## Features',
     '',
-    ...chapters.map(({ id, chapter }) => `- [${chapter.label}](${at(id)}): ${chapter.title} ${chapter.body} (${chapter.facts.join('; ')}.)`),
+    ...chapters.map(
+      ({ id, chapter, note }) => `- [${chapter.label}](${at(id)}): ${chapter.title} ${chapter.body} (${chapter.facts.join('; ')}.)${note}`,
+    ),
+    `- [${choose.title.replace(/\.$/, '')}](${at('choose')}): ${choose.titleQuiet} ${choose.body} ${choose.facts.map((fact) => `${fact.label}, ${fact.text}.`).join(' ')}`,
     ...en.more.items.map((item) => `- [${item.title.replace(/\.$/, '')}](${at('more')}): ${inlineText(item.text)}`),
     '',
     '## Privacy',

@@ -6,7 +6,7 @@ export const zh: Copy = {
   meta: {
     title: 'Vortex：免费开源的 Mac 刘海软件（灵动岛风格）',
     description:
-      'Vortex 把 MacBook 的刘海变成工具箱：计时器、剪贴板历史、文件暂存架、带 OCR 文字识别的截屏任务，以及给 Claude Code 用的密钥。免费开源，离线运行。',
+      'Vortex 把 MacBook 的刘海变成工具箱：计时器、剪贴板历史、文件暂存架、带 OCR 文字识别的截屏任务和屏幕文字复制，以及给 Claude Code 用的密钥。免费开源，离线运行。',
     imageAlt: 'MacBook 的刘海，光线以螺旋状汇入其中，下方是 Vortex 字标',
   },
   skip: '跳到主要内容',
@@ -35,7 +35,7 @@ export const zh: Copy = {
     eyebrow: '免费开源的 Mac 刘海软件 · macOS 14+ · Apple 芯片',
     wordmark: en.hero.wordmark,
     tagline: '让 MacBook 的刘海派上用场。',
-    lead: '计时器、剪贴板历史、文件暂存架、从屏幕截取的任务，还有 Claude Code 能用却看不到的密钥。悬停即开，天生离线。',
+    lead: '计时器、剪贴板历史、文件暂存架、从屏幕截取的任务和文字，还有 Claude Code 能用却看不到的密钥。只添加你需要的功能，按你的方式布置 Home。悬停即开，天生离线。',
     download: '下载 Mac 版',
     star: '在 GitHub 上加星标',
     note: (version: string) => `版本 ${version} · 免费 · MIT 许可证`,
@@ -296,7 +296,7 @@ export const zh: Copy = {
     permissions: [
       { name: '通知', use: '计时结束提醒，以及窗口关闭时 Claude 发来的密钥请求' },
       { name: '辅助功能', use: '键盘清洁' },
-      { name: '录屏', use: '从屏幕截取任务' },
+      { name: '录屏', use: '从屏幕截取任务，以及 Screen Text' },
       { name: '自动化（每个浏览器分别授权）', use: '获取任务的网页地址；macOS 会在首次使用时询问' },
       { name: '从其他App粘贴', use: '剪贴板历史；仅在会询问此权限的 macOS 版本上需要' },
     ],

@@ -6,7 +6,7 @@ export const ptBr: Copy = {
   meta: {
     title: 'Vortex — App grátis e de código aberto para o notch do Mac',
     description:
-      'O notch do seu MacBook ganha timer, histórico da área de transferência, prateleira de arquivos, tarefas com OCR e chaves para o Claude Code. Grátis e offline.',
+      'Timer, histórico da área de transferência, prateleira de arquivos, tarefas e texto da tela (OCR) e chaves do Claude Code no notch do MacBook. Grátis e offline.',
     imageAlt: 'O nome Vortex sob o notch de um MacBook, com rastros de luz entrando em espiral',
   },
   skip: 'Pular para o conteúdo',
@@ -34,7 +34,7 @@ export const ptBr: Copy = {
     ...en.hero,
     eyebrow: 'App grátis e de código\u00a0aberto para o notch do\u00a0Mac · macOS\u00a014+ · Apple\u00a0silicon',
     tagline: 'O notch do seu MacBook, trabalhando por você.',
-    lead: 'Um timer, um histórico da área de transferência, uma prateleira para arquivos, tarefas a partir da tela e chaves que o Claude Code usa sem vê-las. Tudo ao alcance do ponteiro, e offline por princípio.',
+    lead: 'Um timer, um histórico da área de transferência, uma prateleira para arquivos, tarefas e texto a partir da tela e chaves que o Claude Code usa sem vê-las. Adicione só o que você precisa e organize a Home do seu jeito. Tudo ao alcance do ponteiro, e offline por princípio.',
     download: 'Baixar para Mac',
     star: 'Dar estrela no GitHub',
     note: (version: string) => `Versão ${version} · Grátis · Licença MIT`,
@@ -296,7 +296,7 @@ export const ptBr: Copy = {
     permissions: [
       { name: 'Notificações', use: 'o fim do timer e os pedidos de chave do Claude com a janela fechada' },
       { name: 'Acessibilidade', use: 'limpeza do teclado' },
-      { name: 'Gravação de Tela', use: 'tarefas a partir da tela' },
+      { name: 'Gravação de Tela', use: 'tarefas a partir da tela e o Screen Text' },
       { name: 'Automação, por navegador', use: 'o endereço da página de uma tarefa; o macOS pergunta na primeira vez' },
       { name: 'Colar de Outros Apps', use: 'histórico da área de transferência, só nas versões do macOS que pedem' },
     ],

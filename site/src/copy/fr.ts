@@ -6,7 +6,7 @@ export const fr: Copy = {
   meta: {
     title: 'Vortex — app gratuite et open source pour l’encoche du Mac',
     description:
-      'Minuteur, historique du presse-papiers, étagère à fichiers, tâches avec OCR et clés pour Claude Code dans l’encoche (notch) du MacBook. Gratuit et hors ligne.',
+      'Minuteur, historique du presse-papiers, étagère à fichiers, tâches et texte de l’écran (OCR), clés pour Claude Code dans l’encoche (notch). Gratuit, hors ligne.',
     imageAlt: 'Le nom Vortex sous l’encoche d’un MacBook, vers laquelle des traits de lumière tourbillonnent',
   },
   skip: 'Aller au contenu',
@@ -35,7 +35,7 @@ export const fr: Copy = {
     eyebrow: 'App gratuite et open\u00a0source pour l’encoche du\u00a0Mac · macOS\u00a014+ · Apple\u00a0silicon',
     wordmark: en.hero.wordmark,
     tagline: 'L’encoche de votre MacBook se met au travail.',
-    lead: 'Un minuteur, l’historique du presse-papiers, une étagère pour vos fichiers, des tâches tirées de l’écran et des clés que Claude Code peut utiliser sans les voir. Un survol suffit, et tout reste hors ligne par principe.',
+    lead: 'Un minuteur, l’historique du presse-papiers, une étagère pour vos fichiers, des tâches et du texte tirés de l’écran, et des clés que Claude Code peut utiliser sans les voir. N’ajoutez que ce qui vous sert et disposez Home à votre façon. Un survol suffit, et tout reste hors ligne par principe.',
     download: 'Télécharger pour Mac',
     star: 'Mettre une étoile sur GitHub',
     note: (version: string) => `Version ${version} · Gratuit · Licence MIT`,
@@ -296,7 +296,7 @@ export const fr: Copy = {
     permissions: [
       { name: 'Notifications', use: 'la fin du minuteur, et les demandes de clé de Claude quand la fenêtre est fermée' },
       { name: 'Accessibilité', use: 'le nettoyage du clavier' },
-      { name: 'Enregistrement de l’écran', use: 'les tâches tirées de l’écran' },
+      { name: 'Enregistrement de l’écran', use: 'les tâches tirées de l’écran, et Screen Text' },
       { name: 'Automatisation, par navigateur', use: 'l’adresse de la page d’une tâche\u202f; macOS demande votre accord la première fois' },
       { name: 'Coller depuis d’autres apps', use: 'l’historique du presse-papiers, uniquement sur les versions de macOS qui le demandent' },
     ],

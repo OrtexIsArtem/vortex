@@ -4,13 +4,13 @@ description: A free, open-source NotchNook alternative for Mac. Vortex, NotchNoo
 heading: 'A free NotchNook alternative: Vortex, NotchNook and Boring Notch compared'
 label: NotchNook alternative
 published: 2026-11-01
-updated: 2026-11-16
+updated: 2026-11-24
 faq:
   - q: Is there a free NotchNook alternative?
     a: >-
       Yes, two. Vortex and Boring Notch are both free and open source. Boring Notch, like NotchNook, has music
       controls, a file shelf and a camera mirror. Vortex is built for work instead: a timer, clipboard history, a shelf
-      for files and builds, tasks from your screen and keys for Claude Code.
+      for files and builds, tasks and text from your screen, and keys for Claude Code.
   - q: What’s the difference between NotchNook and Boring Notch?
     a: >-
       NotchNook is paid, as a subscription or a one-time license. Boring Notch is free and open source under GPLv3.
@@ -18,8 +18,8 @@ faq:
       activities; Boring Notch’s list a calendar, AirDrop and new pop-ups for volume and brightness.
   - q: Is Vortex a good Boring Notch alternative?
     a: >-
-      If you use the notch for work, yes: Vortex adds a timer, clipboard history, tasks from your screen and keys for
-      Claude Code. If you use it for music, no: Vortex has no media controls, calendar, AirDrop or volume and
+      If you use the notch for work, yes: Vortex adds a timer, clipboard history, tasks and text from your screen, and
+      keys for Claude Code. If you use it for music, no: Vortex has no media controls, calendar, AirDrop or volume and
       brightness HUD.
   - q: Which of these apps work on a Mac without a notch?
     a: >-
@@ -31,13 +31,13 @@ faq:
       No. Vortex needs a Mac with Apple silicon and macOS 14 or later. Boring Notch also runs on Intel Macs.
 ---
 
-NotchNook and Boring Notch put music, files and more in the MacBook’s notch. Vortex puts work there: a focus timer, clipboard history, a shelf for files and builds, tasks from your screen and keys Claude Code can use without seeing them. Here’s how the three compare, and when each one is the better pick.
+NotchNook and Boring Notch put music, files and more in the MacBook’s notch. Vortex puts work there: a focus timer, clipboard history, a shelf for files and builds, tasks and text from your screen, and keys Claude Code can use without seeing them. Here’s how the three compare, and when each one is the better pick.
 
 This site is Vortex’s, so read its column with that in mind. Every line about Vortex comes from [its README](https://github.com/OrtexIsArtem/vortex#readme) and [feature docs](https://github.com/OrtexIsArtem/vortex/tree/main/Packages/Features), and every fact about NotchNook and Boring Notch from their own pages and listings, linked under the table.
 
 ## Who each app is for
 
-**Vortex** is for people who work on a Mac all day, developers especially. A focus timer, clipboard history and a shelf for files sit one hover away, a shortcut turns anything on screen into a task, and Claude Code can use your database URLs and API tokens without seeing them. It’s free, open source under MIT, and never goes online by itself.
+**Vortex** is for people who work on a Mac all day, developers especially. A focus timer, clipboard history and a shelf for files sit one hover away, a shortcut turns anything on screen into a task, Screen Text copies text you can’t select, and Claude Code can use your database URLs and API tokens without seeing them. You add only the features you need. It’s free, open source under MIT, and never goes online by itself.
 
 **NotchNook** is for people who want a notch full of widgets and are happy to pay for it. Its official page lists widgets, live activities and a shelf for files, and its settings show widgets for your media player, Shortcuts and a camera mirror. It’s sold as a subscription or a one-time license.
 
@@ -98,9 +98,9 @@ Of the three, only Vortex lists these:
 - **Keys for Claude Code.** Save a database URL or an API token in Vortex under a name. Claude Code writes `{{name}}` where the value goes, and Vortex runs the command in your shell and takes the value back out of the output. Claude gets the result, never the key, and you allow each key once per session from the notch. [How it works](../claude-code-secrets/).
 - **Tasks from your screen.** A shortcut freezes the screen. Frame an area and press Return: the task keeps the picture, with the app, the window title and the page address. Text on it is recognized on your Mac, so search finds the task by any word in the picture.
 - **A shelf that catches builds.** Point Vortex at your build folder, and every new .ipa, .apk or .aab lands on the shelf once it’s fully written. Unpinned files leave after a day.
-- **Keyboard cleaning.** One button locks every key, media keys included, while the mouse and trackpad keep working.
+- **Keyboard cleaning.** Its button among Home’s utilities, or a shortcut you set, locks every key, media keys included, while the mouse and trackpad keep working.
 - **Offline by design.** Vortex never goes online by itself: no analytics, no update checks, no account. Its one listener is the MCP server for Claude Code, on this Mac only, with a token.
 
 ## Try Vortex in your browser
 
-Every feature has a live demo on [the home page](../): [the timer](../#timer), [clipboard](../#clipboard), [shelf](../#shelf), [tasks](../#tasks), [keys](../#keys) and [keyboard cleaning](../#keyboard). When you’re ready, [download Vortex](#download): it’s free, for macOS 14 or later on Apple silicon.
+Every feature has a live demo on [the home page](../): [the timer](../#timer), [clipboard](../#clipboard), [shelf](../#shelf), [tasks](../#tasks), [keys](../#keys), [keyboard cleaning](../#keyboard), [Screen Text](../#screentext) and [your own Home](../#home). When you’re ready, [download Vortex](#download): it’s free, for macOS 14 or later on Apple silicon.

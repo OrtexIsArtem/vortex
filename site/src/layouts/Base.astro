@@ -4,6 +4,7 @@ import '../styles/global.css';
 import { copyFor } from '../copy';
 import { basePath, defaultLocale, localeByCode, localeOf, locales, urlFor } from '../copy/locales';
 import { appVersion, downloadUrl, licenseUrl, repoUrl } from '../lib/app';
+import { featureList } from '../lib/features';
 import type { Alternate } from '../lib/pages';
 import { fromSearch, pickLocale } from '../lib/pick-locale';
 import { landingGraph, serializeGraph } from '../lib/structured';
@@ -51,6 +52,7 @@ const structured = serializeGraph(
       downloadUrl,
       licenseUrl,
       repoUrl,
+      features: featureList(copy),
     }),
 );
 

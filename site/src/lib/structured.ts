@@ -26,6 +26,8 @@ export interface LandingGraph {
   downloadUrl: string;
   licenseUrl: string;
   repoUrl: string;
+  /** What the app does, in this page's language (lib/features.ts). */
+  features: readonly string[];
 }
 
 /** The landing: the site, this page, the app and its source. The app is one thing in every language, so it keeps the
@@ -55,6 +57,7 @@ export function landingGraph(o: LandingGraph): object[] {
       operatingSystem: 'macOS 14 or later',
       processorRequirements: 'Apple silicon',
       softwareVersion: o.appVersion,
+      featureList: o.features,
       downloadUrl: o.downloadUrl,
       license: o.licenseUrl,
       isAccessibleForFree: true,

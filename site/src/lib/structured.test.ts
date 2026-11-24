@@ -20,6 +20,21 @@ const article = {
   faq: [{ q: 'Does it work?', a: 'Yes, with `{{name}}` and [a link](https://example.com).' }],
 };
 
+const landing = {
+  home,
+  page: `${home}de/`,
+  title: 't',
+  description: 'd',
+  tag: 'de',
+  tags,
+  image: `${home}og.png`,
+  appVersion: '1.0',
+  downloadUrl: 'https://example.com/v.zip',
+  licenseUrl: 'https://example.com/LICENSE',
+  repoUrl: 'https://example.com/repo',
+  features: ['Timer: Ein Fokus-Timer in deiner Notch.', 'Screen Text: Kopiere Text, den du nicht markieren kannst.'],
+};
+
 type Node = Record<string, unknown>;
 const byType = (graph: object[], type: string) => graph.find((node) => (node as Node)['@type'] === type) as Node | undefined;
 
@@ -54,20 +69,14 @@ describe('articleGraph', () => {
   });
 
   it('shares the site’s node with the landing', () => {
-    const landing = landingGraph({
-      home,
-      page: home,
-      title: 't',
-      description: 'd',
-      tag: 'en',
-      tags,
-      image: `${home}og.png`,
-      appVersion: '1.0',
-      downloadUrl: 'https://example.com/v.zip',
-      licenseUrl: 'https://example.com/LICENSE',
-      repoUrl: 'https://example.com/repo',
-    });
-    expect(byType(articleGraph(article), 'WebSite')).toEqual(byType(landing, 'WebSite'));
+    expect(byType(articleGraph(article), 'WebSite')).toEqual(byType(landingGraph(landing), 'WebSite'));
+  });
+});
+
+describe('landingGraph', () => {
+  it('names what the app does, in the page’s language, on the app itself', () => {
+    const app = byType(landingGraph(landing), 'SoftwareApplication');
+    expect(app).toMatchObject({ '@id': `${home}#app`, url: home, featureList: landing.features });
   });
 });
 

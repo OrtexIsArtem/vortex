@@ -4,7 +4,7 @@ export const en = {
   meta: {
     title: 'Vortex — Free, Open-Source Notch App for Mac',
     description:
-      'Free, open-source notch app for MacBook: a focus timer, clipboard history, a shelf that catches .ipa and .apk builds, OCR screen tasks and keys for Claude Code.',
+      'Free, open-source notch app for MacBook: a focus timer, clipboard history, a shelf for .ipa and .apk builds, OCR screen tasks and text, keys for Claude Code.',
     imageAlt: 'The Vortex wordmark under a MacBook notch, with streaks of light spiralling into it',
   },
   skip: 'Skip to content',
@@ -33,7 +33,7 @@ export const en = {
     eyebrow: 'Free, open-source notch app for\u00a0Mac · macOS\u00a014+ · Apple\u00a0silicon',
     wordmark: 'Vortex',
     tagline: "Your MacBook's notch, put to work.",
-    lead: 'A timer, clipboard history, a shelf for files, tasks from your screen and keys Claude Code can use without seeing them. One hover away, and offline by design.',
+    lead: 'A timer, clipboard history, a shelf for files, tasks and text from your screen, and keys Claude Code can use without seeing them. Add only what you need and lay out Home your way. One hover away, and offline by design.',
     download: 'Download for Mac',
     star: 'Star on GitHub',
     note: (version: string) => `Version ${version} · Free · MIT license`,
@@ -445,7 +445,7 @@ export const en = {
     permissions: [
       { name: 'Notifications', use: "the timer's end, and Claude's key requests while the window is closed" },
       { name: 'Accessibility', use: 'keyboard cleaning' },
-      { name: 'Screen Recording', use: 'tasks from the screen' },
+      { name: 'Screen Recording', use: 'tasks from the screen, and Screen Text' },
       { name: 'Automation, per browser', use: "a task's page address; macOS asks the first time" },
       { name: 'Paste from Other Apps', use: 'clipboard history, only on macOS versions that ask' },
     ],

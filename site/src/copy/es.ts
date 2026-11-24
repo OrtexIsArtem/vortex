@@ -6,7 +6,7 @@ export const es: Copy = {
   meta: {
     title: 'Vortex: app gratis y de código abierto para el notch del Mac',
     description:
-      'Temporizador, historial del portapapeles, estante de archivos, tareas con OCR y claves para Claude Code, en el notch de tu MacBook. Gratis y sin conexión.',
+      'Temporizador, historial del portapapeles, estante de archivos, tareas y texto de pantalla (OCR) y claves para Claude Code en tu notch. Gratis y sin conexión.',
     imageAlt: 'El nombre Vortex bajo el notch de un MacBook, con trazos de luz que entran en espiral',
   },
   skip: 'Ir al contenido',
@@ -35,7 +35,7 @@ export const es: Copy = {
     eyebrow: 'App gratis y de código\u00a0abierto para el notch del\u00a0Mac · macOS\u00a014+ · Apple\u00a0silicon',
     wordmark: en.hero.wordmark,
     tagline: 'Pon a trabajar el notch de tu MacBook.',
-    lead: 'Un temporizador, el historial del portapapeles, un estante para archivos, tareas desde tu pantalla y claves que Claude Code puede usar sin verlas. Se abre con solo pasar el puntero y, por diseño, funciona sin conexión.',
+    lead: 'Un temporizador, el historial del portapapeles, un estante para archivos, tareas y texto desde tu pantalla, y claves que Claude Code puede usar sin verlas. Añade solo lo que necesites y ordena Home a tu manera. Se abre con solo pasar el puntero y, por diseño, funciona sin conexión.',
     download: 'Descargar para Mac',
     star: 'Dar estrella en GitHub',
     note: (version: string) => `Versión ${version} · Gratis · Licencia MIT`,
@@ -294,7 +294,7 @@ export const es: Copy = {
     permissions: [
       { name: 'Notificaciones', use: 'el final del temporizador y las peticiones de claves de Claude con la ventana cerrada' },
       { name: 'Accesibilidad', use: 'limpieza del teclado' },
-      { name: 'Grabación de pantalla', use: 'tareas desde la pantalla' },
+      { name: 'Grabación de pantalla', use: 'tareas desde la pantalla y Screen Text' },
       { name: 'Automatización, por navegador', use: 'la dirección de la página de una tarea; macOS pregunta la primera vez' },
       { name: 'Pegar desde otras apps', use: 'historial del portapapeles, solo en las versiones de macOS que lo piden' },
     ],
