@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- The site's icons: the Vortex spiral (VortexGlyph.swift) in white on black. Rendered at the size the page asks for
-     (?size=180 for apple-touch-icon.png, ?size=64 for favicon-64.png) by og/render.mjs. -->
+     (?size=180 for apple-touch-icon.png, ?size=64 for favicon-64.png) by og/render.mjs; a width wider than the size
+     (?size=512&width=1024 for vortex-logo.png) widens the black around the spiral. -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -22,9 +23,11 @@
   <body>
     <div class="tile" id="tile"></div>
     <script>
-      const size = Number(new URLSearchParams(location.search).get('size') ?? 180);
+      const query = new URLSearchParams(location.search);
+      const size = Number(query.get('size') ?? 180);
       const tile = document.getElementById('tile');
-      tile.style.width = tile.style.height = `${size}px`;
+      tile.style.width = `${Number(query.get('width') ?? size)}px`;
+      tile.style.height = `${size}px`;
       // A favicon sits on a light or a dark tab bar, so it gets rounded corners of its own; the touch icon is squared
       // off by the system.
       if (size < 100) tile.style.borderRadius = `${size * 0.22}px`;

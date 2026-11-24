@@ -18,6 +18,9 @@ const pictures = [
   { source: 'icon.html?size=64', out: 'favicon-64.png', width: 64, height: 64, transparent: true },
   // For the browsers and services that ask for /favicon.ico whatever the page links.
   { source: 'icon.html?size=48', out: 'favicon.ico', width: 48, height: 48, transparent: true, ico: true },
+  // The image in the page's clipboard history (scripts/clipboard.ts), which a click copies. Twice as wide as tall: a
+  // card's wide preview shows the whole spiral and a row's square shows the icon, each filled as the app fills it.
+  { source: 'icon.html?size=512&width=1024', out: 'vortex-logo.png', width: 1024, height: 512 },
 ];
 
 /** A PNG wrapped in an ICO container, which every current browser reads. */
