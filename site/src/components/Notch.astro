@@ -33,6 +33,7 @@ const outline = hangingPath(notch, false);
   >
     <span class="vx-ear" data-ear="left" lang={appLang}></span>
     <span class="vx-ear" data-ear="right" lang={appLang}></span>
+    <span class="vx-ear vx-ear--row" data-ear="row" lang={appLang}></span>
   </button>
 
   <svg class="vx-layer vx-layer--back" width="100%" height="460" aria-hidden="true">
@@ -258,6 +259,19 @@ const outline = hangingPath(notch, false);
     transition: opacity 200ms var(--ease-out);
   }
 
+  /* Words too wide for the ears, on a narrow screen: under the notch, which grows down by this row to hold them. */
+  .vx-ear--row {
+    position: absolute;
+    top: var(--notch-h);
+    left: 50%;
+    /* Words that don't fit even here are cut at their end, not at both. */
+    justify-content: safe center;
+    width: var(--row-w, 0px);
+    height: var(--row-h, 0px);
+    padding-bottom: 4px;
+    transform: translateX(-50%);
+  }
+
   .vx.is-open .vx-ear {
     opacity: 0;
   }
@@ -275,6 +289,10 @@ const outline = hangingPath(notch, false);
 
   .vx-ear :global(.is-mono) {
     font: 500 11.5px/1 var(--mono);
+  }
+
+  .vx-ear :global(.vx-ear__dot) {
+    color: var(--text-3);
   }
 
   /* The drop zone: a dashed frame under the notch, as the app's "Drop files here". */

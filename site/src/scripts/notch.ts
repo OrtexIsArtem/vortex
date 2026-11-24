@@ -48,6 +48,9 @@ const flashKeyframes: Keyframe[] = [
 ];
 const flashDuration = 1500;
 
+/** The row the closed notch grows down by on a narrow screen, for words that don't fit beside it. */
+const rowHeight = 24;
+
 const hoverDelay = 300;
 const leaveDelay = 500;
 /** A window opened by hover or click closes once the page scrolls this far. */
@@ -76,6 +79,7 @@ const glow = part<HTMLElement>('.vx-glow');
 const halo = part<SVGPathElement>('.vx-glow__halo path');
 const earLeft = part<HTMLElement>('[data-ear="left"]');
 const earRight = part<HTMLElement>('[data-ear="right"]');
+const earRow = part<HTMLElement>('[data-ear="row"]');
 const dropZone = part<HTMLElement>('.vx-drop');
 /** What the intro fades in. */
 const introParts: (HTMLElement | SVGElement)[] = [button, ...root.querySelectorAll<SVGElement>('.vx-layer')];
@@ -96,6 +100,9 @@ let drawnScale = Number.NaN;
 /** What Esc puts away inside the open window before it closes the window. */
 let escapeInside: (() => boolean) | null = null;
 let earW = 0;
+/** The row under the closed notch, as wide as its words and their padding; 0 while the words fit beside the notch. */
+let rowW = 0;
+let rowH = 0;
 let isOpen = false;
 let openedBy: OpenReason | null = null;
 let scrollAtOpen = 0;
@@ -122,6 +129,10 @@ function readSizes(): void {
 }
 
 function closedOutline(): Frame {
+  if (rowH > 0) {
+    const width = Math.max(notchW + earW * 2, rowW);
+    return { width, height: notchH + rowH, radius: metrics.ears.radius, shoulder: metrics.window.shoulder, shift: 0, scale: windowScale };
+  }
   return earW > 0
     ? { width: notchW + earW * 2, height: notchH, radius: metrics.ears.radius, shoulder: metrics.window.shoulder, shift: 0, scale: windowScale }
     : { width: notchW, height: notchH, radius: metrics.notchRadius, shoulder: 0, shift: 0, scale: windowScale };
@@ -156,10 +167,12 @@ function draw(o: Frame): void {
   flashFill.setAttribute('d', d);
   edge.setAttribute('d', hangingPath(o, false, o.shift));
 
-  // How far the window has opened: the notch inside it shrinks to the window's scale, so narrow screens fit.
+  // How far the window has opened: the notch inside it shrinks to the window's scale, so narrow screens fit. A row of
+  // words under the closed notch is no opening.
   const s = o.scale || 1;
   const openHeight = metrics.window.height * s;
-  const progress = clamp((o.height - notchH) / Math.max(1, openHeight - notchH), 0, 1);
+  const closedHeight = notchH + rowH;
+  const progress = clamp((o.height - closedHeight) / Math.max(1, openHeight - closedHeight), 0, 1);
   const coreW = lerp(notchW, 186 * s, progress);
   const coreH = lerp(notchH, 32 * s, progress);
   core.setAttribute('d', hangingPath({ width: coreW, height: coreH, radius: metrics.notchRadius, shoulder: 0 }));
@@ -196,10 +209,17 @@ function ringSvg(value: number): string {
   return `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#2A2A2E" stroke-width="2"/><circle cx="8" cy="8" r="7" fill="none" stroke="#F5F5F7" stroke-width="2" stroke-linecap="round" stroke-dasharray="${lit.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 8 8)"/></svg>`;
 }
 
-function renderEar(ear: HTMLElement, items: EarItem[]): number {
+/** Draws `items` in `ear` and answers their width; a dot goes before the item at `separateAt`, if any. */
+function renderEar(ear: HTMLElement, items: EarItem[], separateAt = -1): number {
   const row = document.createElement('span');
   row.className = 'vx-ear__row';
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
+    if (index === separateAt) {
+      const dot = document.createElement('span');
+      dot.className = 'vx-ear__item vx-ear__dot';
+      dot.textContent = '·';
+      row.append(dot);
+    }
     const cell = document.createElement('span');
     cell.className = 'vx-ear__item';
     if (item.kind === 'ring') cell.innerHTML = ringSvg(item.value);
@@ -234,25 +254,50 @@ function earRoom(): number {
   return Math.max(0, Math.min(center - notchW / 2 - brand, end - center - notchW / 2) - 8);
 }
 
-/** The most of `items` that fits `room`: all of them, then the words alone, then the icons alone, then nothing. */
-function fitEar(ear: HTMLElement, items: EarItem[], room: number): number {
-  const words = items.filter((item) => item.kind === 'text');
-  const icons = items.filter((item) => item.kind !== 'text');
-  for (const attempt of [items, words, icons]) {
+const wordsOf = (items: EarItem[]) => items.filter((item) => item.kind === 'text');
+
+/** The most of `items` that fits `room` with every word kept: all of them, then the words alone. Null when a word
+ *  doesn't fit even so; icons alone that don't fit leave the ear empty. */
+function fitEar(ear: HTMLElement, items: EarItem[], room: number): number | null {
+  const words = wordsOf(items);
+  for (const attempt of [items, words]) {
     if (!attempt.length) continue;
     const width = renderEar(ear, attempt);
     if (width <= room) return width;
   }
-  return renderEar(ear, []);
+  renderEar(ear, []);
+  return words.length ? null : 0;
 }
 
-/** Tells the menu bar how far the notch reaches to each side: its ears, or the open window, which reaches further right
- *  once it has grown there. */
+/**
+ * Words too wide for the ears, as on a phone, go under the notch instead, in one row: the left side's items, a dot, the
+ * right side's ("Screen Text · Esc"); then their words alone; then the left side's words, which say what is going on,
+ * cut short only where even they don't fit. Answers the row's width.
+ */
+function fitRow(left: EarItem[], right: EarItem[], room: number): number {
+  const attempts: [EarItem[], EarItem[]][] = [
+    [left, right],
+    [wordsOf(left), wordsOf(right)],
+    [wordsOf(left), []],
+  ];
+  let width = 0;
+  for (const [start, end] of attempts) {
+    if (!start.length && !end.length) continue;
+    // The dot parts the two sides only when both say something.
+    width = renderEar(earRow, [...start, ...end], wordsOf(start).length && wordsOf(end).length ? start.length : -1);
+    if (width <= room) return width;
+  }
+  return Math.min(width, room);
+}
+
+/** Tells the menu bar how far the notch reaches to each side: its ears or the row under it, or the open window, which
+ *  reaches further right once it has grown there. */
 function reachMenubar(): void {
   if (!menubar) return;
   const open = openOutline();
-  const start = isOpen ? Math.max(0, open.width / 2 - open.shift - notchW / 2) : earW;
-  const end = isOpen ? Math.max(0, open.width / 2 + open.shift - notchW / 2) : earW;
+  const closed = Math.max(0, closedOutline().width / 2 - notchW / 2);
+  const start = isOpen ? Math.max(0, open.width / 2 - open.shift - notchW / 2) : closed;
+  const end = isOpen ? Math.max(0, open.width / 2 + open.shift - notchW / 2) : closed;
   // Only on what reads it: on the page's root, a custom property would restyle the whole page each time it changes.
   menubar.style.setProperty('--ear-w', `${start}px`);
   menubar.style.setProperty('--ear-w-end', `${end}px`);
@@ -264,12 +309,30 @@ function reachMenubar(): void {
 function setEars(left: EarItem[], right: EarItem[]): void {
   // The phone's smaller notch has proportionally narrower ears.
   const padding = metrics.ears.padding * Math.min(1, notchW / 186);
-  const room = earRoom() - padding * 2;
-  const content = Math.max(fitEar(earLeft, left, room), fitEar(earRight, right, room));
+  const reach = earRoom();
+  const room = reach - padding * 2;
+  const leftWidth = fitEar(earLeft, left, room);
+  const rightWidth = fitEar(earRight, right, room);
+  let content = 0;
+  if (leftWidth === null || rightWidth === null) {
+    // A word doesn't fit beside the notch: the notch grows down by a row and says it there, the ears' room on each side
+    // its limit, so the menu bar's buttons stay clear.
+    renderEar(earLeft, []);
+    renderEar(earRight, []);
+    rowW = Math.ceil(fitRow(left, right, notchW + reach * 2 - padding * 2) + padding * 2);
+    rowH = rowHeight;
+  } else {
+    content = Math.max(leftWidth, rightWidth);
+    renderEar(earRow, []);
+    rowW = 0;
+    rowH = 0;
+  }
   earW = content > 0 ? Math.ceil(content + padding * 2) : 0;
   button.style.setProperty('--ear-w', `${earW}px`);
+  earRow.style.setProperty('--row-w', `${rowW}px`);
+  earRow.style.setProperty('--row-h', `${rowH}px`);
   reachMenubar();
-  document.documentElement.classList.toggle('has-ears', earW > 0);
+  document.documentElement.classList.toggle('has-ears', earW > 0 || rowH > 0);
   if (isOpen || dropState !== 'off') return;
   if (reduceMotion.matches) outline.set(closedOutline());
   else void outline.to(closedOutline(), springs.ears);
@@ -279,6 +342,10 @@ function setEars(left: EarItem[], right: EarItem[]): void {
 export function setIndicator(id: string, indicator: Indicator | null): void {
   if (indicator) indicators.set(id, indicator);
   else indicators.delete(id);
+  showIndicators();
+}
+
+function showIndicators(): void {
   const byPriority = [...indicators.values()].sort((a, b) => b.priority - a.priority);
   // The highest priority stands nearest the notch on each side; an indicator's own items keep their order.
   setEars(
@@ -529,6 +596,8 @@ window.addEventListener(
 );
 window.addEventListener('resize', () => {
   readSizes();
+  // The room beside the notch changed: its words may fit there now, or no longer.
+  if (indicators.size) showIndicators();
   reachMenubar();
   outline.set(isOpen ? openOutline() : dropState !== 'off' ? dropOutline() : closedOutline());
 });
