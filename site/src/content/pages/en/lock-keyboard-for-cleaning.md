@@ -4,7 +4,7 @@ description: "How to clean a MacBook keyboard without turning it off: lock every
 heading: How to lock a MacBook keyboard for cleaning
 label: MacBook keyboard cleaning
 published: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-24
 chapter: keyboard
 faq:
   - q: Can I clean my MacBook keyboard without turning it off?
@@ -14,8 +14,9 @@ faq:
       disinfectant wipe for when the Mac is shut down.
   - q: How do I lock the keyboard on a Mac for cleaning?
     a: >-
-      Use an app that holds key presses back. In Vortex, click the keyboard button on Home: every key stops until you
-      click “Turn the keyboard back on”. Vortex needs the Accessibility permission for it.
+      Use an app that holds key presses back. In Vortex, click the utilities button on Home, then the keyboard button in
+      the strip it puts out, or press a shortcut you set: every key stops until you click “Turn the keyboard back on”.
+      Vortex needs the Accessibility permission for it.
   - q: Does Vortex lock the trackpad, Touch ID or Caps Lock?
     a: >-
       No. The mouse and trackpad keep working, so you can click the keyboard back on. macOS doesn’t let any app lock
@@ -73,7 +74,7 @@ So you either shut down or stop the keys first.
 
 ## Lock the keyboard with Vortex
 
-[Vortex](../) is a free, [open-source](https://github.com/OrtexIsArtem/vortex) Mac app that lives in the notch. One button on its Home tab locks the keyboard for cleaning:
+[Vortex](../) is a free, [open-source](https://github.com/OrtexIsArtem/vortex) Mac app that lives in the notch. Its keyboard button, among the utilities on Home, locks the keyboard for cleaning, and so does a shortcut you set:
 
 - **Every key stops:** letters, modifiers, Esc, the function row and the keys for brightness, sound and media.
 - **The mouse and trackpad keep working,** so one click on **Turn the keyboard back on** brings the keys back.
@@ -93,9 +94,9 @@ If all you need is the lock, small apps that do only that exist too.
 ## Lock your keyboard for cleaning, step by step
 
 1. **Install Vortex.** It’s free, for macOS 14 or later on Apple silicon. [Download it below](#download). Vortex isn’t notarized by Apple, so the first launch takes one more step, shown there.
-2. **Turn on Accessibility.** Vortex’s setup has an **Accessibility** page: press **Turn on**, then switch on Vortex in **System Settings › Privacy & Security › Accessibility**. Until then, the keyboard button shows a yellow warning, and clicking it opens that page.
+2. **Turn on Accessibility.** Vortex’s setup has an **Accessibility** page: press **Turn on**, then switch on Vortex in **System Settings › Privacy & Security › Accessibility**. Until then, the utilities button on Home has a yellow dot and the keyboard button in its strip a yellow warning, and clicking that button opens the page.
 3. **Open Vortex.** Point at the notch, or click it. On a Mac without one, click Vortex’s icon in the menu bar.
-4. **Lock the keys.** On **Home**, click the keyboard icon at the top right of the panel at the bottom; its tooltip says **Lock the keyboard for cleaning**. The window now shows **Keyboard cleaning mode** and **All keys are locked**.
+4. **Lock the keys.** On **Home**, click the utilities button at the right end of the top row, unless you moved it; its tooltip says **Utilities**. In the strip it puts out at the window's right, click the keyboard button, **Lock Keyboard**. A shortcut you set in **Settings › Features › Keyboard Cleaning** does the same. The window now shows **Keyboard cleaning mode** and **All keys are locked**.
 5. **Clean.** Unplug the power adapter and other cables, as Apple advises, and wipe the keys with a dry, soft, lint-free cloth.
 6. **Turn the keys back on.** Click **Turn the keyboard back on** with the trackpad or mouse. The keys work again at once, in the app you were using.
 

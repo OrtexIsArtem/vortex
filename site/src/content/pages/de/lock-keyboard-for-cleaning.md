@@ -4,7 +4,7 @@ description: "MacBook-Tastatur reinigen, ohne den Mac auszuschalten: So sperrst 
 heading: So sperrst du die MacBook-Tastatur zum Reinigen
 label: MacBook-Tastatur reinigen
 published: 2026-11-01
-updated: 2026-11-01
+updated: 2026-11-24
 chapter: keyboard
 faq:
   - q: Kann ich die MacBook-Tastatur reinigen, ohne den Mac auszuschalten?
@@ -14,8 +14,9 @@ faq:
       fusselfreies Tuch. Ein feuchtes Tuch oder Desinfektionstücher nimmst du erst, wenn der Mac aus ist.
   - q: Wie sperre ich die Tastatur am Mac zum Reinigen?
     a: >-
-      Mit einer App, die Tastendrücke zurückhält. In Vortex klickst du in „Home“ auf das Tastatursymbol: Jede Taste
-      ruht, bis du auf „Turn the keyboard back on“ klickst. Dafür braucht Vortex die Berechtigung „Bedienungshilfen“.
+      Mit einer App, die Tastendrücke zurückhält. In Vortex klickst du in „Home“ auf den Utilities-Button und dann in
+      seiner Leiste auf das Tastatursymbol, oder du drückst ein Tastenkürzel deiner Wahl: Jede Taste ruht, bis du auf
+      „Turn the keyboard back on“ klickst. Dafür braucht Vortex die Berechtigung „Bedienungshilfen“.
   - q: Sperrt Vortex auch Trackpad, Touch ID oder Caps Lock?
     a: >-
       Nein. Maus und Trackpad funktionieren weiter, damit du die Tastatur per Klick wieder einschalten kannst. Touch ID
@@ -74,7 +75,7 @@ Also schaltest du entweder aus oder sperrst vorher die Tasten.
 
 ## Tastatur sperren mit Vortex
 
-[Vortex](../) ist eine kostenlose Mac-App für die Notch, [Open Source](https://github.com/OrtexIsArtem/vortex) unter MIT-Lizenz. Ein Button im Tab „Home“ sperrt die Tastatur zum Reinigen:
+[Vortex](../) ist eine kostenlose Mac-App für die Notch, [Open Source](https://github.com/OrtexIsArtem/vortex) unter MIT-Lizenz. Sein Tastatur-Button bei den Utilities in „Home“ sperrt die Tastatur zum Reinigen, ebenso ein Tastenkürzel deiner Wahl:
 
 - **Jede Taste ruht:** Buchstaben, Sondertasten, Esc, die Funktionstasten und die Tasten für Helligkeit, Lautstärke und Medien.
 - **Maus und Trackpad funktionieren weiter,** also holt ein Klick auf „Turn the keyboard back on“ die Tastatur zurück.
@@ -94,9 +95,9 @@ Brauchst du nur die Sperre, gibt es auch kleine Apps, die nichts anderes tun.
 ## Tastatur zum Reinigen sperren: Schritt für Schritt
 
 1. **Installiere Vortex.** Kostenlos, für macOS 14 oder neuer auf Macs mit Apple silicon. [Den Download findest du unten](#download). Vortex ist nicht von Apple beglaubigt, deshalb braucht der erste Start einen Schritt mehr; er steht dort.
-2. **Schalte „Bedienungshilfen“ ein.** Die Einrichtung von Vortex hat dafür die Seite „Accessibility“: Drücke „Turn on“ und schalte Vortex dann in „Systemeinstellungen“ › „Datenschutz & Sicherheit“ › „Bedienungshilfen“ ein. Bis dahin zeigt das Tastatursymbol eine gelbe Warnung, und ein Klick darauf öffnet diese Seite.
+2. **Schalte „Bedienungshilfen“ ein.** Die Einrichtung von Vortex hat dafür die Seite „Accessibility“: Drücke „Turn on“ und schalte Vortex dann in „Systemeinstellungen“ › „Datenschutz & Sicherheit“ › „Bedienungshilfen“ ein. Bis dahin trägt der Utilities-Button in „Home“ einen gelben Punkt und das Tastatursymbol in seiner Leiste eine gelbe Warnung, und ein Klick auf dieses Symbol öffnet die Seite.
 3. **Öffne Vortex.** Zeige auf die Notch oder klicke darauf. Auf einem Mac ohne Notch klickst du auf das Symbol von Vortex in der Menüleiste.
-4. **Sperre die Tasten.** Klicke im Tab „Home“ auf das Tastatursymbol oben rechts im unteren Bereich; sein Tooltip lautet „Lock the keyboard for cleaning“. Das Fenster zeigt jetzt „Keyboard cleaning mode“ und „All keys are locked“.
+4. **Sperre die Tasten.** Klicke in „Home“ auf den Utilities-Button am rechten Ende der oberen Zeile, sofern du ihn nicht verschoben hast; sein Tooltip lautet „Utilities“. Klicke in der Leiste, die er rechts am Fenster ausklappt, auf das Tastatursymbol, „Lock Keyboard“. Ein Tastenkürzel, das du in „Settings“ › „Features“ › „Keyboard Cleaning“ festlegst, tut dasselbe. Das Fenster zeigt jetzt „Keyboard cleaning mode“ und „All keys are locked“.
 5. **Reinige die Tastatur.** Trenne Netzteil und andere Kabel, wie Apple es empfiehlt, und wische die Tasten mit einem trockenen, weichen, fusselfreien Tuch ab.
 6. **Schalte die Tasten wieder ein.** Klicke mit Trackpad oder Maus auf „Turn the keyboard back on“. Die Tasten funktionieren sofort wieder, in der App, in der du gerade warst.
 
