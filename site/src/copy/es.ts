@@ -151,10 +151,10 @@ export const es: Copy = {
     ...en.keyboardChapter,
     title: 'Bloquea el teclado para limpiarlo.',
     titleQuiet: 'Ninguna tecla responde hasta que lo vuelvas a activar.',
-    body: 'Un botón en la pestaña Home bloquea todas las teclas: letras, modificadoras, Esc, la fila de funciones y las teclas de brillo, sonido y multimedia. El ratón y el trackpad siguen funcionando, así que con un clic recuperas el teclado.',
+    body: 'El botón con forma de teclado entre las «Utilities» de la pestaña Home, o un atajo que elijas, bloquea todas las teclas: letras, modificadoras, Esc, la fila de funciones y las teclas de brillo, sonido y multimedia. El ratón y el trackpad siguen funcionando, así que con un clic recuperas el teclado.',
     facts: ['Necesita permiso de Accesibilidad', 'El ratón y el trackpad siguen funcionando', 'Las teclas vuelven si sales de Vortex'],
     note: 'macOS no deja que ninguna app bloquee Touch ID ni Caps Lock.',
-    tryIt: 'Pulsa algunas teclas y luego bloquéalas.',
+    tryIt: 'Pulsa algunas teclas y luego bloquéalas desde las «Utilities».',
   },
   open: {
     title: 'Apunta al notch. Vortex se abre.',
