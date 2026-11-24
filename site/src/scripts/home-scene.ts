@@ -179,12 +179,22 @@ export function mountHome(scene: HTMLElement): void {
   // The window's outline: it grows right for the strip and the editor, keeping its left edge, on the app's spring.
   const targetWidth = () => (editing() ? (wide ? widths.large : widths.regular) : stripOut ? widths.dock : widths.regular);
   let asked = widths.regular;
+  /** Whose room the window's growth is: the editor's, opening, open or closing, or the strip's. */
+  let editorRoom = false;
+  /** Beside a wide window the editor's panel shows as far as the window has grown for the editor. The strip's room is
+   *  the strip's own: the panel, painted over the window, stays behind its edge while the strip is out or going in. */
+  const clipPanel = (width: number) => {
+    if (editing()) editorRoom = true;
+    else if (stripOut) editorRoom = false;
+    const reach = editorRoom ? width : widths.regular;
+    panel.style.clipPath = wide ? `inset(0 ${Math.max(0, widths.large - reach).toFixed(2)}px 0 0 round 0 0 30px 0)` : '';
+  };
   const outline = new SpringGroup<'width'>({ width: widths.regular }, ({ width }) => {
     const body = { width, height: 440, radius: cornerRadius, shoulder: 10 };
     fill.setAttribute('d', hangingPath(body, true, margin + width / 2));
     edge.setAttribute('d', hangingPath(body, false, margin + width / 2));
     win.style.clipPath = `path('${hangingPath({ ...body, shoulder: 0 }, true, width / 2)}')`;
-    panel.style.clipPath = wide ? `inset(0 ${Math.max(0, widths.large - width).toFixed(2)}px 0 0 round 0 0 30px 0)` : '';
+    clipPanel(width);
   });
   const grow = (instantly = false) => {
     const target = targetWidth();
@@ -264,6 +274,7 @@ export function mountHome(scene: HTMLElement): void {
     strip.inert = !(stripOut && !isEditing);
     panel.inert = !isEditing;
     grow();
+    clipPanel(outline.values.width);
 
     // The notch row: its widget, or Home's title.
     const rowWidget = shown.notchRow === 'timer.timer';
